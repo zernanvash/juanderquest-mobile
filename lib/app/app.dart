@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/widgets/device_guard.dart';
 import 'router.dart';
 import 'lifecycle_coordinator.dart';
 
@@ -29,7 +30,7 @@ class JuanderQuestApp extends ConsumerWidget {
 
     return LifecycleCoordinator(
       child: MaterialApp.router(
-        title: 'JuanderQuest',
+        title: 'JuanDerQuest — Gamified Tourism Platform',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
@@ -57,6 +58,7 @@ class JuanderQuestApp extends ConsumerWidget {
           ),
         ),
         routerConfig: router,
+        builder: (context, child) => DeviceGuard(child: child ?? const SizedBox()),
       ),
     );
   }

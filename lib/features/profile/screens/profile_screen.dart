@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../wallet/providers/wallet_provider.dart';
 import '../providers/profile_stats_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -12,6 +13,8 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final stats = ref.watch(profileStatsProvider);
+    final walletAsync = ref.watch(walletProvider);
+    final wallet = walletAsync.asData?.value;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F5),
@@ -74,7 +77,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Computed Traveler Statistics Card
+            // Computed Traveler Statistics & Wallet Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -89,14 +92,45 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+              child: Column(
                 children: [
-                  _buildStatItem('Completed', '${stats.completedQuestsCount}', Icons.check_circle_outline, const Color(0xFF2D6A4F)),
-                  const SizedBox(width: 8),
-                  _buildStatItem('Pending', '${stats.pendingSubmissionsCount}', Icons.hourglass_top_rounded, const Color(0xFFFFB703)),
-                  const SizedBox(width: 8),
-                  _buildStatItem('Points', '${stats.totalPointsEarned}', Icons.stars, const Color(0xFF7D5800)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatItem('Completed', '${stats.completedQuestsCount}', Icons.check_circle_outline, const Color(0xFF2D6A4F)),
+                      const SizedBox(width: 8),
+                      _buildStatItem('Pending', '${stats.pendingSubmissionsCount}', Icons.hourglass_top_rounded, const Color(0xFFFFB703)),
+                      const SizedBox(width: 8),
+                      _buildStatItem('Points', '${stats.totalPointsEarned}', Icons.stars, const Color(0xFF7D5800)),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF2D6A4F), size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'mJDQ Governance Wallet',
+                            style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2D6A4F).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          wallet != null ? '${wallet.balanceMjdq} mJDQ (${wallet.formattedJdq})' : '1,000 mJDQ (1.00 JDQ)',
+                          style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2D6A4F), fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
