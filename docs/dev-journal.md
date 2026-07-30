@@ -1,5 +1,15 @@
 # Dev Journal
 
+## 2026-07-30 — Tourism Location Submission Feature
+
+- **Backend Location Proposals API (`backend/src/routes/proposals.ts` & `backend/src/db/`):**
+  - Added `ProposalRow` schema, database seed data, and query/mutation methods (`listProposals`, `createProposal`, `voteProposal`).
+  - Added REST API routes: `GET /api/v1/proposals`, `POST /api/v1/proposals`, `POST /api/v1/proposals/:id/vote`.
+  - Added 2 new backend integration tests in `tests/api.test.ts` (12/12 tests passing!).
+- **Mobile App Suggest Location Modal (`lib/features/vote/screens/vote_screen.dart`):**
+  - Added **"Suggest New Location"** modal bottom sheet form allowing travelers to submit new Pangasinan tourism spots (Title, Location, Category, Description).
+  - Automatically inserts new submitted spots into active community voting list with initial vote.
+
 ## 2026-07-30 — Navigation, Map Fixes, RTK & Visual Polishing
 
 - **Black Map Render Bug Fix (`lib/features/map/screens/map_view_screen.dart`):** Replaced HTTP 403 restricted OpenMapTiles URL with MapLibre's public demotiles vector style (`https://demotiles.maplibre.org/style.json`). Layered a fallback Pangasinan region interactive canvas behind `MapLibreMap` to guarantee the map never renders pitch black.
