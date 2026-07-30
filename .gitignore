@@ -1,39 +1,45 @@
-# OS
-Thumbs.db
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
 .DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
 
-# IDE
-.idea/
+# IntelliJ related
 *.iml
-.vscode/
+*.ipr
+*.iws
+.idea/
 
-# Node
-backend/node_modules/
-backend/dist/
-dashboard/node_modules/
-dashboard/dist/
-*.env
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
 
-# Flutter
-juanderquest_app/build/
-juanderquest_app/.dart_tool/
-juanderquest_app/.packages
-juanderquest_app/.flutter-plugins
-juanderquest_app/.flutter-plugins-dependencies
-juanderquest_app/android/.gradle/
-juanderquest_app/android/local.properties
-juanderquest_app/android/key.properties
-juanderquest_app/android/app/build/
-juanderquest_app/ios/.symlinks/
-juanderquest_app/ios/Pods/
-juanderquest_app/ios/Runner.xcworkspace/xcuserdata/
-juanderquest_app/.pub-cache/
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
 
-# Brain
-.brain/.obsidian/workspace.json
-.brain/.obsidian/cache/
+# Symbolication related
+app.*.symbols
 
-# Secrets
-**/secrets/
-**/credentials/
-*.pem
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
