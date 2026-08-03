@@ -7,9 +7,7 @@ import '../models/governance_proposal_model.dart';
 import '../providers/governance_provider.dart';
 
 class VoteScreen extends ConsumerStatefulWidget {
-  final bool showProposalsModal;
-
-  const VoteScreen({super.key, this.showProposalsModal = false});
+  const VoteScreen({super.key});
 
   @override
   ConsumerState<VoteScreen> createState() => _VoteScreenState();
@@ -24,11 +22,9 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.showProposalsModal) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showAllProposalsModal(context);
-      });
-    }
+    Future.microtask(() {
+      ref.read(governanceProvider.notifier).loadGovernanceData();
+    });
   }
 
   @override
@@ -43,157 +39,168 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
     final walletAsync = ref.read(walletProvider);
     final wallet = walletAsync.asData?.value;
     final currentBalance = wallet?.balanceMjdq ?? 1000;
-    const fee = 10;
+    final config = ref.read(governanceProvider).config;
+    final fee = config?.voteFeeMjdq ?? 10;
+    final burnAmount = (fee * (config?.burnPercent ?? 20) / 100).round();
+    final escrowAmount = fee - burnAmount;
     final remaining = currentBalance - fee;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFFFAF9F5),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD5C4AC),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Icon(
-                  choice == 'yes' ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
-                  color: choice == 'yes' ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
-                  size: 26,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Confirm Paid Vote (${choice.toUpperCase()})',
-                  style: GoogleFonts.epilogue(
-                    color: const Color(0xFF582F0E),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          top: 24,
+          left: 24,
+          right: 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD5C4AC),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Target: "${prop.title}"',
-              style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFF582F0E),
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
               ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFD5C4AC)),
-              ),
-              child: Column(
+              const SizedBox(height: 16),
+              Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Vote Fee:', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532))),
-                      Text('10 mJDQ (0.01 JDQ)', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: const Color(0xFF7D5800))),
-                    ],
+                  Icon(
+                    choice == 'yes' ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
+                    color: choice == 'yes' ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
+                    size: 26,
                   ),
-                  const Divider(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Burn Allocation (20%):', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12)),
-                      Text('2 mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFFBC4749), fontSize: 12, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Reward Escrow (80%):', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12)),
-                      Text('8 mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2D6A4F), fontSize: 12, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const Divider(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Wallet Balance After:', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold)),
-                      Text('$remaining mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold)),
-                    ],
+                  const SizedBox(width: 10),
+                  Text(
+                    'Confirm Vote (${choice.toUpperCase()})',
+                    style: GoogleFonts.epilogue(
+                      color: const Color(0xFF582F0E),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: Text('Cancel', style: GoogleFonts.epilogue(color: const Color(0xFF582F0E))),
-                  ),
+              const SizedBox(height: 12),
+              Text(
+                'Target: "${prop.title}"',
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF582F0E),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      Navigator.pop(ctx);
-                      final success = await ref.read(governanceProvider.notifier).castVote(
-                            proposalId: prop.id,
-                            choice: choice,
-                          );
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFD5C4AC)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(child: Text('Vote Fee:', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532)))),
+                        Text('$fee mJDQ (${(fee / 1000.0).toStringAsFixed(2)} JDQ)', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: const Color(0xFF7D5800))),
+                      ],
+                    ),
+                    const Divider(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(child: Text('Burn Allocation (${config?.burnPercent.toStringAsFixed(0) ?? '20'}%):', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12))),
+                        Text('$burnAmount mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFFBC4749), fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(child: Text('Reward Escrow (${config?.escrowPercent.toStringAsFixed(0) ?? '80'}%):', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12))),
+                        Text('$escrowAmount mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2D6A4F), fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const Divider(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(child: Text('Balance After:', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold))),
+                        Text('$remaining mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text('Cancel', style: GoogleFonts.epilogue(color: const Color(0xFF582F0E))),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        Navigator.pop(ctx);
+                        final success = await ref.read(governanceProvider.notifier).castVote(
+                              proposalId: prop.id,
+                              choice: choice,
+                            );
 
-                      if (!mounted) return;
-                      final error = ref.read(governanceProvider).error;
+                        if (!mounted) return;
+                        final error = ref.read(governanceProvider).error;
 
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            success
-                                ? 'Vote cast successfully! 10 mJDQ fee processed.'
-                                : 'Vote failed: ${error ?? "Check balance and eligibility."}',
-                            style: GoogleFonts.plusJakartaSans(),
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              success
+                                  ? 'Vote cast successfully! $fee mJDQ fee processed.'
+                                  : 'Vote failed: ${error ?? "Check balance and eligibility."}',
+                              style: GoogleFonts.plusJakartaSans(),
+                            ),
+                            backgroundColor: success ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
                           ),
-                          backgroundColor: success ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: choice == 'yes' ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: Text(
-                      'Cast ${choice.toUpperCase()} Vote',
-                      style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: choice == 'yes' ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text(
+                        'Cast ${choice.toUpperCase()} Vote',
+                        style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -386,67 +393,13 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
     );
   }
 
-  void _showAllProposalsModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFFFAF9F5),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.75,
-        maxChildSize: 0.9,
-        builder: (_, scrollController) {
-          final proposals = ref.watch(governanceProvider).proposals;
-          return Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: ListView(
-              controller: scrollController,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD5C4AC),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'All Proposed Tourism Destinations',
-                  style: GoogleFonts.epilogue(
-                    color: const Color(0xFF582F0E),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Explore community proposals and govern upcoming Pangasinan quest locations.',
-                  style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532), fontSize: 13),
-                ),
-                const SizedBox(height: 20),
-                ...proposals.map((prop) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _buildProposalCard(prop),
-                )),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final govState = ref.watch(governanceProvider);
     final walletAsync = ref.watch(walletProvider);
     final wallet = walletAsync.asData?.value;
+    final config = govState.config;
+    final fee = config?.voteFeeMjdq ?? 10;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F5),
@@ -507,34 +460,44 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'COMMUNITY GOVERNANCE',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFF7D5800),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
+                        Flexible(
+                          child: Text(
+                            'COMMUNITY GOVERNANCE',
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: const Color(0xFF7D5800),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2D6A4F).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.account_balance_wallet_rounded, size: 14, color: Color(0xFF2D6A4F)),
-                              const SizedBox(width: 4),
-                              Text(
-                                wallet != null ? '${wallet.balanceMjdq} mJDQ' : '1,000 mJDQ',
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: const Color(0xFF2D6A4F),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2D6A4F).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.account_balance_wallet_rounded, size: 14, color: Color(0xFF2D6A4F)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    wallet != null ? '${wallet.balanceMjdq} mJDQ' : '1,000 mJDQ',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: const Color(0xFF2D6A4F),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ],
@@ -550,7 +513,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Cast paid binary votes (10 mJDQ per vote) to approve destination proposals. 20% is burned, 80% enters community reward escrow.',
+                      'Cast paid binary votes ($fee mJDQ per vote) to approve destination proposals. ${config?.burnPercent.toStringAsFixed(0) ?? '20'}% is burned, ${config?.escrowPercent.toStringAsFixed(0) ?? '80'}% enters community reward escrow.',
                       style: GoogleFonts.plusJakartaSans(
                         color: const Color(0xFF514532),
                         fontSize: 13,
@@ -576,14 +539,18 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Active Proposals',
-                    style: GoogleFonts.epilogue(
-                      color: const Color(0xFF0D1B2A),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      'Active Proposals',
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.epilogue(
+                        color: const Color(0xFF0D1B2A),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   TextButton.icon(
                     onPressed: () => context.push('/vote/proposals'),
                     icon: const Icon(Icons.open_in_new, size: 16, color: Color(0xFF7D5800)),
@@ -601,7 +568,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
               const SizedBox(height: 12),
 
               if (govState.isLoading)
-                const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+                const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: Color(0xFFFFB703))))
               else if (govState.proposals.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(24),
@@ -646,41 +613,48 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFEEEA),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  prop.categoryDisplay,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF837560),
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFEEEA),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    prop.categoryDisplay,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF837560),
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: prop.status == 'approved'
-                      ? const Color(0xFF2D6A4F).withValues(alpha: 0.15)
-                      : prop.status == 'voting'
-                          ? const Color(0xFFFFB703).withValues(alpha: 0.15)
-                          : const Color(0xFF837560).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  prop.status.toUpperCase(),
-                  style: GoogleFonts.plusJakartaSans(
+              const SizedBox(width: 8),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
                     color: prop.status == 'approved'
-                        ? const Color(0xFF2D6A4F)
+                        ? const Color(0xFF2D6A4F).withValues(alpha: 0.15)
                         : prop.status == 'voting'
-                            ? const Color(0xFF7D5800)
-                            : const Color(0xFF837560),
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
+                            ? const Color(0xFFFFB703).withValues(alpha: 0.15)
+                            : const Color(0xFF837560).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    prop.status.toUpperCase(),
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: prop.status == 'approved'
+                          ? const Color(0xFF2D6A4F)
+                          : prop.status == 'voting'
+                              ? const Color(0xFF7D5800)
+                              : const Color(0xFF837560),
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -707,7 +681,6 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Vote Breakdown Stats Bar
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -717,33 +690,44 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.thumb_up_alt_rounded, size: 14, color: Color(0xFF2D6A4F)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'YES: ${prop.yesVotes} (${prop.yesPercentage.toStringAsFixed(0)}%)',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF2D6A4F)),
-                    ),
-                  ],
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.thumb_up_alt_rounded, size: 14, color: Color(0xFF2D6A4F)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'YES: ${prop.yesVotes} (${prop.yesPercentage.toStringAsFixed(0)}%)',
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF2D6A4F)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Container(width: 1, height: 12, color: const Color(0xFFD5C4AC)),
-                Row(
-                  children: [
-                    const Icon(Icons.thumb_down_alt_rounded, size: 14, color: Color(0xFFBC4749)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'NO: ${prop.noVotes} (${prop.noPercentage.toStringAsFixed(0)}%)',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFBC4749)),
-                    ),
-                  ],
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.thumb_down_alt_rounded, size: 14, color: Color(0xFFBC4749)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'NO: ${prop.noVotes} (${prop.noPercentage.toStringAsFixed(0)}%)',
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFBC4749)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 14),
 
-          // Binary Action Buttons
           if (hasVoted)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 10),

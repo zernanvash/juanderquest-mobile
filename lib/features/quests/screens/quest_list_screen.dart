@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../submissions/providers/submission_provider.dart';
 import '../providers/quest_provider.dart';
 import '../models/quest_model.dart';
 
@@ -15,6 +16,7 @@ class QuestListScreen extends ConsumerStatefulWidget {
 
 class _QuestListScreenState extends ConsumerState<QuestListScreen> {
   String? _selectedCategory;
+  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -22,6 +24,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(questProvider.notifier).fetchQuests();
+      ref.read(submissionProvider.notifier).fetchSubmissions();
     });
   }
 
@@ -31,10 +34,65 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
     super.dispose();
   }
 
+  Widget _buildAvatarWidget(String? avatarUrl) {
+    final isValidUrl = avatarUrl != null &&
+        avatarUrl.isNotEmpty &&
+        !avatarUrl.endsWith('.svg') &&
+        (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
+
+    if (isValidUrl) {
+      return CircleAvatar(
+        radius: 25,
+        backgroundColor: const Color(0xFFEFEEEA),
+        backgroundImage: NetworkImage(avatarUrl),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+
+    return const CircleAvatar(
+      radius: 25,
+      backgroundColor: Color(0xFFFFB703),
+      child: Icon(Icons.person_rounded, size: 28, color: Color(0xFF582F0E)),
+    );
+  }
+
+  String _getQuestStatus(QuestModel quest) {
+    final submissions = ref.read(submissionProvider).submissions;
+    final userSub = submissions.where((s) => s.questTitle == quest.title || s.id == quest.id).toList();
+
+    if (userSub.any((s) => s.status == 'approved')) return 'COMPLETED';
+    if (userSub.any((s) => s.status == 'pending')) return 'PENDING REVIEW';
+    if (userSub.any((s) => s.status == 'rejected')) return 'REJECTED';
+    return 'AVAILABLE';
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'COMPLETED':
+        return const Color(0xFF2D6A4F);
+      case 'PENDING REVIEW':
+        return const Color(0xFFFFB703);
+      case 'REJECTED':
+        return const Color(0xFFBC4749);
+      default:
+        return const Color(0xFF2D6A4F);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final questState = ref.watch(questProvider);
     final user = ref.watch(authProvider).user;
+
+    final filteredQuests = questState.quests.where((q) {
+      if (_searchQuery.trim().isEmpty) return true;
+      final query = _searchQuery.toLowerCase().trim();
+      return q.title.toLowerCase().contains(query) ||
+          q.locationName.toLowerCase().contains(query) ||
+          q.categoryDisplay.toLowerCase().contains(query);
+    }).toList();
+
+    final QuestModel? featuredQuest = filteredQuests.isNotEmpty ? filteredQuests.first : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F5),
@@ -42,19 +100,22 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
         backgroundColor: const Color(0xFFFAF9F5),
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Row(
-          children: [
-            const Icon(Icons.explore, color: Color(0xFF7D5800), size: 24),
-            const SizedBox(width: 8),
-            Text(
-              'JuanderQuest',
-              style: GoogleFonts.epilogue(
-                color: const Color(0xFF7D5800),
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            children: [
+              const Icon(Icons.explore, color: Color(0xFF7D5800), size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'JuanderQuest',
+                style: GoogleFonts.epilogue(
+                  color: const Color(0xFF7D5800),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           IconButton(
@@ -62,32 +123,35 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
             tooltip: 'Submissions History',
             onPressed: () => context.push('/history'),
           ),
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFEEEA),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              children: [
-                Image.asset(
-                  'assets/images/jdq-token.png',
-                  width: 20,
-                  height: 20,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.stars, color: Color(0xFFFFB703), size: 18),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${user?.demoPoints ?? 0} PTS',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF6B4B00),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFEEEA),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  Image.asset(
+                    'assets/images/jdq-token.png',
+                    width: 20,
+                    height: 20,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.stars, color: Color(0xFFFFB703), size: 18),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Text(
+                    '${user?.demoPoints ?? 0} PTS',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF6B4B00),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -104,42 +168,37 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Hello, Explorer!',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFF514532),
-                              fontSize: 14,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello, Explorer!',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFF514532),
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            user?.displayName ?? 'Juan Dela Cruz',
-                            style: GoogleFonts.epilogue(
-                              color: const Color(0xFF582F0E),
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(height: 2),
+                            Text(
+                              user?.displayName ?? 'Juan Dela Cruz',
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.epilogue(
+                                color: const Color(0xFF582F0E),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 12),
                       Container(
-                        width: 50,
-                        height: 50,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(color: const Color(0xFFFFB703), width: 2),
-                          image: DecorationImage(
-                            image: NetworkImage(
-                              user?.avatarUrl.isNotEmpty == true
-                                  ? user!.avatarUrl
-                                  : 'https://api.dicebear.com/7.x/avataaars/svg?seed=Juan',
-                            ),
-                            fit: BoxFit.cover,
-                          ),
                         ),
+                        child: _buildAvatarWidget(user?.avatarUrl),
                       ),
                     ],
                   ),
@@ -148,10 +207,22 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   // Search Bar
                   TextField(
                     controller: _searchController,
+                    onChanged: (val) {
+                      setState(() => _searchQuery = val);
+                    },
                     decoration: InputDecoration(
                       hintText: 'Search quests in Pangasinan...',
                       hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 14),
                       prefixIcon: const Icon(Icons.search, color: Color(0xFF837560)),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, color: Color(0xFF837560)),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -174,28 +245,30 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       scrollDirection: Axis.horizontal,
                       children: [
                         _buildCategoryChip('All Quests', null, Icons.apps),
-                        _buildCategoryChip('Eco', 'eco', Icons.eco),
-                        _buildCategoryChip('Cultural', 'cultural', Icons.museum),
-                        _buildCategoryChip('Food & Trade', 'food_trade', Icons.restaurant),
+                        _buildCategoryChip('Eco-Tourism', 'eco', Icons.eco),
+                        _buildCategoryChip('Cultural Heritage', 'cultural', Icons.museum),
+                        _buildCategoryChip('Food & Culinary', 'food_trade', Icons.restaurant),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Featured Discovery Hero Card
-                  Text(
-                    'Featured Discovery',
-                    style: GoogleFonts.epilogue(
-                      color: const Color(0xFF1B1C1A),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  // Featured Discovery Card
+                  if (featuredQuest != null && questState.error == null) ...[
+                    Text(
+                      'Featured Discovery',
+                      style: GoogleFonts.epilogue(
+                        color: const Color(0xFF1B1C1A),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildFeaturedQuestCard(context),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 12),
+                    _buildFeaturedQuestCard(context, featuredQuest),
+                    const SizedBox(height: 24),
+                  ],
 
-                  // Nearby Adventures List Header
+                  // Nearby Adventures Header
                   Text(
                     'Nearby Adventures',
                     style: GoogleFonts.epilogue(
@@ -214,12 +287,44 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                         child: CircularProgressIndicator(color: Color(0xFFFFB703)),
                       ),
                     )
-                  else if (questState.quests.isEmpty)
+                  else if (questState.error != null && questState.quests.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFD5C4AC)),
+                      ),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            const Icon(Icons.cloud_off_rounded, size: 48, color: Color(0xFFBC4749)),
+                            const SizedBox(height: 12),
+                            Text(
+                              questState.error!,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () => ref.read(questProvider.notifier).fetchQuests(category: _selectedCategory),
+                              icon: const Icon(Icons.refresh),
+                              label: Text('Retry', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFB703),
+                                foregroundColor: const Color(0xFF6B4B00),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (filteredQuests.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(32),
                       child: Center(
                         child: Text(
-                          'No quests found in this category.',
+                          'No quests found matching your criteria.',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560)),
                         ),
@@ -229,9 +334,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: questState.quests.length,
+                      itemCount: filteredQuests.length,
                       itemBuilder: (context, index) {
-                        final quest = questState.quests[index];
+                        final quest = filteredQuests[index];
                         return _buildQuestItemCard(context, quest);
                       },
                     ),
@@ -275,21 +380,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
     );
   }
 
-  Widget _buildFeaturedQuestCard(BuildContext context) {
-    final featuredQuest = QuestModel(
-      id: 'q1111111-1111-1111-1111-111111111111',
-      title: 'Hundred Islands Eco Trek',
-      description: "Visit Governor's Island viewing deck in Alaminos City and scan the eco-marker.",
-      category: 'eco',
-      locationName: 'Alaminos City, Pangasinan',
-      gpsLat: 16.2063,
-      gpsLng: 119.9706,
-      radiusMeters: 150,
-      rewardPoints: 50,
-      markerCode: 'MARKER_HUNDRED_ISLANDS_01',
-      markerImageUrl: 'https://raw.githubusercontent.com/JuanderQuest/assets/main/markers/hundred_islands.png',
-    );
-
+  Widget _buildFeaturedQuestCard(BuildContext context, QuestModel featuredQuest) {
     return GestureDetector(
       onTap: () => context.push('/quests/${featuredQuest.id}', extra: featuredQuest),
       child: Container(
@@ -333,7 +424,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  'FEATURED EVENT',
+                  'FEATURED QUEST',
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontSize: 10,
@@ -356,6 +447,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       children: [
                         Text(
                           featuredQuest.title,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.epilogue(
                             color: Colors.white,
                             fontSize: 18,
@@ -366,11 +458,14 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                           children: [
                             const Icon(Icons.location_on, color: Colors.white70, size: 14),
                             const SizedBox(width: 4),
-                            Text(
-                              featuredQuest.locationName,
-                              style: GoogleFonts.plusJakartaSans(
-                                color: Colors.white70,
-                                fontSize: 12,
+                            Expanded(
+                              child: Text(
+                                featuredQuest.locationName,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ],
@@ -378,6 +473,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
@@ -415,6 +511,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
   }
 
   Widget _buildQuestItemCard(BuildContext context, QuestModel quest) {
+    final status = _getQuestStatus(quest);
+    final statusColor = _getStatusColor(status);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -448,7 +547,6 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   child: const Icon(Icons.place_rounded, color: Color(0xFF3F6653), size: 30),
                 ),
                 const SizedBox(width: 14),
-
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -468,18 +566,22 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                               ),
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3F6653).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              quest.category.toUpperCase(),
-                              style: GoogleFonts.plusJakartaSans(
-                                color: const Color(0xFF3F6653),
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3F6653).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                quest.categoryDisplay.toUpperCase(),
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: const Color(0xFF3F6653),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -490,11 +592,14 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                         children: [
                           const Icon(Icons.location_on_outlined, color: Color(0xFF837560), size: 14),
                           const SizedBox(width: 4),
-                          Text(
-                            quest.locationName,
-                            style: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFF837560),
-                              fontSize: 12,
+                          Expanded(
+                            child: Text(
+                              quest.locationName,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFF837560),
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
@@ -503,31 +608,41 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Image.asset(
-                                'assets/images/jdq-token.png',
-                                width: 16,
-                                height: 16,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.stars, color: Color(0xFFFFB703), size: 14),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${quest.rewardPoints} PTS',
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: const Color(0xFF7D5800),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                          Flexible(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/images/jdq-token.png',
+                                  width: 16,
+                                  height: 16,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.stars, color: Color(0xFFFFB703), size: 14),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    '${quest.rewardPoints} PTS',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: const Color(0xFF7D5800),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          Text(
-                            'AVAILABLE',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFF2D6A4F),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              status,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
                             ),
                           ),
                         ],

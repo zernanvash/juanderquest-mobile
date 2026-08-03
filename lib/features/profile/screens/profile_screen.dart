@@ -3,18 +3,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../wallet/providers/wallet_provider.dart';
 import '../providers/profile_stats_provider.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  Widget _buildAvatarWidget(String? avatarUrl) {
+    final isValidUrl = avatarUrl != null &&
+        avatarUrl.isNotEmpty &&
+        !avatarUrl.endsWith('.svg') &&
+        (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
+
+    if (isValidUrl) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: const Color(0xFFEFEEEA),
+        backgroundImage: NetworkImage(avatarUrl),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+
+    return const CircleAvatar(
+      radius: 40,
+      backgroundColor: Color(0xFFFFB703),
+      child: Icon(Icons.person_rounded, size: 48, color: Color(0xFF582F0E)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final stats = ref.watch(profileStatsProvider);
-    final walletAsync = ref.watch(walletProvider);
-    final wallet = walletAsync.asData?.value;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F5),
@@ -23,15 +47,26 @@ class ProfileScreen extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         title: Text(
-          'Traveler Profile',
-          style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontSize: 20, fontWeight: FontWeight.bold),
+          'Explorer Profile',
+          style: GoogleFonts.epilogue(
+            color: const Color(0xFF582F0E),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            Center(
+            // User Identification Header Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
+              ),
               child: Column(
                 children: [
                   Container(
@@ -40,15 +75,8 @@ class ProfileScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: const Color(0xFFFFB703), width: 3),
-                      image: DecorationImage(
-                        image: NetworkImage(
-                          user?.avatarUrl.isNotEmpty == true
-                              ? user!.avatarUrl
-                              : 'https://api.dicebear.com/7.x/avataaars/svg?seed=Juan',
-                        ),
-                        fit: BoxFit.cover,
-                      ),
                     ),
+                    child: _buildAvatarWidget(user?.avatarUrl),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -77,7 +105,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Computed Traveler Statistics & Wallet Card
+            // Computed Traveler Statistics & Demo Points Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -97,36 +125,38 @@ class ProfileScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatItem('Completed', '${stats.completedQuestsCount}', Icons.check_circle_outline, const Color(0xFF2D6A4F)),
-                      const SizedBox(width: 8),
-                      _buildStatItem('Pending', '${stats.pendingSubmissionsCount}', Icons.hourglass_top_rounded, const Color(0xFFFFB703)),
-                      const SizedBox(width: 8),
-                      _buildStatItem('Points', '${stats.totalPointsEarned}', Icons.stars, const Color(0xFF7D5800)),
+                      Expanded(child: _buildStatItem('Completed', '${stats.completedQuestsCount}', Icons.check_circle_outline, const Color(0xFF2D6A4F))),
+                      const SizedBox(width: 4),
+                      Expanded(child: _buildStatItem('Pending', '${stats.pendingSubmissionsCount}', Icons.hourglass_top_rounded, const Color(0xFFFFB703))),
+                      const SizedBox(width: 4),
+                      Expanded(child: _buildStatItem('Total Earned', '${stats.totalPointsEarned} PTS', Icons.stars, const Color(0xFF7D5800))),
                     ],
                   ),
                   const Divider(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF2D6A4F), size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'mJDQ Governance Wallet',
-                            style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2D6A4F).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
+                      Flexible(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.stars_rounded, color: Color(0xFFFFB703), size: 20),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Demo Points Balance',
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
                         child: Text(
-                          wallet != null ? '${wallet.balanceMjdq} mJDQ (${wallet.formattedJdq})' : '1,000 mJDQ (1.00 JDQ)',
-                          style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2D6A4F), fontWeight: FontWeight.bold, fontSize: 12),
+                          '${user?.demoPoints ?? 0} PTS',
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.epilogue(color: const Color(0xFF7D5800), fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                       ),
                     ],
@@ -134,100 +164,84 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // Submissions & Proof History Action Tile
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
-              ),
-              child: ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEFEEEA),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.history_rounded, color: Color(0xFF7D5800)),
-                ),
-                title: Text(
-                  'Submissions & Proof History',
-                  style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                subtitle: Text(
-                  'View review status of submitted quest proofs',
-                  style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12),
-                ),
-                trailing: const Icon(Icons.chevron_right, color: Color(0xFF837560)),
-                onTap: () => context.push('/history'),
-              ),
-            ),
-
             const SizedBox(height: 24),
 
-            // Live Achievements Section Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Explorer Badges',
-                        style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFBEEAD1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'LIVE PROGRESS',
-                          style: GoogleFonts.plusJakartaSans(color: const Color(0xFF436B58), fontSize: 9, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
+            // Achievements & Badges Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Impact Badges',
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.epilogue(
+                      color: const Color(0xFF582F0E),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildAchievementBadge(Icons.eco, 'Eco Pioneer', stats.ecoPioneerUnlocked),
-                      _buildAchievementBadge(Icons.museum, 'Heritage Keeper', stats.heritageKeeperUnlocked),
-                      _buildAchievementBadge(Icons.restaurant, 'Food Explorer', stats.foodExplorerUnlocked),
-                    ],
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Pangasinan Legacy',
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF837560),
+                      fontSize: 12,
+                    ),
                   ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Explicit Badge Cards with State Chips
+            _buildBadgeCard(
+              title: 'Eco Pioneer',
+              description: 'Verified eco-tourism proof submission in Pangasinan.',
+              icon: Icons.eco_rounded,
+              badgeState: stats.ecoPioneerState,
+            ),
+            const SizedBox(height: 12),
+            _buildBadgeCard(
+              title: 'Heritage Keeper',
+              description: 'Verified cultural heritage landmark submission.',
+              icon: Icons.museum_rounded,
+              badgeState: stats.heritageKeeperState,
+            ),
+            const SizedBox(height: 12),
+            _buildBadgeCard(
+              title: 'Food Explorer',
+              description: 'Verified culinary & local trade quest submission.',
+              icon: Icons.restaurant_rounded,
+              badgeState: stats.foodExplorerState,
+            ),
+            const SizedBox(height: 24),
+
+            // Navigation Actions
+            ElevatedButton.icon(
+              onPressed: () => context.push('/history'),
+              icon: const Icon(Icons.history_rounded, size: 18),
+              label: Text('View Quest Submissions History', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                backgroundColor: const Color(0xFF3F6653),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-
-            const SizedBox(height: 32),
-
-            // Logout Button
-            ElevatedButton.icon(
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
               onPressed: () {
                 ref.read(authProvider.notifier).logout();
-                context.go('/');
               },
-              icon: const Icon(Icons.logout),
-              label: Text('Logout', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-                backgroundColor: const Color(0xFFBC4749).withValues(alpha: 0.15),
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: Text('Sign Out', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
                 foregroundColor: const Color(0xFFBC4749),
-                elevation: 0,
+                side: const BorderSide(color: Color(0xFFBC4749)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -238,14 +252,15 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Widget _buildStatItem(String label, String value, IconData icon, Color color) {
-    return Expanded(
+    return FittedBox(
+      fit: BoxFit.scaleDown,
       child: Column(
         children: [
-          Icon(icon, color: color, size: 22),
+          Icon(icon, color: color, size: 20),
           const SizedBox(height: 4),
           Text(
             value,
-            style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontSize: 18, fontWeight: FontWeight.bold),
+            style: GoogleFonts.epilogue(color: color, fontWeight: FontWeight.bold, fontSize: 16),
           ),
           Text(
             label,
@@ -256,35 +271,106 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAchievementBadge(IconData icon, String label, bool isUnlocked) {
-    return Expanded(
-      child: Column(
+  Widget _buildBadgeCard({
+    required String title,
+    required String description,
+    required IconData icon,
+    required BadgeState badgeState,
+  }) {
+    Color iconBgColor;
+    Color iconColor;
+    String stateLabel;
+    Color chipBgColor;
+    Color chipTextColor;
+
+    switch (badgeState) {
+      case BadgeState.earned:
+        iconBgColor = const Color(0xFFBEEAD1);
+        iconColor = const Color(0xFF2D6A4F);
+        stateLabel = 'EARNED';
+        chipBgColor = const Color(0xFF2D6A4F);
+        chipTextColor = Colors.white;
+        break;
+      case BadgeState.inProgress:
+        iconBgColor = const Color(0xFFFFF3CD);
+        iconColor = const Color(0xFF7D5800);
+        stateLabel = 'IN PROGRESS';
+        chipBgColor = const Color(0xFFFFB703);
+        chipTextColor = const Color(0xFF6B4B00);
+        break;
+      case BadgeState.locked:
+        iconBgColor = const Color(0xFFE9E8E4);
+        iconColor = const Color(0xFF837560);
+        stateLabel = 'LOCKED';
+        chipBgColor = const Color(0xFFE9E8E4);
+        chipTextColor = const Color(0xFF837560);
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
+      ),
+      child: Row(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
+              color: iconBgColor,
               shape: BoxShape.circle,
-              color: isUnlocked ? const Color(0xFFFFB703).withValues(alpha: 0.2) : const Color(0xFFEFEEEA),
-              border: Border.all(
-                color: isUnlocked ? const Color(0xFFFFB703) : const Color(0xFFD5C4AC),
-                width: isUnlocked ? 2 : 1,
-              ),
             ),
-            child: Icon(
-              icon,
-              color: isUnlocked ? const Color(0xFF7D5800) : const Color(0xFF837560).withValues(alpha: 0.5),
-              size: 26,
-            ),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
-              color: isUnlocked ? const Color(0xFF1B1C1A) : const Color(0xFF837560),
-              fontSize: 11,
-              fontWeight: isUnlocked ? FontWeight.bold : FontWeight.normal,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.epilogue(
+                          color: const Color(0xFF582F0E),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: chipBgColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        stateLabel,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: chipTextColor,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFF837560),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

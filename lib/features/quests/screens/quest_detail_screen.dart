@@ -58,6 +58,7 @@ class _QuestDetailByIdState extends ConsumerState<_QuestDetailById> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
+            backgroundColor: Color(0xFFFAF9F5),
             body: Center(child: CircularProgressIndicator(color: Color(0xFFFFB703))),
           );
         }
@@ -215,49 +216,28 @@ class _DetailContent extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF7D5800),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Text(
-                                    quest.category.toUpperCase(),
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 10,
-                                    ),
-                                  ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF7D5800),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                              ),
+                              child: Text(
+                                quest.categoryDisplay.toUpperCase(),
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
                                 ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF3F6653),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Text(
-                                    '500 XP',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               quest.title,
                               style: GoogleFonts.epilogue(
                                 color: Colors.white,
-                                fontSize: 26,
+                                fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -266,11 +246,14 @@ class _DetailContent extends StatelessWidget {
                               children: [
                                 const Icon(Icons.location_on, color: Color(0xFFFFB703), size: 16),
                                 const SizedBox(width: 4),
-                                Text(
-                                  quest.locationName,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 14,
+                                Expanded(
+                                  child: Text(
+                                    quest.locationName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -304,33 +287,45 @@ class _DetailContent extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('CURRENT REWARD', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.monetization_on, color: Color(0xFFFFB703), size: 20),
-                                        const SizedBox(width: 6),
-                                        Text('${quest.rewardPoints} Quest Points', style: GoogleFonts.epilogue(color: const Color(0xFF7D5800), fontSize: 16, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ],
+                                Flexible(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('QUEST REWARD', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.stars_rounded, color: Color(0xFFFFB703), size: 20),
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              '${quest.rewardPoints} Demo Points',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.epilogue(color: const Color(0xFF7D5800), fontSize: 16, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text('DIFFICULTY', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.terrain, color: Color(0xFF582F0E), size: 16),
-                                        const SizedBox(width: 4),
-                                        Text('Moderate', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontSize: 14, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ],
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('COMPLETION RADIUS', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          const Icon(Icons.radar_rounded, color: Color(0xFF2D6A4F), size: 16),
+                                          const SizedBox(width: 4),
+                                          Text('${quest.radiusMeters}m', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2D6A4F), fontSize: 14, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -350,33 +345,12 @@ class _DetailContent extends StatelessWidget {
                       children: [
                         Text('Quest Objectives', style: GoogleFonts.epilogue(color: const Color(0xFF0D1B2A), fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
-                        _buildRefinedObjectiveStep(stepNumber: '1', title: 'Visit Destination', subtitle: 'Arrive within ${quest.radiusMeters}m of the location.', icon: Icons.directions_walk, isCompleted: true),
+                        _buildObjectiveStep(stepNumber: '1', title: 'Visit Destination', subtitle: 'Travel within ${quest.radiusMeters}m of ${quest.locationName}.', icon: Icons.directions_walk),
                         const SizedBox(height: 10),
-                        _buildRefinedObjectiveStep(stepNumber: '2', title: 'Locate Quest Marker', subtitle: 'Find and scan the heritage quest marker.', icon: Icons.qr_code_scanner, isCompleted: false),
+                        _buildObjectiveStep(stepNumber: '2', title: 'Locate Quest Marker', subtitle: 'Find and scan the heritage marker.', icon: Icons.qr_code_scanner),
                         const SizedBox(height: 10),
-                        _buildRefinedObjectiveStep(stepNumber: '3', title: 'Submit GPS Proof', subtitle: 'Capture live AR photo and submit for review.', icon: Icons.camera_alt, isCompleted: false),
+                        _buildObjectiveStep(stepNumber: '3', title: 'Submit GPS Proof', subtitle: 'Capture live AR photo and submit for review.', icon: Icons.camera_alt),
                         const SizedBox(height: 20),
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(color: const Color(0xFF3F6653).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF3F6653).withValues(alpha: 0.2))),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.info, color: Color(0xFF3F6653), size: 20),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: GoogleFonts.plusJakartaSans(color: const Color(0xFF436B58), fontSize: 12, height: 1.4),
-                                    children: const [
-                                      TextSpan(text: 'Local Tip: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      TextSpan(text: 'Visit between 5:00 PM and 6:00 PM to capture golden hour lighting at this destination.'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -406,28 +380,41 @@ class _DetailContent extends StatelessWidget {
     );
   }
 
-  Widget _buildRefinedObjectiveStep({required String stepNumber, required String title, required String subtitle, required IconData icon, required bool isCompleted}) {
+  Widget _buildObjectiveStep({required String stepNumber, required String title, required String subtitle, required IconData icon}) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: isCompleted ? Colors.white : const Color(0xFFF4F4F0), borderRadius: BorderRadius.circular(16), border: Border.all(color: isCompleted ? const Color(0xFF2D6A4F).withValues(alpha: 0.4) : const Color(0xFFD5C4AC).withValues(alpha: 0.3), width: isCompleted ? 1.5 : 1)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
+      ),
       child: Row(
         children: [
           Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(color: isCompleted ? const Color(0xFF2D6A4F).withValues(alpha: 0.15) : const Color(0xFF7D5800).withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: Icon(icon, color: isCompleted ? const Color(0xFF2D6A4F) : const Color(0xFF7D5800), size: 22),
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFF7D5800).withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: const Color(0xFF7D5800), size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Step $stepNumber: $title', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF1B1C1A), fontSize: 14, fontWeight: FontWeight.bold)),
-                Text(subtitle, style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532), fontSize: 12)),
+                Text(
+                  'Step $stepNumber: $title',
+                  style: GoogleFonts.plusJakartaSans(color: const Color(0xFF1B1C1A), fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532), fontSize: 12),
+                ),
               ],
             ),
           ),
-          if (isCompleted) const Icon(Icons.check_circle, color: Color(0xFF2D6A4F), size: 22) else const Icon(Icons.radio_button_unchecked, color: Color(0xFF837560), size: 20),
         ],
       ),
     );
