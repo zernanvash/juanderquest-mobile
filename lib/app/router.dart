@@ -11,6 +11,7 @@ import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
+import '../features/vote/screens/proposal_list_screen.dart';
 import '../features/shop/screens/shop_screen.dart';
 import 'main_shell.dart';
 
@@ -65,14 +66,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/',
         builder: (context, state) => const DemoLoginScreen(),
       ),
-      GoRoute(
-        path: '/vote/proposals',
-        pageBuilder: (context, state) => buildDirectionalSlidePage(
-          context: context,
-          state: state,
-          child: const VoteScreen(showProposalsModal: true),
-        ),
-      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => MainShell(navigationShell: navigationShell),
         branches: [
@@ -100,9 +93,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                         path: 'ar',
                         pageBuilder: (context, state) {
                           final quest = state.extra as QuestModel?;
-                          final widget = quest != null
-                              ? ARExperienceScreen(quest: quest)
-                              : QuestDetailScreen(questId: state.pathParameters['id'] ?? '');
+                          final qId = state.pathParameters['id'];
+                          final widget = ARExperienceScreen(quest: quest, questId: qId);
                           return buildDirectionalSlidePage(
                             context: context,
                             state: state,
@@ -129,6 +121,16 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/vote',
                 builder: (context, state) => const VoteScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'proposals',
+                    pageBuilder: (context, state) => buildDirectionalSlidePage(
+                      context: context,
+                      state: state,
+                      child: const ProposalListScreen(),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -40,4 +40,19 @@ class QuestModel {
       markerImageUrl: json['marker_image_url'] ?? '',
     );
   }
+
+  String get categoryDisplay {
+    switch (category.toLowerCase()) {
+      case 'eco':
+        return 'Eco-Tourism';
+      case 'cultural':
+      case 'heritage':
+        return 'Cultural Heritage';
+      case 'food_trade':
+      case 'food':
+        return 'Food & Culinary';
+      default:
+        return category.toUpperCase();
+    }
+  }
 }
