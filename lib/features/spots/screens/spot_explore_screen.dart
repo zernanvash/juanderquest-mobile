@@ -73,7 +73,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
               leading: CircleAvatar(child: Icon(spot.category == 'eat_drink' ? Icons.restaurant : Icons.place)),
-              title: Text(spot.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Row(children: [Expanded(child: Text(spot.name, style: const TextStyle(fontWeight: FontWeight.bold))),Chip(label: Text(spot.crowdStatus == 'estimated_busy' ? 'Estimated busy' : spot.crowdStatus == 'unknown' ? 'Crowd unknown' : spot.crowdStatus.replaceAll('_', ' ')),visualDensity: VisualDensity.compact)]),
               subtitle: Padding(padding: const EdgeInsets.only(top: 6), child: Text('${spot.municipality}${spot.distanceKm == null ? '' : ' - ${spot.distanceKm!.toStringAsFixed(1)} km'}\n${spot.reasons.take(2).join(' - ')}')),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/explore/${spot.slug}', extra: spot),
@@ -85,23 +85,36 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   );
 }
 
-class SpotDetailScreen extends StatelessWidget {
+class SpotDetailScreen extends ConsumerStatefulWidget {
   final SpotModel spot;
   const SpotDetailScreen({super.key, required this.spot});
   @override
-  Widget build(BuildContext context) => Scaffold(
+  ConsumerState<SpotDetailScreen> createState() => _SpotDetailScreenState();
+}
+
+class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
+  List<SpotModel> alternatives=[];
+  @override
+  void initState(){super.initState();Future.microtask(_loadAlternatives);}
+  Future<void> _loadAlternatives() async {try{final response=await ref.read(apiClientProvider).dio.get('/spots/${widget.spot.slug}/alternatives');if(mounted)setState(()=>alternatives=(response.data['data'] as List).map((item)=>SpotModel.fromJson(item)).toList());await ref.read(apiClientProvider).dio.post('/spots/${widget.spot.id}/interactions',data:{'type':'view'});}catch(_){}}
+  Future<void> _directions() async {try{await ref.read(apiClientProvider).dio.post('/spots/${widget.spot.id}/interactions',data:{'type':'directions'});}catch(_){}await launchDirections(widget.spot);}
+  @override
+  Widget build(BuildContext context) {final spot=widget.spot;return Scaffold(
     appBar: AppBar(title: Text(spot.name)),
     body: ListView(padding: const EdgeInsets.all(20), children: [
       Icon(Icons.location_on, size: 90, color: Theme.of(context).colorScheme.primary),
       Text(spot.name, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
       Text(spot.address), const SizedBox(height: 18), Text(spot.description), const SizedBox(height: 18),
+      if(spot.crowdStatus=='estimated_busy')Card(color:Theme.of(context).colorScheme.errorContainer,child:const Padding(padding:EdgeInsets.all(14),child:Text('This destination may be busy based on recent JuanderQuest activity—not live occupancy. Try a similar place below.'))),
       Wrap(spacing: 8, children: spot.tags.map((tag) => Chip(label: Text(tag.replaceAll('_', ' ')))).toList()),
       const SizedBox(height: 20),
-      FilledButton.icon(onPressed: () => launchDirections(spot), icon: const Icon(Icons.directions), label: const Text('Open directions')),
+      FilledButton.icon(onPressed: _directions, icon: const Icon(Icons.directions), label: const Text('Open directions')),
       if (spot.questId != null) Padding(padding: const EdgeInsets.only(top: 10), child: FilledButton.tonalIcon(onPressed: () => context.push('/quests/${spot.questId}'), icon: const Icon(Icons.emoji_events), label: const Text('Play this quest'))),
-      const SizedBox(height: 16), Text('Source: ${spot.sourceName}', style: Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height: 24),Text('Similar places nearby',style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.bold)),const Text('Reviewed alternatives within 10–25 km.'),const SizedBox(height:8),
+      if(alternatives.isEmpty)const Text('No credible similar alternatives are available yet.') else ...alternatives.map((item)=>Card(child:ListTile(title:Text(item.name),subtitle:Text('${item.distanceKm?.toStringAsFixed(1)??'?'} km · ${item.reasons.take(2).join(' · ')}'),onTap:()=>context.push('/explore/${item.slug}',extra:item)))),
+      const SizedBox(height: 16), Text('Source: ${spot.sourceName} · Crowd status is an app-activity estimate.', style: Theme.of(context).textTheme.bodySmall),
     ]),
-  );
+  );}
 }
 
 Future<void> launchDirections(SpotModel spot) => launchUrl(Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${spot.gpsLat},${spot.gpsLng}'), mode: LaunchMode.externalApplication);
