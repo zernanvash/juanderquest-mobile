@@ -18,6 +18,8 @@ dependencies:
   google_fonts: ^6.2.1
   cupertino_icons: ^1.0.6
   maplibre_gl: 0.26.2
+  url_launcher: ^6.3.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

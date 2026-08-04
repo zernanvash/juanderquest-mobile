@@ -109,7 +109,7 @@ class _MainShellState extends State<MainShell> {
               }
             },
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.explore_rounded), label: 'Explore'),
               BottomNavigationBarItem(icon: Icon(Icons.map_rounded), label: 'Map'),
               BottomNavigationBarItem(icon: Icon(Icons.how_to_vote_rounded), label: 'Vote'),
               BottomNavigationBarItem(icon: Icon(Icons.storefront_rounded), label: 'Shop'),
