@@ -14,14 +14,9 @@ class WalletNotifier extends StateNotifier<AsyncValue<WalletModel>> {
     final authState = _ref.read(authProvider);
 
     if (!authState.isAuthenticated) {
-      state = AsyncValue.data(
-        WalletModel(
-          settlement: 'off-chain prototype',
-          unit: 'mJDQ',
-          balanceMjdq: 1000,
-          balanceJdq: 1.0,
-        ),
-      );
+      state = AsyncValue.error(
+          StateError('Sign in to view your confirmed wallet balance.'),
+          StackTrace.current);
       return;
     }
 
@@ -31,25 +26,12 @@ class WalletNotifier extends StateNotifier<AsyncValue<WalletModel>> {
         final wallet = WalletModel.fromJson(response.data['data']);
         state = AsyncValue.data(wallet);
       } else {
-        state = AsyncValue.data(
-          WalletModel(
-            settlement: 'off-chain prototype',
-            unit: 'mJDQ',
-            balanceMjdq: 1000,
-            balanceJdq: 1.0,
-          ),
-        );
+        state = AsyncValue.error(
+            StateError('The wallet response could not be verified.'),
+            StackTrace.current);
       }
-    } catch (e) {
-      // Fallback for offline or network delay in prototype
-      state = AsyncValue.data(
-        WalletModel(
-          settlement: 'off-chain prototype',
-          unit: 'mJDQ',
-          balanceMjdq: 1000,
-          balanceJdq: 1.0,
-        ),
-      );
+    } catch (e, stackTrace) {
+      state = AsyncValue.error(e, stackTrace);
     }
   }
 
@@ -67,6 +49,7 @@ class WalletNotifier extends StateNotifier<AsyncValue<WalletModel>> {
   }
 }
 
-final walletProvider = StateNotifierProvider<WalletNotifier, AsyncValue<WalletModel>>((ref) {
+final walletProvider =
+    StateNotifierProvider<WalletNotifier, AsyncValue<WalletModel>>((ref) {
   return WalletNotifier(ref);
 });

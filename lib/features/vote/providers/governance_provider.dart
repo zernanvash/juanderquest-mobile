@@ -88,6 +88,11 @@ class GovernanceNotifier extends StateNotifier<GovernanceState> {
     }
   }
 
+  Future<bool> voteOnProposal({
+    required String proposalId,
+    required String voteType,
+  }) => castVote(proposalId: proposalId, choice: voteType);
+
   Future<bool> castVote({
     required String proposalId,
     required String choice,

@@ -17,6 +17,8 @@ class SubmissionModel {
     required this.createdAt,
   });
 
+  String get submittedAt => createdAt;
+
   factory SubmissionModel.fromJson(Map<String, dynamic> json) {
     return SubmissionModel(
       id: json['id'] ?? '',

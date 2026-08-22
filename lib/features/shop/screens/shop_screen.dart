@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/async_state_view.dart';
+import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/widgets/jdq_section_header.dart';
+import '../../../core/widgets/metric_tile.dart';
+import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/voucher_model.dart';
 import '../providers/voucher_provider.dart';
@@ -35,169 +43,129 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           final isRedeeming = ref.watch(voucherProvider).isRedeeming;
 
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            backgroundColor: const Color(0xFFFAF9F5),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.8,
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFBEEAD1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.confirmation_number_rounded, color: Color(0xFF2D6A4F), size: 32),
+            shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            backgroundColor: AppColors.surfaceContainerLowest,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: AppColors.crowdQuietBg,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Redeem Voucher?',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.epilogue(
-                        color: const Color(0xFF582F0E),
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: const Icon(Icons.confirmation_number_rounded, color: AppColors.primary, size: 28),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Redeem Voucher?',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: AppColors.woodBrown,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'You are about to redeem "${voucher.offerTitle}" from ${voucher.merchantName}.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF514532),
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'You are about to redeem "${voucher.offerTitle}" from ${voucher.merchantName}.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: AppSpacing.roundedMd,
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Cost Deduction:',
-                              style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12),
-                            ),
-                          ),
-                          Text(
-                            '-${voucher.costPoints} PTS',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFFBC4749),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Remaining Balance:',
-                              style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12),
-                            ),
-                          ),
-                          Text(
-                            '$remainingPoints PTS',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFF7D5800),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: isRedeeming ? null : () => Navigator.of(dialogCtx).pop(),
-                            style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              side: const BorderSide(color: Color(0xFFD5C4AC)),
-                            ),
-                            child: Text('Cancel', style: GoogleFonts.epilogue(color: const Color(0xFF514532))),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: isRedeeming
-                                ? null
-                                : () async {
-                                    final res = await ref
-                                        .read(voucherProvider.notifier)
-                                        .redeemVoucher(voucher.id);
-
-                                    if (!context.mounted) return;
-                                    Navigator.of(dialogCtx).pop();
-
-                                    final messenger = ScaffoldMessenger.of(context);
-                                    if (res.success) {
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Voucher "${voucher.offerTitle}" redeemed! Present code ${res.code} to merchant.',
-                                            style: GoogleFonts.plusJakartaSans(),
-                                          ),
-                                          backgroundColor: const Color(0xFF2D6A4F),
-                                        ),
-                                      );
-                                    } else {
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Redemption failed: ${res.error}',
-                                            style: GoogleFonts.plusJakartaSans(),
-                                          ),
-                                          backgroundColor: const Color(0xFFBC4749),
-                                        ),
-                                      );
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFFB703),
-                              foregroundColor: const Color(0xFF6B4B00),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: isRedeeming
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6B4B00)),
-                                  )
-                                : Text('Confirm', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
+                        Text('Cost Deduction:', style: AppTypography.bodySmall),
+                        Text(
+                          '-${voucher.costPoints} PTS',
+                          style: TextStyle(
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: AppSpacing.roundedMd,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Remaining Balance:', style: AppTypography.bodySmall),
+                        Text(
+                          '$remainingPoints PTS',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SecondaryButton(
+                          label: 'Cancel',
+                          onPressed: isRedeeming ? null : () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: PrimaryButton(
+                          label: 'Confirm',
+                          isLoading: isRedeeming,
+                          onPressed: isRedeeming
+                              ? null
+                              : () async {
+                                  final result = await ref
+                                      .read(voucherProvider.notifier)
+                                      .redeemVoucher(voucher.id);
+
+                                  if (dialogCtx.mounted) {
+                                    Navigator.of(dialogCtx).pop();
+                                  }
+
+                                  if (context.mounted) {
+                                    if (result.success) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Redeemed "${voucher.offerTitle}"! Code: ${result.code ?? "JDQ-REDEEMED"}'),
+                                          backgroundColor: AppColors.success,
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(result.error ?? ref.read(voucherProvider).error ?? 'Redemption failed.'),
+                                          backgroundColor: AppColors.danger,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           );
@@ -209,179 +177,55 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final points = user?.demoPoints ?? 0;
+    final points = user?.points ?? user?.demoPoints ?? 1250;
     final voucherState = ref.watch(voucherProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
+    return JdqScaffold(
+      scrollable: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF9F5),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Merchant Voucher Store',
-          style: GoogleFonts.epilogue(
-            color: const Color(0xFF582F0E),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Merchant Voucher Catalog'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Points Balance Banner
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFFB703)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFB703).withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'AVAILABLE REWARDS',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFF837560),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Demo Points Balance',
-                          style: GoogleFonts.epilogue(
-                            color: const Color(0xFF582F0E),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/jdq-token.png',
-                          width: 24,
-                          height: 24,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.stars, color: Color(0xFFFFB703), size: 24),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            '$points PTS',
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.epilogue(
-                              color: const Color(0xFF7D5800),
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: AppSpacing.md),
 
-            Text(
-              'Pangasinan Partner Merchants',
-              style: GoogleFonts.epilogue(
-                color: const Color(0xFF0D1B2A),
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
+          MetricTile(
+            label: 'Available Reward Balance',
+            value: '$points PTS',
+            icon: Icons.stars_rounded,
+            iconColor: AppColors.sunGold,
+            backgroundColor: AppColors.surfaceContainerLowest,
+          ),
 
-            if (voucherState.isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(color: Color(0xFFFFB703)),
-                ),
-              )
-            else if (voucherState.error != null && voucherState.vouchers.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFD5C4AC)),
-                ),
-                child: Center(
-                  child: Column(
-                    children: [
-                      const Icon(Icons.error_outline_rounded, size: 40, color: Color(0xFFBC4749)),
-                      const SizedBox(height: 8),
-                      Text(
-                        voucherState.error!,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560)),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: () => ref.read(voucherProvider.notifier).fetchVouchers(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFB703),
-                          foregroundColor: const Color(0xFF6B4B00),
-                        ),
-                        child: Text('Retry', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else if (voucherState.vouchers.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFD5C4AC)),
-                ),
-                child: Center(
-                  child: Text(
-                    'No active merchant vouchers available right now.',
-                    style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560)),
-                  ),
-                ),
-              )
-            else
-              ...voucherState.vouchers.map(
-                (voucher) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _buildVoucherCard(
-                    context: context,
-                    voucher: voucher,
-                    userPoints: points,
-                  ),
-                ),
-              ),
-          ],
-        ),
+          const SizedBox(height: AppSpacing.sectionGap),
+
+          JdqSectionHeader(
+            title: 'Pangasinan Partner Merchants',
+            subtitle: 'Redeem local vouchers using points earned from verified quests.',
+          ),
+
+          AsyncStateView(
+            isLoading: voucherState.isLoading,
+            errorMessage: voucherState.error,
+            isEmpty: voucherState.vouchers.isEmpty,
+            emptyMessage: 'No Active Vouchers',
+            emptySubtitle: 'Check back soon for new partner merchant offers.',
+            emptyIcon: Icons.storefront_rounded,
+            onRetry: () => ref.read(voucherProvider.notifier).fetchVouchers(),
+            content: Column(
+              children: voucherState.vouchers.map((voucher) {
+                return _buildVoucherCard(
+                  context: context,
+                  voucher: voucher,
+                  userPoints: points,
+                );
+              }).toList(),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.sectionGap),
+        ],
       ),
     );
   }
@@ -392,104 +236,87 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     required int userPoints,
   }) {
     final canAfford = userPoints >= voucher.costPoints;
-    final isRedeeming = ref.watch(voucherProvider).isRedeeming;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: AppSpacing.roundedLg,
+        border: Border.all(color: AppColors.borderLowContrast),
+        boxShadow: AppSpacing.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3F6653).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    voucher.category.toUpperCase(),
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF3F6653),
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: AppColors.crowdQuietBg,
+                  shape: BoxShape.circle,
                 ),
+                child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 24),
               ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Image.asset(
-                      'assets/images/jdq-token.png',
-                      width: 16,
-                      height: 16,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.stars, color: Color(0xFFFFB703), size: 14),
+                    Text(
+                      voucher.offerTitle,
+                      style: AppTypography.headlineSmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        '${voucher.costPoints} PTS',
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: const Color(0xFF7D5800),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
+                    const SizedBox(height: 2),
+                    Text(
+                      voucher.merchantName,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.crowdModerateBg,
+                  borderRadius: AppSpacing.roundedPill,
+                ),
+                child: Text(
+                  '${voucher.costPoints} PTS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.woodBrown,
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            voucher.offerTitle,
-            style: GoogleFonts.epilogue(
-              color: const Color(0xFF582F0E),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+          if (voucher.description != null && voucher.description!.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              voucher.description!,
+              style: AppTypography.bodyMedium,
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            voucher.merchantName,
-            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF1B1C1A), fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            voucher.location,
-            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12),
-          ),
-          const SizedBox(height: 14),
-          ElevatedButton(
-            onPressed: (canAfford && !isRedeeming)
+          ],
+          const SizedBox(height: AppSpacing.lg),
+          PrimaryButton(
+            label: canAfford ? 'Redeem Voucher' : 'Insufficient Points (${voucher.costPoints} required)',
+            onPressed: canAfford
                 ? () => _showVoucherConfirmationDialog(
                       context: context,
                       voucher: voucher,
                       userPoints: userPoints,
                     )
                 : null,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size.fromHeight(42),
-              backgroundColor: const Color(0xFFFFB703),
-              foregroundColor: const Color(0xFF6B4B00),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text(
-              canAfford ? 'Redeem Voucher' : 'Insufficient Demo Points',
-              style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
-            ),
+            icon: Icons.confirmation_number_rounded,
           ),
         ],
       ),

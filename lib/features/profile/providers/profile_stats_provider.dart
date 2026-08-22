@@ -19,6 +19,10 @@ class ProfileStatsModel {
     required this.heritageKeeperState,
     required this.foodExplorerState,
   });
+
+  int get pointsBalance => totalPointsEarned;
+  int get completedQuests => completedQuestsCount;
+  int get totalSubmissions => completedQuestsCount + pendingSubmissionsCount;
 }
 
 final profileStatsProvider = Provider<ProfileStatsModel>((ref) {

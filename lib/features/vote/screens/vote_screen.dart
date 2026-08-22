@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/async_state_view.dart';
+import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/widgets/jdq_section_header.dart';
+import '../../../core/widgets/metric_tile.dart';
+import '../../../core/widgets/primary_button.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../models/governance_proposal_model.dart';
 import '../providers/governance_provider.dart';
@@ -48,7 +56,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFFFAF9F5),
+      backgroundColor: AppColors.surfaceContainerLowest,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -69,136 +77,114 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD5C4AC),
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppColors.borderLowContrast,
+                    borderRadius: AppSpacing.roundedPill,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Icon(
                     choice == 'yes' ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
-                    color: choice == 'yes' ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
+                    color: choice == 'yes' ? AppColors.success : AppColors.danger,
                     size: 26,
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    'Confirm Vote (${choice.toUpperCase()})',
-                    style: GoogleFonts.epilogue(
-                      color: const Color(0xFF582F0E),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      'Confirm Vote (${choice.toUpperCase()})',
+                      style: AppTypography.headlineSmall.copyWith(
+                        color: AppColors.woodBrown,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
-                'Target: "${prop.title}"',
-                style: GoogleFonts.plusJakartaSans(
-                  color: const Color(0xFF582F0E),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                'Proposal: "${prop.title}"',
+                style: AppTypography.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.woodBrown,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFD5C4AC)),
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: AppSpacing.roundedMd,
                 ),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Flexible(child: Text('Vote Fee:', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532)))),
-                        Text('$fee mJDQ (${(fee / 1000.0).toStringAsFixed(2)} JDQ)', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: const Color(0xFF7D5800))),
-                      ],
-                    ),
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(child: Text('Burn Allocation (${config?.burnPercent.toStringAsFixed(0) ?? '20'}%):', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12))),
-                        Text('$burnAmount mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFFBC4749), fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('Voting Fee:', style: AppTypography.bodySmall),
+                        Text('$fee mJDQ', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Flexible(child: Text('Reward Escrow (${config?.escrowPercent.toStringAsFixed(0) ?? '80'}%):', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12))),
-                        Text('$escrowAmount mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2D6A4F), fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('Burned (Permanent):', style: AppTypography.bodySmall),
+                        Text('$burnAmount mJDQ', style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Treasury Escrow:', style: AppTypography.bodySmall),
+                        Text('$escrowAmount mJDQ', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const Divider(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Flexible(child: Text('Balance After:', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold))),
-                        Text('$remaining mJDQ', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold)),
+                        Text('Remaining Balance:', style: AppTypography.bodySmall),
+                        Text('$remaining mJDQ', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text('Cancel', style: GoogleFonts.epilogue(color: const Color(0xFF582F0E))),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(
+                label: 'Cast Vote ($fee mJDQ Fee)',
+                onPressed: currentBalance < fee
+                    ? null
+                    : () async {
                         final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(ctx);
-                        final success = await ref.read(governanceProvider.notifier).castVote(
-                              proposalId: prop.id,
-                              choice: choice,
-                            );
+
+                        final success = await ref
+                            .read(governanceProvider.notifier)
+                            .voteOnProposal(proposalId: prop.id, voteType: choice);
+
+                        await ref.read(walletProvider.notifier).fetchWallet();
 
                         if (!mounted) return;
-                        final error = ref.read(governanceProvider).error;
+                        final err = ref.read(governanceProvider).error;
 
                         messenger.showSnackBar(
                           SnackBar(
                             content: Text(
-                              success
-                                  ? 'Vote cast successfully! $fee mJDQ fee processed.'
-                                  : 'Vote failed: ${error ?? "Check balance and eligibility."}',
-                              style: GoogleFonts.plusJakartaSans(),
+                              success ? 'Vote cast successfully for "${prop.title}"!' : 'Voting failed: ${err ?? "Unknown error"}',
                             ),
-                            backgroundColor: success ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
+                            backgroundColor: success ? AppColors.success : AppColors.danger,
                           ),
                         );
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: choice == 'yes' ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text(
-                        'Cast ${choice.toUpperCase()} Vote',
-                        style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
+                icon: Icons.check_circle_rounded,
               ),
+              const SizedBox(height: AppSpacing.md),
             ],
           ),
         ),
@@ -215,7 +201,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFFFAF9F5),
+      backgroundColor: AppColors.surfaceContainerLowest,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -236,22 +222,25 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD5C4AC),
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppColors.borderLowContrast,
+                    borderRadius: AppSpacing.roundedPill,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  const Icon(Icons.add_location_alt_rounded, color: Color(0xFF7D5800), size: 24),
+                  const Icon(Icons.add_location_alt_rounded, color: AppColors.primary, size: 24),
                   const SizedBox(width: 8),
-                  Text(
-                    'Suggest New Location',
-                    style: GoogleFonts.epilogue(
-                      color: const Color(0xFF582F0E),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      'Suggest New Location',
+                      style: AppTypography.headlineSmall.copyWith(
+                        color: AppColors.woodBrown,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -259,85 +248,52 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
               const SizedBox(height: 6),
               Text(
                 'Submit a new Pangasinan tourist destination for community governance screening.',
-                style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532), fontSize: 13),
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.lg),
 
-              Text(
-                'Destination Spot Title',
-                style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              TextField(
+              TextFormField(
                 controller: _titleController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
+                  labelText: 'Destination Spot Title',
                   hintText: 'e.g. Patar White Beach Eco Trail',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD5C4AC))),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.md),
 
-              Text(
-                'Municipality / Location',
-                style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              TextField(
+              TextFormField(
                 controller: _locationController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
+                  labelText: 'Municipality / Location',
                   hintText: 'e.g. Bolinao, Pangasinan',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD5C4AC))),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.md),
 
-              Text(
-                'Category',
-                style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
+                decoration: const InputDecoration(labelText: 'Category'),
                 items: const [
                   DropdownMenuItem(value: 'eco', child: Text('Eco-Tourism')),
                   DropdownMenuItem(value: 'cultural', child: Text('Cultural Heritage')),
                   DropdownMenuItem(value: 'food_trade', child: Text('Food & Culinary')),
                 ],
                 onChanged: (val) => setState(() => _selectedCategory = val ?? 'eco'),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD5C4AC))),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.md),
 
-              Text(
-                'Description & Significance',
-                style: GoogleFonts.plusJakartaSans(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              TextField(
+              TextFormField(
                 controller: _descriptionController,
                 maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Describe why this destination should be featured as a community quest...',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD5C4AC))),
-                  contentPadding: const EdgeInsets.all(12),
+                decoration: const InputDecoration(
+                  labelText: 'Description & Significance',
+                  hintText: 'Describe why this destination should be featured...',
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
 
-              ElevatedButton.icon(
+              PrimaryButton(
+                label: 'Submit Proposal to Screening',
                 onPressed: () async {
                   if (_titleController.text.trim().isEmpty || _locationController.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -371,21 +327,14 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                         success
                             ? 'Proposal "$title" submitted for admin screening!'
                             : 'Submission failed: ${err ?? "Unknown error."}',
-                        style: GoogleFonts.plusJakartaSans(),
                       ),
-                      backgroundColor: success ? const Color(0xFF2D6A4F) : const Color(0xFFBC4749),
+                      backgroundColor: success ? AppColors.success : AppColors.danger,
                     ),
                   );
                 },
-                icon: const Icon(Icons.check_circle_rounded),
-                label: Text('Submit Proposal to Screening', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                  backgroundColor: const Color(0xFFFFB703),
-                  foregroundColor: const Color(0xFF6B4B00),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+                icon: Icons.send_rounded,
               ),
+              const SizedBox(height: AppSpacing.md),
             ],
           ),
         ),
@@ -398,31 +347,19 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
     final govState = ref.watch(governanceProvider);
     final walletAsync = ref.watch(walletProvider);
     final wallet = walletAsync.asData?.value;
-    final config = govState.config;
-    final fee = config?.voteFeeMjdq ?? 10;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
+    return JdqScaffold(
+      scrollable: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF9F5),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Tourism Spot Voting',
-          style: GoogleFonts.epilogue(
-            color: const Color(0xFF582F0E),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Community Governance'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_location_alt_rounded, color: Color(0xFF7D5800)),
+            icon: const Icon(Icons.add_location_alt_rounded, color: AppColors.primary),
             tooltip: 'Suggest Location',
             onPressed: () => _showSubmitLocationModal(context),
           ),
           IconButton(
-            icon: const Icon(Icons.list_alt_rounded, color: Color(0xFF582F0E)),
+            icon: const Icon(Icons.list_alt_rounded, color: AppColors.woodBrown),
             tooltip: 'View All Proposals',
             onPressed: () => context.push('/vote/proposals'),
           ),
@@ -433,229 +370,90 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
           await ref.read(governanceProvider.notifier).loadGovernanceData();
           await ref.read(walletProvider.notifier).fetchWallet();
         },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Card with Live Wallet Balance
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFFFB703)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFB703).withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'COMMUNITY GOVERNANCE',
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFF7D5800),
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2D6A4F).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.account_balance_wallet_rounded, size: 14, color: Color(0xFF2D6A4F)),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    wallet != null ? '${wallet.balanceMjdq} mJDQ' : '1,000 mJDQ',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: const Color(0xFF2D6A4F),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Govern Pangasinan Tourism Spots',
-                      style: GoogleFonts.epilogue(
-                        color: const Color(0xFF582F0E),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Cast paid binary votes ($fee mJDQ per vote) to approve destination proposals. ${config?.burnPercent.toStringAsFixed(0) ?? '20'}% is burned, ${config?.escrowPercent.toStringAsFixed(0) ?? '80'}% enters community reward escrow.',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF514532),
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () => _showSubmitLocationModal(context),
-                      icon: const Icon(Icons.add_location_alt_rounded, size: 18),
-                      label: Text('Suggest New Location', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFB703),
-                        foregroundColor: const Color(0xFF6B4B00),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+        color: AppColors.primary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: AppSpacing.md),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Active Proposals',
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.epilogue(
-                        color: const Color(0xFF0D1B2A),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: () => context.push('/vote/proposals'),
-                    icon: const Icon(Icons.open_in_new, size: 16, color: Color(0xFF7D5800)),
-                    label: Text(
-                      'View All',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF7D5800),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+            // Wallet Balance Header
+            MetricTile(
+              label: 'Off-chain Prototype Voting Weight',
+              value: '${wallet?.balanceMjdq ?? 1000} mJDQ',
+              icon: Icons.how_to_vote_rounded,
+              iconColor: AppColors.primary,
+            ),
 
-              if (govState.isLoading)
-                const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: Color(0xFFFFB703))))
-              else if (govState.proposals.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFD5C4AC)),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'No active proposals available at the moment.',
-                      style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560)),
-                    ),
-                  ),
-                )
-              else
-                ...govState.proposals.map((prop) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _buildProposalCard(prop),
-                )),
-            ],
-          ),
+            const SizedBox(height: AppSpacing.sectionGap),
+
+            JdqSectionHeader(
+              title: 'Active Community Proposals',
+              subtitle: 'Vote on new destinations and quest features for Pangasinan.',
+            ),
+
+            AsyncStateView(
+              isLoading: govState.isLoading,
+              errorMessage: govState.error,
+              isEmpty: govState.proposals.isEmpty,
+              emptyMessage: 'No Active Proposals',
+              emptySubtitle: 'Be the first to suggest a new destination spot!',
+              emptyIcon: Icons.how_to_vote_rounded,
+              onRetry: () => ref.read(governanceProvider.notifier).loadGovernanceData(),
+              content: Column(
+                children: govState.proposals.map((prop) {
+                  return _buildProposalCard(prop);
+                }).toList(),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sectionGap),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildProposalCard(GovernanceProposalModel prop) {
-    final userVote = ref.watch(governanceProvider).userVotes[prop.id];
-    final hasVoted = userVote != null;
+    final yesPercent = (prop.yesVotes + prop.noVotes) > 0
+        ? (prop.yesVotes / (prop.yesVotes + prop.noVotes)) * 100
+        : 50.0;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: AppSpacing.roundedLg,
+        border: Border.all(color: AppColors.borderLowContrast),
+        boxShadow: AppSpacing.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFEEEA),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    prop.categoryDisplay,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF837560),
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: AppSpacing.roundedPill,
+                ),
+                child: Text(
+                  prop.category.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onPrimaryContainer,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: prop.status == 'approved'
-                        ? const Color(0xFF2D6A4F).withValues(alpha: 0.15)
-                        : prop.status == 'voting'
-                            ? const Color(0xFFFFB703).withValues(alpha: 0.15)
-                            : const Color(0xFF837560).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    prop.status.toUpperCase(),
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: prop.status == 'approved'
-                          ? const Color(0xFF2D6A4F)
-                          : prop.status == 'voting'
-                              ? const Color(0xFF7D5800)
-                              : const Color(0xFF837560),
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              const Spacer(),
+              Text(
+                prop.status.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -663,117 +461,73 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
           const SizedBox(height: 8),
           Text(
             prop.title,
-            style: GoogleFonts.epilogue(
-              color: const Color(0xFF582F0E),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 2),
           Text(
             prop.locationName,
-            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12),
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.md),
           Text(
             prop.description,
-            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532), fontSize: 13, height: 1.4),
+            style: AppTypography.bodyMedium,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
 
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF9F5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.thumb_up_alt_rounded, size: 14, color: Color(0xFF2D6A4F)),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          'YES: ${prop.yesVotes} (${prop.yesPercentage.toStringAsFixed(0)}%)',
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF2D6A4F)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(width: 1, height: 12, color: const Color(0xFFD5C4AC)),
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.thumb_down_alt_rounded, size: 14, color: Color(0xFFBC4749)),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          'NO: ${prop.noVotes} (${prop.noPercentage.toStringAsFixed(0)}%)',
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFBC4749)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          // Voting Bar Progress
+          ClipRRect(
+            borderRadius: AppSpacing.roundedPill,
+            child: LinearProgressIndicator(
+              value: yesPercent / 100,
+              minHeight: 8,
+              backgroundColor: AppColors.dangerBg,
+              color: AppColors.success,
             ),
           ),
-          const SizedBox(height: 14),
-
-          if (hasVoted)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2D6A4F).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
                 child: Text(
-                  'Vote Cast: ${userVote.toUpperCase()}',
-                  style: GoogleFonts.epilogue(color: const Color(0xFF2D6A4F), fontWeight: FontWeight.bold),
+                  'Yes: ${prop.yesVotes} (${yesPercent.toInt()}%)',
+                  style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showVoteConfirmationDialog(prop, 'yes'),
-                    icon: const Icon(Icons.thumb_up_rounded, size: 16),
-                    label: Text('Vote YES', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold, fontSize: 13)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2D6A4F),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                  ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'No: ${prop.noVotes} (${(100 - yesPercent).toInt()}%)',
+                  style: const TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showVoteConfirmationDialog(prop, 'no'),
-                    icon: const Icon(Icons.thumb_down_rounded, size: 16),
-                    label: Text('Vote NO', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold, fontSize: 13)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFBC4749),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                  ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+
+          Row(
+            children: [
+              Expanded(
+                child: PrimaryButton(
+                  label: 'Vote YES',
+                  onPressed: () => _showVoteConfirmationDialog(prop, 'yes'),
+                  icon: Icons.thumb_up_rounded,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: SecondaryButton(
+                  label: 'Vote NO',
+                  onPressed: () => _showVoteConfirmationDialog(prop, 'no'),
+                  icon: Icons.thumb_down_rounded,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

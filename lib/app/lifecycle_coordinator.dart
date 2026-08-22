@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/submissions/providers/submission_provider.dart';
+import '../features/app_update/providers/app_update_provider.dart';
+import '../features/app_update/widgets/update_dialog.dart';
 
 class LifecycleCoordinator extends StatefulWidget {
   final Widget child;
@@ -13,16 +15,34 @@ class LifecycleCoordinator extends StatefulWidget {
 }
 
 class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with WidgetsBindingObserver {
+  bool _hasPromptedUpdateThisSession = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoUpdate();
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _checkAutoUpdate() async {
+    if (!mounted) return;
+    final container = ProviderScope.containerOf(context, listen: false);
+    final hasUpdate = await container.read(appUpdateProvider.notifier).checkForUpdates(silent: true);
+    if (mounted && hasUpdate && !_hasPromptedUpdateThisSession) {
+      _hasPromptedUpdateThisSession = true;
+      final updateState = container.read(appUpdateProvider);
+      if (updateState.latestVersion != null) {
+        UpdateDialog.show(context, updateState.latestVersion!);
+      }
+    }
   }
 
   @override
@@ -34,6 +54,7 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
         container.read(authProvider.notifier).refreshProfile();
         container.read(submissionProvider.notifier).fetchSubmissions();
       }
+      _checkAutoUpdate();
     }
   }
 

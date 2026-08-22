@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/demo_login_screen.dart';
-import '../features/quests/screens/quest_list_screen.dart';
 import '../features/quests/screens/quest_detail_screen.dart';
-import '../features/quests/models/quest_model.dart';
 import '../features/ar_experience/screens/ar_experience_screen.dart';
 import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
@@ -13,6 +11,10 @@ import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
 import '../features/shop/screens/shop_screen.dart';
+import '../features/spots/screens/spot_explore_screen.dart';
+import '../features/spots/screens/add_spot_screen.dart';
+import '../features/quests/screens/quest_list_screen.dart';
+import '../features/spots/models/spot_model.dart';
 import 'main_shell.dart';
 
 CustomTransitionPage buildDirectionalSlidePage<T>({
@@ -56,9 +58,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authProvider);
       final loggedIn = authState.isAuthenticated;
       final onLogin = state.matchedLocation == '/';
+      final publicDiscovery = state.matchedLocation == '/explore' || state.matchedLocation.startsWith('/explore/');
 
-      if (!loggedIn && !onLogin) return '/';
-      if (loggedIn && onLogin) return '/quests';
+      if (!loggedIn && !onLogin && !publicDiscovery) return '/';
+      if (loggedIn && onLogin) return '/explore';
       return null;
     },
     routes: [
@@ -72,39 +75,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/quests',
-                builder: (context, state) => const QuestListScreen(),
+                path: '/explore',
+                builder: (context, state) => const SpotExploreScreen(),
                 routes: [
                   GoRoute(
-                    path: ':id',
-                    pageBuilder: (context, state) {
-                      final quest = state.extra as QuestModel?;
-                      final widget = quest != null
-                          ? QuestDetailScreen(quest: quest)
-                          : QuestDetailScreen(questId: state.pathParameters['id'] ?? '');
-                      return buildDirectionalSlidePage(
-                        context: context,
-                        state: state,
-                        child: widget,
-                      );
-                    },
-                    routes: [
-                      GoRoute(
-                        path: 'ar',
-                        pageBuilder: (context, state) {
-                          final quest = state.extra as QuestModel?;
-                          final qId = state.pathParameters['id'];
-                          final widget = ARExperienceScreen(quest: quest, questId: qId);
-                          return buildDirectionalSlidePage(
-                            context: context,
-                            state: state,
-                            child: widget,
-                          );
-                        },
-                      ),
-                    ],
+                    path: ':slug',
+                    builder: (context, state) => SpotDetailScreen(spot: state.extra as SpotModel),
                   ),
                 ],
+              ),
+              GoRoute(
+                path: '/spots/new',
+                builder: (context, state) => const AddSpotScreen(),
               ),
             ],
           ),
@@ -149,6 +131,32 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const ProfileScreen(),
               ),
             ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/quests',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const QuestListScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/quests/:id',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: QuestDetailScreen(questId: state.pathParameters['id'] ?? ''),
+        ),
+        routes: [
+          GoRoute(
+            path: 'ar',
+            pageBuilder: (context, state) => buildDirectionalSlidePage(
+              context: context,
+              state: state,
+              child: ARExperienceScreen(questId: state.pathParameters['id']),
+            ),
           ),
         ],
       ),

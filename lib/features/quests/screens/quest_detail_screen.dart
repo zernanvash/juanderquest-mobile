@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../../auth/providers/auth_provider.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/error_dialog.dart';
+import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/widgets/jdq_section_header.dart';
+import '../../../core/widgets/primary_button.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/quest_model.dart';
 
 class QuestDetailScreen extends ConsumerWidget {
@@ -16,9 +22,7 @@ class QuestDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (quest != null) return _DetailContent(quest: quest!);
-
     if (questId == null) return const _NotFound();
-
     return _QuestDetailById(questId: questId!);
   }
 }
@@ -57,9 +61,10 @@ class _QuestDetailByIdState extends ConsumerState<_QuestDetailById> {
       future: _fetchFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFFAF9F5),
-            body: Center(child: CircularProgressIndicator(color: Color(0xFFFFB703))),
+          return const JdqScaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
           );
         }
         if (snapshot.data == null) return const _NotFound();
@@ -74,30 +79,33 @@ class _NotFound extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
+    return JdqScaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF9F5),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF582F0E)),
-          onPressed: () => context.pop(),
-        ),
+        title: const Text('Quest Not Found'),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off, size: 64, color: Color(0xFF837560)),
-            const SizedBox(height: 16),
+            const Icon(Icons.explore_off_rounded, size: 64, color: AppColors.textMuted),
+            const SizedBox(height: AppSpacing.md),
             Text(
               'Quest Not Found',
-              style: GoogleFonts.epilogue(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF582F0E)),
+              style: AppTypography.headlineSmall.copyWith(color: AppColors.woodBrown),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
-              'This quest could not be loaded.',
-              style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532)),
+              'This quest details could not be retrieved.',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            SizedBox(
+              width: 160,
+              child: SecondaryButton(
+                label: 'Back',
+                icon: Icons.arrow_back_rounded,
+                onPressed: () => context.pop(),
+              ),
             ),
           ],
         ),
@@ -123,9 +131,9 @@ class _DetailContent extends StatelessWidget {
         GlobalErrorDialog.show(
           context,
           title: 'Permissions Required',
-          message: 'JuanderQuest uses your camera to recognize destination markers and location services to verify quest completion radius.',
+          message: 'JuanderQuest uses camera to recognize destination markers and location services to verify quest completion radius.',
           icon: Icons.security_rounded,
-          iconColor: const Color(0xFFBC4749),
+          iconColor: AppColors.danger,
           buttonText: 'Open Device Settings',
           onPressed: () => openAppSettings(),
         );
@@ -135,243 +143,243 @@ class _DetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
-      body: SafeArea(
-        top: false,
-        child: Stack(
+    final hasImage = quest.imageUrl != null &&
+        quest.imageUrl!.isNotEmpty &&
+        (quest.imageUrl!.startsWith('http://') || quest.imageUrl!.startsWith('https://'));
+
+    return JdqScaffold(
+      padding: EdgeInsets.zero,
+      appBar: AppBar(
+        title: Text(quest.title),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 100),
+            // Image Hero Header
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 10,
+                  child: hasImage
+                      ? Image.network(
+                          quest.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildHeaderPlaceholder(),
+                        )
+                      : _buildHeaderPlaceholder(),
+                ),
+                Positioned(
+                  top: AppSpacing.md,
+                  left: AppSpacing.md,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryDark,
+                      borderRadius: AppSpacing.roundedPill,
+                    ),
+                    child: Text(
+                      quest.categoryDisplay.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: AppSpacing.md,
+                  right: AppSpacing.md,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLowest,
+                      borderRadius: AppSpacing.roundedPill,
+                      boxShadow: AppSpacing.cardShadow,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '+${quest.rewardPoints} PTS',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.woodBrown,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Content Body
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.gutter),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Stack(
+                  Text(
+                    quest.title,
+                    style: AppTypography.displayMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Row(
                     children: [
-                      Container(
-                        height: 300,
-                        decoration: const BoxDecoration(
-                          image: DecorationImage(
-                            image: AssetImage('assets/images/pangasinan_banner.png'),
-                            fit: BoxFit.cover,
+                      const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 16),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          quest.locationName,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                      ),
-                      Container(
-                        height: 300,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.black.withValues(alpha: 0.8),
-                              Colors.black.withValues(alpha: 0.2),
-                              Colors.transparent,
-                            ],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 48,
-                        left: 16,
-                        right: 16,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: Colors.white.withValues(alpha: 0.85),
-                              child: IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Color(0xFF582F0E)),
-                                onPressed: () => context.pop(),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFB703),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.stars, size: 16, color: Color(0xFF6B4B00)),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${quest.rewardPoints} PTS',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: const Color(0xFF6B4B00),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 20,
-                        left: 20,
-                        right: 20,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF7D5800),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                              ),
-                              child: Text(
-                                quest.categoryDisplay.toUpperCase(),
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              quest.title,
-                              style: GoogleFonts.epilogue(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(Icons.location_on, color: Color(0xFFFFB703), size: 16),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    quest.locationName,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
                         ),
                       ),
                     ],
                   ),
-                  Transform.translate(
-                    offset: const Offset(0, -16),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF582F0E).withValues(alpha: 0.06),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Quest Parameters Card
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLowest,
+                      borderRadius: AppSpacing.roundedLg,
+                      border: Border.all(color: AppColors.borderLowContrast),
+                      boxShadow: AppSpacing.cardShadow,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'QUEST REWARD',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textMuted,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 20),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${quest.rewardPoints} Points',
+                                    style: AppTypography.labelLarge.copyWith(
+                                      color: AppColors.woodBrown,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Container(width: 1, height: 40, color: AppColors.borderLowContrast),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: AppSpacing.md),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Flexible(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('QUEST REWARD', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.stars_rounded, color: Color(0xFFFFB703), size: 20),
-                                          const SizedBox(width: 6),
-                                          Flexible(
-                                            child: Text(
-                                              '${quest.rewardPoints} Demo Points',
-                                              overflow: TextOverflow.ellipsis,
-                                              style: GoogleFonts.epilogue(color: const Color(0xFF7D5800), fontSize: 16, fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                const Text(
+                                  'GPS RADIUS GUARD',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textMuted,
+                                    letterSpacing: 0.8,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text('COMPLETION RADIUS', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        children: [
-                                          const Icon(Icons.radar_rounded, color: Color(0xFF2D6A4F), size: 16),
-                                          const SizedBox(width: 4),
-                                          Text('${quest.radiusMeters}m', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2D6A4F), fontSize: 14, fontWeight: FontWeight.bold)),
-                                        ],
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.radar_rounded, color: AppColors.primary, size: 20),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Within ${quest.allowedRadiusMeters}m',
+                                      style: AppTypography.labelLarge.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            const Divider(color: Color(0xFFD5C4AC), height: 24),
-                            Text('Quest Overview', style: GoogleFonts.epilogue(color: const Color(0xFF0D1B2A), fontSize: 16, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
-                            Text(quest.description, style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532), fontSize: 14, height: 1.5)),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Quest Objectives', style: GoogleFonts.epilogue(color: const Color(0xFF0D1B2A), fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 12),
-                        _buildObjectiveStep(stepNumber: '1', title: 'Visit Destination', subtitle: 'Travel within ${quest.radiusMeters}m of ${quest.locationName}.', icon: Icons.directions_walk),
-                        const SizedBox(height: 10),
-                        _buildObjectiveStep(stepNumber: '2', title: 'Locate Quest Marker', subtitle: 'Find and scan the heritage marker.', icon: Icons.qr_code_scanner),
-                        const SizedBox(height: 10),
-                        _buildObjectiveStep(stepNumber: '3', title: 'Submit GPS Proof', subtitle: 'Capture live AR photo and submit for review.', icon: Icons.camera_alt),
-                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            Positioned(
-              bottom: 0, left: 0, right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.95), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, -4))]),
-                child: Container(
-                  height: 54,
-                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), gradient: const LinearGradient(colors: [Color(0xFF7D5800), Color(0xFF582F0E)], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: const Color(0xFF582F0E).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))]),
-                  child: ElevatedButton.icon(
-                    onPressed: () => _launchAR(context),
-                    icon: const Icon(Icons.play_arrow, color: Colors.white),
-                    label: Text('Start Quest Experience', style: GoogleFonts.epilogue(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // Overview
+                  JdqSectionHeader(
+                    title: 'Quest Overview',
                   ),
-                ),
+                  Text(
+                    quest.description,
+                    style: AppTypography.bodyLarge,
+                  ),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // Objective Steps
+                  JdqSectionHeader(
+                    title: 'Quest Objectives',
+                    subtitle: 'Follow these steps at the physical destination.',
+                  ),
+
+                  _buildObjectiveStep(
+                    stepNumber: '1',
+                    title: 'Travel to Location',
+                    subtitle: 'Arrive within ${quest.allowedRadiusMeters}m of ${quest.locationName}.',
+                    icon: Icons.directions_walk_rounded,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _buildObjectiveStep(
+                    stepNumber: '2',
+                    title: 'Locate Quest Marker',
+                    subtitle: 'Find the official heritage marker or destination landmark.',
+                    icon: Icons.qr_code_scanner_rounded,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _buildObjectiveStep(
+                    stepNumber: '3',
+                    title: 'Capture Evidence (Simulated AR)',
+                    subtitle: 'Use camera experience to submit GPS-verified photo proof.',
+                    icon: Icons.camera_alt_rounded,
+                  ),
+
+                  const SizedBox(height: AppSpacing.sectionGap),
+
+                  // Launch Simulated AR Action (Constraint: explicitly labeled as simulated)
+                  PrimaryButton(
+                    label: 'Start Quest Experience (Simulated AR)',
+                    onPressed: () => _launchAR(context),
+                    icon: Icons.play_arrow_rounded,
+                  ),
+
+                  const SizedBox(height: AppSpacing.sectionGap),
+                ],
               ),
             ),
           ],
@@ -380,42 +388,67 @@ class _DetailContent extends StatelessWidget {
     );
   }
 
-  Widget _buildObjectiveStep({required String stepNumber, required String title, required String subtitle, required IconData icon}) {
+  Widget _buildObjectiveStep({
+    required String stepNumber,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: AppSpacing.roundedMd,
+        border: Border.all(color: AppColors.borderLowContrast),
       ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFF7D5800).withValues(alpha: 0.1),
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: AppColors.crowdModerateBg,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: const Color(0xFF7D5800), size: 22),
+            child: Icon(icon, color: AppColors.woodBrown, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Step $stepNumber: $title',
-                  style: GoogleFonts.plusJakartaSans(color: const Color(0xFF1B1C1A), fontSize: 14, fontWeight: FontWeight.bold),
+                  style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532), fontSize: 12),
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderPlaceholder() {
+    return Container(
+      color: AppColors.primaryDark,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.stars_rounded, size: 64, color: AppColors.sunGold),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              quest.locationName,
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white70),
+            ),
+          ],
+        ),
       ),
     );
   }

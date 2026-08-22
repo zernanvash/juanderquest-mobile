@@ -8,6 +8,7 @@ import 'package:juanderquest_app/features/submissions/models/submission_model.da
 import 'package:juanderquest_app/features/submissions/providers/submission_provider.dart';
 import 'package:juanderquest_app/features/profile/providers/profile_stats_provider.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
+import 'package:juanderquest_app/features/app_update/models/app_version_info.dart';
 
 void main() {
   group('Backend Contract Alignment Tests', () {
@@ -120,6 +121,26 @@ void main() {
       expect(stats.ecoPioneerState, BadgeState.earned);
       expect(stats.heritageKeeperState, BadgeState.earned);
       expect(stats.foodExplorerState, BadgeState.locked);
+    });
+
+    test('AppVersionInfo.fromJson correctly parses server version response', () {
+      final json = {
+        'versionCode': 5,
+        'versionName': '1.2.0',
+        'downloadUrl': 'https://jdq.zernanvash.dev/downloads/juanderquest-latest.apk',
+        'changelog': 'New quest maps added',
+        'publishedAt': '2026-08-22T08:00:00Z',
+        'forceUpdate': true,
+        'minSupportedVersionCode': 3,
+      };
+
+      final info = AppVersionInfo.fromJson(json);
+      expect(info.versionCode, 5);
+      expect(info.versionName, '1.2.0');
+      expect(info.downloadUrl, 'https://jdq.zernanvash.dev/downloads/juanderquest-latest.apk');
+      expect(info.changelog, 'New quest maps added');
+      expect(info.forceUpdate, isTrue);
+      expect(info.minSupportedVersionCode, 3);
     });
   });
 }

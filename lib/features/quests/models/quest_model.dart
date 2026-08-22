@@ -25,6 +25,9 @@ class QuestModel {
     required this.markerImageUrl,
   });
 
+  int get allowedRadiusMeters => radiusMeters;
+  String? get imageUrl => markerImageUrl.isNotEmpty ? markerImageUrl : null;
+
   factory QuestModel.fromJson(Map<String, dynamic> json) {
     return QuestModel(
       id: json['id'] ?? '',
@@ -37,7 +40,7 @@ class QuestModel {
       radiusMeters: json['radius_meters'] ?? 200,
       rewardPoints: json['reward_points'] ?? 50,
       markerCode: json['marker_code'] ?? '',
-      markerImageUrl: json['marker_image_url'] ?? '',
+      markerImageUrl: json['marker_image_url'] ?? json['image_url'] ?? '',
     );
   }
 

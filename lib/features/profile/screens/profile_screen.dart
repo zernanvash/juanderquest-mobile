@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/widgets/jdq_section_header.dart';
+import '../../../core/widgets/metric_tile.dart';
+import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../app_update/providers/app_update_provider.dart';
+import '../../app_update/widgets/update_dialog.dart';
 import '../providers/profile_stats_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -21,17 +30,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (isValidUrl) {
       return CircleAvatar(
-        radius: 40,
-        backgroundColor: const Color(0xFFEFEEEA),
+        radius: 38,
+        backgroundColor: AppColors.surfaceContainer,
         backgroundImage: NetworkImage(avatarUrl),
         onBackgroundImageError: (_, __) {},
       );
     }
 
     return const CircleAvatar(
-      radius: 40,
-      backgroundColor: Color(0xFFFFB703),
-      child: Icon(Icons.person_rounded, size: 48, color: Color(0xFF582F0E)),
+      radius: 38,
+      backgroundColor: AppColors.sunGold,
+      child: Icon(Icons.person_rounded, size: 44, color: AppColors.woodBrown),
     );
   }
 
@@ -40,339 +49,318 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = ref.watch(authProvider).user;
     final stats = ref.watch(profileStatsProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
+    return JdqScaffold(
+      scrollable: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF9F5),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Explorer Profile',
-          style: GoogleFonts.epilogue(
-            color: const Color(0xFF582F0E),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Explorer Profile'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // User Identification Header Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 84,
-                    height: 84,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFFB703), width: 3),
-                    ),
-                    child: _buildAvatarWidget(user?.avatarUrl),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    user?.displayName ?? 'Juan Dela Cruz',
-                    style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    user?.email ?? 'juan@juanderquest.ph',
-                    style: GoogleFonts.plusJakartaSans(color: const Color(0xFF514532), fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3F6653).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'PANGASINAN EXPLORER',
-                      style: GoogleFonts.plusJakartaSans(color: const Color(0xFF3F6653), fontWeight: FontWeight.bold, fontSize: 10),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: AppSpacing.md),
 
-            // Computed Traveler Statistics & Demo Points Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+          // User Header Card
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: AppSpacing.roundedLg,
+              border: Border.all(color: AppColors.borderLowContrast),
+              boxShadow: AppSpacing.cardShadow,
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.sunGold,
                   ),
-                ],
+                  child: _buildAvatarWidget(user?.avatarUrl),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  user?.displayName ?? 'Juan Dela Cruz',
+                  style: AppTypography.displayMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  user?.email ?? 'juan@juanderquest.ph',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: AppSpacing.roundedPill,
+                  ),
+                  child: const Text(
+                    'PANGASINAN EXPLORER',
+                    style: TextStyle(
+                      color: AppColors.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.sectionGap),
+
+          // Stats Metrics Overview
+          JdqSectionHeader(
+            title: 'Traveler Statistics',
+            subtitle: 'Your adventure points and destination contributions.',
+          ),
+
+          MetricTile(
+            label: 'Reward Points Balance',
+            value: '${user?.points ?? stats.pointsBalance} PTS',
+            icon: Icons.stars_rounded,
+            iconColor: AppColors.sunGold,
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          Row(
+            children: [
+              Expanded(
+                child: MetricTile(
+                  label: 'Completed',
+                  value: '${stats.completedQuests}',
+                  icon: Icons.check_circle_rounded,
+                  iconColor: AppColors.success,
+                ),
               ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: MetricTile(
+                  label: 'Submissions',
+                  value: '${stats.totalSubmissions}',
+                  icon: Icons.fact_check_rounded,
+                  iconColor: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.sectionGap),
+
+          // History & Submissions Action Card
+          JdqSectionHeader(
+            title: 'Activity & History',
+          ),
+
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: AppSpacing.roundedLg,
+              border: Border.all(color: AppColors.borderLowContrast),
+              boxShadow: AppSpacing.cardShadow,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => context.push('/history'),
+                borderRadius: AppSpacing.roundedLg,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Row(
                     children: [
-                      Expanded(child: _buildStatItem('Completed', '${stats.completedQuestsCount}', Icons.check_circle_outline, const Color(0xFF2D6A4F))),
-                      const SizedBox(width: 4),
-                      Expanded(child: _buildStatItem('Pending', '${stats.pendingSubmissionsCount}', Icons.hourglass_top_rounded, const Color(0xFFFFB703))),
-                      const SizedBox(width: 4),
-                      Expanded(child: _buildStatItem('Total Earned', '${stats.totalPointsEarned} PTS', Icons.stars, const Color(0xFF7D5800))),
-                    ],
-                  ),
-                  const Divider(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: Row(
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: AppSpacing.roundedMd,
+                        ),
+                        child: const Icon(Icons.history_rounded, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.stars_rounded, color: Color(0xFFFFB703), size: 20),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                'Demo Points Balance',
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.epilogue(color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
+                            Text(
+                              'Submission History',
+                              style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'View status of your quest & spot submissions',
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          '${user?.demoPoints ?? 0} PTS',
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.epilogue(color: const Color(0xFF7D5800), fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ),
+                      const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: 24),
+          ),
 
-            // Achievements & Badges Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    'Impact Badges',
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.epilogue(
-                      color: const Color(0xFF582F0E),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+          const SizedBox(height: AppSpacing.sectionGap),
+
+          // App Updates & Version Card
+          JdqSectionHeader(
+            title: 'App System & Updates',
+          ),
+
+          Consumer(
+            builder: (context, ref, _) {
+              final updateState = ref.watch(appUpdateProvider);
+              final isChecking = updateState.status == UpdateStatus.checking;
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: AppSpacing.roundedLg,
+                  border: Border.all(color: AppColors.borderLowContrast),
+                  boxShadow: AppSpacing.cardShadow,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: isChecking
+                        ? null
+                        : () async {
+                            final hasUpdate = await ref
+                                .read(appUpdateProvider.notifier)
+                                .checkForUpdates(silent: false);
+                            if (context.mounted) {
+                              final current = ref.read(appUpdateProvider);
+                              if (hasUpdate && current.latestVersion != null) {
+                                UpdateDialog.show(context, current.latestVersion!);
+                              } else if (current.status == UpdateStatus.upToDate) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'You are running the latest version (v${current.installedVersionName}).',
+                                    ),
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    borderRadius: AppSpacing.roundedLg,
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.sunGold.withValues(alpha: 0.15),
+                              borderRadius: AppSpacing.roundedMd,
+                            ),
+                            child: const Icon(
+                              Icons.system_update_rounded,
+                              color: AppColors.woodBrown,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text(
+                                      'App Version',
+                                      style: AppTypography.labelLarge.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceContainerHigh,
+                                        borderRadius: AppSpacing.roundedPill,
+                                      ),
+                                      child: Text(
+                                        'v${updateState.installedVersionName}',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  updateState.hasUpdate
+                                      ? 'New version available (v${updateState.latestVersion?.versionName})'
+                                      : 'Tap to check for latest updates',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: updateState.hasUpdate
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary,
+                                    fontWeight: updateState.hasUpdate
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isChecking)
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else if (updateState.hasUpdate)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: AppSpacing.roundedPill,
+                              ),
+                              child: Text(
+                                'UPDATE',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.onPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          else
+                            const Icon(Icons.refresh_rounded, color: AppColors.textMuted),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    'Pangasinan Legacy',
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF837560),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Explicit Badge Cards with State Chips
-            _buildBadgeCard(
-              title: 'Eco Pioneer',
-              description: 'Verified eco-tourism proof submission in Pangasinan.',
-              icon: Icons.eco_rounded,
-              badgeState: stats.ecoPioneerState,
-            ),
-            const SizedBox(height: 12),
-            _buildBadgeCard(
-              title: 'Heritage Keeper',
-              description: 'Verified cultural heritage landmark submission.',
-              icon: Icons.museum_rounded,
-              badgeState: stats.heritageKeeperState,
-            ),
-            const SizedBox(height: 12),
-            _buildBadgeCard(
-              title: 'Food Explorer',
-              description: 'Verified culinary & local trade quest submission.',
-              icon: Icons.restaurant_rounded,
-              badgeState: stats.foodExplorerState,
-            ),
-            const SizedBox(height: 24),
-
-            // Navigation Actions
-            ElevatedButton.icon(
-              onPressed: () => context.push('/history'),
-              icon: const Icon(Icons.history_rounded, size: 18),
-              label: Text('View Quest Submissions History', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                backgroundColor: const Color(0xFF3F6653),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () {
-                ref.read(authProvider.notifier).logout();
-              },
-              icon: const Icon(Icons.logout_rounded, size: 18),
-              label: Text('Sign Out', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(44),
-                foregroundColor: const Color(0xFFBC4749),
-                side: const BorderSide(color: Color(0xFFBC4749)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.epilogue(color: color, fontWeight: FontWeight.bold, fontSize: 16),
+              );
+            },
           ),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildBadgeCard({
-    required String title,
-    required String description,
-    required IconData icon,
-    required BadgeState badgeState,
-  }) {
-    Color iconBgColor;
-    Color iconColor;
-    String stateLabel;
-    Color chipBgColor;
-    Color chipTextColor;
+          const SizedBox(height: AppSpacing.sectionGap),
 
-    switch (badgeState) {
-      case BadgeState.earned:
-        iconBgColor = const Color(0xFFBEEAD1);
-        iconColor = const Color(0xFF2D6A4F);
-        stateLabel = 'EARNED';
-        chipBgColor = const Color(0xFF2D6A4F);
-        chipTextColor = Colors.white;
-        break;
-      case BadgeState.inProgress:
-        iconBgColor = const Color(0xFFFFF3CD);
-        iconColor = const Color(0xFF7D5800);
-        stateLabel = 'IN PROGRESS';
-        chipBgColor = const Color(0xFFFFB703);
-        chipTextColor = const Color(0xFF6B4B00);
-        break;
-      case BadgeState.locked:
-        iconBgColor = const Color(0xFFE9E8E4);
-        iconColor = const Color(0xFF837560);
-        stateLabel = 'LOCKED';
-        chipBgColor = const Color(0xFFE9E8E4);
-        chipTextColor = const Color(0xFF837560);
-        break;
-    }
+          // Separated Logout Action
+          DestructiveButton(
+            label: 'Log Out of Demo Account',
+            icon: Icons.logout_rounded,
+            onPressed: () {
+              ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/');
+            },
+          ),
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.epilogue(
-                          color: const Color(0xFF582F0E),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: chipBgColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        stateLabel,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: chipTextColor,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF837560),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: AppSpacing.sectionGap),
         ],
       ),
     );

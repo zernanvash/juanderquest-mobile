@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
+
 import '../../../core/config/map_config.dart';
-import '../../quests/providers/quest_provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/widgets/primary_button.dart';
 import '../../quests/models/quest_model.dart';
+import '../../quests/providers/quest_provider.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
   const MapViewScreen({super.key});
@@ -88,29 +93,22 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       }
     });
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
+    return JdqScaffold(
+      padding: EdgeInsets.zero,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF9F5),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Quest Map',
-          style: GoogleFonts.epilogue(
-            color: const Color(0xFF582F0E),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('Geographic Discovery Map'),
         ),
       ),
       body: Stack(
         children: [
-          // Fallback Pangasinan Region Interactive Map Layout
+          // Pangasinan Regional Map Background
           Container(
             width: double.infinity,
             height: double.infinity,
             decoration: const BoxDecoration(
-              color: Color(0xFFE9E8E4),
+              color: AppColors.surfaceContainerHigh,
               image: DecorationImage(
                 image: AssetImage('assets/images/pangasinan_banner.png'),
                 fit: BoxFit.cover,
@@ -145,7 +143,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 ),
                 Positioned(
                   bottom: 220,
-                  left: 160,
+                  left: 100,
                   child: _buildMapPin(
                     questTitle: 'Manaoag Shrine',
                     onTap: () {
@@ -159,7 +157,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             ),
           ),
 
-          // MapLibre Vector Map Overlay
+          // Vector Map Layer
           if (!_mapError)
             MapLibreMap(
               styleString: MapConfig.vectorStyleUrl,
@@ -175,43 +173,36 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               },
             ),
 
-          // Map Control Legend Overlay
+          // Map Header Control Overlay
           Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
+            top: AppSpacing.md,
+            left: AppSpacing.gutter,
+            right: AppSpacing.gutter,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.5)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                color: AppColors.surfaceContainerLowest.withValues(alpha: 0.95),
+                borderRadius: AppSpacing.roundedLg,
+                border: Border.all(color: AppColors.borderLowContrast),
+                boxShadow: AppSpacing.cardShadow,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Flexible(
+                  Expanded(
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.map_rounded, color: Color(0xFF7D5800), size: 20),
+                        const Icon(Icons.map_rounded, color: AppColors.primary, size: 20),
                         const SizedBox(width: 8),
-                        Flexible(
+                        Expanded(
                           child: Text(
                             'Pangasinan Vector Map',
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFF582F0E),
+                            style: AppTypography.labelLarge.copyWith(
+                              color: AppColors.woodBrown,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -219,21 +210,20 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                   ),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFBEEAD1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${questState.quests.length} Destinations',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFF436B58),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryContainer,
+                        borderRadius: AppSpacing.roundedPill,
+                      ),
+                      child: Text(
+                        '${questState.quests.length} Spots',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
                         ),
                       ),
                     ),
@@ -243,18 +233,18 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             ),
           ),
 
-          // Selected Quest Modal Sheet Overlay
+          // Selected Spot/Quest Bottom Sheet Modal Card
           if (_selectedQuest != null)
             Positioned(
-              bottom: 20,
-              left: 16,
-              right: 16,
+              bottom: AppSpacing.xl,
+              left: AppSpacing.gutter,
+              right: AppSpacing.gutter,
               child: Card(
                 elevation: 8,
-                color: const Color(0xFFFAF9F5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                color: AppColors.surfaceContainerLowest,
+                shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,16 +255,15 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                           Expanded(
                             child: Text(
                               _selectedQuest!.title,
-                              style: GoogleFonts.epilogue(
-                                color: const Color(0xFF582F0E),
-                                fontSize: 16,
+                              style: AppTypography.headlineSmall.copyWith(
+                                color: AppColors.woodBrown,
                                 fontWeight: FontWeight.bold,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.close, size: 20, color: Color(0xFF837560)),
+                            icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textMuted),
                             onPressed: () => setState(() => _selectedQuest = null),
                           ),
                         ],
@@ -282,57 +271,49 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _selectedQuest!.locationName,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: const Color(0xFF837560),
-                          fontSize: 13,
-                        ),
+                        style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3F6653).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _selectedQuest!.categoryDisplay,
-                              style: GoogleFonts.plusJakartaSans(
-                                color: const Color(0xFF3F6653),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: AppSpacing.roundedSm,
+                              ),
+                              child: Text(
+                                _selectedQuest!.categoryDisplay,
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           Text(
                             '+${_selectedQuest!.rewardPoints} PTS',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFF7D5800),
+                            style: TextStyle(
+                              color: AppColors.woodBrown,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 14),
-                      ElevatedButton(
+                      const SizedBox(height: AppSpacing.lg),
+                      PrimaryButton(
+                        label: 'View Details',
                         onPressed: () {
                           final questToLaunch = _selectedQuest;
                           setState(() => _selectedQuest = null);
                           context.push('/quests/${questToLaunch!.id}', extra: questToLaunch);
                         },
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(44),
-                          backgroundColor: const Color(0xFFFFB703),
-                          foregroundColor: const Color(0xFF6B4B00),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Text(
-                          'View Quest Details',
-                          style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
-                        ),
+                        icon: Icons.explore_rounded,
                       ),
                     ],
                   ),
@@ -348,12 +329,14 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
+            constraints: const BoxConstraints(maxWidth: 110),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppSpacing.roundedSm,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.2),
@@ -364,16 +347,18 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             ),
             child: Text(
               questTitle,
-              style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFF582F0E),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.woodBrown,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
           const Icon(
-            Icons.location_on,
-            color: Color(0xFFFFB703),
+            Icons.location_on_rounded,
+            color: AppColors.sunGold,
             size: 32,
           ),
         ],
