@@ -352,68 +352,60 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       {'key': 'quiet', 'label': '🌿 Tranquil Gems'},
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: flairs.map((f) {
-          final isSelected = _sortFlair == f['key'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(f['label']!),
-              selected: isSelected,
-              selectedColor: AppColors.sunGold,
-              backgroundColor: AppColors.surfaceContainerLowest,
-              labelStyle: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? AppColors.woodBrown : AppColors.textSecondary,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: AppSpacing.roundedPill,
-                side: BorderSide(color: isSelected ? AppColors.sunGold : AppColors.borderLowContrast),
-              ),
-              onSelected: (_) {
-                setState(() => _sortFlair = f['key']!);
-              },
-            ),
-          );
-        }).toList(),
-      ),
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      children: flairs.map((f) {
+        final isSelected = _sortFlair == f['key'];
+        return ChoiceChip(
+          label: Text(f['label']!),
+          selected: isSelected,
+          selectedColor: AppColors.sunGold,
+          backgroundColor: AppColors.surfaceContainerLowest,
+          labelStyle: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            color: isSelected ? AppColors.woodBrown : AppColors.textSecondary,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppSpacing.roundedPill,
+            side: BorderSide(color: isSelected ? AppColors.sunGold : AppColors.borderLowContrast),
+          ),
+          onSelected: (_) {
+            setState(() => _sortFlair = f['key']!);
+          },
+        );
+      }).toList(),
     );
   }
 
   Widget _buildCategoryRow(List<String> categories) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: ['', ...categories].map((cat) {
-          final isSelected = _category == cat;
-          final label = cat.isEmpty ? 'All Categories' : cat.replaceAll('_', ' ');
-          return Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: FilterChip(
-              label: Text(label),
-              selected: isSelected,
-              selectedColor: AppColors.primary.withOpacity(0.15),
-              backgroundColor: AppColors.surfaceContainerLowest,
-              labelStyle: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppColors.primaryDark : AppColors.textMuted,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: AppSpacing.roundedMd,
-                side: BorderSide(color: isSelected ? AppColors.primary : AppColors.borderLowContrast),
-              ),
-              onSelected: (_) {
-                setState(() => _category = cat);
-                _load();
-              },
-            ),
-          );
-        }).toList(),
-      ),
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: ['', ...categories].map((cat) {
+        final isSelected = _category == cat;
+        final label = cat.isEmpty ? 'All Categories' : cat.replaceAll('_', ' ');
+        return FilterChip(
+          label: Text(label),
+          selected: isSelected,
+          selectedColor: AppColors.primary.withOpacity(0.15),
+          backgroundColor: AppColors.surfaceContainerLowest,
+          labelStyle: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? AppColors.primaryDark : AppColors.textMuted,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppSpacing.roundedMd,
+            side: BorderSide(color: isSelected ? AppColors.primary : AppColors.borderLowContrast),
+          ),
+          onSelected: (_) {
+            setState(() => _category = cat);
+            _load();
+          },
+        );
+      }).toList(),
     );
   }
 
