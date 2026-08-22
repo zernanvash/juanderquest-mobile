@@ -76,7 +76,7 @@ jobs:
         run: |
           mkdir -p dist
           cp "${{ steps.apk_locator.outputs.apk_path }}" dist/juanderquest-latest.apk
-          cp "${{ steps.apk_locator.outputs.apk_path }}" dist/juanderquest-v${{ steps.version_info.outputs.version_name }}.apk
+          cp "${{ steps.apk_locator.outputs.apk_path }}" dist/juanderquest_beta_v${{ steps.version_info.outputs.version_name }}.apk
           
           CHANGELOG_TEXT="${{ github.event.inputs.changelog || github.event.head_commit.message || 'Latest automated release update.' }}"
           # Clean newlines from changelog for JSON safety
@@ -101,6 +101,7 @@ jobs:
           name: juanderquest-android-apk
           path: |
             dist/juanderquest-latest.apk
+            dist/juanderquest_beta_v${{ steps.version_info.outputs.version_name }}.apk
             dist/version.json
           retention-days: 14
 
@@ -115,6 +116,6 @@ jobs:
           host: ${{ secrets.AZURE_SSH_HOST }}
           username: ${{ secrets.AZURE_SSH_USER || 'azureuser' }}
           key: ${{ secrets.AZURE_SSH_KEY }}
-          source: 'dist/juanderquest-latest.apk,dist/juanderquest-v${{ steps.version_info.outputs.version_name }}.apk,dist/version.json'
+          source: 'dist/juanderquest-latest.apk,dist/juanderquest_beta_v${{ steps.version_info.outputs.version_name }}.apk,dist/version.json'
           target: '/var/www/jdq-downloads/'
           strip_components: 1
