@@ -27,8 +27,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   String _category = '';
   String _intent = '';
   String _sortFlair = 'hot'; // 'hot', 'new', 'quests', 'quiet'
-  final Map<String, int> _upvotes = {};
-  final Map<String, int> _userVotes = {};
+  final Map<String, int> _likes = {};
+  final Set<String> _likedSpots = {};
 
   @override
   void initState() {
@@ -57,18 +57,15 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     _debounce = Timer(const Duration(milliseconds: 400), _load);
   }
 
-  void _handleVote(String spotId, int direction) {
+  void _toggleLike(String spotId) {
     setState(() {
-      final currentVote = _userVotes[spotId] ?? 0;
-      final currentCount = _upvotes[spotId] ?? 45;
-
-      if (currentVote == direction) {
-        // Untoggle
-        _userVotes[spotId] = 0;
-        _upvotes[spotId] = currentCount - direction;
+      final currentCount = _likes[spotId] ?? (45 + spotId.hashCode % 120).abs();
+      if (_likedSpots.contains(spotId)) {
+        _likedSpots.remove(spotId);
+        _likes[spotId] = currentCount - 1;
       } else {
-        _upvotes[spotId] = currentCount + direction - currentVote;
-        _userVotes[spotId] = direction;
+        _likedSpots.add(spotId);
+        _likes[spotId] = currentCount + 1;
       }
     });
   }
@@ -116,7 +113,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'r/JuanDerQuest',
+                    'JuanDerQuest',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -349,10 +346,10 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
   Widget _buildFlairsRow() {
     final flairs = [
-      {'key': 'hot', 'label': '🔥 Hot'},
-      {'key': 'new', 'label': '✨ New'},
+      {'key': 'hot', 'label': '🔥 Trending'},
+      {'key': 'new', 'label': '✨ Recent'},
       {'key': 'quests', 'label': '🏆 Quests Only'},
-      {'key': 'quiet', 'label': '🌿 Quiet Gems'},
+      {'key': 'quiet', 'label': '🌿 Tranquil Gems'},
     ];
 
     return SingleChildScrollView(
@@ -421,8 +418,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   }
 
   Widget _buildForumPostCard(SpotModel spot, dynamic state) {
-    final votes = _upvotes[spot.id] ?? (45 + spot.name.length * 3);
-    final userVote = _userVotes[spot.id] ?? 0;
+    final likeCount = _likes[spot.id] ?? (45 + spot.name.length * 3);
+    final isLiked = _likedSpots.contains(spot.id);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -440,23 +437,30 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Post Header (Reddit / Forum metadata)
+              // Post Header Metadata
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text(
-                    'p/${spot.municipality.toLowerCase().replaceAll(' ', '')}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryDark,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.location_on_rounded, size: 13, color: AppColors.primary),
+                      const SizedBox(width: 2),
+                      Text(
+                        spot.municipality,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ],
                   ),
                   const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
                   Text(
-                    'u/${spot.sourceName.replaceAll(' ', '')}',
+                    'Shared by ${spot.sourceName}',
                     style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                   ),
                   if (spot.trustLevel == 'lgu_verified') ...[
@@ -599,54 +603,42 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
               const SizedBox(height: 10),
 
-              // Social Action & Engagement Bar (Reddit style)
+              // Social Action & Engagement Bar (Heart + Tips + Actions)
               Wrap(
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  // Upvote / Downvote Pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: AppSpacing.roundedPill,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.arrow_upward_rounded,
-                            size: 16,
-                            color: userVote == 1 ? AppColors.sunGold : AppColors.textMuted,
+                  // Instagram-style Heart Button
+                  GestureDetector(
+                    onTap: () => _toggleLike(spot.id),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isLiked ? const Color(0xFFFFF0F1) : AppColors.surfaceContainerLow,
+                        borderRadius: AppSpacing.roundedPill,
+                        border: isLiked ? Border.all(color: const Color(0xFFFFCCD2)) : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            size: 15,
+                            color: isLiked ? const Color(0xFFE63946) : AppColors.textMuted,
                           ),
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                          onPressed: () => _handleVote(spot.id, 1),
-                        ),
-                        Text(
-                          '$votes',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: userVote == 1 ? AppColors.woodBrown : AppColors.textPrimary,
+                          const SizedBox(width: 4),
+                          Text(
+                            '$likeCount',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isLiked ? const Color(0xFFE63946) : AppColors.textPrimary,
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.arrow_downward_rounded,
-                            size: 16,
-                            color: userVote == -1 ? AppColors.danger : AppColors.textMuted,
-                          ),
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                          onPressed: () => _handleVote(spot.id, -1),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
 
