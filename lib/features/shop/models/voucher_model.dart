@@ -32,3 +32,43 @@ class VoucherModel {
     );
   }
 }
+
+class RedeemedVoucherModel {
+  final String voucherId;
+  final String merchantName;
+  final String offerTitle;
+  final String code;
+  final DateTime redeemedAt;
+  final DateTime expiresAt;
+  final int costPoints;
+
+  RedeemedVoucherModel({
+    required this.voucherId,
+    required this.merchantName,
+    required this.offerTitle,
+    required this.code,
+    required this.redeemedAt,
+    required this.expiresAt,
+    required this.costPoints,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'voucherId': voucherId,
+    'merchantName': merchantName,
+    'offerTitle': offerTitle,
+    'code': code,
+    'redeemedAt': redeemedAt.toIso8601String(),
+    'expiresAt': expiresAt.toIso8601String(),
+    'costPoints': costPoints,
+  };
+
+  factory RedeemedVoucherModel.fromJson(Map<String, dynamic> json) => RedeemedVoucherModel(
+    voucherId: json['voucherId'] ?? '',
+    merchantName: json['merchantName'] ?? 'Partner Merchant',
+    offerTitle: json['offerTitle'] ?? 'Voucher Offer',
+    code: json['code'] ?? 'JDQ-REDEEMED',
+    redeemedAt: DateTime.tryParse(json['redeemedAt'] ?? '') ?? DateTime.now(),
+    expiresAt: DateTime.tryParse(json['expiresAt'] ?? '') ?? DateTime.now().add(const Duration(days: 30)),
+    costPoints: (json['costPoints'] ?? 0) as int,
+  );
+}

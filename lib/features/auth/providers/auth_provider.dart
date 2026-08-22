@@ -66,6 +66,41 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> loginWithSimulatedWallet({required String username, required String password}) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/simulated-wallet-login',
+        data: {
+          'username': username.trim(),
+          'password': password.trim(),
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final token = response.data['data']['token'] as String;
+        final userJson = response.data['data']['user'];
+        final user = UserModel.fromJson(userJson);
+
+        _apiClient.setAuthToken(token);
+        state = AuthState(user: user, token: token);
+        _refreshNotifier.notify();
+        return true;
+      } else {
+        final msg = response.data['error']?['message'] ?? 'Simulated wallet login failed.';
+        state = AuthState(error: msg);
+        return false;
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data['error']?['message'] ?? 'Network connection error (${e.message}).';
+      state = AuthState(error: msg);
+      return false;
+    } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred.');
+      return false;
+    }
+  }
+
   Future<void> refreshProfile() async {
     if (state.token == null) return;
     try {

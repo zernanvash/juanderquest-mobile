@@ -12,6 +12,7 @@ import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
 import '../features/shop/screens/shop_screen.dart';
 import '../features/spots/screens/spot_explore_screen.dart';
+import '../features/spots/screens/spot_detail_screen.dart';
 import '../features/spots/screens/add_spot_screen.dart';
 import '../features/quests/screens/quest_list_screen.dart';
 import '../features/spots/models/spot_model.dart';

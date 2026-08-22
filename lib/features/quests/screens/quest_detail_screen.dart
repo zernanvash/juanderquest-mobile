@@ -248,6 +248,70 @@ class _DetailContent extends StatelessWidget {
                     ],
                   ),
 
+                  if (quest.crowdStatus == 'estimated_busy') ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: AppColors.crowdBusyBg,
+                        borderRadius: AppSpacing.roundedLg,
+                        border: Border.all(color: AppColors.crowdBusy.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: AppColors.crowdBusy, size: 22),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'High Tourist Activity Detected',
+                                  style: TextStyle(
+                                    color: AppColors.crowdBusy,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'This destination is currently experiencing high foot traffic. Explore quieter hidden gems in the Explore tab for bonus rewards!',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.crowdBusy.withOpacity(0.9),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  if (quest.campaignId != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.sunGold.withOpacity(0.15),
+                        borderRadius: AppSpacing.roundedMd,
+                        border: Border.all(color: AppColors.sunGold),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.campaign_rounded, color: AppColors.woodBrown, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Sponsored Campaign: ${quest.remainingSlots ?? "Open"} reward slots available',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: AppSpacing.lg),
 
                   // Quest Parameters Card

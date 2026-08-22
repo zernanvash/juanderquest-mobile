@@ -20,6 +20,185 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
 
   String get _selectedSeed => _selectedRole == 'admin' ? 'admin-1' : 'user-1';
 
+  void _showSimulatedWalletDialog(BuildContext context) {
+    final usernameController = TextEditingController();
+    final passwordController = TextEditingController(text: 'password123');
+    bool isSubmitting = false;
+    String? formError;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            backgroundColor: AppColors.surfaceContainerLowest,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6851B).withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFF6851B), size: 24),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Simulated Web3 Login',
+                              style: AppTypography.headlineSmall.copyWith(
+                                color: AppColors.woodBrown,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Create or enter your test traveler identity',
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Starter Pack Banner
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.crowdQuietBg,
+                      borderRadius: AppSpacing.roundedMd,
+                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.card_giftcard_rounded, color: AppColors.primaryDark, size: 20),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            'Demo Starter Pack: 100,000 mJDQ + 15 JDQ Governance Tokens included!',
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 11,
+                              color: AppColors.primaryDark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  TextField(
+                    controller: usernameController,
+                    decoration: InputDecoration(
+                      labelText: 'Traveler Name / Username',
+                      hintText: 'e.g. Prof. Ramos, Juan, Jane',
+                      prefixIcon: const Icon(Icons.person_outline_rounded),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: AppSpacing.roundedMd,
+                        borderSide: BorderSide(color: AppColors.borderLowContrast),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: AppSpacing.roundedMd,
+                        borderSide: BorderSide(color: AppColors.borderLowContrast),
+                      ),
+                    ),
+                  ),
+
+                  if (formError != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      formError!,
+                      style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                    ),
+                  ],
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SecondaryButton(
+                          label: 'Cancel',
+                          onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: PrimaryButton(
+                          label: 'Connect',
+                          isLoading: isSubmitting,
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  final username = usernameController.text.trim();
+                                  final password = passwordController.text.trim();
+
+                                  if (username.length < 2) {
+                                    setDialogState(() => formError = 'Please enter at least 2 characters.');
+                                    return;
+                                  }
+
+                                  setDialogState(() {
+                                    isSubmitting = true;
+                                    formError = null;
+                                  });
+
+                                  final ok = await ref.read(authProvider.notifier).loginWithSimulatedWallet(
+                                        username: username,
+                                        password: password,
+                                      );
+
+                                  if (dialogCtx.mounted) {
+                                    if (ok) {
+                                      Navigator.of(dialogCtx).pop();
+                                    } else {
+                                      setDialogState(() {
+                                        isSubmitting = false;
+                                        formError = ref.read(authProvider).error ?? 'Login failed.';
+                                      });
+                                    }
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -49,7 +228,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'JuanderQuest',
+                    'JuanDerQuest',
                     style: AppTypography.displayMedium.copyWith(
                       fontWeight: FontWeight.bold,
                       color: AppColors.woodBrown,
@@ -82,11 +261,21 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                     letterSpacing: 1.2,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: 8),
                 Text(
-                  'A gamified tourism platform for discovering hidden destinations, exploring quiet alternatives, and playing verified quests in Pangasinan.',
+                  'Explore Hidden Gems, Earn Verified Rewards',
                   textAlign: TextAlign.center,
-                  style: AppTypography.bodyMedium.copyWith(
+                  style: AppTypography.headlineSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.woodBrown,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Discover tranquil tourist destinations across Pangasinan, beat overcrowding, and support local MSME merchants.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
                     height: 1.5,
                   ),
                 ),
@@ -96,15 +285,25 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
 
           const SizedBox(height: AppSpacing.xl),
 
-          // Seeded Demo Role Selector
+          // Quick Role Cards
+          Text(
+            'SELECT DEMO ACCOUNT',
+            style: AppTypography.labelSmall.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textMuted,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
           Row(
             children: [
               Expanded(
                 child: _buildRoleCard(
                   role: 'traveler',
                   title: 'Traveler',
-                  subtitle: 'Explore & Play Quests',
-                  icon: Icons.map_rounded,
+                  subtitle: 'Explore & Quests',
+                  icon: Icons.person_rounded,
                   bgColor: AppColors.crowdQuietBg,
                   iconColor: AppColors.primary,
                 ),
@@ -113,28 +312,28 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
               Expanded(
                 child: _buildRoleCard(
                   role: 'admin',
-                  title: 'Admin',
-                  subtitle: 'Manage Submissions',
+                  title: 'LGU Admin',
+                  subtitle: 'Curate & Validate',
                   icon: Icons.admin_panel_settings_rounded,
-                  bgColor: AppColors.crowdModerateBg,
-                  iconColor: AppColors.secondary,
+                  bgColor: const Color(0xFFF3E8FF),
+                  iconColor: const Color(0xFF9333EA),
                 ),
               ),
             ],
           ),
 
           if (authState.error != null) ...[
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.dangerBg,
+                color: AppColors.danger.withOpacity(0.1),
                 borderRadius: AppSpacing.roundedMd,
-                border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                border: Border.all(color: AppColors.danger.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
+                  const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 18),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -149,14 +348,31 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
 
           const SizedBox(height: AppSpacing.xl),
 
-          // Primary CTA Button
+          // Primary Quick Login Button
           PrimaryButton(
-            label: 'Start Demo Experience',
+            label: 'Start as ${_selectedRole == "admin" ? "LGU Admin" : "Traveler"}',
             isLoading: authState.isLoading,
             onPressed: () {
               ref.read(authProvider.notifier).loginWithSeed(_selectedSeed);
             },
             icon: Icons.rocket_launch_rounded,
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          // Simulated Custom Wallet Login Option
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
+              side: BorderSide(color: AppColors.sunGold, width: 1.5),
+            ),
+            icon: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFF6851B)),
+            label: const Text(
+              'Custom Name / Simulated Wallet Login',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+            ),
+            onPressed: () => _showSimulatedWalletDialog(context),
           ),
 
           const SizedBox(height: AppSpacing.sectionGap),
@@ -181,7 +397,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Demonstration prototype build. Real blockchain, wallet connections, and live occupancy tracking are deferred.',
+                'Demonstration prototype build for Pangasinan tourist destination promotion.',
                 textAlign: TextAlign.center,
                 style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
               ),

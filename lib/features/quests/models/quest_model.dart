@@ -10,6 +10,9 @@ class QuestModel {
   final int rewardPoints;
   final String markerCode;
   final String markerImageUrl;
+  final String crowdStatus;
+  final String? campaignId;
+  final int? remainingSlots;
 
   QuestModel({
     required this.id,
@@ -23,6 +26,9 @@ class QuestModel {
     required this.rewardPoints,
     required this.markerCode,
     required this.markerImageUrl,
+    this.crowdStatus = 'unknown',
+    this.campaignId,
+    this.remainingSlots,
   });
 
   int get allowedRadiusMeters => radiusMeters;
@@ -41,6 +47,9 @@ class QuestModel {
       rewardPoints: json['reward_points'] ?? 50,
       markerCode: json['marker_code'] ?? '',
       markerImageUrl: json['marker_image_url'] ?? json['image_url'] ?? '',
+      crowdStatus: json['crowd_status'] ?? json['crowdStatus'] ?? 'unknown',
+      campaignId: json['campaign_id'] ?? json['campaignId'],
+      remainingSlots: json['remaining_slots'] ?? json['remainingSlots'],
     );
   }
 
