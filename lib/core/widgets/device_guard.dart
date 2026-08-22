@@ -16,7 +16,7 @@ class _DeviceGuardState extends State<DeviceGuard> {
   bool _overrideBypass = false;
 
   Future<void> _launchApkUrl() async {
-    final Uri url = Uri.parse('https://jdq.zernanvash.dev/app-debug.apk');
+    final Uri url = Uri.parse('https://jdq.zernanvash.dev/downloads/juanderquest-latest.apk');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       print('Could not launch $url');
     }
