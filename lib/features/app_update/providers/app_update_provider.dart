@@ -1,8 +1,10 @@
-import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:ota_update/ota_update.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file_plus/open_file_plus.dart';
+import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../models/app_version_info.dart';
@@ -61,7 +63,7 @@ class AppUpdateState {
 
 class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
   final ApiClient _apiClient;
-  StreamSubscription<OtaEvent>? _otaSubscription;
+  CancelToken? _cancelToken;
 
   AppUpdateNotifier(this._apiClient) : super(const AppUpdateState()) {
     _initCurrentVersion();
@@ -137,8 +139,8 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
       return;
     }
 
-    // Cancel any previous stream
-    await _otaSubscription?.cancel();
+    _cancelToken?.cancel();
+    _cancelToken = CancelToken();
 
     state = state.copyWith(
       status: UpdateStatus.downloading,
@@ -147,73 +149,84 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
     );
 
     try {
-      _otaSubscription = OtaUpdate()
-          .execute(
-            latest.downloadUrl,
-            destinationFilename: 'juanderquest-v${latest.versionCode}.apk',
-          )
-          .listen(
-            (OtaEvent event) {
-              switch (event.status) {
-                case OtaStatus.DOWNLOADING:
-                  final progress = int.tryParse(event.value ?? '0') ?? 0;
-                  state = state.copyWith(
-                    status: UpdateStatus.downloading,
-                    downloadProgress: progress.clamp(0, 100),
-                  );
-                  break;
-                case OtaStatus.INSTALLING:
-                  state = state.copyWith(
-                    status: UpdateStatus.installing,
-                    downloadProgress: 100,
-                  );
-                  break;
-                case OtaStatus.ALREADY_RUNNING_ERROR:
-                  state = state.copyWith(
-                    status: UpdateStatus.error,
-                    errorMessage: 'An update is already downloading in background.',
-                  );
-                  break;
-                case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
-                  state = state.copyWith(
-                    status: UpdateStatus.error,
-                    errorMessage: 'Storage / install permission not granted.',
-                  );
-                  break;
-                case OtaStatus.CANCELED:
-                  state = state.copyWith(
-                    status: UpdateStatus.idle,
-                    errorMessage: 'Update was canceled.',
-                  );
-                  break;
-                case OtaStatus.INTERNAL_ERROR:
-                case OtaStatus.DOWNLOAD_ERROR:
-                case OtaStatus.CHECKSUM_ERROR:
-                  state = state.copyWith(
-                    status: UpdateStatus.error,
-                    errorMessage: 'Download failed (${event.status.name}). Check internet connection.',
-                  );
-                  break;
-              }
-            },
-            onError: (error) {
-              state = state.copyWith(
-                status: UpdateStatus.error,
-                errorMessage: 'Download error: $error',
-              );
-            },
-          );
+      // Get device download / cache directory
+      Directory? tempDir;
+      if (Platform.isAndroid) {
+        tempDir = await getExternalStorageDirectory() ?? await getTemporaryDirectory();
+      } else {
+        tempDir = await getTemporaryDirectory();
+      }
+
+      final filePath = '${tempDir.path}/juanderquest-v${latest.versionCode}.apk';
+      final file = File(filePath);
+
+      // Clean up previous file if exists
+      if (await file.exists()) {
+        await file.delete();
+      }
+
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(minutes: 5),
+        ),
+      );
+
+      await dio.download(
+        latest.downloadUrl,
+        filePath,
+        cancelToken: _cancelToken,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = ((received / total) * 100).toInt().clamp(0, 100);
+            state = state.copyWith(
+              status: UpdateStatus.downloading,
+              downloadProgress: progress,
+            );
+          }
+        },
+      );
+
+      state = state.copyWith(
+        status: UpdateStatus.installing,
+        downloadProgress: 100,
+      );
+
+      // Trigger Android native package installer
+      final OpenResult result = await OpenFile.open(
+        filePath,
+        type: 'application/vnd.android.package-archive',
+      );
+
+      if (result.type != ResultType.done) {
+        state = state.copyWith(
+          status: UpdateStatus.error,
+          errorMessage: 'Could not open package installer: ${result.message}',
+        );
+      }
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) {
+        state = state.copyWith(
+          status: UpdateStatus.idle,
+          errorMessage: 'Download was canceled.',
+        );
+      } else {
+        state = state.copyWith(
+          status: UpdateStatus.error,
+          errorMessage: 'Download failed: ${e.message}',
+        );
+      }
     } catch (e) {
       state = state.copyWith(
         status: UpdateStatus.error,
-        errorMessage: 'Failed to start installer: $e',
+        errorMessage: 'Update error: $e',
       );
     }
   }
 
   @override
   void dispose() {
-    _otaSubscription?.cancel();
+    _cancelToken?.cancel();
     super.dispose();
   }
 }
