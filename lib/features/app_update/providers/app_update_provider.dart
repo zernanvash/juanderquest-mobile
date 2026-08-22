@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file_plus/open_file_plus.dart';
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
@@ -192,17 +192,10 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         downloadProgress: 100,
       );
 
-      // Trigger Android native package installer
-      final OpenResult result = await OpenFile.open(
-        filePath,
-        type: 'application/vnd.android.package-archive',
-      );
-
-      if (result.type != ResultType.done) {
-        state = state.copyWith(
-          status: UpdateStatus.error,
-          errorMessage: 'Could not open package installer: ${result.message}',
-        );
+      // Trigger Android native package installer via MethodChannel
+      if (Platform.isAndroid) {
+        const platform = MethodChannel('com.juanderquest.app/installer');
+        await platform.invokeMethod('installApk', {'filePath': filePath});
       }
     } on DioException catch (e) {
       if (CancelToken.isCancel(e)) {
