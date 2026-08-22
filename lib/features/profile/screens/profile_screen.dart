@@ -13,6 +13,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../app_update/providers/app_update_provider.dart';
 import '../../app_update/widgets/update_dialog.dart';
 import '../providers/profile_stats_provider.dart';
+import '../../../core/widgets/designer_guide.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -60,55 +61,65 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: AppSpacing.md),
 
           // User Header Card
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
+          UiSpecContainer(
+            spec: const UiSpec(
+              title: 'Explorer Identity & Web3 Profile Header',
+              figmaLayer: '#Profile_Header_Card',
+              dimensions: 'Full width, Padding: 20dp, Avatar: 76x76dp circular',
+              dataBinding: 'authProvider.user (displayName, email, avatarUrl, demoPoints)',
+              stateNotes: 'Logged In -> PANGASINAN EXPLORER pill -> Avatar with Gold ring',
+              uxNotes: 'Wood brown typography with Epilogue display headers.',
             ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.sunGold,
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: AppSpacing.roundedLg,
+                border: Border.all(color: AppColors.borderLowContrast),
+                boxShadow: AppSpacing.cardShadow,
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.sunGold,
+                    ),
+                    child: _buildAvatarWidget(user?.avatarUrl),
                   ),
-                  child: _buildAvatarWidget(user?.avatarUrl),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  user?.displayName ?? 'Juan Dela Cruz',
-                  style: AppTypography.displayMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  user?.email ?? 'juan@juanderquest.ph',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: AppSpacing.roundedPill,
-                  ),
-                  child: const Text(
-                    'PANGASINAN EXPLORER',
-                    style: TextStyle(
-                      color: AppColors.onPrimaryContainer,
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    user?.displayName ?? 'Juan Dela Cruz',
+                    style: AppTypography.displayMedium.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: 11,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    user?.email ?? 'juan@juanderquest.ph',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryContainer,
+                      borderRadius: AppSpacing.roundedPill,
+                    ),
+                    child: const Text(
+                      'PANGASINAN EXPLORER',
+                      style: TextStyle(
+                        color: AppColors.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -120,35 +131,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             subtitle: 'Your adventure points and destination contributions.',
           ),
 
-          MetricTile(
-            label: 'Reward Points Balance',
-            value: '${user?.points ?? stats.pointsBalance} PTS',
-            icon: Icons.stars_rounded,
-            iconColor: AppColors.sunGold,
-          ),
-
-          const SizedBox(height: AppSpacing.md),
-
-          Row(
-            children: [
-              Expanded(
-                child: MetricTile(
-                  label: 'Completed',
-                  value: '${stats.completedQuests}',
-                  icon: Icons.check_circle_rounded,
-                  iconColor: AppColors.success,
+          UiSpecContainer(
+            spec: const UiSpec(
+              title: 'Traveler Points & Proofs Overview Grid',
+              figmaLayer: '#Profile_Stats_Metrics_Grid',
+              dimensions: 'Full width metric tile + 2-column split tiles (~88dp height)',
+              dataBinding: 'profileStatsProvider (pointsBalance, completedQuests, totalSubmissions)',
+              stateNotes: 'Real-time updated point balance & verified quest count',
+              uxNotes: 'Sun gold icon for reward points, emerald green for verified completions.',
+            ),
+            child: Column(
+              children: [
+                MetricTile(
+                  label: 'Reward Points Balance',
+                  value: '${user?.points ?? stats.pointsBalance} PTS',
+                  icon: Icons.stars_rounded,
+                  iconColor: AppColors.sunGold,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricTile(
-                  label: 'Submissions',
-                  value: '${stats.totalSubmissions}',
-                  icon: Icons.fact_check_rounded,
-                  iconColor: AppColors.primary,
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: MetricTile(
+                        label: 'Completed',
+                        value: '${stats.completedQuests}',
+                        icon: Icons.check_circle_rounded,
+                        iconColor: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: MetricTile(
+                        label: 'Submissions',
+                        value: '${stats.totalSubmissions}',
+                        icon: Icons.fact_check_rounded,
+                        iconColor: AppColors.primary,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           const SizedBox(height: AppSpacing.sectionGap),
@@ -343,6 +366,62 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                   ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: AppSpacing.sectionGap),
+
+          // Developer & Designer Tools
+          JdqSectionHeader(
+            title: 'Developer & UI Designer Tools',
+            subtitle: 'Toggle live visual blueprints, Figma specs, and wireframe tags.',
+          ),
+
+          Consumer(
+            builder: (context, ref, _) {
+              final isGuideEnabled = ref.watch(designerGuideProvider);
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: AppSpacing.roundedLg,
+                  border: Border.all(
+                    color: isGuideEnabled ? const Color(0xFF0096C7) : AppColors.borderLowContrast,
+                  ),
+                  boxShadow: AppSpacing.cardShadow,
+                ),
+                child: SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+                  secondary: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isGuideEnabled
+                          ? const Color(0xFF0096C7).withOpacity(0.15)
+                          : AppColors.surfaceContainerHigh,
+                      borderRadius: AppSpacing.roundedMd,
+                    ),
+                    child: Icon(
+                      Icons.design_services_rounded,
+                      color: isGuideEnabled ? const Color(0xFF0096C7) : AppColors.woodBrown,
+                      size: 24,
+                    ),
+                  ),
+                  title: Text(
+                    'Designer Guide Mode',
+                    style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    isGuideEnabled
+                        ? 'Blueprint outlines and Figma component tags are ACTIVE.'
+                        : 'Show UI wireframe boundaries and Figma element specs.',
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                  ),
+                  value: isGuideEnabled,
+                  activeColor: const Color(0xFF0096C7),
+                  onChanged: (val) {
+                    ref.read(designerGuideProvider.notifier).state = val;
+                  },
                 ),
               );
             },

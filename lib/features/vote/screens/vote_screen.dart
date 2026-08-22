@@ -13,6 +13,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../models/governance_proposal_model.dart';
 import '../providers/governance_provider.dart';
+import '../../../core/widgets/designer_guide.dart';
 
 class VoteScreen extends ConsumerStatefulWidget {
   const VoteScreen({super.key});
@@ -377,11 +378,22 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
             const SizedBox(height: AppSpacing.md),
 
             // Wallet Balance Header
-            MetricTile(
-              label: 'Off-chain Prototype Voting Weight',
-              value: '${wallet?.balanceMjdq ?? 1000} mJDQ',
-              icon: Icons.how_to_vote_rounded,
-              iconColor: AppColors.primary,
+            UiSpecContainer(
+              spec: const UiSpec(
+                title: 'DAO Voting Weight Header',
+                figmaLayer: '#DAO_Voting_Weight_Card',
+                dimensions: 'Full width, Height: ~80dp, Padding: 16dp',
+                dataBinding: 'walletProvider.balanceMjdq (or demo balance)',
+                stateNotes: 'Dynamic token balance -> Calculates quadratic voting power',
+                uxNotes: 'Emerald primary icon with wood brown typography.',
+                deferred: true,
+              ),
+              child: MetricTile(
+                label: 'Off-chain Prototype Voting Weight',
+                value: '${wallet?.balanceMjdq ?? 1000} mJDQ',
+                icon: Icons.how_to_vote_rounded,
+                iconColor: AppColors.primary,
+              ),
             ),
 
             const SizedBox(height: AppSpacing.sectionGap),
@@ -418,15 +430,25 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
         ? (prop.yesVotes / (prop.yesVotes + prop.noVotes)) * 100
         : 50.0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.borderLowContrast),
-        boxShadow: AppSpacing.cardShadow,
+    return UiSpecContainer(
+      spec: const UiSpec(
+        title: 'DAO Governance Proposal Card',
+        figmaLayer: '#DAO_Proposal_Card_Item',
+        dimensions: 'Full width, Height: auto (~180dp), Radius: 16dp',
+        dataBinding: 'api/v1/proposals (title, category, yesVotes, noVotes, status)',
+        stateNotes: 'Active (Green/Red split meter) -> Passed -> Rejected -> Voting confirmation dialog',
+        uxNotes: 'Includes Quorum progress bar and yes/no vote buttons with mJDQ fee deduction.',
+        deferred: true,
       ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: AppSpacing.roundedLg,
+          border: Border.all(color: AppColors.borderLowContrast),
+          boxShadow: AppSpacing.cardShadow,
+        ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -530,6 +552,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }

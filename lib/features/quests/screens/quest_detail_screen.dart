@@ -12,6 +12,7 @@ import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/quest_model.dart';
+import '../../../core/widgets/designer_guide.dart';
 
 class QuestDetailScreen extends ConsumerWidget {
   final QuestModel? quest;
@@ -156,65 +157,75 @@ class _DetailContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Hero Header
-            Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: hasImage
-                      ? Image.network(
-                          quest.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildHeaderPlaceholder(),
-                        )
-                      : _buildHeaderPlaceholder(),
-                ),
-                Positioned(
-                  top: AppSpacing.md,
-                  left: AppSpacing.md,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryDark,
-                      borderRadius: AppSpacing.roundedPill,
-                    ),
-                    child: Text(
-                      quest.categoryDisplay.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+            // Hero Image
+            UiSpecContainer(
+              spec: const UiSpec(
+                title: 'Quest Hero Photography & Bounty Pills',
+                figmaLayer: '#Quest_Detail_Hero_Image',
+                dimensions: 'Full width, AspectRatio: 16/9 (1080x608), Radius: 0dp',
+                dataBinding: 'quest.imageUrl / quest.categoryDisplay / quest.rewardPoints',
+                stateNotes: 'Network image with fallback asset placeholder + Gold Bounty Pill',
+                uxNotes: 'High-resolution Pangasinan destination photography with dark overlay gradient.',
+              ),
+              child: Stack(
+                children: [
+                  AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: hasImage
+                        ? Image.network(
+                            quest.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildHeaderPlaceholder(),
+                          )
+                        : _buildHeaderPlaceholder(),
+                  ),
+                  Positioned(
+                    top: AppSpacing.md,
+                    left: AppSpacing.md,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryDark,
+                        borderRadius: AppSpacing.roundedPill,
+                      ),
+                      child: Text(
+                        quest.categoryDisplay.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Positioned(
-                  top: AppSpacing.md,
-                  right: AppSpacing.md,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLowest,
-                      borderRadius: AppSpacing.roundedPill,
-                      boxShadow: AppSpacing.cardShadow,
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '+${quest.rewardPoints} PTS',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.woodBrown,
+                  Positioned(
+                    top: AppSpacing.md,
+                    right: AppSpacing.md,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: AppSpacing.roundedPill,
+                        boxShadow: AppSpacing.cardShadow,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            '+${quest.rewardPoints} PTS',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.woodBrown,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             // Content Body
@@ -250,42 +261,52 @@ class _DetailContent extends StatelessWidget {
 
                   if (quest.crowdStatus == 'estimated_busy') ...[
                     const SizedBox(height: AppSpacing.md),
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: AppColors.crowdBusyBg,
-                        borderRadius: AppSpacing.roundedLg,
-                        border: Border.all(color: AppColors.crowdBusy.withOpacity(0.3)),
+                    UiSpecContainer(
+                      spec: const UiSpec(
+                        title: 'Live Overcrowding Diversion Card',
+                        figmaLayer: '#Quest_Crowd_Pressure_Alert',
+                        dimensions: 'Full width, Padding: 16dp, Radius: 16dp',
+                        dataBinding: 'quest.crowdStatus (estimated_busy / tranquil / moderate)',
+                        stateNotes: 'Displays warning alert when tourist congestion is high to redirect visitors',
+                        uxNotes: 'Amber/Coral alert container with warning icon and link to tranquil gems.',
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.warning_amber_rounded, color: AppColors.crowdBusy, size: 22),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'High Tourist Activity Detected',
-                                  style: TextStyle(
-                                    color: AppColors.crowdBusy,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.crowdBusyBg,
+                          borderRadius: AppSpacing.roundedLg,
+                          border: Border.all(color: AppColors.crowdBusy.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: AppColors.crowdBusy, size: 22),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'High Tourist Activity Detected',
+                                    style: TextStyle(
+                                      color: AppColors.crowdBusy,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'This destination is currently experiencing high foot traffic. Explore quieter hidden gems in the Explore tab for bonus rewards!',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.crowdBusy.withOpacity(0.9),
-                                    fontSize: 12,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'This destination is currently experiencing high foot traffic. Explore quieter hidden gems in the Explore tab for bonus rewards!',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.crowdBusy.withOpacity(0.9),
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -315,55 +336,31 @@ class _DetailContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.lg),
 
                   // Quest Parameters Card
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLowest,
-                      borderRadius: AppSpacing.roundedLg,
-                      border: Border.all(color: AppColors.borderLowContrast),
-                      boxShadow: AppSpacing.cardShadow,
+                  UiSpecContainer(
+                    spec: const UiSpec(
+                      title: 'Quest Reward & GPS Guard Parameters Card',
+                      figmaLayer: '#Quest_Specs_Metrics_Card',
+                      dimensions: 'Full width split card, Height: ~84dp, Radius: 16dp',
+                      dataBinding: 'quest.rewardPoints / quest.allowedRadiusMeters',
+                      stateNotes: 'Points pill + Radar icon with server-enforced radius constraint',
+                      uxNotes: 'Prominently clarifies physical verification constraints before travel.',
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'QUEST REWARD',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textMuted,
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 20),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${quest.rewardPoints} Points',
-                                    style: AppTypography.labelLarge.copyWith(
-                                      color: AppColors.woodBrown,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(width: 1, height: 40, color: AppColors.borderLowContrast),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: AppSpacing.md),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: AppSpacing.roundedLg,
+                        border: Border.all(color: AppColors.borderLowContrast),
+                        boxShadow: AppSpacing.cardShadow,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'GPS RADIUS GUARD',
+                                  'QUEST REWARD',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -374,12 +371,12 @@ class _DetailContent extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    const Icon(Icons.radar_rounded, color: AppColors.primary, size: 20),
+                                    const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 20),
                                     const SizedBox(width: 6),
                                     Text(
-                                      'Within ${quest.allowedRadiusMeters}m',
+                                      '${quest.rewardPoints} Points',
                                       style: AppTypography.labelLarge.copyWith(
-                                        color: AppColors.primary,
+                                        color: AppColors.woodBrown,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -388,8 +385,42 @@ class _DetailContent extends StatelessWidget {
                               ],
                             ),
                           ),
-                        ),
-                      ],
+                          Container(width: 1, height: 40, color: AppColors.borderLowContrast),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: AppSpacing.md),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'GPS RADIUS GUARD',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textMuted,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.radar_rounded, color: AppColors.primary, size: 20),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Within ${quest.allowedRadiusMeters}m',
+                                        style: AppTypography.labelLarge.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -436,10 +467,21 @@ class _DetailContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.sectionGap),
 
                   // Launch Simulated AR Action (Constraint: explicitly labeled as simulated)
-                  PrimaryButton(
-                    label: 'Start Quest Experience (Simulated AR)',
-                    onPressed: () => _launchAR(context),
-                    icon: Icons.play_arrow_rounded,
+                  UiSpecContainer(
+                    spec: const UiSpec(
+                      title: 'Start Quest Experience CTA',
+                      figmaLayer: '#Quest_Start_Action_Button',
+                      dimensions: 'Full width button, Height: 52dp, Radius: 12dp',
+                      dataBinding: 'Launches /quests/:id/ar with camera & GPS permission check',
+                      stateNotes: 'Active emerald green -> Disabled if quest already completed',
+                      uxNotes: 'Prominent primary CTA to begin interactive verification.',
+                      deferred: true,
+                    ),
+                    child: PrimaryButton(
+                      label: 'Start Quest Experience (Simulated AR)',
+                      onPressed: () => _launchAR(context),
+                      icon: Icons.play_arrow_rounded,
+                    ),
                   ),
 
                   const SizedBox(height: AppSpacing.sectionGap),

@@ -12,6 +12,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/voucher_model.dart';
 import '../providers/voucher_provider.dart';
+import '../../../core/widgets/designer_guide.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
@@ -257,33 +258,44 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               const SizedBox(height: AppSpacing.md),
 
               // Simulated QR / Barcode Display
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: AppSpacing.roundedMd,
-                  border: Border.all(color: AppColors.borderLowContrast),
+              UiSpecContainer(
+                spec: const UiSpec(
+                  title: 'In-Person Store Cashier Barcode & QR Box',
+                  figmaLayer: '#Voucher_QR_Redemption_Box',
+                  dimensions: 'Width: 100%, Height: ~80dp, Padding: 12dp',
+                  dataBinding: 'redeemedVoucher.code / expirationTimestamp',
+                  stateNotes: 'Displays 1D barcode stripes & QR scan box for retail cashier terminal',
+                  uxNotes: 'Ensure screen backlight brightness is sufficient for optical scanners.',
+                  deferred: true,
                 ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        24,
-                        (index) => Container(
-                          width: index % 3 == 0 ? 3 : (index % 2 == 0 ? 2 : 1),
-                          height: 38,
-                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                          color: Colors.black87,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: AppSpacing.roundedMd,
+                    border: Border.all(color: AppColors.borderLowContrast),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          24,
+                          (index) => Container(
+                            width: index % 3 == 0 ? 3 : (index % 2 == 0 ? 2 : 1),
+                            height: 38,
+                            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Present this barcode/code to the store cashier',
-                      style: AppTypography.bodySmall.copyWith(fontSize: 10, color: AppColors.textMuted),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        'Present this barcode/code to the store cashier',
+                        style: AppTypography.bodySmall.copyWith(fontSize: 10, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -319,12 +331,22 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           const SizedBox(height: AppSpacing.sm),
 
           // Balance Card
-          MetricTile(
-            label: 'Available Reward Balance',
-            value: '$points PTS',
-            icon: Icons.stars_rounded,
-            iconColor: AppColors.sunGold,
-            backgroundColor: AppColors.surfaceContainerLowest,
+          UiSpecContainer(
+            spec: const UiSpec(
+              title: 'Available Reward Points Balance',
+              figmaLayer: '#Shop_Points_Balance_Card',
+              dimensions: 'Full width, Height: ~80dp, Padding: 16dp',
+              dataBinding: 'authProvider.user.points (or demoPoints fallback)',
+              stateNotes: 'Dynamic points balance -> Updates instantly on voucher redemption',
+              uxNotes: 'Sun Gold icon with wood brown typography.',
+            ),
+            child: MetricTile(
+              label: 'Available Reward Balance',
+              value: '$points PTS',
+              icon: Icons.stars_rounded,
+              iconColor: AppColors.sunGold,
+              backgroundColor: AppColors.surfaceContainerLowest,
+            ),
           ),
 
           const SizedBox(height: AppSpacing.lg),

@@ -8,6 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
 
@@ -139,142 +140,152 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Hero Image Header
-            Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: hasImage
-                      ? Image.network(
-                          spot.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildHeaderPlaceholder(spot),
-                        )
-                      : _buildHeaderPlaceholder(spot),
-                ),
+            UiSpecContainer(
+              spec: const UiSpec(
+                title: 'Destination Photography & LGU Verification Header',
+                figmaLayer: '#Spot_Detail_Hero_Image',
+                dimensions: 'Full width, AspectRatio: 16/10 (1080x675)',
+                dataBinding: 'spot.imageUrl / spot.category / spot.trustLevel / spot.municipality',
+                stateNotes: 'Network photography with dark contrast gradient & provenance chip',
+                uxNotes: 'Displays municipality banner and LGU Verified badge.',
+              ),
+              child: Stack(
+                children: [
+                  AspectRatio(
+                    aspectRatio: 16 / 10,
+                    child: hasImage
+                        ? Image.network(
+                            spot.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildHeaderPlaceholder(spot),
+                          )
+                        : _buildHeaderPlaceholder(spot),
+                  ),
 
-                // Gradient Overlay for contrast
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.3),
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.6),
-                        ],
-                        stops: const [0.0, 0.5, 1.0],
+                  // Gradient Overlay for contrast
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.3),
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.6),
+                          ],
+                          stops: const [0.0, 0.5, 1.0],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // Category & Provenance Top Badges
-                Positioned(
-                  top: AppSpacing.md,
-                  left: AppSpacing.md,
-                  right: AppSpacing.md,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryDark.withOpacity(0.9),
-                          borderRadius: AppSpacing.roundedPill,
-                        ),
-                        child: Text(
-                          spot.category.replaceAll('_', ' ').toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          borderRadius: AppSpacing.roundedPill,
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              spot.trustLevel == 'lgu_verified'
-                                  ? Icons.verified_rounded
-                                  : Icons.public_rounded,
-                              size: 13,
-                              color: spot.trustLevel == 'lgu_verified'
-                                  ? AppColors.sunGold
-                                  : Colors.white70,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              spot.trustLevel == 'lgu_verified'
-                                  ? 'LGU VERIFIED'
-                                  : spot.sourceName.isNotEmpty
-                                      ? spot.sourceName.toUpperCase()
-                                      : 'COMMUNITY SPOT',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Municipality & Distance Bottom Banner
-                Positioned(
-                  bottom: AppSpacing.md,
-                  left: AppSpacing.md,
-                  right: AppSpacing.md,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on_rounded, color: AppColors.sunGold, size: 16),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          spot.municipality.isNotEmpty
-                              ? '${spot.municipality}, Pangasinan'
-                              : 'Pangasinan, Philippines',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
-                          ),
-                        ),
-                      ),
-                      if (spot.distanceKm != null)
+                  // Category & Provenance Top Badges
+                  Positioned(
+                    top: AppSpacing.md,
+                    left: AppSpacing.md,
+                    right: AppSpacing.md,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.black54,
+                            color: AppColors.primaryDark.withOpacity(0.9),
                             borderRadius: AppSpacing.roundedPill,
                           ),
                           child: Text(
-                            '${spot.distanceKm!.toStringAsFixed(1)} km away',
+                            spot.category.replaceAll('_', ' ').toUpperCase(),
                             style: const TextStyle(
-                              color: Colors.white,
                               fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
-                    ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: AppSpacing.roundedPill,
+                            border: Border.all(color: Colors.white24),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                spot.trustLevel == 'lgu_verified'
+                                    ? Icons.verified_rounded
+                                    : Icons.public_rounded,
+                                size: 13,
+                                color: spot.trustLevel == 'lgu_verified'
+                                    ? AppColors.sunGold
+                                    : Colors.white70,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                spot.trustLevel == 'lgu_verified'
+                                    ? 'LGU VERIFIED'
+                                    : spot.sourceName.isNotEmpty
+                                        ? spot.sourceName.toUpperCase()
+                                        : 'COMMUNITY SPOT',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+
+                  // Municipality & Distance Bottom Banner
+                  Positioned(
+                    bottom: AppSpacing.md,
+                    left: AppSpacing.md,
+                    right: AppSpacing.md,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on_rounded, color: AppColors.sunGold, size: 16),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            spot.municipality.isNotEmpty
+                                ? '${spot.municipality}, Pangasinan'
+                                : 'Pangasinan, Philippines',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                            ),
+                          ),
+                        ),
+                        if (spot.distanceKm != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: AppSpacing.roundedPill,
+                            ),
+                            child: Text(
+                              '${spot.distanceKm!.toStringAsFixed(1)} km away',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             // Content Body
@@ -303,7 +314,17 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   const SizedBox(height: AppSpacing.md),
 
                   // Crowd Status Bar
-                  _buildCrowdStatusCard(isBusy, isQuiet),
+                  UiSpecContainer(
+                    spec: const UiSpec(
+                      title: 'Live Crowd Status & Visitor Density Card',
+                      figmaLayer: '#Spot_Crowd_Status_Card',
+                      dimensions: 'Full width, Padding: 12dp, Radius: 12dp',
+                      dataBinding: 'spot.crowdStatus (estimated_busy / tranquil / moderate)',
+                      stateNotes: 'Green (Tranquil Gem) -> Yellow (Moderate) -> Red (High Tourist Traffic)',
+                      uxNotes: 'Provides dynamic diversion guidance for tourists.',
+                    ),
+                    child: _buildCrowdStatusCard(isBusy, isQuiet),
+                  ),
 
                   const SizedBox(height: AppSpacing.md),
 
@@ -332,7 +353,17 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
                   // Gamified Quest Card (The Incentive Flywheel)
                   if (spot.questId != null) ...[
-                    _buildQuestIncentiveCard(context, spot),
+                    UiSpecContainer(
+                      spec: const UiSpec(
+                        title: 'Gamified Location Quest Flywheel Card',
+                        figmaLayer: '#Spot_Quest_Flywheel_Card',
+                        dimensions: 'Full width, Padding: 16dp, Radius: 16dp',
+                        dataBinding: 'spot.questId / quest.rewardPoints',
+                        stateNotes: 'Visible only when destination has an active quest attached',
+                        uxNotes: 'Prominently showcases the +250 mJDQ Bounty reward and direct check-in CTA.',
+                      ),
+                      child: _buildQuestIncentiveCard(context, spot),
+                    ),
                     const SizedBox(height: AppSpacing.sectionGap),
                   ],
 

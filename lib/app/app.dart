@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/app_theme.dart';
+import '../core/widgets/designer_guide.dart';
 import '../core/widgets/device_guard.dart';
 import 'lifecycle_coordinator.dart';
 import 'router.dart';
@@ -19,7 +20,9 @@ class JuanderQuestApp extends ConsumerWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: router,
-        builder: (context, child) => DeviceGuard(child: child ?? const SizedBox()),
+        builder: (context, child) => DesignerGuideFloatingHud(
+          child: DeviceGuard(child: child ?? const SizedBox()),
+        ),
       ),
     );
   }

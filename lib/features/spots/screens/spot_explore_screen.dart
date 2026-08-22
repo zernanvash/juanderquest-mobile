@@ -10,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/async_state_view.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
@@ -413,20 +414,29 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     final likeCount = _likes[spot.id] ?? (45 + spot.name.length * 3);
     final isLiked = _likedSpots.contains(spot.id);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedXl,
-        border: Border.all(color: AppColors.borderLowContrast),
-        boxShadow: AppSpacing.cardShadow,
+    return UiSpecContainer(
+      spec: const UiSpec(
+        title: 'Destination Community Post Card',
+        figmaLayer: '#Spot_Forum_Card',
+        dimensions: 'Full width, Radius: 20dp, Padding: 14dp',
+        dataBinding: 'spotDiscoveryProvider (municipality, sourceName, trustLevel, crowdStatus, likeCount)',
+        stateNotes: 'Instagram Heart Toggle -> Dynamic like counter -> Quest tag link',
+        uxNotes: 'Wood brown typography with warm sun gold accents and responsive category wrap.',
       ),
-      child: InkWell(
-        borderRadius: AppSpacing.roundedXl,
-        onTap: () => context.push('/explore/${spot.slug}', extra: spot),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: AppSpacing.roundedXl,
+          border: Border.all(color: AppColors.borderLowContrast),
+          boxShadow: AppSpacing.cardShadow,
+        ),
+        child: InkWell(
+          borderRadius: AppSpacing.roundedXl,
+          onTap: () => context.push('/explore/${spot.slug}', extra: spot),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Post Header Metadata
@@ -709,7 +719,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildErrorCard(String error) {

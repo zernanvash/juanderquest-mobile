@@ -9,6 +9,7 @@ import '../../quests/models/quest_model.dart';
 import '../../submissions/providers/submission_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/widgets/error_dialog.dart';
+import '../../../core/widgets/designer_guide.dart';
 
 class ARExperienceScreen extends ConsumerStatefulWidget {
   final QuestModel? quest;
@@ -576,17 +577,28 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen> with Si
             ),
           ),
 
-          // Reticle
+          // Reticle & 3D AR Target Area
           Center(
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: _markerDetected ? const Color(0xFF2D6A4F) : const Color(0xFFFFB703),
-                  width: 2.5,
+            child: UiSpecContainer(
+              spec: const UiSpec(
+                title: 'AR Viewfinder & 3D Model Target',
+                figmaLayer: '#AR_Viewfinder_Reticle',
+                dimensions: 'Fullscreen 1080x1920 (Reticle: 250x250dp)',
+                dataBinding: 'quest.markerImageUrl / quest.markerCode',
+                stateNotes: 'Scanning (Yellow pulse) -> Marker Detected (3D Coin spin)',
+                uxNotes: 'Dashed green reticle upon computer vision lock. 3D coin model rotates at 4s loop.',
+                deferred: true,
+              ),
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: _markerDetected ? const Color(0xFF2D6A4F) : const Color(0xFFFFB703),
+                    width: 2.5,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                borderRadius: BorderRadius.circular(20),
               ),
             ),
           ),
@@ -682,53 +694,63 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen> with Si
                       ),
                       const SizedBox(height: 8),
                       // GPS & Distance HUD Card
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.3)),
+                      UiSpecContainer(
+                        spec: const UiSpec(
+                          title: 'GPS Verification Guard HUD',
+                          figmaLayer: '#AR_GPS_Guard_Card',
+                          dimensions: 'Width: 100% - 24dp padding, Height: auto (~56dp)',
+                          dataBinding: 'geolocator.position vs quest.gpsLat/gpsLng (radiusMeters)',
+                          stateNotes: 'Acquiring (White) -> In-Range (Emerald Green) -> Out-of-Range (Coral Alert)',
+                          uxNotes: 'Server enforces strict 422 OUT_OF_RANGE error on proof submission.',
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              _gpsError != null ? Icons.error_outline : Icons.gps_fixed,
-                              color: _gpsError != null ? const Color(0xFFBC4749) : const Color(0xFFFFB703),
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (_isCapturingGPS)
-                                    Text('Acquiring real GPS coordinates...', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 11))
-                                  else if (_gpsError != null)
-                                    Text(_gpsError!, style: GoogleFonts.plusJakartaSans(color: const Color(0xFFBC4749), fontSize: 11, fontWeight: FontWeight.bold))
-                                  else ...[
-                                    Text(
-                                      'GPS: ±${_currentPosition?.accuracy.toStringAsFixed(1)}m accuracy',
-                                      style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                    ),
-                                    if (distanceMeters != null)
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFD5C4AC).withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _gpsError != null ? Icons.error_outline : Icons.gps_fixed,
+                                color: _gpsError != null ? const Color(0xFFBC4749) : const Color(0xFFFFB703),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (_isCapturingGPS)
+                                      Text('Acquiring real GPS coordinates...', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 11))
+                                    else if (_gpsError != null)
+                                      Text(_gpsError!, style: GoogleFonts.plusJakartaSans(color: const Color(0xFFBC4749), fontSize: 11, fontWeight: FontWeight.bold))
+                                    else ...[
                                       Text(
-                                        'Distance to target: ${distanceMeters.round()}m (${isWithinRadius ? 'Within ${_quest!.radiusMeters}m radius' : 'Outside ${_quest!.radiusMeters}m radius'})',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          color: isWithinRadius ? const Color(0xFFBEEAD1) : const Color(0xFFF4A261),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                        'GPS: ±${_currentPosition?.accuracy.toStringAsFixed(1)}m accuracy',
+                                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                                       ),
+                                      if (distanceMeters != null)
+                                        Text(
+                                          'Distance to target: ${distanceMeters.round()}m (${isWithinRadius ? 'Within ${_quest!.radiusMeters}m radius' : 'Outside ${_quest!.radiusMeters}m radius'})',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            color: isWithinRadius ? const Color(0xFFBEEAD1) : const Color(0xFFF4A261),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                            if (_gpsError != null)
-                              IconButton(
-                                icon: const Icon(Icons.refresh, color: Colors.white, size: 16),
-                                onPressed: _checkPermissionRationaleAndCapture,
-                              ),
-                          ],
+                              if (_gpsError != null)
+                                IconButton(
+                                  icon: const Icon(Icons.refresh, color: Colors.white, size: 16),
+                                  onPressed: _checkPermissionRationaleAndCapture,
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -746,18 +768,29 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen> with Si
             child: Column(
               children: [
                 if (!_markerDetected) ...[
-                  ElevatedButton.icon(
-                    onPressed: () => setState(() => _markerDetected = true),
-                    icon: const Icon(Icons.qr_code_scanner, size: 18),
-                    label: Text(
-                      'Simulate AR Marker Recognition',
-                      style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
+                  UiSpecContainer(
+                    spec: const UiSpec(
+                      title: 'AR Scanning Trigger Button',
+                      figmaLayer: '#AR_Trigger_Scan_Button',
+                      dimensions: 'Full width button, Height: 48dp, Radius: 12dp',
+                      dataBinding: 'Local state toggle -> starts marker tracking & coin animation',
+                      stateNotes: 'Initial state -> active press',
+                      uxNotes: 'Gold button with Epilogue bold typography and camera scanner icon.',
+                      deferred: true,
                     ),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      backgroundColor: const Color(0xFFFFB703),
-                      foregroundColor: const Color(0xFF6B4B00),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: ElevatedButton.icon(
+                      onPressed: () => setState(() => _markerDetected = true),
+                      icon: const Icon(Icons.qr_code_scanner, size: 18),
+                      label: Text(
+                        'Simulate AR Marker Recognition',
+                        style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        backgroundColor: const Color(0xFFFFB703),
+                        foregroundColor: const Color(0xFF6B4B00),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
