@@ -172,20 +172,45 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         ),
       );
 
-      await dio.download(
-        latest.downloadUrl,
-        filePath,
-        cancelToken: _cancelToken,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            final progress = ((received / total) * 100).toInt().clamp(0, 100);
-            state = state.copyWith(
-              status: UpdateStatus.downloading,
-              downloadProgress: progress,
-            );
-          }
-        },
-      );
+      final downloadTarget = latest.downloadUrl;
+      try {
+        await dio.download(
+          downloadTarget,
+          filePath,
+          cancelToken: _cancelToken,
+          onReceiveProgress: (received, total) {
+            if (total != -1) {
+              final progress = ((received / total) * 100).toInt().clamp(0, 100);
+              state = state.copyWith(
+                status: UpdateStatus.downloading,
+                downloadProgress: progress,
+              );
+            }
+          },
+        );
+      } on DioException catch (dioErr) {
+        // If static URL 404s, attempt fallback to direct API stream endpoint
+        if (dioErr.response?.statusCode == 404 && !downloadTarget.contains('/app/download')) {
+          final fallbackUrl = '${_apiClient.dio.options.baseUrl}/app/download';
+          debugPrint('[AppUpdate] Static URL 404, attempting fallback to $fallbackUrl');
+          await dio.download(
+            fallbackUrl,
+            filePath,
+            cancelToken: _cancelToken,
+            onReceiveProgress: (received, total) {
+              if (total != -1) {
+                final progress = ((received / total) * 100).toInt().clamp(0, 100);
+                state = state.copyWith(
+                  status: UpdateStatus.downloading,
+                  downloadProgress: progress,
+                );
+              }
+            },
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       state = state.copyWith(
         status: UpdateStatus.installing,
