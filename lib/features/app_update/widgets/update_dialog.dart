@@ -152,9 +152,34 @@ class UpdateDialog extends ConsumerWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       SizedBox(width: 10),
-                      Text('Preparing installer...'),
+                      Text('Launching Android installer...'),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ] else if (updateState.isReadyToInstall) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: AppSpacing.roundedSm,
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline_rounded, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Package downloaded and ready to install.',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -210,7 +235,9 @@ class UpdateDialog extends ConsumerWidget {
                           ? 'Downloading...'
                           : isInstalling
                               ? 'Installing...'
-                              : 'Update Now',
+                              : updateState.isReadyToInstall
+                                  ? 'Install Now'
+                                  : 'Update Now',
                       style: AppTypography.labelLarge.copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppColors.onPrimary,
@@ -220,6 +247,30 @@ class UpdateDialog extends ConsumerWidget {
                 ),
               ],
             ),
+
+            // Optional re-download link if cached
+            if (updateState.isReadyToInstall && !isDownloading && !isInstalling) ...[
+              const SizedBox(height: 6),
+              Center(
+                child: TextButton(
+                  onPressed: () => ref
+                      .read(appUpdateProvider.notifier)
+                      .startDownloadAndInstall(forceRedownload: true),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  ),
+                  child: Text(
+                    'Re-download update package',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                      decoration: TextDecoration.underline,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

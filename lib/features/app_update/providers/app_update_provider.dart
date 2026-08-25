@@ -14,6 +14,7 @@ enum UpdateStatus {
   checking,
   upToDate,
   updateAvailable,
+  readyToInstall,
   downloading,
   installing,
   error,
@@ -25,6 +26,8 @@ class AppUpdateState {
   final int installedVersionCode;
   final AppVersionInfo? latestVersion;
   final int downloadProgress; // 0 - 100
+  final bool isCached;
+  final String? cachedFilePath;
   final String? errorMessage;
 
   const AppUpdateState({
@@ -33,6 +36,8 @@ class AppUpdateState {
     this.installedVersionCode = 1,
     this.latestVersion,
     this.downloadProgress = 0,
+    this.isCached = false,
+    this.cachedFilePath,
     this.errorMessage,
   });
 
@@ -41,6 +46,7 @@ class AppUpdateState {
       latestVersion!.versionCode > installedVersionCode;
 
   bool get isDownloading => status == UpdateStatus.downloading;
+  bool get isReadyToInstall => status == UpdateStatus.readyToInstall || isCached;
 
   AppUpdateState copyWith({
     UpdateStatus? status,
@@ -48,6 +54,8 @@ class AppUpdateState {
     int? installedVersionCode,
     AppVersionInfo? latestVersion,
     int? downloadProgress,
+    bool? isCached,
+    String? cachedFilePath,
     String? errorMessage,
   }) {
     return AppUpdateState(
@@ -56,6 +64,8 @@ class AppUpdateState {
       installedVersionCode: installedVersionCode ?? this.installedVersionCode,
       latestVersion: latestVersion ?? this.latestVersion,
       downloadProgress: downloadProgress ?? this.downloadProgress,
+      isCached: isCached ?? this.isCached,
+      cachedFilePath: cachedFilePath ?? this.cachedFilePath,
       errorMessage: errorMessage,
     );
   }
@@ -82,7 +92,17 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
     }
   }
 
-  /// Checks server for latest app version
+  Future<String> _getCachedFilePath(int versionCode) async {
+    Directory? tempDir;
+    if (Platform.isAndroid) {
+      tempDir = await getExternalStorageDirectory() ?? await getTemporaryDirectory();
+    } else {
+      tempDir = await getTemporaryDirectory();
+    }
+    return '${tempDir.path}/juanderquest-v$versionCode.apk';
+  }
+
+  /// Checks server for latest app version and verifies if APK is already cached
   Future<bool> checkForUpdates({bool silent = false}) async {
     if (!silent) {
       state = state.copyWith(status: UpdateStatus.checking, errorMessage: null);
@@ -98,10 +118,25 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
 
         final isUpdateAvailable = latest.versionCode > state.installedVersionCode;
 
+        // Check if full completed APK is already cached on local storage
+        bool isCached = false;
+        String? cachedPath;
+        if (isUpdateAvailable) {
+          final filePath = await _getCachedFilePath(latest.versionCode);
+          final file = File(filePath);
+          if (await file.exists() && (await file.length()) > 5 * 1024 * 1024) {
+            isCached = true;
+            cachedPath = filePath;
+          }
+        }
+
         state = state.copyWith(
           latestVersion: latest,
+          isCached: isCached,
+          cachedFilePath: cachedPath,
+          downloadProgress: isCached ? 100 : 0,
           status: isUpdateAvailable
-              ? UpdateStatus.updateAvailable
+              ? (isCached ? UpdateStatus.readyToInstall : UpdateStatus.updateAvailable)
               : UpdateStatus.upToDate,
           errorMessage: null,
         );
@@ -128,8 +163,8 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
     }
   }
 
-  /// Downloads APK and invokes Android package installer
-  Future<void> startDownloadAndInstall() async {
+  /// Downloads APK into atomic temp file or uses cached package, then launches installer
+  Future<void> startDownloadAndInstall({bool forceRedownload = false}) async {
     final latest = state.latestVersion;
     if (latest == null || latest.downloadUrl.isEmpty) {
       state = state.copyWith(
@@ -139,36 +174,47 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
       return;
     }
 
-    _cancelToken?.cancel();
-    _cancelToken = CancelToken();
-
-    state = state.copyWith(
-      status: UpdateStatus.downloading,
-      downloadProgress: 0,
-      errorMessage: null,
-    );
-
     try {
-      // Get device download / cache directory
-      Directory? tempDir;
-      if (Platform.isAndroid) {
-        tempDir = await getExternalStorageDirectory() ?? await getTemporaryDirectory();
-      } else {
-        tempDir = await getTemporaryDirectory();
+      final completedFilePath = await _getCachedFilePath(latest.versionCode);
+      final completedFile = File(completedFilePath);
+
+      // 1. If APK is already fully cached and no forced re-download requested, launch immediately!
+      if (!forceRedownload && await completedFile.exists() && (await completedFile.length()) > 5 * 1024 * 1024) {
+        debugPrint('[AppUpdate] Using cached APK at $completedFilePath');
+        state = state.copyWith(
+          status: UpdateStatus.installing,
+          downloadProgress: 100,
+          isCached: true,
+          cachedFilePath: completedFilePath,
+        );
+
+        if (Platform.isAndroid) {
+          const platform = MethodChannel('com.juanderquest.app/installer');
+          await platform.invokeMethod('installApk', {'filePath': completedFilePath});
+        }
+        return;
       }
 
-      final filePath = '${tempDir.path}/juanderquest-v${latest.versionCode}.apk';
-      final file = File(filePath);
+      // 2. Otherwise, download to .tmp file to ensure atomic completion
+      _cancelToken?.cancel();
+      _cancelToken = CancelToken();
 
-      // Clean up previous file if exists
-      if (await file.exists()) {
-        await file.delete();
+      state = state.copyWith(
+        status: UpdateStatus.downloading,
+        downloadProgress: 0,
+        errorMessage: null,
+      );
+
+      final tempFilePath = '$completedFilePath.tmp';
+      final tempFile = File(tempFilePath);
+      if (await tempFile.exists()) {
+        await tempFile.delete();
       }
 
       final dio = Dio(
         BaseOptions(
           connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(minutes: 5),
+          receiveTimeout: const Duration(minutes: 10),
         ),
       );
 
@@ -176,7 +222,7 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
       try {
         await dio.download(
           downloadTarget,
-          filePath,
+          tempFilePath,
           cancelToken: _cancelToken,
           onReceiveProgress: (received, total) {
             if (total != -1) {
@@ -189,13 +235,13 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
           },
         );
       } on DioException catch (dioErr) {
-        // If static URL 404s, attempt fallback to direct API stream endpoint
+        // Fallback to direct API streaming endpoint if static URL 404s
         if (dioErr.response?.statusCode == 404 && !downloadTarget.contains('/app/download')) {
           final fallbackUrl = '${_apiClient.dio.options.baseUrl}/app/download';
           debugPrint('[AppUpdate] Static URL 404, attempting fallback to $fallbackUrl');
           await dio.download(
             fallbackUrl,
-            filePath,
+            tempFilePath,
             cancelToken: _cancelToken,
             onReceiveProgress: (received, total) {
               if (total != -1) {
@@ -212,15 +258,26 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         }
       }
 
+      // 3. Rename temp file to final APK (atomic cache completion)
+      if (await tempFile.exists()) {
+        if (await completedFile.exists()) {
+          await completedFile.delete();
+        }
+        await tempFile.rename(completedFilePath);
+      }
+
       state = state.copyWith(
-        status: UpdateStatus.installing,
+        status: UpdateStatus.readyToInstall,
         downloadProgress: 100,
+        isCached: true,
+        cachedFilePath: completedFilePath,
       );
 
-      // Trigger Android native package installer via MethodChannel
+      // 4. Trigger Android native package installer via MethodChannel
       if (Platform.isAndroid) {
+        state = state.copyWith(status: UpdateStatus.installing);
         const platform = MethodChannel('com.juanderquest.app/installer');
-        await platform.invokeMethod('installApk', {'filePath': filePath});
+        await platform.invokeMethod('installApk', {'filePath': completedFilePath});
       }
     } on DioException catch (e) {
       if (CancelToken.isCancel(e)) {
