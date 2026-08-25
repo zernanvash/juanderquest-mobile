@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/companion/widgets/companion_card.dart';
+import '../features/spots/providers/spot_discovery_provider.dart';
+import '../features/quests/providers/quest_provider.dart';
+import '../features/quests/providers/campaign_provider.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -16,6 +19,17 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   DateTime? _lastBackPress;
   int _previousIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Preload tourism spots, quest markers, and active event campaigns in background
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(spotDiscoveryProvider.notifier).load();
+      ref.read(questProvider.notifier).fetchQuests();
+      ref.read(campaignProvider.notifier).fetchCampaigns();
+    });
+  }
 
   @override
   void didUpdateWidget(MainShell oldWidget) {

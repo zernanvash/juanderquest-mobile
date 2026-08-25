@@ -1,5 +1,5 @@
 class MapConfig {
-  static const String vectorStyleUrl = 'https://demotiles.maplibre.org/style.json';
+  static const String vectorStyleUrl = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
   static const String fallbackStyleUrl = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
   // Pangasinan Default Coordinates

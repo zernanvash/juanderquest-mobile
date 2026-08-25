@@ -26,6 +26,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   QuestModel? _selectedQuest;
   SpotModel? _selectedSpot;
   bool _mapError = false;
+  bool _isStyleLoaded = false;
   String _activeFilter = 'all'; // 'all', 'quests', 'spots'
   final Map<String, dynamic> _circleToItemMap = {};
   bool _listenerRegistered = false;
@@ -50,12 +51,20 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
         }
       });
     }
+  }
 
+  void _onStyleLoaded() {
+    if (mounted) {
+      setState(() {
+        _isStyleLoaded = true;
+        _mapError = false;
+      });
+    }
     _syncMarkers();
   }
 
   Future<void> _syncMarkers() async {
-    if (_mapController == null) return;
+    if (_mapController == null || !_isStyleLoaded) return;
 
     try {
       await _mapController!.clearCircles();
@@ -171,7 +180,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               onMapCreated: _onMapCreated,
               myLocationEnabled: false,
               trackCameraPosition: true,
-              onStyleLoadedCallback: _syncMarkers,
+              onStyleLoadedCallback: _onStyleLoaded,
             )
           else
             Container(
@@ -184,6 +193,35 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     SizedBox(height: 8),
                     Text('Vector Map Initializing...', style: TextStyle(color: AppColors.textMuted)),
                   ],
+                ),
+              ),
+            ),
+
+          // Loading Map Shimmer Overlay
+          if (!_isStyleLoaded && !_mapError)
+            Positioned.fill(
+              child: Container(
+                color: AppColors.surfaceContainerLowest.withValues(alpha: 0.9),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Loading Pangasinan Map Tiles...',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
