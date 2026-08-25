@@ -95,7 +95,7 @@ class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScree
                 const SizedBox(width: 4),
                 Text(
                   '+${sub.rewardPoints} Points',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppColors.woodBrown,
@@ -111,7 +111,7 @@ class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScree
               const SizedBox(height: AppSpacing.md),
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.dangerBg,
                   borderRadius: AppSpacing.roundedMd,
                 ),

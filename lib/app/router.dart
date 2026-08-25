@@ -12,10 +12,15 @@ import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
 import '../features/shop/screens/shop_screen.dart';
 import '../features/spots/screens/spot_explore_screen.dart';
+import '../features/spots/screens/spot_search_screen.dart';
 import '../features/spots/screens/spot_detail_screen.dart';
 import '../features/spots/screens/add_spot_screen.dart';
 import '../features/quests/screens/quest_list_screen.dart';
+import '../features/quests/screens/campaign_detail_screen.dart';
+import '../features/quests/models/campaign_model.dart';
 import '../features/spots/models/spot_model.dart';
+import '../features/leaderboard/screens/leaderboard_screen.dart';
+import '../features/about/screens/about_screen.dart';
 import 'main_shell.dart';
 
 CustomTransitionPage buildDirectionalSlidePage<T>({
@@ -136,11 +141,37 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
+        path: '/search',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return buildDirectionalSlidePage(
+            context: context,
+            state: state,
+            child: SpotSearchScreen(
+              initialQuery: state.uri.queryParameters['q'] ?? extra?['q']?.toString(),
+              initialCategory: state.uri.queryParameters['category'] ?? extra?['category']?.toString(),
+              initialCrowd: state.uri.queryParameters['crowd'] ?? extra?['crowd']?.toString(),
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: '/quests',
         pageBuilder: (context, state) => buildDirectionalSlidePage(
           context: context,
           state: state,
           child: const QuestListScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/quests/campaigns/:id',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: CampaignDetailScreen(
+            campaignId: state.pathParameters['id'] ?? '',
+            initialCampaign: state.extra as CampaignModel?,
+          ),
         ),
       ),
       GoRoute(
@@ -167,6 +198,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const SubmissionHistoryScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/leaderboard',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const LeaderboardScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/about',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const AboutScreen(),
         ),
       ),
     ],

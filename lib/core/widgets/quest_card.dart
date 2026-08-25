@@ -77,7 +77,7 @@ class QuestCard extends StatelessWidget {
                     left: AppSpacing.md,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AppColors.primaryDark,
                         borderRadius: AppSpacing.roundedPill,
                       ),
@@ -122,7 +122,7 @@ class QuestCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             '+${quest.rewardPoints} pts',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
                               color: AppColors.woodBrown,

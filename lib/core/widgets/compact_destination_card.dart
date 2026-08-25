@@ -40,7 +40,7 @@ class CompactDestinationCard extends StatelessWidget {
                 Container(
                   width: 64,
                   height: 64,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.surfaceContainer,
                     borderRadius: AppSpacing.roundedSm,
                   ),

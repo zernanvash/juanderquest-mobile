@@ -49,28 +49,50 @@ class SpotModel {
       ? [SpotPhoto(url: imageUrl!)]
       : const [];
 
-  factory SpotModel.fromJson(Map<String, dynamic> j) => SpotModel(
-        id: j['id'] ?? '',
-        slug: j['slug'] ?? '',
-        name: j['name'] ?? '',
-        description: j['description'] ?? '',
-        category: j['category'] ?? '',
-        subcategory: j['subcategory'] ?? '',
-        municipality: j['municipality'] ?? '',
-        address: j['address'] ?? '',
-        sourceName: j['source_name'] ?? '',
-        trustLevel: j['trust_level'] ?? '',
-        crowdStatus: j['crowd_status'] ?? 'unknown',
-        crowdConfidence: j['crowd_confidence'] ?? 'none',
-        gpsLat: (j['gps_lat'] as num?)?.toDouble() ?? 0,
-        gpsLng: (j['gps_lng'] as num?)?.toDouble() ?? 0,
-        distanceKm: (j['distance_km'] as num?)?.toDouble(),
-        questId: j['quest_id'],
-        saved: j['saved'] == true,
-        imageUrl: j['image_url'] ?? j['photo_url'] ?? _firstPhoto(j),
-        tags: List<String>.from(j['tags'] ?? []),
-        reasons: List<String>.from(j['recommendation_reasons'] ?? []),
-      );
+  static const Map<String, String> _defaultCuratedPhotos = {
+    'hundred-islands-national-park':
+        'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?auto=format&fit=crop&w=1200&q=80',
+    'patar-white-beach':
+        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+    'bolinao-falls-1':
+        'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=1200&q=80',
+    'third-wave-cafe-dagupan':
+        'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80',
+    'minor-basilica-of-manaoag':
+        'https://images.unsplash.com/photo-1548625361-16a9a087192a?auto=format&fit=crop&w=1200&q=80',
+  };
+
+  factory SpotModel.fromJson(Map<String, dynamic> j) {
+    final slug = (j['slug'] ?? '').toString();
+    final rawImg = j['image_url'] ?? j['photo_url'] ?? _firstPhoto(j);
+    final fallbackImg = _defaultCuratedPhotos[slug];
+    final finalImg = (rawImg != null && rawImg.toString().isNotEmpty)
+        ? rawImg.toString()
+        : fallbackImg;
+
+    return SpotModel(
+      id: j['id'] ?? '',
+      slug: slug,
+      name: j['name'] ?? '',
+      description: j['description'] ?? '',
+      category: j['category'] ?? '',
+      subcategory: j['subcategory'] ?? '',
+      municipality: j['municipality'] ?? '',
+      address: j['address'] ?? '',
+      sourceName: j['source_name'] ?? '',
+      trustLevel: j['trust_level'] ?? '',
+      crowdStatus: j['crowd_status'] ?? 'unknown',
+      crowdConfidence: j['crowd_confidence'] ?? 'none',
+      gpsLat: (j['gps_lat'] as num?)?.toDouble() ?? 0,
+      gpsLng: (j['gps_lng'] as num?)?.toDouble() ?? 0,
+      distanceKm: (j['distance_km'] as num?)?.toDouble(),
+      questId: j['quest_id'],
+      saved: j['saved'] == true,
+      imageUrl: finalImg,
+      tags: List<String>.from(j['tags'] ?? []),
+      reasons: List<String>.from(j['recommendation_reasons'] ?? []),
+    );
+  }
 
   SpotModel copyWith({bool? saved}) => SpotModel(
       id: id,

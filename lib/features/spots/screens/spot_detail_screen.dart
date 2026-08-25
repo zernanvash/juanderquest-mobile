@@ -268,7 +268,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         if (spot.distanceKm != null)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: Colors.black54,
                               borderRadius: AppSpacing.roundedPill,
                             ),
@@ -478,10 +478,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
           borderRadius: AppSpacing.roundedLg,
           border: Border.all(color: AppColors.crowdQuiet.withOpacity(0.3)),
         ),
-        child: Row(
+        child: const Row(
           children: [
-            const Icon(Icons.eco_rounded, color: AppColors.crowdQuiet, size: 20),
-            const SizedBox(width: AppSpacing.sm),
+            Icon(Icons.eco_rounded, color: AppColors.crowdQuiet, size: 20),
+            SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
                 'Low Crowd Pressure — Great tranquil time to visit & photograph!',
@@ -605,7 +605,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.surfaceContainerLow,
               borderRadius: AppSpacing.roundedMd,
             ),

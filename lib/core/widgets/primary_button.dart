@@ -32,22 +32,18 @@ class PrimaryButton extends StatelessWidget {
             ),
           )
         : Row(
-            mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
                 Icon(icon, size: 18),
                 const SizedBox(width: 8),
               ],
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: AppTypography.labelLarge.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                label,
+                style: AppTypography.labelLarge.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -65,7 +61,10 @@ class PrimaryButton extends StatelessWidget {
           shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
-        child: buttonChild,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: buttonChild,
+        ),
       ),
     );
   }
@@ -100,22 +99,18 @@ class SecondaryButton extends StatelessWidget {
             ),
           )
         : Row(
-            mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
                 Icon(icon, size: 18, color: AppColors.primary),
                 const SizedBox(width: 8),
               ],
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                label,
+                style: AppTypography.labelLarge.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -132,7 +127,10 @@ class SecondaryButton extends StatelessWidget {
           shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
-        child: buttonChild,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: buttonChild,
+        ),
       ),
     );
   }

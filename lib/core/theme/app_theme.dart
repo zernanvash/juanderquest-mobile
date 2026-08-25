@@ -56,12 +56,12 @@ abstract class AppTheme {
         titleTextStyle: AppTypography.displaySmall,
         iconTheme: const IconThemeData(color: AppColors.woodBrown),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: const CardThemeData(
         color: AppColors.surfaceContainerLowest,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: AppSpacing.roundedLg,
-          side: const BorderSide(color: AppColors.borderLowContrast, width: 1),
+          side: BorderSide(color: AppColors.borderLowContrast, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -74,7 +74,7 @@ abstract class AppTheme {
         labelStyle: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary),
         secondaryLabelStyle: AppTypography.labelLarge.copyWith(color: AppColors.onPrimary),
         brightness: Brightness.light,
-        shape: StadiumBorder(
+        shape: const StadiumBorder(
           side: BorderSide(color: AppColors.borderLowContrast),
         ),
       ),
@@ -113,21 +113,21 @@ abstract class AppTheme {
         filled: true,
         fillColor: AppColors.surfaceContainerLowest,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
+        border: const OutlineInputBorder(
           borderRadius: AppSpacing.roundedLg,
-          borderSide: const BorderSide(color: AppColors.borderLowContrast),
+          borderSide: BorderSide(color: AppColors.borderLowContrast),
         ),
-        enabledBorder: OutlineInputBorder(
+        enabledBorder: const OutlineInputBorder(
           borderRadius: AppSpacing.roundedLg,
-          borderSide: const BorderSide(color: AppColors.borderLowContrast),
+          borderSide: BorderSide(color: AppColors.borderLowContrast),
         ),
-        focusedBorder: OutlineInputBorder(
+        focusedBorder: const OutlineInputBorder(
           borderRadius: AppSpacing.roundedLg,
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        errorBorder: OutlineInputBorder(
+        errorBorder: const OutlineInputBorder(
           borderRadius: AppSpacing.roundedLg,
-          borderSide: const BorderSide(color: AppColors.danger),
+          borderSide: BorderSide(color: AppColors.danger),
         ),
         hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
         labelStyle: AppTypography.labelMedium,

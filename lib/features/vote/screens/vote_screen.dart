@@ -77,7 +77,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                 child: Container(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.borderLowContrast,
                     borderRadius: AppSpacing.roundedPill,
                   ),
@@ -116,7 +116,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
               const SizedBox(height: AppSpacing.md),
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.surfaceContainerLow,
                   borderRadius: AppSpacing.roundedMd,
                 ),
@@ -222,7 +222,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                 child: Container(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.borderLowContrast,
                     borderRadius: AppSpacing.roundedPill,
                   ),
@@ -398,7 +398,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
 
             const SizedBox(height: AppSpacing.sectionGap),
 
-            JdqSectionHeader(
+            const JdqSectionHeader(
               title: 'Active Community Proposals',
               subtitle: 'Vote on new destinations and quest features for Pangasinan.',
             ),
@@ -456,7 +456,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.primaryContainer,
                   borderRadius: AppSpacing.roundedPill,
                 ),

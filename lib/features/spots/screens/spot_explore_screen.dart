@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/async_state_view.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/designer_guide.dart';
@@ -23,11 +22,6 @@ class SpotExploreScreen extends ConsumerStatefulWidget {
 }
 
 class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
-  final TextEditingController _search = TextEditingController();
-  Timer? _debounce;
-  String _category = '';
-  String _intent = '';
-  String _sortFlair = 'hot'; // 'hot', 'new', 'quests', 'quiet'
   final Map<String, int> _likes = {};
   final Set<String> _likedSpots = {};
 
@@ -37,25 +31,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     Future.microtask(() => ref.read(spotDiscoveryProvider.notifier).initialize());
   }
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _search.dispose();
-    super.dispose();
-  }
-
   Future<void> _load({bool refresh = false}) {
-    return ref.read(spotDiscoveryProvider.notifier).load(
-          query: _search.text,
-          category: _category,
-          intent: _intent,
-          refresh: refresh,
-        );
-  }
-
-  void _searchChanged(String _) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), _load);
+    return ref.read(spotDiscoveryProvider.notifier).load(refresh: refresh);
   }
 
   void _toggleLike(String spotId) {
@@ -82,38 +59,33 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(spotDiscoveryProvider);
     final user = ref.watch(authProvider).user;
-    final points = user?.points ?? user?.demoPoints ?? 1250;
-
-    final categories = state.categories.isEmpty
-        ? const ['eat_drink', 'nature_outdoors', 'culture_heritage', 'activities_wellness']
-        : state.categories;
-
-    // Filter by flair
-    final displayedSpots = state.spots.where((s) {
-      if (_sortFlair == 'quests') return s.questId != null && s.questId!.isNotEmpty;
-      if (_sortFlair == 'quiet') return s.crowdStatus == 'quiet' || s.crowdStatus == 'moderate';
-      return true;
-    }).toList();
+    final userInitial = user?.displayName != null && user!.displayName.isNotEmpty
+        ? user.displayName.substring(0, 1).toUpperCase()
+        : 'U';
 
     return JdqScaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(
-                color: AppColors.sunGold,
-                shape: BoxShape.circle,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: AppColors.sunGold,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.explore_rounded, color: AppColors.woodBrown, size: 18),
               ),
-              child: const Icon(Icons.explore_rounded, color: AppColors.woodBrown, size: 18),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
+              const SizedBox(width: 8),
+              const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'JuanDerQuest',
                     style: TextStyle(
                       fontSize: 16,
@@ -127,8 +99,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           IconButton(
@@ -138,13 +110,10 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 color: AppColors.primary.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.add_a_photo_rounded, color: AppColors.primary, size: 20),
+              child: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
             ),
-            tooltip: 'Share Hidden Gem',
-            onPressed: () async {
-              final added = await context.push<bool>('/spots/new');
-              if (added == true) _load(refresh: true);
-            },
+            tooltip: 'Search & Filters',
+            onPressed: () => context.push('/search'),
           ),
           const SizedBox(width: 8),
         ],
@@ -156,188 +125,253 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           children: [
-            // Reddit Community Header Banner
-            _buildCommunityBanner(),
-
-            const SizedBox(height: 12),
-
-            // Live Overcrowding Diversion Banner
-            _buildCrowdDiversionCard(),
-
-            const SizedBox(height: 12),
-
-            // Search Box
-            TextField(
-              controller: _search,
-              onChanged: _searchChanged,
-              onSubmitted: (_) => _load(),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search hidden beaches, food, waterfalls...',
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
-                suffixIcon: _search.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 18),
-                        onPressed: () {
-                          _search.clear();
-                          _load();
-                        },
+            // 1. Social Media Search Bar (Tapping opens dedicated /search screen)
+            GestureDetector(
+              onTap: () => context.push('/search'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: AppSpacing.roundedLg,
+                  border: Border.all(color: AppColors.borderLowContrast),
+                  boxShadow: AppSpacing.cardShadow,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Search destinations, food, towns...',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                filled: true,
-                fillColor: AppColors.surfaceContainerLowest,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                border: OutlineInputBorder(
-                  borderRadius: AppSpacing.roundedLg,
-                  borderSide: BorderSide(color: AppColors.borderLowContrast),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: AppSpacing.roundedLg,
-                  borderSide: BorderSide(color: AppColors.borderLowContrast),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: AppSpacing.roundedLg,
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        borderRadius: AppSpacing.roundedMd,
+                        border: Border.all(color: AppColors.borderLowContrast),
+                      ),
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Filter',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            SizedBox(width: 2),
+                            Icon(Icons.tune_rounded, size: 12, color: AppColors.primary),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
 
             const SizedBox(height: 12),
 
-            // Sorting Flairs (Hot, New, Quests, Quiet)
-            _buildFlairsRow(),
+            // 2. Live Anti-Crowd Diversion Alert Banner (Directly below search bar)
+            _buildLiveAntiCrowdAlert(),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // Category Sub-Flairs
-            _buildCategoryRow(categories),
+            // 3. Post Creation Prompt Box
+            GestureDetector(
+              onTap: () async {
+                final added = await context.push<bool>('/spots/new');
+                if (added == true) _load(refresh: true);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: AppSpacing.roundedLg,
+                  border: Border.all(color: AppColors.borderLowContrast),
+                  boxShadow: AppSpacing.cardShadow,
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: AppColors.primary,
+                      child: Text(
+                        userInitial,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Share a hidden beach, spot, or food tip...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(Icons.add_a_photo_rounded, color: AppColors.primary, size: 20),
+                  ],
+                ),
+              ),
+            ),
 
             if (state.isRefreshing)
               const Padding(
-                padding: EdgeInsets.only(top: 8),
+                padding: EdgeInsets.only(top: 10),
                 child: LinearProgressIndicator(minHeight: 2, color: AppColors.primary),
               ),
 
             const SizedBox(height: 14),
 
+            // 4. Feed Stream List
             if (state.isInitialLoading)
               const _DestinationSkeleton()
             else if (state.failure != null && state.spots.isEmpty)
               _buildErrorCard(state.failure!.message)
-            else if (displayedSpots.isEmpty)
+            else if (state.spots.isEmpty)
               _buildEmptyCard()
             else ...[
               Padding(
                 padding: const EdgeInsets.only(bottom: 10, left: 4, right: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     Text(
-                      '${displayedSpots.length} Community Posts',
+                      '${state.spots.length} Community Field Reports',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
                     ),
-                    Text(
-                      'Tap post to view details',
-                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    GestureDetector(
+                      onTap: () => context.push('/search'),
+                      child: const Text(
+                        'Advanced Search →',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
                     ),
                   ],
                 ),
               ),
 
-              // Forum-Style Post Feed
-              ...displayedSpots.map((spot) => _buildForumPostCard(spot, state)),
+              // Facebook-Style Edge-to-Edge Post Feed
+              ...state.spots.map((spot) => _buildForumPostCard(spot)),
             ],
-
-            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCommunityBanner() {
+  Widget _buildLiveAntiCrowdAlert() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1B4332), Color(0xFF2D6A4F), Color(0xFF582F0E)],
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFFFFF3E0),
+            const Color(0xFFFFE0B2).withOpacity(0.6),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: AppSpacing.roundedXl,
+        borderRadius: AppSpacing.roundedLg,
+        border: Border.all(color: const Color(0xFFFFB74D).withOpacity(0.8)),
         boxShadow: AppSpacing.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: AppColors.sunGold,
-                  borderRadius: AppSpacing.roundedPill,
+                  color: const Color(0xFFE65100).withOpacity(0.15),
+                  borderRadius: AppSpacing.roundedMd,
                 ),
-                child: const Text(
-                  'COMMUNITY FORUM',
-                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-                ),
+                child: const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFE65100)),
               ),
-              const Text(
-                '• 3,280 JuanDerers Online',
-                style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LIVE ANTI-CROWD ALERT',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFE65100),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      'Hundred Islands Peak Pressure',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.woodBrown,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          const Text(
+            'High tourist density reported at Alaminos Lucap wharfs. Divert to tranquil nearby spots like Timmaw Cave or Tambobong Beach to unlock +1.5x mJDQ Points!',
+            style: TextStyle(fontSize: 11, color: Color(0xFF5D4037), height: 1.35),
+          ),
           const SizedBox(height: 8),
-          const Text(
-            'Explore Pangasinan\'s Hidden Gems',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              fontFamily: 'serif',
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Discover tranquil spots, share photo logs, and complete verified cultural quests for reward vouchers.',
-            style: TextStyle(fontSize: 12, color: Color(0xFFE2E8F0), height: 1.4),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCrowdDiversionCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.crowdModerateBg,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.sunGold.withOpacity(0.5)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.wb_sunny_rounded, color: AppColors.woodBrown, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Anti-Overcrowding Bonus Active',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () => context.push('/search', extra: {'crowd': 'quiet'}),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE65100),
+                  borderRadius: AppSpacing.roundedPill,
                 ),
-                Text(
-                  'Visit quiet hidden gems outside peak landmarks to earn +1.5x mJDQ Points!',
-                  style: TextStyle(fontSize: 11, color: AppColors.secondary),
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Filter Tranquil Alternatives',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -345,72 +379,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     );
   }
 
-  Widget _buildFlairsRow() {
-    final flairs = [
-      {'key': 'hot', 'label': '🔥 Trending'},
-      {'key': 'new', 'label': '✨ Recent'},
-      {'key': 'quests', 'label': '🏆 Quests Only'},
-      {'key': 'quiet', 'label': '🌿 Tranquil Gems'},
-    ];
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: flairs.map((f) {
-        final isSelected = _sortFlair == f['key'];
-        return ChoiceChip(
-          label: Text(f['label']!),
-          selected: isSelected,
-          selectedColor: AppColors.sunGold,
-          backgroundColor: AppColors.surfaceContainerLowest,
-          labelStyle: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-            color: isSelected ? AppColors.woodBrown : AppColors.textSecondary,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppSpacing.roundedPill,
-            side: BorderSide(color: isSelected ? AppColors.sunGold : AppColors.borderLowContrast),
-          ),
-          onSelected: (_) {
-            setState(() => _sortFlair = f['key']!);
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildCategoryRow(List<String> categories) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: ['', ...categories].map((cat) {
-        final isSelected = _category == cat;
-        final label = cat.isEmpty ? 'All Categories' : cat.replaceAll('_', ' ');
-        return FilterChip(
-          label: Text(label),
-          selected: isSelected,
-          selectedColor: AppColors.primary.withOpacity(0.15),
-          backgroundColor: AppColors.surfaceContainerLowest,
-          labelStyle: TextStyle(
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? AppColors.primaryDark : AppColors.textMuted,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppSpacing.roundedMd,
-            side: BorderSide(color: isSelected ? AppColors.primary : AppColors.borderLowContrast),
-          ),
-          onSelected: (_) {
-            setState(() => _category = cat);
-            _load();
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildForumPostCard(SpotModel spot, dynamic state) {
+  Widget _buildForumPostCard(SpotModel spot) {
     final likeCount = _likes[spot.id] ?? (45 + spot.name.length * 3);
     final isLiked = _likedSpots.contains(spot.id);
 
@@ -418,7 +387,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       spec: const UiSpec(
         title: 'Destination Community Post Card',
         figmaLayer: '#Spot_Forum_Card',
-        dimensions: 'Full width, Radius: 20dp, Padding: 14dp',
+        dimensions: 'Full width, Radius: 20dp, Edge-to-Edge photo clip',
         dataBinding: 'spotDiscoveryProvider (municipality, sourceName, trustLevel, crowdStatus, likeCount)',
         stateNotes: 'Instagram Heart Toggle -> Dynamic like counter -> Quest tag link',
         uxNotes: 'Wood brown typography with warm sun gold accents and responsive category wrap.',
@@ -431,206 +400,204 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
           border: Border.all(color: AppColors.borderLowContrast),
           boxShadow: AppSpacing.cardShadow,
         ),
-        child: InkWell(
-          borderRadius: AppSpacing.roundedXl,
-          onTap: () => context.push('/explore/${spot.slug}', extra: spot),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Post Header Metadata
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Compact Header & Caption Area
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  // Meta Header
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Icon(Icons.location_on_rounded, size: 13, color: AppColors.primary),
-                      const SizedBox(width: 2),
-                      Text(
-                        spot.municipality,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                  Text(
-                    'Shared by ${spot.sourceName}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                  ),
-                  if (spot.trustLevel == 'lgu_verified') ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: AppColors.lguVerifiedBg,
-                        borderRadius: AppSpacing.roundedPill,
-                      ),
-                      child: Row(
+                      Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.verified_rounded, color: AppColors.lguVerified, size: 12),
-                          SizedBox(width: 3),
+                        children: [
+                          const Icon(Icons.location_on_rounded, size: 13, color: AppColors.primary),
+                          const SizedBox(width: 2),
                           Text(
-                            'LGU Verified',
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.lguVerified),
+                            spot.municipality,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryDark,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                  if (spot.crowdStatus == 'quiet') ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: AppColors.crowdQuietBg,
-                        borderRadius: AppSpacing.roundedPill,
+                      const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      Text(
+                        'Shared by ${spot.sourceName}',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                       ),
-                      child: const Text(
-                        '🌿 Quiet',
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.crowdQuiet),
-                      ),
-                    ),
-                  ] else if (spot.crowdStatus == 'estimated_busy') ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: AppColors.crowdBusyBg,
-                        borderRadius: AppSpacing.roundedPill,
-                      ),
-                      child: const Text(
-                        '⚠️ Peak Activity',
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.crowdBusy),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-
-              const SizedBox(height: 8),
-
-              // Title
-              Text(
-                spot.name,
-                style: AppTypography.headlineSmall.copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.woodBrown,
-                ),
-              ),
-
-              const SizedBox(height: 4),
-
-              // Municipality & Distance
-              Row(
-                children: [
-                  const Icon(Icons.location_on_rounded, size: 14, color: AppColors.primary),
-                  const SizedBox(width: 3),
-                  Expanded(
-                    child: Text(
-                      '${spot.municipality}${spot.distanceKm == null ? '' : ' • ${spot.distanceKm!.toStringAsFixed(1)} km away'}',
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-
-              // Photo Container (if photo exists)
-              if (spot.imageUrl != null && spot.imageUrl!.isNotEmpty) ...[
-                ClipRRect(
-                  borderRadius: AppSpacing.roundedLg,
-                  child: Stack(
-                    children: [
-                      AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: Image.network(
-                          spot.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: AppColors.surfaceContainerLow,
-                            child: const Center(
-                              child: Icon(Icons.image_outlined, color: AppColors.textMuted, size: 36),
-                            ),
+                      if (spot.trustLevel == 'lgu_verified') ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                          decoration: const BoxDecoration(
+                            color: AppColors.lguVerifiedBg,
+                            borderRadius: AppSpacing.roundedPill,
                           ),
-                        ),
-                      ),
-                      if (spot.questId != null && spot.questId!.isNotEmpty) ...[
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.sunGold,
-                              borderRadius: AppSpacing.roundedPill,
-                              boxShadow: AppSpacing.cardShadow,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.emoji_events_rounded, size: 13, color: AppColors.woodBrown),
-                                SizedBox(width: 4),
-                                Text(
-                                  '+250 mJDQ Bounty',
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-                                ),
-                              ],
-                            ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.verified_rounded, color: AppColors.lguVerified, size: 11),
+                              SizedBox(width: 2),
+                              Text(
+                                'LGU Verified',
+                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.lguVerified),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ],
                   ),
-                ),
-                const SizedBox(height: 8),
-              ],
 
-              // Description Snippet
-              Text(
-                spot.description,
-                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.4),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 6),
+
+                  // Title
+                  GestureDetector(
+                    onTap: () => context.push('/explore/${spot.slug}', extra: spot),
+                    child: Text(
+                      spot.name,
+                      style: AppTypography.headlineSmall.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.woodBrown,
+                      ),
+                    ),
+                  ),
+
+                  // Crowd Status (if busy or quiet)
+                  if (spot.crowdStatus == 'estimated_busy') ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: const BoxDecoration(
+                        color: AppColors.crowdBusyBg,
+                        borderRadius: AppSpacing.roundedSm,
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning_amber_rounded, size: 12, color: AppColors.crowdBusy),
+                          SizedBox(width: 4),
+                          Text(
+                            'Peak Activity Reported',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.crowdBusy),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (spot.crowdStatus == 'quiet') ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: const BoxDecoration(
+                        color: AppColors.crowdQuietBg,
+                        borderRadius: AppSpacing.roundedSm,
+                      ),
+                      child: const Text(
+                        '🌿 Serene & Low Crowd',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.crowdQuiet),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 4),
+
+                  // Description Snippet
+                  Text(
+                    spot.description,
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.35, fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 10),
+            // 2. Full-Bleed Edge-to-Edge Photo (Facebook-Style Border Clipping)
+            if (spot.imageUrl != null && spot.imageUrl!.isNotEmpty) ...[
+              GestureDetector(
+                onTap: () => context.push('/explore/${spot.slug}', extra: spot),
+                child: Stack(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 16 / 10,
+                      child: Image.network(
+                        spot.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppColors.surfaceContainerLow,
+                          child: const Center(
+                            child: Icon(Icons.image_outlined, color: AppColors.textMuted, size: 36),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (spot.questId != null && spot.questId!.isNotEmpty) ...[
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: const BoxDecoration(
+                            color: AppColors.sunGold,
+                            borderRadius: AppSpacing.roundedPill,
+                            boxShadow: AppSpacing.cardShadow,
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.emoji_events_rounded, size: 13, color: AppColors.woodBrown),
+                              SizedBox(width: 4),
+                              Text(
+                                '+250 mJDQ Bounty',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
 
-              // Social Action & Engagement Bar (Heart + Tips + Actions)
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
+            // 3. Compact Social Action Row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
                 crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
                 children: [
-                  // Instagram-style Heart Button
+                  // Like Button
                   GestureDetector(
                     onTap: () => _toggleLike(spot.id),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: isLiked ? const Color(0xFFFFF0F1) : AppColors.surfaceContainerLow,
                         borderRadius: AppSpacing.roundedPill,
-                        border: isLiked ? Border.all(color: const Color(0xFFFFCCD2)) : null,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                            size: 15,
+                            size: 14,
                             color: isLiked ? const Color(0xFFE63946) : AppColors.textMuted,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 3),
                           Text(
                             '$likeCount',
                             style: TextStyle(
@@ -646,16 +613,16 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
                   // Tips Button
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: const BoxDecoration(
                       color: AppColors.surfaceContainerLow,
                       borderRadius: AppSpacing.roundedPill,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: AppColors.textMuted),
-                        const SizedBox(width: 4),
+                        const Icon(Icons.chat_bubble_outline_rounded, size: 13, color: AppColors.textMuted),
+                        const SizedBox(width: 3),
                         Text(
                           '${spot.reasons.length + 3} Tips',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
@@ -664,63 +631,72 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     ),
                   ),
 
-                  // Play Quest Button (if available)
-                  if (spot.questId != null && spot.questId!.isNotEmpty) ...[
+                  // Bookmark
+                  IconButton(
+                    icon: Icon(
+                      spot.saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      size: 16,
+                      color: spot.saved ? AppColors.sunGold : AppColors.textMuted,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    onPressed: () => ref.read(spotDiscoveryProvider.notifier).toggleSaved(spot),
+                  ),
+
+                  // Play Quest (if available)
+                  if (spot.questId != null && spot.questId!.isNotEmpty)
                     GestureDetector(
                       onTap: () => context.push('/quests/${spot.questId}'),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.sunGold.withOpacity(0.2),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                        decoration: const BoxDecoration(
+                          color: AppColors.sunGold,
                           borderRadius: AppSpacing.roundedPill,
-                          border: Border.all(color: AppColors.sunGold),
                         ),
-                        child: Row(
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.play_arrow_rounded, size: 14, color: AppColors.woodBrown),
+                          children: [
+                            Icon(Icons.play_arrow_rounded, size: 13, color: AppColors.woodBrown),
                             SizedBox(width: 2),
                             Text(
                               'Play Quest',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ],
 
-                  // Directions Button
-                  IconButton(
-                    icon: const Icon(Icons.navigation_rounded, size: 18, color: AppColors.primary),
-                    tooltip: 'Get Directions',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    onPressed: () => _launchDirections(spot),
-                  ),
-
-                  // Save / Bookmark
-                  IconButton(
-                    icon: Icon(
-                      spot.saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                      size: 18,
-                      color: spot.saved ? AppColors.sunGold : AppColors.textMuted,
+                  // Navigate Button
+                  GestureDetector(
+                    onTap: () => _launchDirections(spot),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: AppSpacing.roundedPill,
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.navigation_rounded, size: 12, color: Colors.white),
+                          SizedBox(width: 3),
+                          Text(
+                            'Navigate',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ],
+                      ),
                     ),
-                    tooltip: 'Bookmark',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    onPressed: () => ref.read(spotDiscoveryProvider.notifier).toggleSaved(spot),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildErrorCard(String error) {
@@ -759,17 +735,9 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
           const SizedBox(height: 12),
           const Text('No posts found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 4),
-          const Text('Try adjusting your search query or category filters.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          const Text('Pull down to refresh destination stream.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           const SizedBox(height: 16),
-          SecondaryButton(label: 'Reset Filters', onPressed: () {
-            setState(() {
-              _category = '';
-              _intent = '';
-              _sortFlair = 'hot';
-              _search.clear();
-            });
-            _load();
-          }),
+          SecondaryButton(label: 'Refresh Feed', onPressed: () => _load(refresh: true)),
         ],
       ),
     );
@@ -797,15 +765,17 @@ class _DestinationSkeleton extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(width: 80, height: 12, decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
+                  Container(width: 80, height: 12, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
                   const SizedBox(width: 8),
-                  Container(width: 60, height: 12, decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
+                  Container(width: 60, height: 12, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
                 ],
               ),
               const SizedBox(height: 10),
-              Container(width: double.infinity, height: 16, decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
+              Container(width: double.infinity, height: 16, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
               const SizedBox(height: 8),
-              Container(width: double.infinity, height: 120, decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedMd)),
+              Container(width: 140, height: 12, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
+              const SizedBox(height: 12),
+              Container(width: double.infinity, height: 120, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedMd)),
             ],
           ),
         ),

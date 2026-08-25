@@ -5,15 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/async_state_view.dart';
 import '../../../core/widgets/filter_chip_row.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/jdq_search_field.dart';
-import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/quest_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../submissions/providers/submission_provider.dart';
+import '../models/campaign_model.dart';
 import '../models/quest_model.dart';
+import '../providers/campaign_provider.dart';
 import '../providers/quest_provider.dart';
 
 class QuestListScreen extends ConsumerStatefulWidget {
@@ -24,6 +24,7 @@ class QuestListScreen extends ConsumerStatefulWidget {
 }
 
 class _QuestListScreenState extends ConsumerState<QuestListScreen> {
+  int _activeTabIndex = 0; // 0 = Ongoing Trails, 1 = Event Campaigns
   String _selectedCategory = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -39,6 +40,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(questProvider.notifier).fetchQuests();
+      ref.read(campaignProvider.notifier).fetchCampaigns();
       ref.read(submissionProvider.notifier).fetchSubmissions();
     });
   }
@@ -62,6 +64,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
   @override
   Widget build(BuildContext context) {
     final questState = ref.watch(questProvider);
+    final campaignState = ref.watch(campaignProvider);
     final user = ref.watch(authProvider).user;
     final points = user?.points ?? 1250;
 
@@ -78,50 +81,55 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
       return matchesSearch && matchesCategory;
     }).toList();
 
+    final filteredCampaigns = campaignState.campaigns.where((c) {
+      final query = _searchController.text.toLowerCase().trim();
+      return query.isEmpty ||
+          c.title.toLowerCase().contains(query) ||
+          c.locationName.toLowerCase().contains(query) ||
+          c.municipality.toLowerCase().contains(query) ||
+          c.description.toLowerCase().contains(query);
+    }).toList();
+
     return JdqScaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(
-                color: AppColors.sunGold,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.emoji_events_rounded, color: AppColors.woodBrown, size: 20),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                'Discover Quests',
-                style: AppTypography.displaySmall.copyWith(
+        titleSpacing: 16,
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.emoji_events_rounded, color: AppColors.sunGold, size: 22),
+              SizedBox(width: AppSpacing.sm),
+              Text(
+                'Quests & Campaigns Hub',
+                style: TextStyle(
                   color: AppColors.woodBrown,
                   fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: AppSpacing.gutter),
+            margin: const EdgeInsets.only(right: 14),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.crowdModerateBg,
+              color: AppColors.sunGold.withOpacity(0.2),
               borderRadius: AppSpacing.roundedPill,
-              border: Border.all(color: AppColors.sunGold.withValues(alpha: 0.5)),
+              border: Border.all(color: AppColors.sunGold),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 16),
+                const Icon(Icons.stars_rounded, size: 14, color: AppColors.woodBrown),
                 const SizedBox(width: 4),
                 Text(
-                  '$points pts',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                  '$points mJDQ',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
                     color: AppColors.woodBrown,
                   ),
                 ),
@@ -132,66 +140,405 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await ref.read(questProvider.notifier).fetchQuests();
-          await ref.read(submissionProvider.notifier).fetchSubmissions();
+          await Future.wait([
+            ref.read(questProvider.notifier).fetchQuests(),
+            ref.read(campaignProvider.notifier).fetchCampaigns(forceRefresh: true),
+            ref.read(submissionProvider.notifier).fetchSubmissions(),
+          ]);
         },
         color: AppColors.primary,
         child: ListView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.gutter,
-            vertical: AppSpacing.md,
-          ),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           children: [
-            JdqSectionHeader(
-              title: 'Play & Earn Rewards',
-              subtitle: 'Participate in location-verified quests and earn points.',
+            // Segmented Tab Switcher (Ongoing Trails vs Event Campaigns)
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: AppSpacing.roundedXl,
+                border: Border.all(color: AppColors.borderLowContrast),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _activeTabIndex = 0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _activeTabIndex == 0 ? AppColors.primary : Colors.transparent,
+                          borderRadius: AppSpacing.roundedLg,
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.bolt_rounded,
+                                size: 15,
+                                color: _activeTabIndex == 0 ? AppColors.sunGold : AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Ongoing Trails',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: _activeTabIndex == 0 ? Colors.white : AppColors.woodBrown,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: _activeTabIndex == 0 ? Colors.white.withOpacity(0.2) : AppColors.surfaceContainerLow,
+                                  borderRadius: AppSpacing.roundedPill,
+                                ),
+                                child: Text(
+                                  '${questState.quests.length}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: _activeTabIndex == 0 ? Colors.white : AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _activeTabIndex = 1),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _activeTabIndex == 1 ? AppColors.primary : Colors.transparent,
+                          borderRadius: AppSpacing.roundedLg,
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.festival_rounded,
+                                size: 15,
+                                color: _activeTabIndex == 1 ? AppColors.sunGold : AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Event Campaigns',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: _activeTabIndex == 1 ? Colors.white : AppColors.woodBrown,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: _activeTabIndex == 1 ? Colors.white.withOpacity(0.2) : AppColors.surfaceContainerLow,
+                                  borderRadius: AppSpacing.roundedPill,
+                                ),
+                                child: Text(
+                                  '${campaignState.campaigns.length}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: _activeTabIndex == 1 ? Colors.white : AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
+            const SizedBox(height: 12),
+
+            // Search Field
             JdqSearchField(
               controller: _searchController,
-              hintText: 'Search quests, hiking, food trails...',
-              onSubmitted: (_) => setState(() {}),
-              onClear: () => setState(() {}),
-            ),
-
-            const SizedBox(height: AppSpacing.md),
-
-            FilterChipRow(
-              options: _categoryOptions,
-              selectedKey: _selectedCategory,
-              onSelected: (key) => setState(() => _selectedCategory = key),
-            ),
-
-            const SizedBox(height: AppSpacing.lg),
-
-            AsyncStateView(
-              isLoading: questState.isLoading,
-              errorMessage: questState.error,
-              isEmpty: filteredQuests.isEmpty,
-              emptyMessage: 'No quests matching criteria',
-              emptySubtitle: 'Try expanding your category filter or search terms.',
-              emptyIcon: Icons.emoji_events_outlined,
-              onRetry: () {
-                ref.read(questProvider.notifier).fetchQuests();
+              hintText: _activeTabIndex == 0 ? 'Search quest trails...' : 'Search event campaigns & festivals...',
+              onChanged: (_) => setState(() {}),
+              onClear: () {
+                _searchController.clear();
+                setState(() {});
               },
-              content: Column(
-                children: [
-                  if (filteredQuests.isNotEmpty) ...[
-                    QuestCard(
-                      quest: filteredQuests.first,
-                      status: _getQuestStatus(filteredQuests.first),
-                      isFeatured: true,
-                      onTap: () => context.push('/quests/${filteredQuests.first.id}'),
-                    ),
+            ),
 
-                    ...filteredQuests.skip(1).map((quest) {
-                      return QuestCard(
-                        quest: quest,
-                        status: _getQuestStatus(quest),
-                        onTap: () => context.push('/quests/${quest.id}'),
-                      );
-                    }),
-                  ],
+            const SizedBox(height: 10),
+
+            // Sub-category filters (For Ongoing Trails)
+            if (_activeTabIndex == 0) ...[
+              FilterChipRow(
+                options: _categoryOptions,
+                selectedKey: _selectedCategory,
+                onSelected: (key) => setState(() => _selectedCategory = key),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Active Tab Content
+            if (_activeTabIndex == 0)
+              _buildTrailsView(questState, filteredQuests)
+            else
+              _buildCampaignsView(campaignState, filteredCampaigns),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrailsView(QuestState questState, List<QuestModel> filteredQuests) {
+    if (questState.isLoading && questState.quests.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    if (questState.error != null && questState.quests.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: AppSpacing.roundedLg,
+          border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 40, color: AppColors.danger),
+            const SizedBox(height: 8),
+            Text('Failed to load quest trails', style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () => ref.read(questProvider.notifier).fetchQuests(),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (filteredQuests.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: AppSpacing.roundedLg,
+          border: Border.all(color: AppColors.borderLowContrast),
+        ),
+        child: const Column(
+          children: [
+            Icon(Icons.search_off_rounded, size: 44, color: AppColors.textMuted),
+            SizedBox(height: 10),
+            Text('No quest trails found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            SizedBox(height: 4),
+            Text('Try changing your search terms or category filter.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: filteredQuests.map<Widget>((quest) {
+        final status = _getQuestStatus(quest);
+        return QuestCard(
+          quest: quest,
+          status: status,
+          onTap: () => context.push('/quests/${quest.id}'),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildCampaignsView(CampaignState campaignState, List<CampaignModel> filteredCampaigns) {
+    if (campaignState.isLoading && campaignState.campaigns.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    if (filteredCampaigns.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: AppSpacing.roundedLg,
+          border: Border.all(color: AppColors.borderLowContrast),
+        ),
+        child: const Column(
+          children: [
+            Icon(Icons.festival_outlined, size: 44, color: AppColors.textMuted),
+            SizedBox(height: 10),
+            Text('No event campaigns found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            SizedBox(height: 4),
+            Text('Check back soon for upcoming municipal festivals and eco-rallies.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: filteredCampaigns.map((campaign) => _buildCampaignCard(campaign)).toList(),
+    );
+  }
+
+  Widget _buildCampaignCard(CampaignModel campaign) {
+    final quotaPercent = campaign.maxParticipants > 0
+        ? (campaign.reservedParticipants / campaign.maxParticipants).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: AppSpacing.roundedXl,
+        border: Border.all(color: AppColors.borderLowContrast),
+        boxShadow: AppSpacing.cardShadow,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/quests/campaigns/${campaign.id}', extra: campaign),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Facebook-Style Full-Bleed Banner Photo
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Image.network(
+                    campaign.bannerImageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: AppColors.surfaceContainerLow,
+                      child: const Center(
+                        child: Icon(Icons.festival_rounded, color: AppColors.textMuted, size: 40),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                    decoration: const BoxDecoration(
+                      color: AppColors.sunGold,
+                      borderRadius: AppSpacing.roundedPill,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.emoji_events_rounded, size: 13, color: AppColors.woodBrown),
+                        const SizedBox(width: 3),
+                        Text(
+                          '+${campaign.rewardPerParticipantMjdq} mJDQ',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Content Area
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Municipality Tag & Category
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_rounded, size: 12, color: AppColors.primary),
+                      const SizedBox(width: 2),
+                      Text(
+                        campaign.municipality,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      const SizedBox(width: 6),
+                      Text(
+                        campaign.hostName,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Title
+                  Text(
+                    campaign.title,
+                    style: AppTypography.headlineSmall.copyWith(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // Description
+                  Text(
+                    campaign.description,
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Quota Progress Bar
+                  ClipRRect(
+                    borderRadius: AppSpacing.roundedPill,
+                    child: LinearProgressIndicator(
+                      value: quotaPercent,
+                      minHeight: 5,
+                      backgroundColor: AppColors.surfaceContainerLow,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Footer: Quota & Action Link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${campaign.reservedParticipants} / ${campaign.maxParticipants} Registered',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                      ),
+                      const Row(
+                        children: [
+                          Text(
+                            'View Details',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          ),
+                          SizedBox(width: 2),
+                          Icon(Icons.arrow_forward_rounded, size: 12, color: AppColors.primary),
+                        ],
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

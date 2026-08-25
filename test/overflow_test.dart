@@ -17,10 +17,19 @@ import 'package:juanderquest_app/features/wallet/models/wallet_model.dart';
 import 'package:juanderquest_app/features/wallet/providers/wallet_provider.dart';
 
 import 'package:juanderquest_app/features/quests/screens/quest_list_screen.dart';
+import 'package:juanderquest_app/features/quests/screens/campaign_detail_screen.dart';
+import 'package:juanderquest_app/features/quests/models/campaign_model.dart';
+import 'package:juanderquest_app/features/quests/providers/campaign_provider.dart';
 import 'package:juanderquest_app/features/shop/screens/shop_screen.dart';
 import 'package:juanderquest_app/features/profile/screens/profile_screen.dart';
 import 'package:juanderquest_app/features/vote/screens/vote_screen.dart';
 import 'package:juanderquest_app/features/map/screens/map_view_screen.dart';
+import 'package:juanderquest_app/features/spots/screens/spot_explore_screen.dart';
+import 'package:juanderquest_app/features/spots/screens/spot_search_screen.dart';
+import 'package:juanderquest_app/features/spots/models/spot_model.dart';
+import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
+import 'package:juanderquest_app/features/leaderboard/screens/leaderboard_screen.dart';
+import 'package:juanderquest_app/features/about/screens/about_screen.dart';
 
 // Inert Subclasses to prevent Dio/network calls and pending timers
 class InertAuthNotifier extends AuthNotifier {
@@ -78,6 +87,15 @@ class InertGovernanceNotifier extends GovernanceNotifier {
   Future<void> loadGovernanceData() async {}
 }
 
+class InertCampaignNotifier extends CampaignNotifier {
+  InertCampaignNotifier(super.apiClient, List<CampaignModel> fixtureCampaigns) {
+    state = CampaignState(campaigns: fixtureCampaigns, isLoading: false);
+  }
+
+  @override
+  Future<void> fetchCampaigns({bool forceRefresh = false}) async {}
+}
+
 class InertWalletNotifier extends WalletNotifier {
   InertWalletNotifier(super.ref, WalletModel fixtureWallet) {
     state = AsyncValue.data(fixtureWallet);
@@ -85,6 +103,22 @@ class InertWalletNotifier extends WalletNotifier {
 
   @override
   Future<void> fetchWallet() async {}
+}
+
+class InertSpotDiscoveryNotifier extends SpotDiscoveryNotifier {
+  InertSpotDiscoveryNotifier(super.ref, List<SpotModel> fixtureSpots) {
+    state = SpotDiscoveryState(
+      spots: fixtureSpots,
+      categories: const ['nature_outdoors', 'eat_drink', 'culture_heritage'],
+      isInitialLoading: false,
+    );
+  }
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> load({String query = '', String category = '', String intent = '', bool refresh = false}) async {}
 }
 
 void main() {
@@ -112,6 +146,33 @@ void main() {
     rewardPoints: 50,
     markerCode: 'M01',
     markerImageUrl: 'https://example.com/marker.png',
+  );
+
+  const dummyCampaign = CampaignModel(
+    id: 'bangus-festival-2026',
+    hostId: 'dagupan-lgu',
+    hostName: 'Dagupan City Tourism Office',
+    title: 'Bangus Festival 2026: Gilon-Gilon Street Dance & Grill Quest',
+    category: 'cultural',
+    locationName: 'Dagupan City Plaza, AB Fernandez Ave',
+    municipality: 'Dagupan City',
+    bannerImageUrl: 'https://example.com/bangus.jpg',
+    description: 'Participate in the legendary Dagupan Bangus street dance.',
+    eventDate: '2026-09-15T08:00:00Z',
+    startDate: '2026-09-01T00:00:00Z',
+    endDate: '2026-09-15T22:00:00Z',
+    totalBudgetMjdq: 250000,
+    rewardPerParticipantMjdq: 1500,
+    referralBountyMjdq: 250,
+    maxParticipants: 500,
+    reservedParticipants: 342,
+    completedParticipants: 120,
+    preQuestRequirements: ['Complete Dagupan Bangus Market Check-in'],
+    gpsLat: 16.0433,
+    gpsLng: 120.3340,
+    gpsRadiusMeters: 250,
+    status: 'active',
+    createdAt: '2026-08-01T00:00:00Z',
   );
 
   final dummyVoucher = VoucherModel(
@@ -150,6 +211,26 @@ void main() {
     balanceJdq: 1.0,
   );
 
+  const dummySpot = SpotModel(
+    id: 's1',
+    slug: 'hundred-islands-national-park',
+    name: 'Hundred Islands National Park',
+    description: 'A protected archipelago of 124 pristine limestone islands and coral reefs.',
+    category: 'nature_outdoors',
+    subcategory: 'islands',
+    municipality: 'Alaminos City',
+    address: 'Lucap Wharf, Alaminos City',
+    sourceName: 'Alaminos Tourism',
+    trustLevel: 'lgu_verified',
+    gpsLat: 16.2044,
+    gpsLng: 120.0406,
+    tags: ['beaches', 'island_hopping', 'snorkeling'],
+    reasons: ['LGU Verified', 'Scenic Views'],
+    crowdStatus: 'quiet',
+    questId: 'q1',
+    imageUrl: 'https://example.com/hundred_islands.jpg',
+  );
+
   Future<void> testScreenOverflow(
     WidgetTester tester,
     Widget child,
@@ -171,10 +252,12 @@ void main() {
         overrides: [
           authProvider.overrideWith((ref) => InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyUser)),
           questProvider.overrideWith((ref) => InertQuestNotifier(ref.watch(apiClientProvider), [dummyQuest])),
+          campaignProvider.overrideWith((ref) => InertCampaignNotifier(ref.watch(apiClientProvider), [dummyCampaign])),
           submissionProvider.overrideWith((ref) => InertSubmissionNotifier(ref.watch(apiClientProvider), [])),
           voucherProvider.overrideWith((ref) => InertVoucherNotifier(ref, [dummyVoucher])),
           governanceProvider.overrideWith((ref) => InertGovernanceNotifier(ref, [dummyProposal])),
           walletProvider.overrideWith((ref) => InertWalletNotifier(ref, dummyWallet)),
+          spotDiscoveryProvider.overrideWith((ref) => InertSpotDiscoveryNotifier(ref, [dummySpot])),
         ],
         child: MaterialApp(
           home: child,
@@ -192,12 +275,40 @@ void main() {
   }
 
   group('Screen Overflow Tests (320x568 portrait & 568x320 landscape, 2.0 text scale)', () {
+    testWidgets('SpotExploreScreen does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(tester, const SpotExploreScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('SpotExploreScreen does not overflow in small landscape', (tester) async {
+      await testScreenOverflow(tester, const SpotExploreScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('SpotSearchScreen does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(tester, const SpotSearchScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('SpotSearchScreen does not overflow in small landscape', (tester) async {
+      await testScreenOverflow(tester, const SpotSearchScreen(), const Size(568, 320), 2.0);
+    });
+
     testWidgets('QuestListScreen does not overflow in small portrait', (tester) async {
       await testScreenOverflow(tester, const QuestListScreen(), const Size(320, 568), 2.0);
     });
 
     testWidgets('QuestListScreen does not overflow in small landscape', (tester) async {
       await testScreenOverflow(tester, const QuestListScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('CampaignDetailScreen does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(tester, const CampaignDetailScreen(campaignId: 'bangus-festival-2026', initialCampaign: dummyCampaign), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('LeaderboardScreen does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(tester, const LeaderboardScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('AboutScreen does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(tester, const AboutScreen(), const Size(320, 568), 2.0);
     });
 
     testWidgets('ShopScreen does not overflow in small portrait', (tester) async {

@@ -67,7 +67,7 @@ class DestinationCard extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: AppColors.primary,
                             borderRadius: AppSpacing.roundedPill,
                           ),
@@ -182,7 +182,7 @@ class DestinationCard extends StatelessWidget {
                         children: spot.reasons.take(2).map((reason) {
                           return Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: AppColors.surfaceContainer,
                               borderRadius: AppSpacing.roundedSm,
                             ),

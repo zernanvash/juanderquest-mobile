@@ -31,7 +31,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
             backgroundColor: AppColors.surfaceContainerLowest,
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.xl),
@@ -102,10 +102,10 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
 
                   TextField(
                     controller: usernameController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Traveler Name / Username',
                       hintText: 'e.g. Prof. Ramos, Juan, Jane',
-                      prefixIcon: const Icon(Icons.person_outline_rounded),
+                      prefixIcon: Icon(Icons.person_outline_rounded),
                       filled: true,
                       fillColor: AppColors.surfaceContainerLow,
                       border: OutlineInputBorder(
@@ -119,9 +119,9 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                   TextField(
                     controller: passwordController,
                     obscureText: true,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      prefixIcon: Icon(Icons.lock_outline_rounded),
                       filled: true,
                       fillColor: AppColors.surfaceContainerLow,
                       border: OutlineInputBorder(
@@ -364,8 +364,8 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
-              side: BorderSide(color: AppColors.sunGold, width: 1.5),
+              shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
+              side: const BorderSide(color: AppColors.sunGold, width: 1.5),
             ),
             icon: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFF6851B)),
             label: const Text(

@@ -33,7 +33,7 @@ class UpdateDialog extends ConsumerWidget {
     final isInstalling = updateState.status == UpdateStatus.installing;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+      shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
       backgroundColor: AppColors.surfaceContainerLowest,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Padding(
@@ -75,7 +75,7 @@ class UpdateDialog extends ConsumerWidget {
             Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.primaryContainer,
                   borderRadius: AppSpacing.roundedPill,
                 ),
@@ -164,7 +164,7 @@ class UpdateDialog extends ConsumerWidget {
             if (updateState.status == UpdateStatus.error && updateState.errorMessage != null) ...[
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.dangerBg,
                   borderRadius: AppSpacing.roundedSm,
                 ),
@@ -185,7 +185,7 @@ class UpdateDialog extends ConsumerWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedMd),
+                        shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedMd),
                         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                       ),
                       child: const Text('Later'),
@@ -202,7 +202,7 @@ class UpdateDialog extends ConsumerWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedMd),
+                      shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedMd),
                       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                     ),
                     child: Text(

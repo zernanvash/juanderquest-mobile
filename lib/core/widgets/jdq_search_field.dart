@@ -6,6 +6,7 @@ import '../theme/app_spacing.dart';
 class JdqSearchField extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
+  final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onFilterTap;
   final VoidCallback? onClear;
@@ -14,6 +15,7 @@ class JdqSearchField extends StatelessWidget {
     super.key,
     required this.controller,
     this.hintText = 'Search destinations, coffee, beaches...',
+    this.onChanged,
     this.onSubmitted,
     this.onFilterTap,
     this.onClear,
@@ -27,6 +29,7 @@ class JdqSearchField extends StatelessWidget {
         final hasText = value.text.isNotEmpty;
         return TextField(
           controller: controller,
+          onChanged: onChanged,
           onSubmitted: onSubmitted,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
@@ -53,9 +56,9 @@ class JdqSearchField extends StatelessWidget {
             ),
             filled: true,
             fillColor: AppColors.surfaceContainerLowest,
-            border: OutlineInputBorder(
+            border: const OutlineInputBorder(
               borderRadius: AppSpacing.roundedLg,
-              borderSide: const BorderSide(color: AppColors.borderLowContrast),
+              borderSide: BorderSide(color: AppColors.borderLowContrast),
             ),
           ),
         );

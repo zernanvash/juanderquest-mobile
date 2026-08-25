@@ -184,7 +184,7 @@ class _DetailContent extends StatelessWidget {
                     left: AppSpacing.md,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AppColors.primaryDark,
                         borderRadius: AppSpacing.roundedPill,
                       ),
@@ -203,7 +203,7 @@ class _DetailContent extends StatelessWidget {
                     right: AppSpacing.md,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AppColors.surfaceContainerLowest,
                         borderRadius: AppSpacing.roundedPill,
                         boxShadow: AppSpacing.cardShadow,
@@ -214,7 +214,7 @@ class _DetailContent extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             '+${quest.rewardPoints} PTS',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
                               color: AppColors.woodBrown,
@@ -427,7 +427,7 @@ class _DetailContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xl),
 
                   // Overview
-                  JdqSectionHeader(
+                  const JdqSectionHeader(
                     title: 'Quest Overview',
                   ),
                   Text(
@@ -438,7 +438,7 @@ class _DetailContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xl),
 
                   // Objective Steps
-                  JdqSectionHeader(
+                  const JdqSectionHeader(
                     title: 'Quest Objectives',
                     subtitle: 'Follow these steps at the physical destination.',
                   ),

@@ -105,7 +105,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: AppSpacing.md),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AppColors.primaryContainer,
                       borderRadius: AppSpacing.roundedPill,
                     ),
@@ -126,7 +126,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: AppSpacing.sectionGap),
 
           // Stats Metrics Overview
-          JdqSectionHeader(
+          const JdqSectionHeader(
             title: 'Traveler Statistics',
             subtitle: 'Your adventure points and destination contributions.',
           ),
@@ -177,7 +177,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: AppSpacing.sectionGap),
 
           // History & Submissions Action Card
-          JdqSectionHeader(
+          const JdqSectionHeader(
             title: 'Activity & History',
           ),
 
@@ -231,8 +231,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
           const SizedBox(height: AppSpacing.sectionGap),
 
+          // Ecosystem & Research Links
+          const JdqSectionHeader(
+            title: 'Ecosystem & Research',
+          ),
+
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: AppSpacing.roundedLg,
+              border: Border.all(color: AppColors.borderLowContrast),
+              boxShadow: AppSpacing.cardShadow,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: Column(
+                children: [
+                  ListTile(
+                    onTap: () => context.push('/leaderboard'),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.sunGold.withOpacity(0.2),
+                        borderRadius: AppSpacing.roundedMd,
+                      ),
+                      child: const Icon(Icons.military_tech_rounded, color: AppColors.woodBrown, size: 22),
+                    ),
+                    title: Text(
+                      'Scout Hall of Fame',
+                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      'View top Pangasinan scouts, rankings, and sprint leaderboards.',
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                  ),
+                  const Divider(height: 1, color: AppColors.borderLowContrast),
+                  ListTile(
+                    onTap: () => context.push('/about'),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.12),
+                        borderRadius: AppSpacing.roundedMd,
+                      ),
+                      child: const Icon(Icons.school_rounded, color: AppColors.primary, size: 22),
+                    ),
+                    title: Text(
+                      'About JuanDerQuest & Team',
+                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      'Universidad de Dagupan capstone research authors & flywheel pillars.',
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.sectionGap),
+
           // App Updates & Version Card
-          JdqSectionHeader(
+          const JdqSectionHeader(
             title: 'App System & Updates',
           ),
 
@@ -308,7 +372,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     ),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
+                                      decoration: const BoxDecoration(
                                         color: AppColors.surfaceContainerHigh,
                                         borderRadius: AppSpacing.roundedPill,
                                       ),
@@ -348,7 +412,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           else if (updateState.hasUpdate)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: AppColors.primary,
                                 borderRadius: AppSpacing.roundedPill,
                               ),
@@ -374,7 +438,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: AppSpacing.sectionGap),
 
           // Developer & Designer Tools
-          JdqSectionHeader(
+          const JdqSectionHeader(
             title: 'Developer & UI Designer Tools',
             subtitle: 'Toggle live visual blueprints, Figma specs, and wireframe tags.',
           ),

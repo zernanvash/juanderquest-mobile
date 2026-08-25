@@ -291,7 +291,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
             const SizedBox(height: AppSpacing.lg),
 
             // Photo Upload Section
-            JdqSectionHeader(
+            const JdqSectionHeader(
               title: '1. Destination Photo',
               subtitle: 'Attach a clear photo of the destination (Max 8 MB).',
             ),
@@ -328,7 +328,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                                 right: 8,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
+                                  decoration: const BoxDecoration(
                                     color: AppColors.success,
                                     borderRadius: AppSpacing.roundedPill,
                                   ),
@@ -414,7 +414,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
             const SizedBox(height: AppSpacing.sectionGap),
 
             // Spot Identity & Category Section
-            JdqSectionHeader(
+            const JdqSectionHeader(
               title: '2. Spot Details',
               subtitle: 'Provide the name, category, and description of the spot.',
             ),
@@ -482,7 +482,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
             const SizedBox(height: AppSpacing.sectionGap),
 
             // Location Section
-            JdqSectionHeader(
+            const JdqSectionHeader(
               title: '3. Location',
               subtitle: 'Municipality and approximate GPS coordinates.',
             ),
@@ -530,7 +530,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
             if (_submitError != null) ...[
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.dangerBg,
                   borderRadius: AppSpacing.roundedMd,
                 ),

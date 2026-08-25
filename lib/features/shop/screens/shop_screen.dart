@@ -44,7 +44,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           final isRedeeming = ref.watch(voucherProvider).isRedeeming;
 
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
             backgroundColor: AppColors.surfaceContainerLowest,
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.xl),
@@ -78,7 +78,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   const SizedBox(height: AppSpacing.lg),
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AppColors.surfaceContainerLow,
                       borderRadius: AppSpacing.roundedMd,
                     ),
@@ -166,7 +166,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.borderLowContrast,
                   borderRadius: AppSpacing.roundedPill,
                 ),
@@ -354,7 +354,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           // Tab Selector
           Container(
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.surfaceContainerLow,
               borderRadius: AppSpacing.roundedPill,
             ),
@@ -523,7 +523,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.crowdQuietBg,
                   borderRadius: AppSpacing.roundedPill,
                 ),
@@ -618,7 +618,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.surfaceContainerLow,
                   borderRadius: AppSpacing.roundedPill,
                 ),
