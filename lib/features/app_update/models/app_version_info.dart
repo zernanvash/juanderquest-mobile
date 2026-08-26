@@ -6,6 +6,8 @@ class AppVersionInfo {
   final DateTime? publishedAt;
   final bool forceUpdate;
   final int minSupportedVersionCode;
+  final String? commitHash;
+  final String? fileName;
 
   const AppVersionInfo({
     required this.versionCode,
@@ -15,6 +17,8 @@ class AppVersionInfo {
     this.publishedAt,
     this.forceUpdate = false,
     this.minSupportedVersionCode = 1,
+    this.commitHash,
+    this.fileName,
   });
 
   factory AppVersionInfo.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,9 @@ class AppVersionInfo {
       publishedAt: json['publishedAt'] != null ? DateTime.tryParse(json['publishedAt'] as String) : null,
       forceUpdate: json['forceUpdate'] as bool? ?? false,
       minSupportedVersionCode: json['minSupportedVersionCode'] as int? ?? 1,
+      commitHash: json['commitHash'] as String?,
+      fileName: json['fileName'] as String?,
     );
   }
 }
+

@@ -75,8 +75,13 @@ jobs:
       - name: Generate version.json Metadata
         run: |
           mkdir -p dist
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          APK_NAME="juanderquest-alpha-${COMMIT_SHA}.apk"
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+          
           cp "${{ steps.apk_locator.outputs.apk_path }}" dist/juanderquest-latest.apk
-          cp "${{ steps.apk_locator.outputs.apk_path }}" dist/juanderquest_beta_v${{ steps.version_info.outputs.version_name }}.apk
+          cp "${{ steps.apk_locator.outputs.apk_path }}" "dist/${APK_NAME}"
           
           CHANGELOG_TEXT="${{ github.event.inputs.changelog || github.event.head_commit.message || 'Latest automated release update.' }}"
           # Clean newlines from changelog for JSON safety
@@ -85,8 +90,10 @@ jobs:
           cat <<EOF > dist/version.json
           {
             "versionCode": ${{ steps.version_info.outputs.version_code }},
-            "versionName": "${{ steps.version_info.outputs.version_name }}",
-            "downloadUrl": "https://jdq.zernanvash.dev/downloads/juanderquest-latest.apk",
+            "versionName": "alpha-${COMMIT_SHA}",
+            "commitHash": "${COMMIT_SHA}",
+            "fileName": "${APK_NAME}",
+            "downloadUrl": "https://jdq.zernanvash.dev/downloads/${APK_NAME}",
             "changelog": "$SAFE_CHANGELOG",
             "publishedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
             "forceUpdate": ${{ github.event.inputs.force_update || false }},
@@ -101,7 +108,7 @@ jobs:
           name: juanderquest-android-apk
           path: |
             dist/juanderquest-latest.apk
-            dist/juanderquest_beta_v${{ steps.version_info.outputs.version_name }}.apk
+            dist/juanderquest-alpha-*.apk
             dist/version.json
           retention-days: 14
 
@@ -116,6 +123,7 @@ jobs:
           host: ${{ secrets.AZURE_SSH_HOST }}
           username: ${{ secrets.AZURE_SSH_USER || 'azureuser' }}
           key: ${{ secrets.AZURE_SSH_KEY }}
-          source: 'dist/juanderquest-latest.apk,dist/juanderquest_beta_v${{ steps.version_info.outputs.version_name }}.apk,dist/version.json'
+          source: 'dist/juanderquest-latest.apk,dist/juanderquest-alpha-*.apk,dist/version.json'
           target: '/var/www/jdq-downloads/'
           strip_components: 1
+
