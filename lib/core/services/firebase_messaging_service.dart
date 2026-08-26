@@ -9,13 +9,33 @@ final firebaseMessagingServiceProvider = Provider<FirebaseMessagingService>((ref
 
 /// Service for managing Firebase In-App Messaging & Analytics triggers in JuanDerQuest
 class FirebaseMessagingService {
-  final FirebaseInAppMessaging _fiam = FirebaseInAppMessaging.instance;
-  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  FirebaseInAppMessaging? _fiamInstance;
+  FirebaseAnalytics? _analyticsInstance;
+
+  FirebaseInAppMessaging? get _fiam {
+    try {
+      _fiamInstance ??= FirebaseInAppMessaging.instance;
+      return _fiamInstance;
+    } catch (e) {
+      debugPrint('[FIAM] In-App Messaging not available: $e');
+      return null;
+    }
+  }
+
+  FirebaseAnalytics? get _analytics {
+    try {
+      _analyticsInstance ??= FirebaseAnalytics.instance;
+      return _analyticsInstance;
+    } catch (e) {
+      debugPrint('[FIAM] Analytics not available: $e');
+      return null;
+    }
+  }
 
   /// Trigger a custom analytics event to activate In-App Messaging campaigns
   Future<void> triggerEvent(String eventName, [Map<String, Object>? parameters]) async {
     try {
-      await _analytics.logEvent(name: eventName, parameters: parameters);
+      await _analytics?.logEvent(name: eventName, parameters: parameters);
       debugPrint('[FIAM] Triggered event: $eventName with params: $parameters');
     } catch (e) {
       debugPrint('[FIAM] Note logging event $eventName: $e');
@@ -25,12 +45,13 @@ class FirebaseMessagingService {
   /// Suppress or enable In-App message popups (e.g. during active AR viewfinder scanning)
   Future<void> setMessagesSuppressed(bool suppressed) async {
     try {
-      await _fiam.setMessagesSuppressed(suppressed);
+      await _fiam?.setMessagesSuppressed(suppressed);
       debugPrint('[FIAM] Messages suppressed: $suppressed');
     } catch (e) {
       debugPrint('[FIAM] Note setting message suppression: $e');
     }
   }
+
 
   /// Trigger campaign message for completed quest
   Future<void> logQuestCompleted({

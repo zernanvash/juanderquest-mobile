@@ -21,7 +21,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
+
 
     signingConfigs {
         create("unified") {
@@ -51,3 +53,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
+}
+
