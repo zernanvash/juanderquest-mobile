@@ -1,6 +1,6 @@
 class MapConfig {
-  static const String vectorStyleUrl = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
-  static const String fallbackStyleUrl = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+  static const String tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  static const String userAgentPackageName = 'dev.zernanvash.juanderquest';
 
   // Pangasinan Default Coordinates
   static const double pangasinanLat = 16.0350;

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/map_config.dart';
@@ -22,102 +23,76 @@ class MapViewScreen extends ConsumerStatefulWidget {
 }
 
 class _MapViewScreenState extends ConsumerState<MapViewScreen> {
-  MapLibreMapController? _mapController;
+  final MapController _mapController = MapController();
   QuestModel? _selectedQuest;
   SpotModel? _selectedSpot;
-  bool _mapError = false;
-  bool _isStyleLoaded = false;
   String _activeFilter = 'all'; // 'all', 'quests', 'spots'
-  final Map<String, dynamic> _circleToItemMap = {};
-  bool _listenerRegistered = false;
+  bool _isRefreshing = false;
 
-  void _onMapCreated(MapLibreMapController controller) {
-    _mapController = controller;
-
-    if (!_listenerRegistered) {
-      _listenerRegistered = true;
-      controller.onCircleTapped.add((circle) {
-        final item = _circleToItemMap[circle.id];
-        if (item is QuestModel) {
-          setState(() {
-            _selectedQuest = item;
-            _selectedSpot = null;
-          });
-        } else if (item is SpotModel) {
-          setState(() {
-            _selectedSpot = item;
-            _selectedQuest = null;
-          });
-        }
-      });
-    }
-  }
-
-  void _onStyleLoaded() {
-    if (mounted) {
-      setState(() {
-        _isStyleLoaded = true;
-        _mapError = false;
-      });
-    }
-    _syncMarkers();
-  }
-
-  Future<void> _syncMarkers() async {
-    if (_mapController == null || !_isStyleLoaded) return;
-
-    try {
-      await _mapController!.clearCircles();
-      _circleToItemMap.clear();
-
+  @override
+  void initState() {
+    super.initState();
+    // Auto-select initial quest if available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final quests = ref.read(questProvider).quests;
-      final spots = ref.read(spotDiscoveryProvider).spots;
-
-      // Add Quest Markers
-      if (_activeFilter == 'all' || _activeFilter == 'quests') {
-        for (final quest in quests) {
-          final circle = await _mapController!.addCircle(
-            CircleOptions(
-              geometry: LatLng(quest.gpsLat, quest.gpsLng),
-              circleColor: MapConfig.markerGoldHex,
-              circleRadius: 13.0,
-              circleStrokeWidth: 3.0,
-              circleStrokeColor: MapConfig.markerBorderHex,
-            ),
-          );
-          _circleToItemMap[circle.id] = quest;
-        }
+      if (quests.isNotEmpty && _selectedQuest == null && _selectedSpot == null) {
+        setState(() {
+          _selectedQuest = quests.first;
+        });
       }
-
-      // Add Spot Markers
-      if (_activeFilter == 'all' || _activeFilter == 'spots') {
-        for (final spot in spots) {
-          final circle = await _mapController!.addCircle(
-            CircleOptions(
-              geometry: LatLng(spot.gpsLat, spot.gpsLng),
-              circleColor: '#2D6A4F',
-              circleRadius: 10.0,
-              circleStrokeWidth: 2.5,
-              circleStrokeColor: '#FFFFFF',
-            ),
-          );
-          _circleToItemMap[circle.id] = spot;
-        }
-      }
-    } catch (_) {
-      if (mounted) setState(() => _mapError = true);
-    }
+    });
   }
 
-  void _recenterMap() {
-    _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        const CameraPosition(
-          target: LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
-          zoom: MapConfig.defaultZoom,
-        ),
+  void _fitAllBounds() {
+    final quests = ref.read(questProvider).quests;
+    final spots = ref.read(spotDiscoveryProvider).spots;
+
+    final points = <LatLng>[];
+
+    if (_activeFilter == 'all' || _activeFilter == 'quests') {
+      for (final q in quests) {
+        points.add(LatLng(q.gpsLat, q.gpsLng));
+      }
+    }
+    if (_activeFilter == 'all' || _activeFilter == 'spots') {
+      for (final s in spots) {
+        points.add(LatLng(s.gpsLat, s.gpsLng));
+      }
+    }
+
+    if (points.isEmpty) {
+      _mapController.move(
+        const LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
+        MapConfig.defaultZoom,
+      );
+      return;
+    }
+
+    if (points.length == 1) {
+      _mapController.move(points.first, 13.0);
+      return;
+    }
+
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints(points),
+        padding: const EdgeInsets.all(50),
       ),
     );
+  }
+
+  Future<void> _refreshData() async {
+    setState(() => _isRefreshing = true);
+    try {
+      await Future.wait([
+        ref.read(questProvider.notifier).fetchQuests(),
+        ref.read(spotDiscoveryProvider.notifier).load(),
+      ]);
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
+    }
   }
 
   Future<void> _launchDirections(double lat, double lng) async {
@@ -132,13 +107,106 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     final questState = ref.watch(questProvider);
     final spotState = ref.watch(spotDiscoveryProvider);
 
-    ref.listen(questProvider, (previous, next) {
-      if (next.quests != previous?.quests) _syncMarkers();
-    });
+    final quests = questState.quests;
+    final spots = spotState.spots;
 
-    ref.listen(spotDiscoveryProvider, (previous, next) {
-      if (next.spots != previous?.spots) _syncMarkers();
-    });
+    final markers = <Marker>[];
+
+    // 1. Quests Markers (Gold Badges)
+    if (_activeFilter == 'all' || _activeFilter == 'quests') {
+      for (final quest in quests) {
+        final isSelected = _selectedQuest?.id == quest.id;
+        markers.add(
+          Marker(
+            point: LatLng(quest.gpsLat, quest.gpsLng),
+            width: isSelected ? 44 : 38,
+            height: isSelected ? 44 : 38,
+            alignment: Alignment.center,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedQuest = quest;
+                  _selectedSpot = null;
+                });
+                _mapController.move(LatLng(quest.gpsLat, quest.gpsLng), 13.0);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFB703),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF582F0E) : Colors.white,
+                    width: isSelected ? 2.5 : 2.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: isSelected ? 8 : 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text(
+                    '🏆',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    // 2. Spots Markers (Emerald Badges)
+    if (_activeFilter == 'all' || _activeFilter == 'spots') {
+      for (final spot in spots) {
+        final isSelected = _selectedSpot?.id == spot.id;
+        markers.add(
+          Marker(
+            point: LatLng(spot.gpsLat, spot.gpsLng),
+            width: isSelected ? 40 : 34,
+            height: isSelected ? 40 : 34,
+            alignment: Alignment.center,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedSpot = spot;
+                  _selectedQuest = null;
+                });
+                _mapController.move(LatLng(spot.gpsLat, spot.gpsLng), 13.0);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2D6A4F),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white,
+                    width: isSelected ? 2.5 : 2.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: isSelected ? 8 : 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text(
+                    '📍',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
 
     return JdqScaffold(
       padding: EdgeInsets.zero,
@@ -152,7 +220,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               Icon(Icons.map_rounded, color: AppColors.primary, size: 20),
               SizedBox(width: 8),
               Text(
-                'Interactive Tourism Map',
+                'Pangasinan Tourism Map',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
               ),
             ],
@@ -169,68 +237,33 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       ),
       body: Stack(
         children: [
-          // 1. Vector Map Layer
-          if (!_mapError)
-            MapLibreMap(
-              styleString: MapConfig.vectorStyleUrl,
-              initialCameraPosition: const CameraPosition(
-                target: LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
-                zoom: MapConfig.defaultZoom,
-              ),
-              onMapCreated: _onMapCreated,
-              myLocationEnabled: false,
-              trackCameraPosition: true,
-              onStyleLoadedCallback: _onStyleLoaded,
-            )
-          else
-            Container(
-              color: AppColors.surfaceContainerHigh,
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.map_outlined, size: 48, color: AppColors.textMuted),
-                    SizedBox(height: 8),
-                    Text('Vector Map Initializing...', style: TextStyle(color: AppColors.textMuted)),
-                  ],
-                ),
+          // 1. Edge-to-Edge OpenStreetMap Canvas (1:1 with Web Leaflet engine)
+          FlutterMap(
+            mapController: _mapController,
+            options: const MapOptions(
+              initialCenter: LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
+              initialZoom: MapConfig.defaultZoom,
+              minZoom: 6.0,
+              maxZoom: 19.0,
+              interactionOptions: InteractionOptions(
+                flags: InteractiveFlag.all,
               ),
             ),
-
-          // Loading Map Shimmer Overlay
-          if (!_isStyleLoaded && !_mapError)
-            Positioned.fill(
-              child: Container(
-                color: AppColors.surfaceContainerLowest.withValues(alpha: 0.9),
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
-                      ),
-                      SizedBox(height: 12),
-                      Text(
-                        'Loading Pangasinan Map Tiles...',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            children: [
+              TileLayer(
+                urlTemplate: MapConfig.tileUrl,
+                userAgentPackageName: MapConfig.userAgentPackageName,
+                maxZoom: 19,
               ),
-            ),
+              MarkerLayer(markers: markers),
+            ],
+          ),
 
-          // 2. Floating Top Overlay Panel (Active Marker Stats + Mode Switcher)
+          // 2. Top-Left Floating Header & Filter Panel (Web Parity)
           Positioned(
             top: 12,
             left: 12,
-            right: 70, // Leaves space for top-right floating tool controls
+            right: 64, // Space for right-side action buttons
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -239,59 +272,95 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 border: Border.all(color: AppColors.borderLowContrast),
                 boxShadow: AppSpacing.cardShadow,
               ),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Mode Filter Chips
-                  _buildFilterChip('all', 'All (${questState.quests.length + spotState.spots.length})'),
-                  _buildFilterChip('quests', '🏆 Quests (${questState.quests.length})'),
-                  _buildFilterChip('spots', '📍 Spots (${spotState.spots.length})'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${quests.length} Quests • ${spots.length} Spots Active',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => context.push('/search'),
+                        child: const Text(
+                          'Search →',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  // Filter Segment Buttons
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      _buildFilterChip('all', 'All'),
+                      _buildFilterChip('quests', '🏆 Quests'),
+                      _buildFilterChip('spots', '📍 Spots'),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
 
-          // 3. Floating Tool Controls (Top-Right)
+          // 3. Top-Right Floating Map Tool Controls (Web Parity)
           Positioned(
             top: 12,
             right: 12,
             child: Column(
               children: [
-                // Recenter Button
+                // Fit All Bounds / Recenter
                 FloatingActionButton.small(
-                  heroTag: 'recenter_map',
+                  heroTag: 'fit_bounds_map',
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.primary,
-                  onPressed: _recenterMap,
-                  tooltip: 'Recenter Map',
-                  child: const Icon(Icons.my_location_rounded, size: 18),
+                  onPressed: _fitAllBounds,
+                  tooltip: 'Fit All Markers',
+                  child: const Icon(Icons.explore_rounded, size: 18),
                 ),
                 const SizedBox(height: 8),
-                // Reload Layers
+                // Reload Coordinates
                 FloatingActionButton.small(
                   heroTag: 'refresh_map',
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.woodBrown,
-                  onPressed: () {
-                    ref.read(questProvider.notifier).fetchQuests();
-                    ref.read(spotDiscoveryProvider.notifier).load();
-                    _syncMarkers();
-                  },
-                  tooltip: 'Refresh Markers',
-                  child: const Icon(Icons.refresh_rounded, size: 18),
+                  onPressed: _isRefreshing ? null : _refreshData,
+                  tooltip: 'Reload Coordinates',
+                  child: _isRefreshing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.woodBrown),
+                        )
+                      : const Icon(Icons.refresh_rounded, size: 18),
                 ),
               ],
             ),
           ),
 
-          // 4. Floating Bottom Marker Inspector Sheet (Animates into view upon tap)
+          // 4. Bottom-Left Floating Marker Inspector Overlay Card (Web Parity)
           if (_selectedQuest != null || _selectedSpot != null)
             Positioned(
               bottom: 16,
-              left: 14,
-              right: 14,
+              left: 12,
+              right: 12,
               child: _buildMarkerInspectorCard(),
             ),
         ],
@@ -304,13 +373,15 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     return GestureDetector(
       onTap: () {
         setState(() => _activeFilter = key);
-        _syncMarkers();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : AppColors.surfaceContainerLow,
           borderRadius: AppSpacing.roundedPill,
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.borderLowContrast,
+          ),
         ),
         child: Text(
           label,
@@ -354,32 +425,38 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isQuest ? AppColors.sunGold.withOpacity(0.25) : AppColors.primary.withOpacity(0.12),
-                  borderRadius: AppSpacing.roundedPill,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isQuest ? Icons.emoji_events_rounded : Icons.place_rounded,
-                      size: 12,
-                      color: isQuest ? AppColors.woodBrown : AppColors.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isQuest ? 'Interactive Quest Trail' : 'Tourism Destination',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isQuest ? AppColors.woodBrown : AppColors.primaryDark,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isQuest ? AppColors.sunGold.withOpacity(0.25) : AppColors.primary.withOpacity(0.12),
+                    borderRadius: AppSpacing.roundedPill,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isQuest ? '🏆' : '📍',
+                        style: const TextStyle(fontSize: 12),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          isQuest ? 'Interactive Quest Trail' : 'Tourism Destination Spot',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isQuest ? AppColors.woodBrown : AppColors.primaryDark,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted),
                 visualDensity: VisualDensity.compact,
@@ -436,16 +513,19 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     color: AppColors.primary,
                     borderRadius: AppSpacing.roundedPill,
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.navigation_rounded, size: 13, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text(
-                        'Navigate',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ],
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.navigation_rounded, size: 13, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'Navigate',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -466,16 +546,19 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     borderRadius: AppSpacing.roundedPill,
                     border: Border.all(color: AppColors.borderLowContrast),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View Details',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_rounded, size: 12, color: AppColors.woodBrown),
-                    ],
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View Details',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded, size: 12, color: AppColors.woodBrown),
+                      ],
+                    ),
                   ),
                 ),
               ),
