@@ -23,11 +23,21 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("unified") {
+            storeFile = file("juanderquest-keystore.jks")
+            storePassword = "juanderquest"
+            keyAlias = "juanderquest"
+            keyPassword = "juanderquest"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("unified")
+        }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("unified")
         }
     }
 }

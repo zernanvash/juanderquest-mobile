@@ -1,4 +1,4 @@
-package com.example.juanderquest_app
+package dev.zernanvash.juanderquest
 
 import android.content.Intent
 import android.net.Uri
