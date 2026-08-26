@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "195492156420",
+    "project_id": "juanderquest",
+    "storage_bucket": "juanderquest.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:195492156420:android:20386ac70e19b2c2209151",
+        "android_client_info": {
+          "package_name": "dev.zernanvash.juanderquest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTM5ls89n8_oaIlGzbd6WSSbovY440qU8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
