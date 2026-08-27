@@ -252,9 +252,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             children: [
               TileLayer(
                 urlTemplate: MapConfig.tileUrl,
+                subdomains: MapConfig.subdomains,
                 userAgentPackageName: MapConfig.userAgentPackageName,
-                maxZoom: 19,
+                maxZoom: 20,
               ),
+
               MarkerLayer(markers: markers),
             ],
           ),

@@ -290,9 +290,11 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
             children: [
               TileLayer(
                 urlTemplate: MapConfig.tileUrl,
+                subdomains: MapConfig.subdomains,
                 userAgentPackageName: MapConfig.userAgentPackageName,
-                maxZoom: 19,
+                maxZoom: 20,
               ),
+
               if (polylineList.isNotEmpty) PolylineLayer(polylines: polylineList),
               MarkerLayer(markers: markers),
             ],
