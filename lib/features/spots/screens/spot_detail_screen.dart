@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -67,31 +68,12 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   Future<void> _openDirections() async {
     await _logInteraction('directions');
     final spot = widget.spot;
-    final googleMapsUrl = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${spot.gpsLat},${spot.gpsLng}',
+    if (!mounted) return;
+    context.push(
+      '/navigate?lat=${spot.gpsLat}&lng=${spot.gpsLng}&name=${Uri.encodeComponent(spot.name)}&address=${Uri.encodeComponent(spot.address.isNotEmpty ? spot.address : spot.municipality)}',
     );
-    final geoUri = Uri.parse('geo:${spot.gpsLat},${spot.gpsLng}?q=${spot.gpsLat},${spot.gpsLng}(${Uri.encodeComponent(spot.name)})');
-
-    try {
-      if (await canLaunchUrl(geoUri)) {
-        await launchUrl(geoUri, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(googleMapsUrl)) {
-        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not launch navigation map app.')),
-          );
-        }
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch navigation map app.')),
-        );
-      }
-    }
   }
+
 
   @override
   Widget build(BuildContext context) {

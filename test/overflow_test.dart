@@ -30,6 +30,9 @@ import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
 import 'package:juanderquest_app/features/leaderboard/screens/leaderboard_screen.dart';
 import 'package:juanderquest_app/features/about/screens/about_screen.dart';
+import 'package:juanderquest_app/features/navigation/models/route_model.dart';
+import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
+
 
 // Inert Subclasses to prevent Dio/network calls and pending timers
 class InertAuthNotifier extends AuthNotifier {
@@ -326,5 +329,22 @@ void main() {
     testWidgets('MapViewScreen does not overflow in small portrait', (tester) async {
       await testScreenOverflow(tester, const MapViewScreen(), const Size(320, 568), 2.0);
     });
+
+    testWidgets('NavigationScreen does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(
+        tester,
+        const NavigationScreen(
+          destination: NavTarget(
+            name: 'Hundred Islands National Park',
+            lat: 16.2045,
+            lng: 120.0435,
+            address: 'Alaminos City, Pangasinan',
+          ),
+        ),
+        const Size(320, 568),
+        2.0,
+      );
+    });
   });
 }
+

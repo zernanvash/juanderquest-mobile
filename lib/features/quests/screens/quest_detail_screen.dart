@@ -466,7 +466,7 @@ class _DetailContent extends StatelessWidget {
 
                   const SizedBox(height: AppSpacing.sectionGap),
 
-                  // Launch Simulated AR Action (Constraint: explicitly labeled as simulated)
+                  // Launch Simulated AR Action & Navigate Action
                   UiSpecContainer(
                     spec: const UiSpec(
                       title: 'Start Quest Experience CTA',
@@ -474,15 +474,51 @@ class _DetailContent extends StatelessWidget {
                       dimensions: 'Full width button, Height: 52dp, Radius: 12dp',
                       dataBinding: 'Launches /quests/:id/ar with camera & GPS permission check',
                       stateNotes: 'Active emerald green -> Disabled if quest already completed',
-                      uxNotes: 'Prominent primary CTA to begin interactive verification.',
+                      uxNotes: 'Prominent primary CTA to begin interactive verification with in-app navigation shortcut.',
                       deferred: true,
                     ),
-                    child: PrimaryButton(
-                      label: 'Start Quest Experience (Simulated AR)',
-                      onPressed: () => _launchAR(context),
-                      icon: Icons.play_arrow_rounded,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: PrimaryButton(
+                            label: 'Start Quest (Simulated AR)',
+                            onPressed: () => _launchAR(context),
+                            icon: Icons.play_arrow_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        InkWell(
+                          onTap: () {
+                            context.push(
+                              '/navigate?lat=${quest.gpsLat}&lng=${quest.gpsLng}&name=${Uri.encodeComponent(quest.title)}&address=${Uri.encodeComponent(quest.locationName)}',
+                            );
+                          },
+                          borderRadius: AppSpacing.roundedMd,
+                          child: Container(
+                            height: 50,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerLow,
+                              borderRadius: AppSpacing.roundedMd,
+                              border: Border.all(color: AppColors.borderLowContrast),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.navigation_rounded, size: 18, color: AppColors.primary),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Route',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+
 
                   const SizedBox(height: AppSpacing.sectionGap),
                 ],

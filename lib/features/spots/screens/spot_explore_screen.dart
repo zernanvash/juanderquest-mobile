@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -48,12 +49,12 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     });
   }
 
-  Future<void> _launchDirections(SpotModel spot) async {
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${spot.gpsLat},${spot.gpsLng}');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  void _launchDirections(SpotModel spot) {
+    context.push(
+      '/navigate?lat=${spot.gpsLat}&lng=${spot.gpsLng}&name=${Uri.encodeComponent(spot.name)}&address=${Uri.encodeComponent(spot.address.isNotEmpty ? spot.address : spot.municipality)}',
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {

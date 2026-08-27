@@ -3,9 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/map_config.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -95,12 +95,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     }
   }
 
-  Future<void> _launchDirections(double lat, double lng) async {
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  void _navigateTo(String name, String address, double lat, double lng) {
+    context.push(
+      '/navigate?lat=$lat&lng=$lng&name=${Uri.encodeComponent(name)}&address=${Uri.encodeComponent(address)}',
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -506,8 +506,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             children: [
               // Navigate Button
               GestureDetector(
-                onTap: () => _launchDirections(lat, lng),
+                onTap: () => _navigateTo(title, location, lat, lng),
                 child: Container(
+
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: const BoxDecoration(
                     color: AppColors.primary,

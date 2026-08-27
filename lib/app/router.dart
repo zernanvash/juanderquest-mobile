@@ -21,7 +21,10 @@ import '../features/quests/models/campaign_model.dart';
 import '../features/spots/models/spot_model.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/about/screens/about_screen.dart';
+import '../features/navigation/models/route_model.dart';
+import '../features/navigation/screens/navigation_screen.dart';
 import 'main_shell.dart';
+
 
 CustomTransitionPage buildDirectionalSlidePage<T>({
   required BuildContext context,
@@ -216,6 +219,35 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const AboutScreen(),
         ),
       ),
+      GoRoute(
+        path: '/navigate',
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          NavTarget destination;
+          if (extra is NavTarget) {
+            destination = extra;
+          } else {
+            final lat = double.tryParse(state.uri.queryParameters['lat'] ?? '') ?? 16.2045;
+            final lng = double.tryParse(state.uri.queryParameters['lng'] ?? '') ?? 120.0435;
+            final name = state.uri.queryParameters['name'] ?? 'Hundred Islands';
+            final address = state.uri.queryParameters['address'] ?? 'Alaminos City, Pangasinan';
+            destination = NavTarget(
+              name: name,
+              lat: lat,
+              lng: lng,
+              address: address,
+            );
+          }
+
+          return buildDirectionalSlidePage(
+            context: context,
+            state: state,
+            child: NavigationScreen(destination: destination),
+          );
+        },
+      ),
+
     ],
   );
 });
+
