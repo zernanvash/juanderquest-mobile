@@ -687,11 +687,18 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen> with Si
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.help_outline, color: Color(0xFFFFB703), size: 24),
+                            icon: const Icon(Icons.view_in_ar_rounded, color: Color(0xFFFFB703), size: 24),
+                            tooltip: 'AR 3D Sandbox',
+                            onPressed: () => context.push('/ar-playground'),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.help_outline, color: Colors.white70, size: 24),
+                            tooltip: 'Help',
                             onPressed: _showARHelpDialog,
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 8),
                       // GPS & Distance HUD Card
                       UiSpecContainer(
