@@ -10,6 +10,13 @@ import '../../submissions/providers/submission_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../../core/widgets/designer_guide.dart';
+import '../engine/spatial_math.dart';
+import '../engine/shapes_factory.dart';
+import '../controllers/sensor_fusion_controller.dart';
+import '../widgets/ar_camera_viewport.dart';
+import '../widgets/ar_radar_compass_hud.dart';
+import '../widgets/world_anchored_overlay.dart';
+
 
 class ARExperienceScreen extends ConsumerStatefulWidget {
   final QuestModel? quest;
@@ -550,34 +557,57 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen> with Si
     }
 
     final subState = ref.watch(submissionProvider);
+    final sensorOrientation = ref.watch(sensorFusionProvider);
+
+    final currentLat = _currentPosition?.latitude ?? _quest!.gpsLat;
+    final currentLng = _currentPosition?.longitude ?? _quest!.gpsLng;
+    final targetBearing = SpatialMath.calculateBearing(
+      fromLat: currentLat,
+      fromLng: currentLng,
+      toLat: _quest!.gpsLat,
+      toLng: _quest!.gpsLng,
+    );
+    final relativeAzimuth = SpatialMath.normalizeAngleDelta(
+      targetBearing,
+      sensorOrientation.headingDegrees,
+    );
+
+    final screenSize = MediaQuery.of(context).size;
+    final projectedPoint = SpatialMath.projectWorldToScreen(
+      relativeAzimuthDeg: relativeAzimuth,
+      pitchDeg: sensorOrientation.pitchDegrees,
+      distanceMeters: distanceMeters ?? 25.0,
+      screenSize: screenSize,
+    );
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Viewfinder Background
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF1B1C1A), Color(0xFF2D2A26)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: Center(
-              child: Opacity(
-                opacity: 0.25,
-                child: Image.network(
-                  _quest!.markerImageUrl,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.qr_code_scanner, size: 180, color: Color(0xFFD5C4AC)),
-                ),
-              ),
-            ),
-          ),
+          // 1. Live Hardware Camera Viewport Feed
+          const ArCameraViewport(),
 
-          // Reticle & 3D AR Target Area
+          // 2. World-Anchored 3D Spatial Overlay
+          if (!_markerDetected)
+            WorldAnchoredOverlay(
+              point: projectedPoint,
+              questTitle: _quest!.title,
+              shapeType: ShapeType.token,
+              onTap: () {
+                setState(() => _markerDetected = true);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: const Color(0xFF2D6A4F),
+                    content: Text(
+                      '✨ Quest Target Acquired! Ready to submit proof.',
+                      style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+          // 3. Central Reticle & Scanning Frame
           Center(
             child: UiSpecContainer(
               spec: const UiSpec(
@@ -603,7 +633,7 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen> with Si
             ),
           ),
 
-          // Animated Coin
+          // 4. Animated 3D Relic when Detected / Claimed
           if (_markerDetected)
             Center(
               child: disableAnimations
@@ -643,30 +673,46 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen> with Si
                     ),
             ),
 
-          // Header HUD
+          // 5. Header HUD with 360° Radar & GPS Guards
           SafeArea(
             child: Column(
               children: [
-                // Disclosure Banner
-                Container(
-                  width: double.infinity,
-                  color: const Color(0xFF7D5800).withValues(alpha: 0.9),
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-                  child: Text(
-                    'AR PROTOTYPE MODE — Simulated Scanning',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
+                // Top Radar & Distance Telemetry
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ArRadarCompassHud(
+                        deviceHeading: sensorOrientation.headingDegrees,
+                        targetBearing: targetBearing,
+                        relativeAzimuth: relativeAzimuth,
+                        distanceMeters: distanceMeters ?? 0.0,
+                        isVisibleInFov: projectedPoint.isVisibleInViewport,
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7D5800).withOpacity(0.85),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Tier 3: Geo-Spatial AR',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Column(
                     children: [
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
