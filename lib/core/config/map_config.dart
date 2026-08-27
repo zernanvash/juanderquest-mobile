@@ -1,13 +1,13 @@
 class MapConfig {
-  /// CartoDB Voyager Vector-rendered retina raster tiles (Crisp, warm, modern vector aesthetic)
-  static const String tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png';
-  static const List<String> subdomains = ['a', 'b', 'c', 'd'];
-  static const String fallbackTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-  static const String userAgentPackageName = 'dev.zernanvash.juanderquest';
+  /// OpenStreetMap Standard Tile Layer (100% Free, Zero Watermarks, Zero API Key Required)
+  static const String tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  static const List<String> subdomains = [];
 
-  // Vector style JSON references for GL renderers
-  static const String vectorStyleUrl = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
-  static const String fallbackStyleUrl = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+  /// OpenStreetMap Humanitarian (HOT) Warm Pastel Style (Zero Watermarks)
+  static const String hotTileUrl = 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png';
+  static const List<String> hotSubdomains = ['a', 'b', 'c'];
+
+  static const String userAgentPackageName = 'dev.zernanvash.juanderquest';
 
   // Pangasinan Default Coordinates
   static const double pangasinanLat = 16.0350;
