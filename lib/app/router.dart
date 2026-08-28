@@ -6,6 +6,7 @@ import '../features/auth/screens/demo_login_screen.dart';
 import '../features/quests/screens/quest_detail_screen.dart';
 import '../features/ar_experience/screens/ar_experience_screen.dart';
 import '../features/ar_experience/screens/ar_playground_screen.dart';
+import '../features/ar_experience/screens/ar_test_screen.dart';
 import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
@@ -255,9 +256,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const ArPlaygroundScreen(),
         ),
       ),
+      GoRoute(
+        path: '/ar-test',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const ArTestScreen(),
+        ),
+      ),
     ],
   );
 });
+
 
 
 

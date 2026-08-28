@@ -505,8 +505,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               color: Colors.transparent,
               child: ListTile(
                 shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-                onTap: () => context.push('/ar-playground'),
+                onTap: () => context.push('/ar-test'),
+                contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.sunGold.withOpacity(0.2),
+                    borderRadius: AppSpacing.roundedMd,
+                  ),
+                  child: const Icon(
+                    Icons.view_in_ar_rounded,
+                    color: AppColors.woodBrown,
+                    size: 24,
+                  ),
+                ),
+                title: Text(
+                  'AR Spatial Viewfinder & Testbed',
+                  style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  'Live camera feed, 3D object summoner (box, cone), and sensor calibration.',
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              ),
+            ),
+          ),
 
+          const SizedBox(height: AppSpacing.sm),
+
+          // AR 3D Shapes Sandbox Tile
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: AppSpacing.roundedLg,
+              border: Border.all(color: AppColors.borderLowContrast),
+              boxShadow: AppSpacing.cardShadow,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: ListTile(
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+                onTap: () => context.push('/ar-playground'),
                 contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
                 leading: Container(
                   padding: const EdgeInsets.all(10),
@@ -515,13 +555,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     borderRadius: AppSpacing.roundedMd,
                   ),
                   child: const Icon(
-                    Icons.view_in_ar_rounded,
+                    Icons.token_rounded,
                     color: AppColors.primary,
                     size: 24,
                   ),
                 ),
                 title: Text(
-                  'AR 3D Engine Sandbox',
+                  'AR 3D Geometry Studio',
                   style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
@@ -532,6 +572,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
           ),
+
 
 
           const SizedBox(height: AppSpacing.sectionGap),

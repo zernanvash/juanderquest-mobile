@@ -39,63 +39,69 @@ class ArRadarCompassHud extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 360° Mini Radar
-              SizedBox(
-                width: 32,
-                height: 32,
-                child: CustomPaint(
-                  painter: _MiniRadarPainter(
-                    deviceHeading: deviceHeading,
-                    targetBearing: targetBearing,
-                    relativeAzimuth: relativeAzimuth,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
+          child: FittedBox(
 
-              // Distance & Heading Telemetry Text
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${distanceMeters.toStringAsFixed(0)}m',
-                        style: GoogleFonts.epilogue(
-                          color: AppColors.sunGold,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '(${targetBearing.toStringAsFixed(0)}° ${_getCardinalDirection(targetBearing)})',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white70,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    isVisibleInFov ? 'Target in Viewfinder' : 'Search physical surroundings',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: isVisibleInFov ? const Color(0xFF52B788) : Colors.white60,
-                      fontSize: 9.5,
-                      fontWeight: isVisibleInFov ? FontWeight.bold : FontWeight.normal,
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 360° Mini Radar
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CustomPaint(
+                    painter: _MiniRadarPainter(
+                      deviceHeading: deviceHeading,
+                      targetBearing: targetBearing,
+                      relativeAzimuth: relativeAzimuth,
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(width: 8),
+
+                // Distance & Heading Telemetry Text
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${distanceMeters.toStringAsFixed(0)}m',
+                          style: GoogleFonts.epilogue(
+                            color: AppColors.sunGold,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '(${targetBearing.toStringAsFixed(0)}° ${_getCardinalDirection(targetBearing)})',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      isVisibleInFov ? 'Target in Viewfinder' : 'Search physical surroundings',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: isVisibleInFov ? const Color(0xFF52B788) : Colors.white60,
+                        fontSize: 9.5,
+                        fontWeight: isVisibleInFov ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
+
 
         // 2. Off-Screen Directional Indicator Chevrons
         if (!isVisibleInFov) _buildOffScreenIndicator(context),

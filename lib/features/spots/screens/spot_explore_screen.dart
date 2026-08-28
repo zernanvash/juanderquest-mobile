@@ -66,7 +66,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
     return JdqScaffold(
       appBar: AppBar(
-        titleSpacing: 16,
+        titleSpacing: 12,
         title: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
@@ -105,13 +105,31 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
         ),
         actions: [
           IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             icon: Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: AppColors.sunGold.withOpacity(0.25),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.sunGold.withOpacity(0.6), width: 1.2),
+              ),
+              child: const Icon(Icons.view_in_ar_rounded, color: AppColors.woodBrown, size: 18),
+            ),
+            tooltip: 'AR Spatial Viewfinder & Test Bench',
+            onPressed: () => context.push('/ar-test'),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            icon: Container(
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+              child: const Icon(Icons.search_rounded, color: AppColors.primary, size: 18),
             ),
             tooltip: 'Search & Filters',
             onPressed: () => context.push('/search'),
@@ -120,6 +138,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
         ],
       ),
       body: RefreshIndicator(
+
         onRefresh: () => _load(refresh: true),
         color: AppColors.primary,
         child: ListView(

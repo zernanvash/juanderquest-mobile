@@ -33,6 +33,8 @@ import 'package:juanderquest_app/features/about/screens/about_screen.dart';
 import 'package:juanderquest_app/features/navigation/models/route_model.dart';
 import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
 import 'package:juanderquest_app/features/ar_experience/screens/ar_playground_screen.dart';
+import 'package:juanderquest_app/features/ar_experience/screens/ar_test_screen.dart';
+
 
 
 
@@ -351,7 +353,16 @@ void main() {
     testWidgets('ArPlaygroundScreen does not overflow in small portrait', (tester) async {
       await testScreenOverflow(tester, const ArPlaygroundScreen(), const Size(320, 568), 2.0);
     });
+
+    testWidgets('ArTestScreen does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(tester, const ArTestScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('ArTestScreen does not overflow in small landscape', (tester) async {
+      await testScreenOverflow(tester, const ArTestScreen(), const Size(568, 320), 2.0);
+    });
   });
 }
+
 
 
