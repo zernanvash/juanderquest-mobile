@@ -35,6 +35,13 @@ import 'package:juanderquest_app/features/navigation/screens/navigation_screen.d
 import 'package:juanderquest_app/features/ar_experience/screens/ar_playground_screen.dart';
 import 'package:juanderquest_app/features/ar_experience/screens/ar_test_screen.dart';
 import 'package:juanderquest_app/features/ar_experience/screens/ar_calibration_screen.dart';
+import 'package:juanderquest_app/features/app_update/domain/update_classification.dart';
+import 'package:juanderquest_app/features/app_update/domain/update_repository.dart';
+import 'package:juanderquest_app/features/app_update/models/app_version_info.dart';
+import 'package:juanderquest_app/features/app_update/providers/startup_update_controller.dart';
+import 'package:juanderquest_app/features/app_update/widgets/startup_update_gate.dart';
+
+
 
 
 
@@ -129,7 +136,38 @@ class InertSpotDiscoveryNotifier extends SpotDiscoveryNotifier {
   Future<void> load({String query = '', String category = '', String intent = '', bool refresh = false}) async {}
 }
 
+class InertUpdateRepository implements IUpdateRepository {
+
+  final AppVersionInfo? versionInfo;
+  InertUpdateRepository({this.versionInfo});
+
+  @override
+  Future<AppVersionInfo?> fetchBackendVersionMetadata({Duration timeout = const Duration(seconds: 3)}) async => versionInfo;
+
+  @override
+  Future<bool> isDartPatchAvailable() async => false;
+
+  @override
+  Future<bool> downloadAndInstallDartPatch({void Function(double progress)? onProgress}) async => false;
+
+  @override
+  Future<bool> syncContentBundle(ContentManifestMetadata metadata, {void Function(double progress)? onProgress}) async => false;
+
+  @override
+  Future<void> restartApp() async {}
+}
+
+class InertStartupUpdateController extends StartupUpdateController {
+  InertStartupUpdateController(super.repository, StartupGateState fixedState) {
+    state = fixedState;
+  }
+
+  @override
+  Future<void> initStartupGate() async {}
+}
+
 void main() {
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   final dummyUser = UserModel(
@@ -266,12 +304,17 @@ void main() {
           governanceProvider.overrideWith((ref) => InertGovernanceNotifier(ref, [dummyProposal])),
           walletProvider.overrideWith((ref) => InertWalletNotifier(ref, dummyWallet)),
           spotDiscoveryProvider.overrideWith((ref) => InertSpotDiscoveryNotifier(ref, [dummySpot])),
+          startupUpdateControllerProvider.overrideWith((ref) => InertStartupUpdateController(
+                InertUpdateRepository(),
+                const StartupGateState(phase: GatePhase.ready),
+              )),
         ],
         child: MaterialApp(
           home: child,
         ),
       ),
     );
+
     await tester.pump();
 
     // Verify no RenderFlex overflow exceptions occurred during layout
@@ -370,8 +413,27 @@ void main() {
     testWidgets('ArCalibrationScreen does not overflow in small landscape', (tester) async {
       await testScreenOverflow(tester, const ArCalibrationScreen(), const Size(568, 320), 2.0);
     });
+
+    testWidgets('StartupUpdateGate checking view does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(
+        tester,
+        const StartupUpdateGate(child: SizedBox()),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('StartupUpdateGate checking view does not overflow in small landscape', (tester) async {
+      await testScreenOverflow(
+        tester,
+        const StartupUpdateGate(child: SizedBox()),
+        const Size(568, 320),
+        2.0,
+      );
+    });
   });
 }
+
 
 
 

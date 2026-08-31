@@ -5,6 +5,8 @@ import 'package:juanderquest_app/app/app.dart';
 void main() {
   testWidgets('App renders without error', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: JuanderQuestApp()));
-    expect(find.textContaining('Traveler'), findsWidgets);
+    await tester.pump();
+    expect(find.textContaining('JuanDerQuest'), findsWidgets);
   });
 }
+
