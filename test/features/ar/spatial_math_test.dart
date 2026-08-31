@@ -51,13 +51,14 @@ void main() {
       expect(deltaBehind.abs(), closeTo(180.0, 0.01));
     });
 
-    test('Projects 3D spatial points to screen coordinates with depth scaling', () {
+    test('Projects 3D spatial points to screen coordinates with depth scaling and roll compensation', () {
       const screenSize = Size(360, 800);
 
       // Target directly centered in front of camera (0° azimuth, 0° pitch) at 20m
       final point = SpatialMath.projectWorldToScreen(
         relativeAzimuthDeg: 0.0,
         pitchDeg: 0.0,
+        rollDeg: 0.0,
         distanceMeters: 20.0,
         screenSize: screenSize,
       );
@@ -67,6 +68,41 @@ void main() {
       expect(point.offset.dy, closeTo(400.0, 1.0)); // Centered vertically
       expect(point.scaleFactor, greaterThan(1.0));   // Close distance = larger scale
       expect(point.opacity, closeTo(1.0, 0.01));
+      expect(point.isInReticleLockCone, isTrue);
+    });
+
+    test('Correctly calculates optical pitch perspective when device tilts up/down', () {
+      // When target is at horizon (0°) and camera tilts UP (+20°), relative pitch is -20°
+      final relativePitch = SpatialMath.calculateRelativePitch(
+        targetElevationDeg: 0.0,
+        devicePitchDeg: 20.0,
+      );
+      expect(relativePitch, closeTo(-20.0, 0.01));
+
+      const screenSize = Size(360, 800);
+      final point = SpatialMath.projectWorldToScreen(
+        relativeAzimuthDeg: 0.0,
+        pitchDeg: relativePitch,
+        distanceMeters: 20.0,
+        screenSize: screenSize,
+      );
+
+      // Moving camera up must render the horizon object lower on screen (dy > 400)
+      expect(point.offset.dy, greaterThan(400.0));
+    });
+
+    test('Keeps signed camera roll compensation consistent', () {
+      const screenSize = Size(360, 800);
+      final point = SpatialMath.projectWorldToScreen(
+        relativeAzimuthDeg: 10.0,
+        pitchDeg: 0.0,
+        rollDeg: -30.0,
+        distanceMeters: 20.0,
+        screenSize: screenSize,
+      );
+
+      expect(point.offset.dx, greaterThan(screenSize.width / 2));
+      expect(point.offset.dy, lessThan(screenSize.height / 2));
     });
 
     test('Identifies off-screen directional hints correctly', () {

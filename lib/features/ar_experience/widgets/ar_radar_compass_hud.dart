@@ -8,6 +8,7 @@ class ArRadarCompassHud extends StatelessWidget {
   final double deviceHeading;
   final double targetBearing;
   final double relativeAzimuth;
+  final double relativePitch;
   final double distanceMeters;
   final bool isVisibleInFov;
 
@@ -16,19 +17,22 @@ class ArRadarCompassHud extends StatelessWidget {
     required this.deviceHeading,
     required this.targetBearing,
     required this.relativeAzimuth,
+    this.relativePitch = 0.0,
     required this.distanceMeters,
     required this.isVisibleInFov,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 1. Top Radar & Distance Telemetry Card
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.72),
+            color: Colors.black.withOpacity(0.75),
             borderRadius: AppSpacing.roundedPill,
             border: Border.all(color: Colors.white24),
             boxShadow: const [
@@ -40,7 +44,6 @@ class ArRadarCompassHud extends StatelessWidget {
             ],
           ),
           child: FittedBox(
-
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Row(
@@ -88,9 +91,9 @@ class ArRadarCompassHud extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      isVisibleInFov ? 'Target in Viewfinder' : 'Search physical surroundings',
+                      isVisibleInFov ? '🎯 Target in Viewfinder' : '🧭 Turn towards marker',
                       style: GoogleFonts.plusJakartaSans(
-                        color: isVisibleInFov ? const Color(0xFF52B788) : Colors.white60,
+                        color: isVisibleInFov ? const Color(0xFF52B788) : Colors.white70,
                         fontSize: 9.5,
                         fontWeight: isVisibleInFov ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -102,57 +105,68 @@ class ArRadarCompassHud extends StatelessWidget {
           ),
         ),
 
-
         // 2. Off-Screen Directional Indicator Chevrons
-        if (!isVisibleInFov) _buildOffScreenIndicator(context),
+        if (!isVisibleInFov) ...[
+          const SizedBox(height: 8),
+          _buildOffScreenIndicator(context),
+        ],
       ],
     );
   }
 
   Widget _buildOffScreenIndicator(BuildContext context) {
+    final isBehind = relativeAzimuth.abs() > 120.0;
     final isLeft = relativeAzimuth < 0;
     final angleAbs = relativeAzimuth.abs().toStringAsFixed(0);
 
-    return Align(
-      alignment: isLeft ? Alignment.centerLeft : Alignment.centerRight,
-      child: Container(
-        margin: EdgeInsets.only(
-          left: isLeft ? 12 : 0,
-          right: isLeft ? 0 : 12,
-          top: 100,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.9),
-          borderRadius: AppSpacing.roundedLg,
-          border: Border.all(color: Colors.white38),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black45,
-              blurRadius: 12,
-              offset: Offset(0, 3),
+    String label;
+    IconData icon;
+
+    if (isBehind) {
+      label = 'Turn Around ($angleAbs°)';
+      icon = Icons.u_turn_left_rounded;
+    } else if (relativePitch < -30.0) {
+      label = 'Tilt Down (${relativePitch.abs().toStringAsFixed(0)}°)';
+      icon = Icons.arrow_downward_rounded;
+    } else if (relativePitch > 30.0) {
+      label = 'Tilt Up (${relativePitch.abs().toStringAsFixed(0)}°)';
+      icon = Icons.arrow_upward_rounded;
+    } else if (isLeft) {
+      label = 'Turn Left $angleAbs°';
+      icon = Icons.arrow_back_ios_rounded;
+    } else {
+      label = 'Turn Right $angleAbs°';
+      icon = Icons.arrow_forward_ios_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.92),
+        borderRadius: AppSpacing.roundedPill,
+        border: Border.all(color: AppColors.sunGold.withOpacity(0.6), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black45,
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppColors.sunGold, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 10.5,
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isLeft)
-              const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 14),
-            const SizedBox(width: 4),
-            Text(
-              isLeft ? 'Turn Left $angleAbs°' : 'Turn Right $angleAbs°',
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-            const SizedBox(width: 4),
-            if (!isLeft)
-              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -204,7 +218,7 @@ class _MiniRadarPainter extends CustomPainter {
       fovPaint,
     );
 
-    // 3. North Indicator ('N')
+    // 3. North Indicator ('N' Red Dot)
     final northAngleRad = (-deviceHeading - 90) * math.pi / 180;
     final northPt = Offset(
       center.dx + (radius - 5) * math.cos(northAngleRad),

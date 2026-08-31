@@ -85,6 +85,7 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
   double _fps = 60.0;
   int _frameCount = 0;
   DateTime _lastFpsUpdate = DateTime.now();
+  late final TimingsCallback _timingsCallback;
 
   @override
   void initState() {
@@ -94,9 +95,9 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
       duration: const Duration(seconds: 4),
     )..repeat();
 
-    SchedulerBinding.instance.addPersistentFrameCallback((_) {
+    _timingsCallback = (timings) {
       if (!mounted) return;
-      _frameCount++;
+      _frameCount += timings.length;
       final now = DateTime.now();
       final elapsed = now.difference(_lastFpsUpdate).inMilliseconds;
       if (elapsed >= 500) {
@@ -106,22 +107,31 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
           _lastFpsUpdate = now;
         });
       }
-    });
-
-    // Auto-summon a test box in front on launch
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _summonObject(ShapeType.crate);
-    });
+    };
+    SchedulerBinding.instance.addTimingsCallback(_timingsCallback);
   }
 
   @override
   void dispose() {
+    SchedulerBinding.instance.removeTimingsCallback(_timingsCallback);
     _spinController.dispose();
     super.dispose();
   }
 
   void _summonObject(ShapeType type) {
     final sensor = ref.read(sensorFusionProvider);
+    if (!sensor.hasHardwareSensors ||
+        !sensor.isCalibrated ||
+        !sensor.isHeadingReliable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Compass is not ready. Keep the phone upright and calibrate first.',
+          ),
+        ),
+      );
+      return;
+    }
     final newObj = SummonedArObject(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       shapeType: type,
@@ -203,6 +213,7 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
             final projectedPoint = SpatialMath.projectWorldToScreen(
               relativeAzimuthDeg: relativeAzimuth,
               pitchDeg: relativePitch,
+              rollDeg: sensorOrientation.rollDegrees,
               distanceMeters: obj.distanceMeters,
               screenSize: screenSize,
             );
@@ -237,7 +248,7 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
                                 const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
                                 const SizedBox(width: 8),
                                 Text(
-                                  '🎯 Raycast Hit: ${_getShapeName(obj.shapeType)} (+50 mJDQ Claimed)',
+                                  'Raycast hit: ${_getShapeName(obj.shapeType)}',
                                   style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold),
                                 ),
                               ],
@@ -334,6 +345,7 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
                           _summonedObjects.first.worldBearingDeg,
                           sensorOrientation.headingDegrees,
                         ),
+                        relativePitch: _summonedObjects.first.worldPitchDeg - sensorOrientation.pitchDegrees,
                         distanceMeters: _summonedObjects.first.distanceMeters,
                         isVisibleInFov: SpatialMath.projectWorldToScreen(
                           relativeAzimuthDeg: SpatialMath.normalizeAngleDelta(
@@ -341,6 +353,7 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
                             sensorOrientation.headingDegrees,
                           ),
                           pitchDeg: _summonedObjects.first.worldPitchDeg - sensorOrientation.pitchDegrees,
+                          rollDeg: sensorOrientation.rollDegrees,
                           distanceMeters: _summonedObjects.first.distanceMeters,
                           screenSize: screenSize,
                         ).isVisibleInViewport,
@@ -401,6 +414,11 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
                 ],
               ),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.explore_rounded, color: AppColors.sunGold, size: 20),
+            tooltip: 'Calibrate Compass',
+            onPressed: () => context.push('/ar-calibration?returnTo=/ar-test'),
           ),
           IconButton(
             icon: Icon(

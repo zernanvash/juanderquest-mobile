@@ -1,17 +1,19 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'vector3d.dart';
-
 
 /// Represents a single triangular or quad polygon face of a 3D mesh.
 class PolygonFace {
   final List<int> vertexIndices;
   final Color baseColor;
   final bool isDoubleSided;
+  final double shininess; // 0 for matte, 16..64 for metallic / crystal shine
 
   const PolygonFace({
     required this.vertexIndices,
     required this.baseColor,
     this.isDoubleSided = false,
+    this.shininess = 32.0,
   });
 
   /// Computes the face normal in world space.
@@ -62,26 +64,39 @@ class Mesh3D {
     }).toList();
   }
 
-  /// Calculates shaded surface color based on Lambertian diffuse + ambient lighting.
+  /// Calculates shaded surface color based on Blinn-Phong lighting model
+  /// (Ambient + Lambertian Diffuse + Specular Highlights).
   static Color calculateShading({
     required Color baseColor,
     required Vector3D normal,
     required Vector3D lightDirection,
-    double ambient = 0.35,
-    double diffuse = 0.65,
+    double ambient = 0.38,
+    double diffuse = 0.58,
+    double specular = 0.35,
+    double shininess = 24.0,
   }) {
     final normLight = lightDirection.normalize();
-    // Lambert's cosine law (dot product of normal & light vector)
-    double intensity = normal.dot(normLight);
-    if (intensity < 0) intensity = 0;
+    // 1. Diffuse component (Lambert's cosine law)
+    double diffuseIntensity = normal.dot(normLight);
+    if (diffuseIntensity < 0) diffuseIntensity = 0;
 
-    final totalLight = (ambient + diffuse * intensity).clamp(0.0, 1.0);
+    // 2. Specular component (Blinn-Phong halfway vector towards camera V=(0,0,1))
+    const viewDir = Vector3D(0, 0, 1);
+    final halfway = (normLight + viewDir).normalize();
+    double specIntensity = normal.dot(halfway);
+    if (specIntensity > 0 && diffuseIntensity > 0) {
+      specIntensity = math.pow(specIntensity, shininess).toDouble();
+    } else {
+      specIntensity = 0.0;
+    }
 
-    return Color.fromARGB(
-      baseColor.alpha,
-      (baseColor.red * totalLight).round().clamp(0, 255),
-      (baseColor.green * totalLight).round().clamp(0, 255),
-      (baseColor.blue * totalLight).round().clamp(0, 255),
-    );
+    final totalLight = (ambient + diffuse * diffuseIntensity).clamp(0.0, 1.0);
+    final specularAdd = (specular * specIntensity * 255.0).round().clamp(0, 255);
+
+    final r = ((baseColor.red * totalLight).round() + specularAdd).clamp(0, 255);
+    final g = ((baseColor.green * totalLight).round() + specularAdd).clamp(0, 255);
+    final b = ((baseColor.blue * totalLight).round() + specularAdd).clamp(0, 255);
+
+    return Color.fromARGB(baseColor.alpha, r, g, b);
   }
 }

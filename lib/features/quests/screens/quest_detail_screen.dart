@@ -11,6 +11,7 @@ import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../ar_experience/controllers/calibration_controller.dart';
 import '../models/quest_model.dart';
 import '../../../core/widgets/designer_guide.dart';
 
@@ -88,16 +89,19 @@ class _NotFound extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.explore_off_rounded, size: 64, color: AppColors.textMuted),
+            const Icon(Icons.explore_off_rounded,
+                size: 64, color: AppColors.textMuted),
             const SizedBox(height: AppSpacing.md),
             Text(
               'Quest Not Found',
-              style: AppTypography.headlineSmall.copyWith(color: AppColors.woodBrown),
+              style: AppTypography.headlineSmall
+                  .copyWith(color: AppColors.woodBrown),
             ),
             const SizedBox(height: 6),
             Text(
               'This quest details could not be retrieved.',
-              style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+              style: AppTypography.bodyMedium
+                  .copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: AppSpacing.xl),
             SizedBox(
@@ -115,11 +119,19 @@ class _NotFound extends StatelessWidget {
   }
 }
 
-class _DetailContent extends StatelessWidget {
+class _DetailContent extends ConsumerWidget {
   final QuestModel quest;
   const _DetailContent({required this.quest});
 
-  Future<void> _launchAR(BuildContext context) async {
+  Future<void> _launchAR(BuildContext context, WidgetRef ref) async {
+    final isCalibrated = ref.read(calibrationProvider).isCalibrated;
+    if (!isCalibrated) {
+      if (context.mounted) {
+        context.push('/ar-calibration?returnTo=/quests/${quest.id}/ar');
+      }
+      return;
+    }
+
     final cameraStatus = await Permission.camera.request();
     final locationStatus = await Permission.locationWhenInUse.request();
 
@@ -132,7 +144,8 @@ class _DetailContent extends StatelessWidget {
         GlobalErrorDialog.show(
           context,
           title: 'Permissions Required',
-          message: 'JuanderQuest uses camera to recognize destination markers and location services to verify quest completion radius.',
+          message:
+              'JuanderQuest uses camera to recognize destination markers and location services to verify quest completion radius.',
           icon: Icons.security_rounded,
           iconColor: AppColors.danger,
           buttonText: 'Open Device Settings',
@@ -143,10 +156,12 @@ class _DetailContent extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isCalibrated = ref.watch(calibrationProvider).isCalibrated;
     final hasImage = quest.imageUrl != null &&
         quest.imageUrl!.isNotEmpty &&
-        (quest.imageUrl!.startsWith('http://') || quest.imageUrl!.startsWith('https://'));
+        (quest.imageUrl!.startsWith('http://') ||
+            quest.imageUrl!.startsWith('https://'));
 
     return JdqScaffold(
       padding: EdgeInsets.zero,
@@ -162,10 +177,14 @@ class _DetailContent extends StatelessWidget {
               spec: const UiSpec(
                 title: 'Quest Hero Photography & Bounty Pills',
                 figmaLayer: '#Quest_Detail_Hero_Image',
-                dimensions: 'Full width, AspectRatio: 16/9 (1080x608), Radius: 0dp',
-                dataBinding: 'quest.imageUrl / quest.categoryDisplay / quest.rewardPoints',
-                stateNotes: 'Network image with fallback asset placeholder + Gold Bounty Pill',
-                uxNotes: 'High-resolution Pangasinan destination photography with dark overlay gradient.',
+                dimensions:
+                    'Full width, AspectRatio: 16/9 (1080x608), Radius: 0dp',
+                dataBinding:
+                    'quest.imageUrl / quest.categoryDisplay / quest.rewardPoints',
+                stateNotes:
+                    'Network image with fallback asset placeholder + Gold Bounty Pill',
+                uxNotes:
+                    'High-resolution Pangasinan destination photography with dark overlay gradient.',
               ),
               child: Stack(
                 children: [
@@ -175,7 +194,8 @@ class _DetailContent extends StatelessWidget {
                         ? Image.network(
                             quest.imageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildHeaderPlaceholder(),
+                            errorBuilder: (_, __, ___) =>
+                                _buildHeaderPlaceholder(),
                           )
                         : _buildHeaderPlaceholder(),
                   ),
@@ -183,7 +203,8 @@ class _DetailContent extends StatelessWidget {
                     top: AppSpacing.md,
                     left: AppSpacing.md,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: const BoxDecoration(
                         color: AppColors.primaryDark,
                         borderRadius: AppSpacing.roundedPill,
@@ -202,7 +223,8 @@ class _DetailContent extends StatelessWidget {
                     top: AppSpacing.md,
                     right: AppSpacing.md,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: const BoxDecoration(
                         color: AppColors.surfaceContainerLowest,
                         borderRadius: AppSpacing.roundedPill,
@@ -210,7 +232,8 @@ class _DetailContent extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 16),
+                          const Icon(Icons.stars_rounded,
+                              color: AppColors.sunGold, size: 16),
                           const SizedBox(width: 4),
                           Text(
                             '+${quest.rewardPoints} PTS',
@@ -245,7 +268,8 @@ class _DetailContent extends StatelessWidget {
 
                   Row(
                     children: [
-                      const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 16),
+                      const Icon(Icons.location_on_rounded,
+                          color: AppColors.primary, size: 16),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -266,21 +290,26 @@ class _DetailContent extends StatelessWidget {
                         title: 'Live Overcrowding Diversion Card',
                         figmaLayer: '#Quest_Crowd_Pressure_Alert',
                         dimensions: 'Full width, Padding: 16dp, Radius: 16dp',
-                        dataBinding: 'quest.crowdStatus (estimated_busy / tranquil / moderate)',
-                        stateNotes: 'Displays warning alert when tourist congestion is high to redirect visitors',
-                        uxNotes: 'Amber/Coral alert container with warning icon and link to tranquil gems.',
+                        dataBinding:
+                            'quest.crowdStatus (estimated_busy / tranquil / moderate)',
+                        stateNotes:
+                            'Displays warning alert when tourist congestion is high to redirect visitors',
+                        uxNotes:
+                            'Amber/Coral alert container with warning icon and link to tranquil gems.',
                       ),
                       child: Container(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
                           color: AppColors.crowdBusyBg,
                           borderRadius: AppSpacing.roundedLg,
-                          border: Border.all(color: AppColors.crowdBusy.withOpacity(0.3)),
+                          border: Border.all(
+                              color: AppColors.crowdBusy.withOpacity(0.3)),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.warning_amber_rounded, color: AppColors.crowdBusy, size: 22),
+                            const Icon(Icons.warning_amber_rounded,
+                                color: AppColors.crowdBusy, size: 22),
                             const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Column(
@@ -298,7 +327,8 @@ class _DetailContent extends StatelessWidget {
                                   Text(
                                     'This destination is currently experiencing high foot traffic. Explore quieter hidden gems in the Explore tab for bonus rewards!',
                                     style: AppTypography.bodySmall.copyWith(
-                                      color: AppColors.crowdBusy.withOpacity(0.9),
+                                      color:
+                                          AppColors.crowdBusy.withOpacity(0.9),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -314,7 +344,8 @@ class _DetailContent extends StatelessWidget {
                   if (quest.campaignId != null) ...[
                     const SizedBox(height: AppSpacing.sm),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: AppColors.sunGold.withOpacity(0.15),
                         borderRadius: AppSpacing.roundedMd,
@@ -322,11 +353,15 @@ class _DetailContent extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.campaign_rounded, color: AppColors.woodBrown, size: 16),
+                          const Icon(Icons.campaign_rounded,
+                              color: AppColors.woodBrown, size: 16),
                           const SizedBox(width: 6),
                           Text(
                             'Sponsored Campaign: ${quest.remainingSlots ?? "Open"} reward slots available',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.woodBrown),
                           ),
                         ],
                       ),
@@ -340,10 +375,14 @@ class _DetailContent extends StatelessWidget {
                     spec: const UiSpec(
                       title: 'Quest Reward & GPS Guard Parameters Card',
                       figmaLayer: '#Quest_Specs_Metrics_Card',
-                      dimensions: 'Full width split card, Height: ~84dp, Radius: 16dp',
-                      dataBinding: 'quest.rewardPoints / quest.allowedRadiusMeters',
-                      stateNotes: 'Points pill + Radar icon with server-enforced radius constraint',
-                      uxNotes: 'Prominently clarifies physical verification constraints before travel.',
+                      dimensions:
+                          'Full width split card, Height: ~84dp, Radius: 16dp',
+                      dataBinding:
+                          'quest.rewardPoints / quest.allowedRadiusMeters',
+                      stateNotes:
+                          'Points pill + Radar icon with server-enforced radius constraint',
+                      uxNotes:
+                          'Prominently clarifies physical verification constraints before travel.',
                     ),
                     child: Container(
                       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -371,7 +410,8 @@ class _DetailContent extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 20),
+                                    const Icon(Icons.stars_rounded,
+                                        color: AppColors.sunGold, size: 20),
                                     const SizedBox(width: 6),
                                     Text(
                                       '${quest.rewardPoints} Points',
@@ -385,10 +425,14 @@ class _DetailContent extends StatelessWidget {
                               ],
                             ),
                           ),
-                          Container(width: 1, height: 40, color: AppColors.borderLowContrast),
+                          Container(
+                              width: 1,
+                              height: 40,
+                              color: AppColors.borderLowContrast),
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.only(left: AppSpacing.md),
+                              padding:
+                                  const EdgeInsets.only(left: AppSpacing.md),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -404,11 +448,13 @@ class _DetailContent extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
-                                      const Icon(Icons.radar_rounded, color: AppColors.primary, size: 20),
+                                      const Icon(Icons.radar_rounded,
+                                          color: AppColors.primary, size: 20),
                                       const SizedBox(width: 6),
                                       Text(
                                         'Within ${quest.allowedRadiusMeters}m',
-                                        style: AppTypography.labelLarge.copyWith(
+                                        style:
+                                            AppTypography.labelLarge.copyWith(
                                           color: AppColors.primary,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -446,35 +492,88 @@ class _DetailContent extends StatelessWidget {
                   _buildObjectiveStep(
                     stepNumber: '1',
                     title: 'Travel to Location',
-                    subtitle: 'Arrive within ${quest.allowedRadiusMeters}m of ${quest.locationName}.',
+                    subtitle:
+                        'Arrive within ${quest.allowedRadiusMeters}m of ${quest.locationName}.',
                     icon: Icons.directions_walk_rounded,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _buildObjectiveStep(
                     stepNumber: '2',
                     title: 'Locate Quest Marker',
-                    subtitle: 'Find the official heritage marker or destination landmark.',
+                    subtitle:
+                        'Find the official heritage marker or destination landmark.',
                     icon: Icons.qr_code_scanner_rounded,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _buildObjectiveStep(
                     stepNumber: '3',
                     title: 'Capture Evidence (Simulated AR)',
-                    subtitle: 'Use camera experience to submit GPS-verified photo proof.',
+                    subtitle:
+                        'Use camera experience to submit GPS-verified photo proof.',
                     icon: Icons.camera_alt_rounded,
                   ),
 
                   const SizedBox(height: AppSpacing.sectionGap),
+
+                  if (!isCalibrated) ...[
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: AppColors.sunGold.withOpacity(0.12),
+                        borderRadius: AppSpacing.roundedMd,
+                        border: Border.all(
+                            color: AppColors.sunGold.withOpacity(0.5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.explore_rounded,
+                              color: AppColors.woodBrown, size: 22),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Compass Calibration Recommended',
+                                  style: AppTypography.labelMedium.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.woodBrown),
+                                ),
+                                Text(
+                                  'Calibrate sensors for accurate 3D AR positioning.',
+                                  style: AppTypography.bodySmall
+                                      .copyWith(color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => context.push(
+                                '/ar-calibration?returnTo=/quests/${quest.id}/ar'),
+                            child: const Text('Calibrate',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
 
                   // Launch Simulated AR Action & Navigate Action
                   UiSpecContainer(
                     spec: const UiSpec(
                       title: 'Start Quest Experience CTA',
                       figmaLayer: '#Quest_Start_Action_Button',
-                      dimensions: 'Full width button, Height: 52dp, Radius: 12dp',
-                      dataBinding: 'Launches /quests/:id/ar with camera & GPS permission check',
-                      stateNotes: 'Active emerald green -> Disabled if quest already completed',
-                      uxNotes: 'Prominent primary CTA to begin interactive verification with in-app navigation shortcut.',
+                      dimensions:
+                          'Full width button, Height: 52dp, Radius: 12dp',
+                      dataBinding:
+                          'Launches /quests/:id/ar with camera & GPS permission check',
+                      stateNotes:
+                          'Active emerald green -> Disabled if quest already completed',
+                      uxNotes:
+                          'Prominent primary CTA to begin interactive verification with in-app navigation shortcut.',
                       deferred: true,
                     ),
                     child: Row(
@@ -482,7 +581,7 @@ class _DetailContent extends StatelessWidget {
                         Expanded(
                           child: PrimaryButton(
                             label: 'Start Quest (Simulated AR)',
-                            onPressed: () => _launchAR(context),
+                            onPressed: () => _launchAR(context, ref),
                             icon: Icons.play_arrow_rounded,
                           ),
                         ),
@@ -500,16 +599,21 @@ class _DetailContent extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: AppColors.surfaceContainerLow,
                               borderRadius: AppSpacing.roundedMd,
-                              border: Border.all(color: AppColors.borderLowContrast),
+                              border: Border.all(
+                                  color: AppColors.borderLowContrast),
                             ),
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.navigation_rounded, size: 18, color: AppColors.primary),
+                                Icon(Icons.navigation_rounded,
+                                    size: 18, color: AppColors.primary),
                                 SizedBox(width: 4),
                                 Text(
                                   'Route',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.woodBrown),
                                 ),
                               ],
                             ),
@@ -518,7 +622,6 @@ class _DetailContent extends StatelessWidget {
                       ],
                     ),
                   ),
-
 
                   const SizedBox(height: AppSpacing.sectionGap),
                 ],
@@ -561,12 +664,14 @@ class _DetailContent extends StatelessWidget {
               children: [
                 Text(
                   'Step $stepNumber: $title',
-                  style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                  style: AppTypography.labelLarge
+                      .copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                  style: AppTypography.bodySmall
+                      .copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),

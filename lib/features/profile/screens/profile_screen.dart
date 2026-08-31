@@ -493,6 +493,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
           const SizedBox(height: AppSpacing.sm),
 
+          // AR Sensor Calibration Tile
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: AppSpacing.roundedLg,
+              border: Border.all(color: AppColors.borderLowContrast),
+              boxShadow: AppSpacing.cardShadow,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: ListTile(
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+                onTap: () => context.push('/ar-calibration?returnTo=/profile'),
+                contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D6A4F).withOpacity(0.15),
+                    borderRadius: AppSpacing.roundedMd,
+                  ),
+                  child: const Icon(
+                    Icons.explore_rounded,
+                    color: Color(0xFF2D6A4F),
+                    size: 24,
+                  ),
+                ),
+                title: Text(
+                  'AR Sensor & Compass Calibration',
+                  style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  '3-step setup: Magnetometer figure-8 sweep, spirit bubble horizon level, and GPS sync.',
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
+
           // AR 3D Engine Sandbox Tile
           Container(
             decoration: BoxDecoration(

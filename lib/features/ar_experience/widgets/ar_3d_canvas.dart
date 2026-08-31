@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import '../engine/vector3d.dart';
 import '../engine/mesh3d.dart';
 
-
 enum RenderStyle {
   solid('Solid Shaded'),
   wireframe('Wireframe Glow'),
-  hybrid('Shaded + Wireframe');
+  hybrid('Shaded + Specular Glow');
 
   final String label;
   const RenderStyle(this.label);
@@ -32,7 +31,7 @@ class Ar3dCanvas extends StatelessWidget {
     required this.rotZ,
     this.scale = 100.0,
     this.renderStyle = RenderStyle.hybrid,
-    this.lightSource = const Vector3D(1.0, 1.5, 2.0),
+    this.lightSource = const Vector3D(1.2, 1.8, 2.2),
     this.wireframeColor,
     this.showShadow = true,
     this.onTap,
@@ -42,6 +41,7 @@ class Ar3dCanvas extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: CustomPaint(
         painter: _Ar3dPainter(
           mesh: mesh,
@@ -51,7 +51,7 @@ class Ar3dCanvas extends StatelessWidget {
           scale: scale,
           renderStyle: renderStyle,
           lightSource: lightSource,
-          wireframeColor: wireframeColor ?? Colors.white.withOpacity(0.4),
+          wireframeColor: wireframeColor ?? Colors.white.withOpacity(0.45),
           showShadow: showShadow,
         ),
         size: Size.infinite,
@@ -88,7 +88,7 @@ class _Ar3dPainter extends CustomPainter {
     final centerX = size.width / 2;
     final centerY = size.height / 2;
 
-    // 1. Transform Vertices
+    // 1. Transform Vertices in 3D Space
     final transformed = mesh.transform(
       rotX: rotX,
       rotY: rotY,
@@ -97,8 +97,8 @@ class _Ar3dPainter extends CustomPainter {
     );
 
     // 2. Perspective Projection Setup
-    const fov = 400.0;
-    const cameraDistance = 350.0;
+    const fov = 420.0;
+    const cameraDistance = 380.0;
 
     final projected = transformed.map((v) {
       final p = v.project(
@@ -110,19 +110,19 @@ class _Ar3dPainter extends CustomPainter {
       return Offset(p.x, p.y);
     }).toList();
 
-    // 3. Ground Shadow (Simulated AR Anchor)
+    // 3. Ground Shadow (Simulated Spatial Depth Anchor)
     if (showShadow) {
-      final shadowRadius = (scale * 0.75).clamp(20.0, 120.0);
-      final shadowY = centerY + scale * 1.3;
+      final shadowRadius = (scale * 0.70).clamp(18.0, 110.0);
+      final shadowY = centerY + scale * 1.25;
       final shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.25)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16);
+        ..color = Colors.black.withOpacity(0.30)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
 
       canvas.drawOval(
         Rect.fromCenter(
           center: Offset(centerX, shadowY),
           width: shadowRadius * 2,
-          height: shadowRadius * 0.5,
+          height: shadowRadius * 0.45,
         ),
         shadowPaint,
       );
@@ -142,14 +142,13 @@ class _Ar3dPainter extends CustomPainter {
       ..strokeWidth = 1.2
       ..color = wireframeColor;
 
-    // 5. Render Polygonal Faces
+    // 5. Render Polygonal Faces with Specular Highlights
     for (final face in sortedFaces) {
       if (face.vertexIndices.length < 3) continue;
 
       final normal = face.computeNormal(transformed);
 
       // Back-face Culling (unless double-sided)
-      // If normal.z < 0 (pointing away from screen), skip rendering for solid meshes
       if (!face.isDoubleSided && normal.z < -0.05 && renderStyle != RenderStyle.wireframe) {
         continue;
       }
@@ -164,24 +163,28 @@ class _Ar3dPainter extends CustomPainter {
       }
       path.close();
 
-      // Render Solid Fill with Lambertian Diffuse Lighting
+      // Render Solid Fill with Blinn-Phong Specular Diffuse Lighting
       if (renderStyle == RenderStyle.solid || renderStyle == RenderStyle.hybrid) {
         fillPaint.color = Mesh3D.calculateShading(
           baseColor: face.baseColor,
           normal: normal,
           lightDirection: lightSource,
-          ambient: 0.40,
-          diffuse: 0.60,
+          ambient: 0.38,
+          diffuse: 0.58,
+          specular: 0.32,
+          shininess: face.shininess,
         );
         canvas.drawPath(path, fillPaint);
       }
 
-      // Render Wireframe Outline
+      // Render Wireframe Outline / Specular Edges
       if (renderStyle == RenderStyle.wireframe || renderStyle == RenderStyle.hybrid) {
         if (renderStyle == RenderStyle.hybrid) {
           wirePaint.color = Colors.white.withOpacity(0.35);
+          wirePaint.strokeWidth = 1.0;
         } else {
-          wirePaint.color = face.baseColor.withOpacity(0.9);
+          wirePaint.color = face.baseColor.withOpacity(0.95);
+          wirePaint.strokeWidth = 1.4;
         }
         canvas.drawPath(path, wirePaint);
       }

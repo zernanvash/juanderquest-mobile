@@ -25,7 +25,8 @@ class ArPlaygroundScreen extends StatefulWidget {
   State<ArPlaygroundScreen> createState() => _ArPlaygroundScreenState();
 }
 
-class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTickerProviderStateMixin {
+class _ArPlaygroundScreenState extends State<ArPlaygroundScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ticker;
 
   // 3D Model State
@@ -44,7 +45,6 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
   // Environment & Light
   EnvironmentMode _environment = EnvironmentMode.studio;
   final Vector3D _lightSource = const Vector3D(1.0, 1.8, 2.2);
-
 
   // Interaction / Gamified Claim Feedback
   bool _isCollected = false;
@@ -92,9 +92,9 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
       SnackBar(
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16))),
         content: Row(
-
           children: [
             const Text('✨', style: TextStyle(fontSize: 22)),
             const SizedBox(width: 10),
@@ -105,11 +105,13 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
                 children: [
                   Text(
                     'Spatial Artifact Discovered!',
-                    style: GoogleFonts.epilogue(fontWeight: FontWeight.bold, color: Colors.white),
+                    style: GoogleFonts.epilogue(
+                        fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
-                    '+25 mJDQ added to your demo wallet',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.white70),
+                    'Spatial calibration saved for this app session',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12, color: Colors.white70),
                   ),
                 ],
               ),
@@ -126,7 +128,8 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final activeMesh = ShapesFactory.createShape(_currentShape, themeColor: _themeColor);
+    final activeMesh =
+        ShapesFactory.createShape(_currentShape, themeColor: _themeColor);
 
     return JdqScaffold(
       padding: EdgeInsets.zero,
@@ -137,7 +140,8 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.view_in_ar_rounded, color: AppColors.primary, size: 22),
+              const Icon(Icons.view_in_ar_rounded,
+                  color: AppColors.primary, size: 22),
               const SizedBox(width: 8),
               Text(
                 'AR 3D Engine Sandbox',
@@ -180,8 +184,10 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
                   figmaLayer: '#AR_3D_Viewport',
                   dimensions: 'Full Screen Viewport',
                   dataBinding: 'ShapesFactory -> Ar3dPainter',
-                  stateNotes: 'Real-time Lambertian diffuse shading with Painter Z-sorting',
-                  uxNotes: 'Smooth touch rotation (pan), scale (pinch), and tap-to-claim',
+                  stateNotes:
+                      'Real-time Lambertian diffuse shading with Painter Z-sorting',
+                  uxNotes:
+                      'Smooth touch rotation (pan), scale (pinch), and tap-to-claim',
                 ),
                 child: AnimatedScale(
                   scale: _isCollected ? 1.25 : 1.0,
@@ -215,7 +221,8 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.65),
                     borderRadius: AppSpacing.roundedPill,
@@ -238,7 +245,8 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.65),
                     borderRadius: AppSpacing.roundedLg,
@@ -251,28 +259,31 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
                         value: _environment,
                         isDense: true,
                         dropdownColor: const Color(0xFF1E293B),
-                        icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
-                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 11),
+                        icon: const Icon(Icons.arrow_drop_down,
+                            color: Colors.white, size: 18),
+                        style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white, fontSize: 11),
                         onChanged: (val) {
                           if (val != null) setState(() => _environment = val);
                         },
                         items: EnvironmentMode.values.map((env) {
                           return DropdownMenuItem(
                             value: env,
-                            child: Text(env.label, style: const TextStyle(fontSize: 11)),
+                            child: Text(env.label,
+                                style: const TextStyle(fontSize: 11)),
                           );
                         }).toList(),
                       ),
                     ),
                   ),
                 ),
-
               ],
             ),
           ),
 
           // 4. Center Camera HUD Reticle (when in Camera AR Mode)
-          if (_environment == EnvironmentMode.cameraView) _buildCameraHudReticle(),
+          if (_environment == EnvironmentMode.cameraView)
+            _buildCameraHudReticle(),
 
           // 5. Bottom Floating Shape & Material Tool Deck
           Positioned(
@@ -340,7 +351,8 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
             height: 180,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.sunGold.withOpacity(0.4), width: 1.5),
+              border: Border.all(
+                  color: AppColors.sunGold.withOpacity(0.4), width: 1.5),
             ),
             child: Center(
               child: Container(
@@ -408,7 +420,8 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
                   type.label,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                     color: isSelected ? Colors.white : Colors.white70,
                   ),
                 ),
@@ -419,12 +432,14 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
                   if (selected) {
                     setState(() {
                       _currentShape = type;
-                      if (type == ShapeType.token) _themeColor = const Color(0xFFFFB703);
-                      if (type == ShapeType.gem) _themeColor = const Color(0xFF2D6A4F);
-                      if (type == ShapeType.crate) _themeColor = const Color(0xFF582F0E);
-                      if (type == ShapeType.beacon) _themeColor = const Color(0xFFD90429);
-                      if (type == ShapeType.orb) _themeColor = const Color(0xFF0284C7);
-                      if (type == ShapeType.pyramid) _themeColor = const Color(0xFFE07A5F);
+                      _themeColor = switch (type) {
+                        ShapeType.token => const Color(0xFFFFB703),
+                        ShapeType.gem => const Color(0xFF2D6A4F),
+                        ShapeType.crate => const Color(0xFF582F0E),
+                        ShapeType.beacon => const Color(0xFFD90429),
+                        ShapeType.orb => const Color(0xFF0284C7),
+                        ShapeType.pyramid => const Color(0xFFE07A5F),
+                      };
                     });
                   }
                 },
@@ -454,21 +469,22 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
                       value: _renderStyle,
                       isDense: true,
                       dropdownColor: const Color(0xFF1E293B),
-                      style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 10),
+                      style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white, fontSize: 10),
                       onChanged: (val) {
                         if (val != null) setState(() => _renderStyle = val);
                       },
                       items: RenderStyle.values.map((style) {
                         return DropdownMenuItem(
                           value: style,
-                          child: Text(style.label, style: const TextStyle(fontSize: 10)),
+                          child: Text(style.label,
+                              style: const TextStyle(fontSize: 10)),
                         );
                       }).toList(),
                     ),
                   ),
                 ),
               ),
-
 
               // Color Palette Swatches
               Row(
@@ -507,7 +523,8 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
                 children: [
                   Text(
                     'Spin',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.white70),
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10, color: Colors.white70),
                   ),
                   Transform.scale(
                     scale: 0.65,
@@ -526,7 +543,6 @@ class _ArPlaygroundScreenState extends State<ArPlaygroundScreen> with SingleTick
     );
   }
 }
-
 
 /// Simple subtle grid pattern for Simulated Camera Mode.
 

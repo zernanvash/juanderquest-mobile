@@ -10,6 +10,7 @@ import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/jdq_search_field.dart';
 import '../../../core/widgets/quest_card.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../ar_experience/controllers/calibration_controller.dart';
 import '../../submissions/providers/submission_provider.dart';
 import '../models/campaign_model.dart';
 import '../models/quest_model.dart';
@@ -53,7 +54,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
 
   String _getQuestStatus(QuestModel quest) {
     final submissions = ref.read(submissionProvider).submissions;
-    final userSub = submissions.where((s) => s.questTitle == quest.title || s.id == quest.id).toList();
+    final userSub = submissions
+        .where((s) => s.questTitle == quest.title || s.id == quest.id)
+        .toList();
 
     if (userSub.any((s) => s.status == 'approved')) return 'COMPLETED';
     if (userSub.any((s) => s.status == 'pending')) return 'PENDING REVIEW';
@@ -76,7 +79,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
           q.categoryDisplay.toLowerCase().contains(query);
 
       final matchesCategory = _selectedCategory.isEmpty ||
-          q.categoryDisplay.toLowerCase().contains(_selectedCategory.toLowerCase());
+          q.categoryDisplay
+              .toLowerCase()
+              .contains(_selectedCategory.toLowerCase());
 
       return matchesSearch && matchesCategory;
     }).toList();
@@ -98,7 +103,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.emoji_events_rounded, color: AppColors.sunGold, size: 22),
+              Icon(Icons.emoji_events_rounded,
+                  color: AppColors.sunGold, size: 22),
               SizedBox(width: AppSpacing.sm),
               Text(
                 'Quests & Campaigns Hub',
@@ -123,7 +129,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.stars_rounded, size: 14, color: AppColors.woodBrown),
+                const Icon(Icons.stars_rounded,
+                    size: 14, color: AppColors.woodBrown),
                 const SizedBox(width: 4),
                 Text(
                   '$points mJDQ',
@@ -142,7 +149,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
         onRefresh: () async {
           await Future.wait([
             ref.read(questProvider.notifier).fetchQuests(),
-            ref.read(campaignProvider.notifier).fetchCampaigns(forceRefresh: true),
+            ref
+                .read(campaignProvider.notifier)
+                .fetchCampaigns(forceRefresh: true),
             ref.read(submissionProvider.notifier).fetchSubmissions(),
           ]);
         },
@@ -151,6 +160,70 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           children: [
+            // AR Calibration Prompt Banner if uncalibrated
+            if (!ref.watch(calibrationProvider).isCalibrated) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.sunGold.withOpacity(0.14),
+                  borderRadius: AppSpacing.roundedLg,
+                  border: Border.all(color: AppColors.sunGold.withOpacity(0.6)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.explore_rounded,
+                          color: AppColors.woodBrown, size: 20),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Calibrate AR Sensors',
+                            style: AppTypography.labelMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.woodBrown,
+                            ),
+                          ),
+                          Text(
+                            'Align the compass for stable AR tracking.',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.sunGold,
+                        foregroundColor: AppColors.woodBrown,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () =>
+                          context.push('/ar-calibration?returnTo=/quests'),
+                      child: const Text('Setup',
+                          style: TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Segmented Tab Switcher (Ongoing Trails vs Event Campaigns)
             Container(
               padding: const EdgeInsets.all(4),
@@ -167,7 +240,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
-                          color: _activeTabIndex == 0 ? AppColors.primary : Colors.transparent,
+                          color: _activeTabIndex == 0
+                              ? AppColors.primary
+                              : Colors.transparent,
                           borderRadius: AppSpacing.roundedLg,
                         ),
                         child: FittedBox(
@@ -178,7 +253,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                               Icon(
                                 Icons.bolt_rounded,
                                 size: 15,
-                                color: _activeTabIndex == 0 ? AppColors.sunGold : AppColors.textSecondary,
+                                color: _activeTabIndex == 0
+                                    ? AppColors.sunGold
+                                    : AppColors.textSecondary,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -186,14 +263,19 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: _activeTabIndex == 0 ? Colors.white : AppColors.woodBrown,
+                                  color: _activeTabIndex == 0
+                                      ? Colors.white
+                                      : AppColors.woodBrown,
                                 ),
                               ),
                               const SizedBox(width: 4),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: _activeTabIndex == 0 ? Colors.white.withOpacity(0.2) : AppColors.surfaceContainerLow,
+                                  color: _activeTabIndex == 0
+                                      ? Colors.white.withOpacity(0.2)
+                                      : AppColors.surfaceContainerLow,
                                   borderRadius: AppSpacing.roundedPill,
                                 ),
                                 child: Text(
@@ -201,7 +283,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: _activeTabIndex == 0 ? Colors.white : AppColors.textMuted,
+                                    color: _activeTabIndex == 0
+                                        ? Colors.white
+                                        : AppColors.textMuted,
                                   ),
                                 ),
                               ),
@@ -217,7 +301,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
-                          color: _activeTabIndex == 1 ? AppColors.primary : Colors.transparent,
+                          color: _activeTabIndex == 1
+                              ? AppColors.primary
+                              : Colors.transparent,
                           borderRadius: AppSpacing.roundedLg,
                         ),
                         child: FittedBox(
@@ -228,7 +314,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                               Icon(
                                 Icons.festival_rounded,
                                 size: 15,
-                                color: _activeTabIndex == 1 ? AppColors.sunGold : AppColors.textSecondary,
+                                color: _activeTabIndex == 1
+                                    ? AppColors.sunGold
+                                    : AppColors.textSecondary,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -236,14 +324,19 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: _activeTabIndex == 1 ? Colors.white : AppColors.woodBrown,
+                                  color: _activeTabIndex == 1
+                                      ? Colors.white
+                                      : AppColors.woodBrown,
                                 ),
                               ),
                               const SizedBox(width: 4),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: _activeTabIndex == 1 ? Colors.white.withOpacity(0.2) : AppColors.surfaceContainerLow,
+                                  color: _activeTabIndex == 1
+                                      ? Colors.white.withOpacity(0.2)
+                                      : AppColors.surfaceContainerLow,
                                   borderRadius: AppSpacing.roundedPill,
                                 ),
                                 child: Text(
@@ -251,7 +344,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: _activeTabIndex == 1 ? Colors.white : AppColors.textMuted,
+                                    color: _activeTabIndex == 1
+                                        ? Colors.white
+                                        : AppColors.textMuted,
                                   ),
                                 ),
                               ),
@@ -270,7 +365,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
             // Search Field
             JdqSearchField(
               controller: _searchController,
-              hintText: _activeTabIndex == 0 ? 'Search quest trails...' : 'Search event campaigns & festivals...',
+              hintText: _activeTabIndex == 0
+                  ? 'Search quest trails...'
+                  : 'Search event campaigns & festivals...',
               onChanged: (_) => setState(() {}),
               onClear: () {
                 _searchController.clear();
@@ -301,11 +398,13 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
     );
   }
 
-  Widget _buildTrailsView(QuestState questState, List<QuestModel> filteredQuests) {
+  Widget _buildTrailsView(
+      QuestState questState, List<QuestModel> filteredQuests) {
     if (questState.isLoading && questState.quests.isEmpty) {
       return const Padding(
         padding: EdgeInsets.only(top: 40),
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        child:
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
@@ -319,9 +418,12 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
         ),
         child: Column(
           children: [
-            const Icon(Icons.error_outline_rounded, size: 40, color: AppColors.danger),
+            const Icon(Icons.error_outline_rounded,
+                size: 40, color: AppColors.danger),
             const SizedBox(height: 8),
-            Text('Failed to load quest trails', style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold)),
+            Text('Failed to load quest trails',
+                style: AppTypography.labelLarge
+                    .copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: () => ref.read(questProvider.notifier).fetchQuests(),
@@ -342,11 +444,14 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
         ),
         child: const Column(
           children: [
-            Icon(Icons.search_off_rounded, size: 44, color: AppColors.textMuted),
+            Icon(Icons.search_off_rounded,
+                size: 44, color: AppColors.textMuted),
             SizedBox(height: 10),
-            Text('No quest trails found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            Text('No quest trails found',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             SizedBox(height: 4),
-            Text('Try changing your search terms or category filter.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            Text('Try changing your search terms or category filter.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
         ),
       );
@@ -364,11 +469,13 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
     );
   }
 
-  Widget _buildCampaignsView(CampaignState campaignState, List<CampaignModel> filteredCampaigns) {
+  Widget _buildCampaignsView(
+      CampaignState campaignState, List<CampaignModel> filteredCampaigns) {
     if (campaignState.isLoading && campaignState.campaigns.isEmpty) {
       return const Padding(
         padding: EdgeInsets.only(top: 40),
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        child:
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
@@ -384,22 +491,28 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
           children: [
             Icon(Icons.festival_outlined, size: 44, color: AppColors.textMuted),
             SizedBox(height: 10),
-            Text('No event campaigns found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            Text('No event campaigns found',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             SizedBox(height: 4),
-            Text('Check back soon for upcoming municipal festivals and eco-rallies.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            Text(
+                'Check back soon for upcoming municipal festivals and eco-rallies.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
         ),
       );
     }
 
     return Column(
-      children: filteredCampaigns.map((campaign) => _buildCampaignCard(campaign)).toList(),
+      children: filteredCampaigns
+          .map((campaign) => _buildCampaignCard(campaign))
+          .toList(),
     );
   }
 
   Widget _buildCampaignCard(CampaignModel campaign) {
     final quotaPercent = campaign.maxParticipants > 0
-        ? (campaign.reservedParticipants / campaign.maxParticipants).clamp(0.0, 1.0)
+        ? (campaign.reservedParticipants / campaign.maxParticipants)
+            .clamp(0.0, 1.0)
         : 0.0;
 
     return Container(
@@ -412,7 +525,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/quests/campaigns/${campaign.id}', extra: campaign),
+        onTap: () =>
+            context.push('/quests/campaigns/${campaign.id}', extra: campaign),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -427,7 +541,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                     errorBuilder: (_, __, ___) => Container(
                       color: AppColors.surfaceContainerLow,
                       child: const Center(
-                        child: Icon(Icons.festival_rounded, color: AppColors.textMuted, size: 40),
+                        child: Icon(Icons.festival_rounded,
+                            color: AppColors.textMuted, size: 40),
                       ),
                     ),
                   ),
@@ -436,7 +551,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 3.5),
                     decoration: const BoxDecoration(
                       color: AppColors.sunGold,
                       borderRadius: AppSpacing.roundedPill,
@@ -444,11 +560,15 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.emoji_events_rounded, size: 13, color: AppColors.woodBrown),
+                        const Icon(Icons.emoji_events_rounded,
+                            size: 13, color: AppColors.woodBrown),
                         const SizedBox(width: 3),
                         Text(
                           '+${campaign.rewardPerParticipantMjdq} mJDQ',
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                          style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.woodBrown),
                         ),
                       ],
                     ),
@@ -466,18 +586,27 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   // Municipality Tag & Category
                   Row(
                     children: [
-                      const Icon(Icons.location_on_rounded, size: 12, color: AppColors.primary),
+                      const Icon(Icons.location_on_rounded,
+                          size: 12, color: AppColors.primary),
                       const SizedBox(width: 2),
                       Text(
                         campaign.municipality,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryDark),
                       ),
                       const SizedBox(width: 6),
-                      const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      const Text('•',
+                          style: TextStyle(
+                              color: AppColors.textMuted, fontSize: 11)),
                       const SizedBox(width: 6),
                       Text(
                         campaign.hostName,
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -489,7 +618,10 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   // Title
                   Text(
                     campaign.title,
-                    style: AppTypography.headlineSmall.copyWith(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                    style: AppTypography.headlineSmall.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.woodBrown),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -499,7 +631,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   // Description
                   Text(
                     campaign.description,
-                    style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 12),
+                    style: AppTypography.bodySmall
+                        .copyWith(color: AppColors.textSecondary, fontSize: 12),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -513,7 +646,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       value: quotaPercent,
                       minHeight: 5,
                       backgroundColor: AppColors.surfaceContainerLow,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.primary),
                     ),
                   ),
 
@@ -525,16 +659,23 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                     children: [
                       Text(
                         '${campaign.reservedParticipants} / ${campaign.maxParticipants} Registered',
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary),
                       ),
                       const Row(
                         children: [
                           Text(
                             'View Details',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary),
                           ),
                           SizedBox(width: 2),
-                          Icon(Icons.arrow_forward_rounded, size: 12, color: AppColors.primary),
+                          Icon(Icons.arrow_forward_rounded,
+                              size: 12, color: AppColors.primary),
                         ],
                       ),
                     ],

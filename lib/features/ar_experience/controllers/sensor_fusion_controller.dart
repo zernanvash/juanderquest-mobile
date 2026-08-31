@@ -1,20 +1,27 @@
 import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
-/// Represents smoothed 3D spatial device orientation from fused hardware sensors.
+import '../engine/orientation_math.dart';
+
+/// Smoothed rear-camera orientation from accelerometer and magnetometer data.
 class SensorOrientation {
-  final double headingDegrees; // 0..360 (0 = North, 90 = East, 180 = South, 270 = West)
-  final double pitchDegrees;   // -90..+90 (0 = horizon, +90 = looking up, -90 = looking down)
-  final double rollDegrees;    // -180..+180 (device tilt left/right)
+  final double headingDegrees;
+  final double pitchDegrees;
+  final double rollDegrees;
   final bool isCalibrated;
+  final bool hasHardwareSensors;
+  final bool isHeadingReliable;
 
   const SensorOrientation({
     this.headingDegrees = 0.0,
     this.pitchDegrees = 0.0,
     this.rollDegrees = 0.0,
     this.isCalibrated = false,
+    this.hasHardwareSensors = false,
+    this.isHeadingReliable = false,
   });
 
   SensorOrientation copyWith({
@@ -22,28 +29,46 @@ class SensorOrientation {
     double? pitchDegrees,
     double? rollDegrees,
     bool? isCalibrated,
+    bool? hasHardwareSensors,
+    bool? isHeadingReliable,
   }) {
     return SensorOrientation(
       headingDegrees: headingDegrees ?? this.headingDegrees,
       pitchDegrees: pitchDegrees ?? this.pitchDegrees,
       rollDegrees: rollDegrees ?? this.rollDegrees,
       isCalibrated: isCalibrated ?? this.isCalibrated,
+      hasHardwareSensors: hasHardwareSensors ?? this.hasHardwareSensors,
+      isHeadingReliable: isHeadingReliable ?? this.isHeadingReliable,
     );
   }
 }
 
-/// StateNotifier that fuses Accelerometer and Magnetometer streams with Low-Pass Filtering.
+/// Fuses device sensors into a stable rear-camera pose.
+///
+/// Filtering is time-aware, so behavior does not change with sensor stream
+/// frequency. Rate limiting rejects isolated magnetic spikes while a dynamic
+/// time constant keeps deliberate movement responsive.
 class SensorFusionNotifier extends StateNotifier<SensorOrientation> {
   StreamSubscription<AccelerometerEvent>? _accelSub;
   StreamSubscription<MagnetometerEvent>? _magSub;
 
-  double _lastAx = 0.0, _lastAy = 0.0, _lastAz = 9.8;
-  double _lastMx = 0.0, _lastMy = 0.0, _lastMz = 0.0;
+  double _lastAx = 0.0;
+  double _lastAy = 0.0;
+  double _lastAz = 9.8;
+  double _lastMx = 0.0;
+  double _lastMy = 0.0;
+  double _lastMz = 0.0;
+
   double _filteredHeading = 0.0;
   double _filteredPitch = 0.0;
   double _filteredRoll = 0.0;
+  double _pitchReference = 0.0;
+  double _rollReference = 0.0;
 
-  static const double _filterAlpha = 0.18; // Smoothing factor (0.01 = very smooth, 1.0 = instant/raw)
+  bool _hasAccelerometer = false;
+  bool _hasMagnetometer = false;
+  bool _hasOrientationSample = false;
+  DateTime? _lastUpdateAt;
 
   SensorFusionNotifier() : super(const SensorOrientation()) {
     _startListening();
@@ -51,74 +76,127 @@ class SensorFusionNotifier extends StateNotifier<SensorOrientation> {
 
   void _startListening() {
     try {
-      _accelSub = accelerometerEventStream().listen((event) {
+      _accelSub = accelerometerEventStream(
+        samplingPeriod: SensorInterval.gameInterval,
+      ).listen((event) {
         _lastAx = event.x;
         _lastAy = event.y;
         _lastAz = event.z;
+        _hasAccelerometer = true;
         _updateOrientation();
-      }, onError: (_) {
-        // Silently handle on devices/emulators lacking sensors
-      });
+      }, onError: (_) {});
 
-      _magSub = magnetometerEventStream().listen((event) {
+      _magSub = magnetometerEventStream(
+        samplingPeriod: SensorInterval.gameInterval,
+      ).listen((event) {
         _lastMx = event.x;
         _lastMy = event.y;
         _lastMz = event.z;
+        _hasMagnetometer = true;
         _updateOrientation();
-      }, onError: (_) {
-        // Silently handle on devices/emulators lacking sensors
-      });
+      }, onError: (_) {});
     } catch (_) {
-      // Fallback for non-supported platforms
+      // Unsupported platforms remain in an explicit no-sensor state.
     }
   }
 
   void _updateOrientation() {
-    // 1. Calculate Roll & Pitch from Accelerometer
-    final normA = math.sqrt(_lastAx * _lastAx + _lastAy * _lastAy + _lastAz * _lastAz);
-    if (normA == 0) return;
+    if (!_hasAccelerometer || !_hasMagnetometer) return;
 
-    final ax = _lastAx / normA;
-    final ay = _lastAy / normA;
-    final az = _lastAz / normA;
+    final raw = OrientationMath.calculate(
+      ax: _lastAx,
+      ay: _lastAy,
+      az: _lastAz,
+      mx: _lastMx,
+      my: _lastMy,
+      mz: _lastMz,
+    );
+    if (raw == null) return;
 
-    final pitchRad = math.atan2(-ay, math.sqrt(ax * ax + az * az));
-    final rollRad = math.atan2(ax, az);
+    final now = DateTime.now();
+    final elapsed = _lastUpdateAt == null
+        ? 1.0 / 60.0
+        : now.difference(_lastUpdateAt!).inMicroseconds /
+            Duration.microsecondsPerSecond;
+    final dt = elapsed.clamp(1.0 / 240.0, 0.10).toDouble();
+    _lastUpdateAt = now;
 
-    final rawPitch = pitchRad * (180.0 / math.pi);
-    final rawRoll = rollRad * (180.0 / math.pi);
-
-    // 2. Tilt-Compensated Magnetometer Heading (Compass Yaw)
-    final cosP = math.cos(pitchRad);
-    final sinP = math.sin(pitchRad);
-    final cosR = math.cos(rollRad);
-    final sinR = math.sin(rollRad);
-
-    final bX = _lastMx * cosP + _lastMy * sinP * sinR + _lastMz * sinP * cosR;
-    final bY = _lastMy * cosR - _lastMz * sinR;
-
-    double rawHeading = math.atan2(-bY, bX) * (180.0 / math.pi);
-    rawHeading = (rawHeading + 360.0) % 360.0;
-
-    // 3. Circular Low-Pass Filter on Heading to prevent 0°/360° flip artifacts
-    _filteredHeading = _filterAngle(_filteredHeading, rawHeading, _filterAlpha);
-    _filteredPitch += (rawPitch - _filteredPitch) * _filterAlpha;
-    _filteredRoll += (rawRoll - _filteredRoll) * _filterAlpha;
+    if (!_hasOrientationSample) {
+      _filteredHeading = raw.headingDegrees ?? 0.0;
+      _filteredPitch = raw.pitchDegrees;
+      _filteredRoll = raw.rollDegrees;
+      _hasOrientationSample = true;
+    } else {
+      if (raw.headingDegrees != null) {
+        _filteredHeading = _filterAngle(_filteredHeading, raw.headingDegrees!, dt);
+      }
+      _filteredPitch = _filterLinear(_filteredPitch, raw.pitchDegrees, dt);
+      _filteredRoll = _filterSignedAngle(_filteredRoll, raw.rollDegrees, dt);
+    }
 
     state = SensorOrientation(
       headingDegrees: _filteredHeading,
-      pitchDegrees: _filteredPitch,
-      rollDegrees: _filteredRoll,
+      pitchDegrees: _filteredPitch - _pitchReference,
+      rollDegrees: _normalizeSigned(_filteredRoll - _rollReference),
       isCalibrated: true,
+      hasHardwareSensors: true,
+      isHeadingReliable: raw.headingDegrees != null,
     );
   }
 
-  /// Smooths circular angles across the 0° / 360° boundary.
-  double _filterAngle(double current, double target, double alpha) {
-    double diff = (target - current) % 360.0;
+  double _filterAngle(double current, double target, double dt) {
+    var diff = (target - current) % 360.0;
     if (diff > 180.0) diff -= 360.0;
     if (diff < -180.0) diff += 360.0;
-    return (current + diff * alpha + 360.0) % 360.0;
+    if (diff.abs() < 0.20) return current;
+
+    final maxStep = 420.0 * dt;
+    final boundedDiff = diff.clamp(-maxStep, maxStep).toDouble();
+    final alpha = _adaptiveAlpha(diff.abs() / dt, dt);
+    return (current + boundedDiff * alpha + 360.0) % 360.0;
+  }
+
+  double _filterSignedAngle(double current, double target, double dt) {
+    final normalizedCurrent = (current + 360.0) % 360.0;
+    final normalizedTarget = (target + 360.0) % 360.0;
+    return _normalizeSigned(_filterAngle(normalizedCurrent, normalizedTarget, dt));
+  }
+
+  double _filterLinear(double current, double target, double dt) {
+    final diff = target - current;
+    if (diff.abs() < 0.15) return current;
+
+    final maxStep = 300.0 * dt;
+    final boundedDiff = diff.clamp(-maxStep, maxStep).toDouble();
+    return current + boundedDiff * _adaptiveAlpha(diff.abs() / dt, dt);
+  }
+
+  double _adaptiveAlpha(double velocityDegreesPerSecond, double dt) {
+    final tau = velocityDegreesPerSecond < 4.0
+        ? 0.35
+        : velocityDegreesPerSecond < 45.0
+            ? 0.18
+            : 0.08;
+    return 1.0 - math.exp(-dt / tau);
+  }
+
+  double _normalizeSigned(double degrees) {
+    var value = (degrees + 180.0) % 360.0;
+    if (value < 0) value += 360.0;
+    return value - 180.0;
+  }
+
+  /// Captures the current natural holding pose as the optical horizon.
+  void setLevelReference() {
+    if (!_hasOrientationSample) return;
+    _pitchReference = _filteredPitch;
+    _rollReference = _filteredRoll;
+    state = state.copyWith(pitchDegrees: 0.0, rollDegrees: 0.0);
+  }
+
+  void clearLevelReference() {
+    _pitchReference = 0.0;
+    _rollReference = 0.0;
   }
 
   @override
@@ -129,7 +207,8 @@ class SensorFusionNotifier extends StateNotifier<SensorOrientation> {
   }
 }
 
+// Kept alive for the app session so calibration is retained in AR.
 final sensorFusionProvider =
-    StateNotifierProvider.autoDispose<SensorFusionNotifier, SensorOrientation>((ref) {
+    StateNotifierProvider<SensorFusionNotifier, SensorOrientation>((ref) {
   return SensorFusionNotifier();
 });
