@@ -34,6 +34,7 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
   bool _isLoadingQuest = false;
   Position? _currentPosition;
   bool _markerDetected = false;
+  bool _benchmarkObjectVisible = false;
   bool _isCapturingGPS = true;
   String? _gpsError;
   StreamSubscription<Position>? _positionSub;
@@ -85,7 +86,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           backgroundColor: const Color(0xFFFAF9F5),
           title: Text(
             'Camera & Location Access Required',
@@ -167,7 +169,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
           setState(() {
-            _gpsError = 'Location permission permanently denied. Enable in Settings.';
+            _gpsError =
+                'Location permission permanently denied. Enable in Settings.';
             _isCapturingGPS = false;
           });
         }
@@ -193,7 +196,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
       } else {
         if (mounted) {
           setState(() {
-            _gpsError = 'Unable to acquire GPS fix. Please ensure location services are ON.';
+            _gpsError =
+                'Unable to acquire GPS fix. Please ensure location services are ON.';
             _isCapturingGPS = false;
           });
         }
@@ -309,7 +313,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Icon(Icons.verified_rounded, color: Color(0xFF2D6A4F), size: 28),
+                      const Icon(Icons.verified_rounded,
+                          color: Color(0xFF2D6A4F), size: 28),
                       const SizedBox(width: 10),
                       Text(
                         'Confirm Quest Proof',
@@ -327,21 +332,24 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFD5C4AC).withOpacity(0.5)),
+                      border: Border.all(
+                          color: const Color(0xFFD5C4AC).withOpacity(0.5)),
                     ),
                     child: Column(
                       children: [
-                        _buildSummaryRow('Quest Name', _quest!.title, isBold: true),
+                        _buildSummaryRow('Quest Name', _quest!.title,
+                            isBold: true),
                         const Divider(height: 16),
                         _buildSummaryRow('Calculated Distance',
                             '${distanceMeters}m (Target radius: ${_quest!.radiusMeters}m)'),
                         const SizedBox(height: 6),
-                        _buildSummaryRow(
-                            'GPS Accuracy', '±${_currentPosition!.accuracy.toStringAsFixed(1)}m'),
+                        _buildSummaryRow('GPS Accuracy',
+                            '±${_currentPosition!.accuracy.toStringAsFixed(1)}m'),
                         const SizedBox(height: 6),
                         _buildSummaryRow('Captured Timestamp', timestamp),
                         const SizedBox(height: 6),
-                        _buildSummaryRow('Reward Points', '+${_quest!.rewardPoints} PTS',
+                        _buildSummaryRow(
+                            'Reward Points', '+${_quest!.rewardPoints} PTS',
                             valueColor: const Color(0xFF7D5800)),
                       ],
                     ),
@@ -355,7 +363,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.privacy_tip_outlined, color: Color(0xFF2D6A4F), size: 18),
+                        const Icon(Icons.privacy_tip_outlined,
+                            color: Color(0xFF2D6A4F), size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -381,12 +390,15 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                                 setState(() => _markerDetected = false);
                               },
                         style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           side: const BorderSide(color: Color(0xFFD5C4AC)),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                         ),
                         child: Text('Retake',
-                            style: GoogleFonts.epilogue(color: const Color(0xFF582F0E))),
+                            style: GoogleFonts.epilogue(
+                                color: const Color(0xFF582F0E))),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -400,18 +412,20 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2D6A4F),
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           child: subState.isSubmitting
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white),
                                 )
                               : Text('Submit Proof',
-                                  style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
+                                  style: GoogleFonts.epilogue(
+                                      fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -425,7 +439,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, {bool isBold = false, Color? valueColor}) {
+  Widget _buildSummaryRow(String label, String value,
+      {bool isBold = false, Color? valueColor}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,7 +448,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
         Flexible(
           child: Text(
             label,
-            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF837560), fontSize: 12),
+            style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF837560), fontSize: 12),
           ),
         ),
         const SizedBox(width: 8),
@@ -482,7 +498,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
       if (mounted) {
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('Proof submitted successfully! Awaiting admin verification.'),
+            content: Text(
+                'Proof submitted successfully! Awaiting admin verification.'),
             backgroundColor: Color(0xFF2D6A4F),
           ),
         );
@@ -508,7 +525,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
           GlobalErrorDialog.show(
             context,
             title: 'Quest Already Completed',
-            message: 'You have already completed this quest and earned your demo points reward.',
+            message:
+                'You have already completed this quest and earned your demo points reward.',
             icon: Icons.check_circle_outline,
             iconColor: const Color(0xFF3F6653),
             buttonText: 'View History',
@@ -529,7 +547,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
           GlobalErrorDialog.show(
             context,
             title: 'Submission Failed',
-            message: err ?? 'Could not submit quest proof due to a network or server error.',
+            message: err ??
+                'Could not submit quest proof due to a network or server error.',
             icon: Icons.error_outline_rounded,
             iconColor: const Color(0xFFBC4749),
             buttonText: 'Try Again',
@@ -552,7 +571,9 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
             Text(
               'AR Spatial Viewfinder Guide',
               style: GoogleFonts.epilogue(
-                  color: const Color(0xFF582F0E), fontWeight: FontWeight.bold, fontSize: 18),
+                  color: const Color(0xFF582F0E),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18),
             ),
           ],
         ),
@@ -564,7 +585,9 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
               Text(
                 'How to discover and claim your quest:',
                 style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.bold, color: const Color(0xFF582F0E), fontSize: 13),
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF582F0E),
+                    fontSize: 13),
               ),
               const SizedBox(height: 8),
               Text(
@@ -584,7 +607,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
               backgroundColor: const Color(0xFFFFB703),
               foregroundColor: const Color(0xFF6B4B00),
             ),
-            child: Text('Understood', style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
+            child: Text('Understood',
+                style: GoogleFonts.epilogue(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -596,7 +620,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
     if (_isLoadingQuest || _quest == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF1B1C1A),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFFFB703))),
+        body:
+            Center(child: CircularProgressIndicator(color: Color(0xFFFFB703))),
       );
     }
 
@@ -681,8 +706,10 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                 figmaLayer: '#AR_Viewfinder_Reticle',
                 dimensions: 'Fullscreen 1080x1920 (Reticle: 240x240dp)',
                 dataBinding: 'quest.markerImageUrl / quest.markerCode',
-                stateNotes: 'Scanning (Yellow) -> Reticle Lock (Emerald Pulse) -> Marker Detected (3D Coin spin)',
-                uxNotes: 'Dashed green reticle upon spatial lock. 3D coin model rotates with specular lighting.',
+                stateNotes:
+                    'Scanning (Yellow) -> Reticle Lock (Emerald Pulse) -> Marker Detected (3D Coin spin)',
+                uxNotes:
+                    'Dashed green reticle upon spatial lock. 3D coin model rotates with specular lighting.',
                 deferred: true,
               ),
               child: Stack(
@@ -729,7 +756,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                         color: Color(0xFFFFB703),
                       ),
                       child: const Center(
-                        child: Icon(Icons.stars_rounded, size: 68, color: Color(0xFF582F0E)),
+                        child: Icon(Icons.stars_rounded,
+                            size: 68, color: Color(0xFF582F0E)),
                       ),
                     )
                   : SizedBox(
@@ -738,7 +766,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                       child: AnimatedBuilder(
                         animation: _rotationController,
                         builder: (context, child) {
-                          final rotY = _rotationController.value * 2 * 3.14159265;
+                          final rotY =
+                              _rotationController.value * 2 * 3.14159265;
                           return Ar3dCanvas(
                             mesh: ShapesFactory.createShape(ShapeType.token,
                                 themeColor: const Color(0xFFFFB703)),
@@ -754,6 +783,53 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                     ),
             ),
 
+          // Guaranteed on-screen renderer benchmark, independent of GPS/FOV.
+          if (_benchmarkObjectVisible && !_markerDetected)
+            IgnorePointer(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 180,
+                      height: 180,
+                      child: AnimatedBuilder(
+                        animation: _rotationController,
+                        builder: (context, child) => Ar3dCanvas(
+                          mesh: ShapesFactory.createShape(
+                            ShapeType.gem,
+                            themeColor: const Color(0xFFFFB703),
+                          ),
+                          rotX: 0.35,
+                          rotY: _rotationController.value * 2 * 3.14159265,
+                          rotZ: 0.12,
+                          scale: 105,
+                          renderStyle: RenderStyle.hybrid,
+                          showShadow: true,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.72),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'AR renderer benchmark • centered test anchor',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // 5. Header HUD with 360° Radar & GPS Guards
           SafeArea(
             child: SingleChildScrollView(
@@ -762,7 +838,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                 children: [
                   // Top Radar & Distance Telemetry
                   Padding(
-                    padding: const EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0),
+                    padding: const EdgeInsets.only(
+                        top: 8.0, left: 16.0, right: 16.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -777,7 +854,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                               projectedPoint.isVisibleInViewport,
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: const Color(0xFF7D5800).withOpacity(0.85),
                             borderRadius: BorderRadius.circular(12),
@@ -802,7 +880,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white, size: 26),
+                              icon: const Icon(Icons.close,
+                                  color: Colors.white, size: 26),
                               onPressed: () => context.pop(),
                             ),
                             Expanded(
@@ -821,7 +900,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                               icon: const Icon(Icons.explore_rounded,
                                   color: Color(0xFFFFB703), size: 24),
                               tooltip: 'Calibrate Compass',
-                              onPressed: () => context.push('/ar-calibration?returnTo=/quests/${_quest!.id}/ar'),
+                              onPressed: () => context.push(
+                                  '/ar-calibration?returnTo=/quests/${_quest!.id}/ar'),
                             ),
                             IconButton(
                               icon: const Icon(Icons.view_in_ar_rounded,
@@ -830,7 +910,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                               onPressed: () => context.push('/ar-playground'),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.help_outline, color: Colors.white70, size: 24),
+                              icon: const Icon(Icons.help_outline,
+                                  color: Colors.white70, size: 24),
                               tooltip: 'Help',
                               onPressed: _showARHelpDialog,
                             ),
@@ -843,7 +924,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                           spec: const UiSpec(
                             title: 'GPS Verification Guard HUD',
                             figmaLayer: '#AR_GPS_Guard_Card',
-                            dimensions: 'Width: 100% - 24dp padding, Height: auto (~56dp)',
+                            dimensions:
+                                'Width: 100% - 24dp padding, Height: auto (~56dp)',
                             dataBinding:
                                 'geolocator.position vs quest.gpsLat/gpsLng (radiusMeters)',
                             stateNotes:
@@ -856,12 +938,16 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                             decoration: BoxDecoration(
                               color: Colors.black.withOpacity(0.72),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFD5C4AC).withOpacity(0.3)),
+                              border: Border.all(
+                                  color:
+                                      const Color(0xFFD5C4AC).withOpacity(0.3)),
                             ),
                             child: Row(
                               children: [
                                 Icon(
-                                  _gpsError != null ? Icons.error_outline : Icons.gps_fixed,
+                                  _gpsError != null
+                                      ? Icons.error_outline
+                                      : Icons.gps_fixed,
                                   color: _gpsError != null
                                       ? const Color(0xFFBC4749)
                                       : const Color(0xFFFFB703),
@@ -870,12 +956,15 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       if (_isCapturingGPS)
-                                        Text('Acquiring real GPS coordinates...',
+                                        Text(
+                                            'Acquiring real GPS coordinates...',
                                             style: GoogleFonts.plusJakartaSans(
-                                                color: Colors.white, fontSize: 11))
+                                                color: Colors.white,
+                                                fontSize: 11))
                                       else if (_gpsError != null)
                                         Text(_gpsError!,
                                             style: GoogleFonts.plusJakartaSans(
@@ -907,8 +996,10 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                                 ),
                                 if (_gpsError != null)
                                   IconButton(
-                                    icon: const Icon(Icons.refresh, color: Colors.white, size: 16),
-                                    onPressed: _checkPermissionRationaleAndCapture,
+                                    icon: const Icon(Icons.refresh,
+                                        color: Colors.white, size: 16),
+                                    onPressed:
+                                        _checkPermissionRationaleAndCapture,
                                   ),
                               ],
                             ),
@@ -929,15 +1020,45 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
             right: 16,
             child: Column(
               children: [
+                ElevatedButton.icon(
+                  key: const ValueKey('ar_summon_benchmark_button'),
+                  onPressed: () => setState(
+                    () => _benchmarkObjectVisible = !_benchmarkObjectVisible,
+                  ),
+                  icon: Icon(
+                    _benchmarkObjectVisible
+                        ? Icons.visibility_off_rounded
+                        : Icons.view_in_ar_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _benchmarkObjectVisible
+                        ? 'Hide Benchmark Object'
+                        : 'Summon 3D Benchmark Object',
+                    style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    backgroundColor: const Color(0xFF7D5800),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 if (!_markerDetected) ...[
                   UiSpecContainer(
                     spec: const UiSpec(
                       title: 'AR Scanning Trigger Button',
                       figmaLayer: '#AR_Trigger_Scan_Button',
-                      dimensions: 'Full width button, Height: 48dp, Radius: 12dp',
-                      dataBinding: 'Local state toggle -> starts marker tracking & coin animation',
+                      dimensions:
+                          'Full width button, Height: 48dp, Radius: 12dp',
+                      dataBinding:
+                          'Local state toggle -> starts marker tracking & coin animation',
                       stateNotes: 'Initial state -> active press',
-                      uxNotes: 'Gold button with Epilogue bold typography and camera scanner icon.',
+                      uxNotes:
+                          'Gold button with Epilogue bold typography and camera scanner icon.',
                       deferred: true,
                     ),
                     child: ElevatedButton.icon(
@@ -951,13 +1072,19 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                                 : !isWithinRadius
                                     ? 'Move Within Quest Radius'
                                     : 'Center Target to Lock',
-                        style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
+                        style:
+                            GoogleFonts.epilogue(fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
-                        backgroundColor: isReticleLocked ? const Color(0xFF2D6A4F) : const Color(0xFFFFB703),
-                        foregroundColor: isReticleLocked ? Colors.white : const Color(0xFF6B4B00),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: isReticleLocked
+                            ? const Color(0xFF2D6A4F)
+                            : const Color(0xFFFFB703),
+                        foregroundColor: isReticleLocked
+                            ? Colors.white
+                            : const Color(0xFF6B4B00),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -974,7 +1101,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.send_rounded, size: 18),
                   label: Text(
                     subState.isSubmitting
@@ -982,14 +1110,16 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                         : _markerDetected
                             ? 'Collect Proof & Submit'
                             : 'Aim at the Marker First',
-                    style: GoogleFonts.epilogue(fontSize: 15, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.epilogue(
+                        fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
                     backgroundColor: const Color(0xFF2D6A4F),
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.white12,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ],

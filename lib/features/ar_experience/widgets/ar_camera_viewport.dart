@@ -19,11 +19,13 @@ class ArCameraViewport extends StatefulWidget {
   State<ArCameraViewport> createState() => _ArCameraViewportState();
 }
 
-class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBindingObserver {
+class _ArCameraViewportState extends State<ArCameraViewport>
+    with WidgetsBindingObserver {
   CameraController? _cameraController;
   bool _isInitialized = false;
   bool _permissionDenied = false;
   bool _noCameraAvailable = false;
+  bool _isInitializing = false;
   String? _errorMessage;
 
   @override
@@ -48,13 +50,28 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
   }
 
   Future<void> _initCamera() async {
+    if (_isInitializing) return;
+    _isInitializing = true;
+    final previousController = _cameraController;
+    _cameraController = null;
+    if (previousController != null) {
+      await previousController.dispose();
+    }
+    if (mounted) {
+      setState(() {
+        _isInitialized = false;
+        _noCameraAvailable = false;
+        _errorMessage = null;
+      });
+    }
     try {
       final status = await Permission.camera.request();
       if (!status.isGranted) {
         if (mounted) {
           setState(() {
             _permissionDenied = true;
-            _errorMessage = 'Camera permission is required for Augmented Reality scanning.';
+            _errorMessage =
+                'Camera permission is required for Augmented Reality scanning.';
           });
         }
         return;
@@ -65,7 +82,8 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
         if (mounted) {
           setState(() {
             _noCameraAvailable = true;
-            _errorMessage = 'No hardware camera detected (Emulated Environment).';
+            _errorMessage =
+                'No hardware camera detected (Emulated Environment).';
           });
         }
         return;
@@ -77,14 +95,34 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
         orElse: () => cameras.first,
       );
 
-      final controller = CameraController(
-        selectedCamera,
+      CameraController? controller;
+      Object? initializationError;
+      for (final preset in const [
         ResolutionPreset.high,
-        enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
-      );
+        ResolutionPreset.medium
+      ]) {
+        final candidate = CameraController(
+          selectedCamera,
+          preset,
+          enableAudio: false,
+          imageFormatGroup: ImageFormatGroup.jpeg,
+        );
+        try {
+          await candidate.initialize();
+          controller = candidate;
+          break;
+        } catch (error) {
+          initializationError = error;
+          await candidate.dispose();
+        }
+      }
 
-      await controller.initialize();
+      if (controller == null) {
+        throw CameraException(
+          'CameraInitializationFailed',
+          initializationError?.toString() ?? 'Camera preview could not start.',
+        );
+      }
 
       if (mounted) {
         setState(() {
@@ -94,6 +132,8 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
           _noCameraAvailable = false;
         });
         widget.onControllerReady?.call(controller);
+      } else {
+        await controller.dispose();
       }
     } catch (e) {
       if (mounted) {
@@ -102,6 +142,8 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
           _errorMessage = 'Camera initialization: $e';
         });
       }
+    } finally {
+      _isInitializing = false;
     }
   }
 
@@ -171,11 +213,13 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: AppColors.sunGold, strokeWidth: 2.5),
+            const CircularProgressIndicator(
+                color: AppColors.sunGold, strokeWidth: 2.5),
             const SizedBox(height: 16),
             Text(
               'Initializing Camera Stream...',
-              style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 13),
+              style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white70, fontSize: 13),
             ),
           ],
         ),
@@ -191,7 +235,8 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.camera_alt_outlined, color: Color(0xFFD90429), size: 48),
+            const Icon(Icons.camera_alt_outlined,
+                color: Color(0xFFD90429), size: 48),
             const SizedBox(height: 16),
             Text(
               'Camera Access Required',
@@ -203,17 +248,21 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
             ),
             const SizedBox(height: 8),
             Text(
-              _errorMessage ?? 'Please enable camera permission in device settings to explore AR quests.',
+              _errorMessage ??
+                  'Please enable camera permission in device settings to explore AR quests.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 13),
+              style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white70, fontSize: 13),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(16))),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
               onPressed: () => openAppSettings(),
               icon: const Icon(Icons.settings, size: 18),
@@ -251,7 +300,8 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
             right: 16,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.6),
                   borderRadius: AppSpacing.roundedPill,
@@ -260,14 +310,45 @@ class _ArCameraViewportState extends State<ArCameraViewport> with WidgetsBinding
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.info_outline_rounded, color: AppColors.sunGold, size: 14),
+                    const Icon(Icons.info_outline_rounded,
+                        color: AppColors.sunGold, size: 14),
                     const SizedBox(width: 6),
                     Text(
                       'Simulated Viewport (No Hardware Camera)',
-                      style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 11),
+                      style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white70, fontSize: 11),
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 280),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _errorMessage ?? 'Camera preview is unavailable.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    key: const ValueKey('ar_camera_retry_button'),
+                    onPressed: _initCamera,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Retry Camera'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
