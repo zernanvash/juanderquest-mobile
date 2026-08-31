@@ -13,10 +13,13 @@ import '../../../core/widgets/designer_guide.dart';
 import '../engine/spatial_math.dart';
 import '../engine/shapes_factory.dart';
 import '../controllers/sensor_fusion_controller.dart';
+import '../controllers/ar_diagnostics_controller.dart';
 import '../widgets/ar_camera_viewport.dart';
 import '../widgets/ar_radar_compass_hud.dart';
+import '../widgets/ar_diagnostic_panel.dart';
 import '../widgets/world_anchored_overlay.dart';
 import '../widgets/ar_3d_canvas.dart';
+
 
 class ARExperienceScreen extends ConsumerStatefulWidget {
   final QuestModel? quest;
@@ -642,6 +645,9 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
 
     final subState = ref.watch(submissionProvider);
     final sensorOrientation = ref.watch(sensorFusionProvider);
+    final diagState = ref.watch(arDiagnosticsProvider);
+    final isBenchmarkVisible =
+        _benchmarkObjectVisible || diagState.showCenteredBenchmarkGem;
 
     final hasUsableGps = _currentPosition != null &&
         _currentPosition!.accuracy > 0 &&
@@ -689,7 +695,9 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
           const ArCameraViewport(),
 
           // 2. World-Anchored 3D Spatial Overlay
-          if (!_markerDetected && spatialTrackingReady)
+          if (!_markerDetected &&
+              spatialTrackingReady &&
+              diagState.showWorldAnchor)
             WorldAnchoredOverlay(
               point: projectedPoint,
               questTitle: _quest!.title,
@@ -699,8 +707,10 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
             ),
 
           // 3. Central Reticle & Scanning Frame (Dynamic color when locked on)
-          Center(
-            child: UiSpecContainer(
+          if (diagState.showHudReticle)
+            Center(
+              child: UiSpecContainer(
+
               spec: const UiSpec(
                 title: 'AR Viewfinder & 3D Model Target',
                 figmaLayer: '#AR_Viewfinder_Reticle',
@@ -784,8 +794,9 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
             ),
 
           // Guaranteed on-screen renderer benchmark, independent of GPS/FOV.
-          if (_benchmarkObjectVisible && !_markerDetected)
+          if (isBenchmarkVisible && !_markerDetected)
             IgnorePointer(
+
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1125,8 +1136,12 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
               ],
             ),
           ),
+
+          // 6. Layer Isolation & Diagnostics Panel
+          const ArDiagnosticPanel(),
         ],
       ),
     );
   }
 }
+

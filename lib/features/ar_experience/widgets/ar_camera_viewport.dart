@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:camera/camera.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../controllers/ar_diagnostics_controller.dart';
 
-class ArCameraViewport extends StatefulWidget {
+class ArCameraViewport extends ConsumerStatefulWidget {
   final Widget? overlayChild;
   final Function(CameraController? controller)? onControllerReady;
 
@@ -16,10 +19,10 @@ class ArCameraViewport extends StatefulWidget {
   });
 
   @override
-  State<ArCameraViewport> createState() => _ArCameraViewportState();
+  ConsumerState<ArCameraViewport> createState() => _ArCameraViewportState();
 }
 
-class _ArCameraViewportState extends State<ArCameraViewport>
+class _ArCameraViewportState extends ConsumerState<ArCameraViewport>
     with WidgetsBindingObserver {
   CameraController? _cameraController;
   bool _isInitialized = false;
@@ -32,31 +35,55 @@ class _ArCameraViewportState extends State<ArCameraViewport>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initCamera();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initCamera();
+    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint('[ArCameraViewport] AppLifecycleState changed to: $state');
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) return;
 
-    if (state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      debugPrint('[ArCameraViewport] Disposing camera controller for backgrounding');
       controller.dispose();
       _cameraController = null;
       if (mounted) setState(() => _isInitialized = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(arDiagnosticsProvider.notifier).updateCameraTelemetry(
+              status: 'suspended',
+            );
+      });
     } else if (state == AppLifecycleState.resumed) {
-      _initCamera();
+      debugPrint('[ArCameraViewport] App resumed -> reinitializing camera stream');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _initCamera();
+      });
     }
   }
+
 
   Future<void> _initCamera() async {
     if (_isInitializing) return;
     _isInitializing = true;
+    final stopwatch = Stopwatch()..start();
+
+    debugPrint('[ArCameraViewport] Beginning camera initialization sequence...');
+    ref.read(arDiagnosticsProvider.notifier).updateCameraTelemetry(
+          status: 'initializing',
+        );
+
     final previousController = _cameraController;
     _cameraController = null;
     if (previousController != null) {
+      debugPrint('[ArCameraViewport] Disposing previous camera controller instance');
       await previousController.dispose();
     }
+
     if (mounted) {
       setState(() {
         _isInitialized = false;
@@ -64,27 +91,38 @@ class _ArCameraViewportState extends State<ArCameraViewport>
         _errorMessage = null;
       });
     }
+
     try {
       final status = await Permission.camera.request();
       if (!status.isGranted) {
+        debugPrint('[ArCameraViewport] Camera permission denied');
         if (mounted) {
           setState(() {
             _permissionDenied = true;
             _errorMessage =
                 'Camera permission is required for Augmented Reality scanning.';
           });
+          ref.read(arDiagnosticsProvider.notifier).updateCameraTelemetry(
+                status: 'permission_denied',
+                exceptionCode: 'PERMISSION_DENIED',
+              );
         }
         return;
       }
 
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
+        debugPrint('[ArCameraViewport] No hardware cameras detected');
         if (mounted) {
           setState(() {
             _noCameraAvailable = true;
             _errorMessage =
                 'No hardware camera detected (Emulated Environment).';
           });
+          ref.read(arDiagnosticsProvider.notifier).updateCameraTelemetry(
+                status: 'no_hardware_camera',
+                exceptionCode: 'NO_CAMERAS',
+              );
         }
         return;
       }
@@ -95,23 +133,30 @@ class _ArCameraViewportState extends State<ArCameraViewport>
         orElse: () => cameras.first,
       );
 
+      debugPrint('[ArCameraViewport] Selected camera: ${selectedCamera.name}, direction: ${selectedCamera.lensDirection}');
+
       CameraController? controller;
       Object? initializationError;
+      String chosenPresetName = 'medium';
+
       for (final preset in const [
+        ResolutionPreset.medium,
         ResolutionPreset.high,
-        ResolutionPreset.medium
       ]) {
+        debugPrint('[ArCameraViewport] Trying resolution preset: $preset');
         final candidate = CameraController(
           selectedCamera,
           preset,
           enableAudio: false,
-          imageFormatGroup: ImageFormatGroup.jpeg,
         );
         try {
           await candidate.initialize();
           controller = candidate;
+          chosenPresetName = preset.name;
+          debugPrint('[ArCameraViewport] Successfully initialized camera with preset: $preset');
           break;
         } catch (error) {
+          debugPrint('[ArCameraViewport] Failed with preset $preset: $error');
           initializationError = error;
           await candidate.dispose();
         }
@@ -124,6 +169,12 @@ class _ArCameraViewportState extends State<ArCameraViewport>
         );
       }
 
+      stopwatch.stop();
+      final initDuration = stopwatch.elapsedMilliseconds;
+      final previewSize = controller.value.previewSize ?? const Size(1280, 720);
+
+      debugPrint('[ArCameraViewport] Camera stream active in ${initDuration}ms. Preview Size: $previewSize, Aspect Ratio: ${controller.value.aspectRatio}');
+
       if (mounted) {
         setState(() {
           _cameraController = controller;
@@ -131,16 +182,32 @@ class _ArCameraViewportState extends State<ArCameraViewport>
           _permissionDenied = false;
           _noCameraAvailable = false;
         });
+
+        ref.read(arDiagnosticsProvider.notifier).updateCameraTelemetry(
+              status: 'streaming',
+              lens: selectedCamera.lensDirection.name,
+              preset: chosenPresetName,
+              width: previewSize.width,
+              height: previewSize.height,
+              aspectRatio: controller.value.aspectRatio,
+              initDurationMs: initDuration,
+            );
+
         widget.onControllerReady?.call(controller);
       } else {
         await controller.dispose();
       }
     } catch (e) {
+      debugPrint('[ArCameraViewport] Camera exception caught: $e');
       if (mounted) {
         setState(() {
           _noCameraAvailable = true;
           _errorMessage = 'Camera initialization: $e';
         });
+        ref.read(arDiagnosticsProvider.notifier).updateCameraTelemetry(
+              status: 'error',
+              exceptionCode: e.toString(),
+            );
       }
     } finally {
       _isInitializing = false;
@@ -156,16 +223,61 @@ class _ArCameraViewportState extends State<ArCameraViewport>
 
   @override
   Widget build(BuildContext context) {
+    final diagState = ref.watch(arDiagnosticsProvider);
+
+    // Layer 1 Diagnostic Override: Solid background
+    if (diagState.showSolidBackground) {
+      return Container(
+        color: const Color(0xFF003844),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.sunGold),
+                ),
+                child: Text(
+                  'Diagnostic Solid Background Active (Layer 1 OK)',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+            if (widget.overlayChild != null) widget.overlayChild!,
+          ],
+        ),
+      );
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. Camera Video Feed Layer or Graceful Fallback
-        if (_isInitialized && _cameraController != null)
+        // 1. Camera Video Feed Layer or Fallback
+        if (diagState.showCameraPreview &&
+            _isInitialized &&
+            _cameraController != null)
           _buildLetterboxFreeCameraPreview()
         else if (_permissionDenied)
           _buildPermissionDeniedView()
         else if (_noCameraAvailable)
           _buildSimulatedEnvironmentView()
+        else if (!diagState.showCameraPreview)
+          Container(
+            color: const Color(0xFF0F172A),
+            child: const Center(
+              child: Text(
+                'Camera Preview Disabled in Diagnostics',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ),
+          )
         else
           _buildLoadingCameraView(),
 
@@ -178,27 +290,18 @@ class _ArCameraViewportState extends State<ArCameraViewport>
   /// Scales and centers camera preview to fill edge-to-edge screen without distortion.
   Widget _buildLetterboxFreeCameraPreview() {
     final controller = _cameraController!;
-    final previewSize = controller.value.previewSize ?? const Size(1920, 1080);
-    // In portrait mode, width and height of preview are swapped
-    final cameraAspectRatio = previewSize.height / previewSize.width;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final screenAspectRatio = constraints.maxWidth / constraints.maxHeight;
-        double scale = 1.0;
-
-        if (screenAspectRatio > cameraAspectRatio) {
-          scale = screenAspectRatio / cameraAspectRatio;
-        } else {
-          scale = cameraAspectRatio / screenAspectRatio;
-        }
-
         return ClipRect(
-          child: Transform.scale(
-            scale: scale,
-            alignment: Alignment.center,
-            child: Center(
-              child: CameraPreview(controller),
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: constraints.maxWidth,
+                height: constraints.maxWidth * controller.value.aspectRatio,
+                child: CameraPreview(controller),
+              ),
             ),
           ),
         );
@@ -303,7 +406,7 @@ class _ArCameraViewportState extends State<ArCameraViewport>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: AppSpacing.roundedPill,
                   border: Border.all(color: Colors.white24),
                 ),

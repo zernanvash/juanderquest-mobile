@@ -13,6 +13,9 @@ import '../engine/spatial_math.dart';
 import '../widgets/ar_3d_canvas.dart';
 import '../widgets/ar_camera_viewport.dart';
 import '../widgets/ar_radar_compass_hud.dart';
+import '../widgets/ar_diagnostic_panel.dart';
+
+
 
 
 /// Represents a 3D object dynamically spawned in physical space.
@@ -372,9 +375,13 @@ class _ArTestScreenState extends ConsumerState<ArTestScreen> with SingleTickerPr
             right: 12,
             child: _buildBottomControlPanel(),
           ),
+
+          // 5. Layer Isolation & Diagnostics Panel
+          const ArDiagnosticPanel(),
         ],
       ),
     );
+
   }
 
   Widget _buildHeaderBar(BuildContext context) {
