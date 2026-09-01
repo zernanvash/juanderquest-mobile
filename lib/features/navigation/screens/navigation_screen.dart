@@ -108,9 +108,10 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
               ],
             ),
             child: const Center(
-              child: Text(
-                '🚀',
-                style: TextStyle(fontSize: 15),
+              child: Icon(
+                Icons.my_location_rounded,
+                color: Color(0xFFFFB703),
+                size: 18,
               ),
             ),
           ),
@@ -139,14 +140,16 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
             ],
           ),
           child: const Center(
-            child: Text(
-              '📍',
-              style: TextStyle(fontSize: 18),
+            child: Icon(
+              Icons.flag_rounded,
+              color: Colors.white,
+              size: 20,
             ),
           ),
         ),
       ),
     );
+
 
     // 3. Active Step Focus Marker (Gold Target)
     if (route != null && navState.activeStepIndex != null && route.coordinates.isNotEmpty) {

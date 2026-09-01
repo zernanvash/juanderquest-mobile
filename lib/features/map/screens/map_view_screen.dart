@@ -147,10 +147,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     ),
                   ],
                 ),
-                child: const Center(
-                  child: Text(
-                    '🏆',
-                    style: TextStyle(fontSize: 16),
+                child: Center(
+                  child: Icon(
+                    Icons.emoji_events_rounded,
+                    color: const Color(0xFF582F0E),
+                    size: isSelected ? 24 : 20,
                   ),
                 ),
               ),
@@ -195,10 +196,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     ),
                   ],
                 ),
-                child: const Center(
-                  child: Text(
-                    '📍',
-                    style: TextStyle(fontSize: 14),
+                child: Center(
+                  child: Icon(
+                    Icons.location_on_rounded,
+                    color: Colors.white,
+                    size: isSelected ? 22 : 18,
                   ),
                 ),
               ),
@@ -207,6 +209,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
         );
       }
     }
+
 
     return JdqScaffold(
       padding: EdgeInsets.zero,
