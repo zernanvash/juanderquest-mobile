@@ -205,10 +205,10 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
             const SizedBox(height: 12),
 
-            // 2. Live Anti-Crowd Diversion Alert Banner (Directly below search bar)
-            _buildLiveAntiCrowdAlert(),
-
-            const SizedBox(height: 12),
+            if (state.spots.isNotEmpty) ...[
+              _buildAlternativeRecommendation(state.spots.first),
+              const SizedBox(height: 12),
+            ],
 
             // 3. Post Creation Prompt Box
             GestureDetector(
@@ -306,20 +306,20 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     );
   }
 
-  Widget _buildLiveAntiCrowdAlert() {
+  Widget _buildAlternativeRecommendation(SpotModel spot) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
-            const Color(0xFFFFF3E0),
-            const Color(0xFFFFE0B2).withOpacity(0.6),
+            AppColors.primaryContainer,
+            AppColors.surfaceContainerLowest,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: const Color(0xFFFFB74D).withOpacity(0.8)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
         boxShadow: AppSpacing.cardShadow,
       ),
       child: Column(
@@ -330,28 +330,28 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE65100).withOpacity(0.15),
+                  color: AppColors.primary.withOpacity(0.12),
                   borderRadius: AppSpacing.roundedMd,
                 ),
-                child: const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFE65100)),
+                child: const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.primary),
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'LIVE ANTI-CROWD ALERT',
+                    const Text(
+                      'A PLACE YOU MAY LIKE',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFFE65100),
+                        color: AppColors.primary,
                         letterSpacing: 0.5,
                       ),
                     ),
                     Text(
-                      'Hundred Islands Peak Pressure',
-                      style: TextStyle(
+                      spot.name,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: AppColors.woodBrown,
@@ -364,18 +364,20 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'High tourist density reported at Alaminos Lucap wharfs. Divert to tranquil nearby spots like Timmaw Cave or Tambobong Beach to unlock +1.5x mJDQ Points!',
-            style: TextStyle(fontSize: 11, color: Color(0xFF5D4037), height: 1.35),
+            'Selected from your travel interests, saved places, and similar destination qualities—not only what is closest.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.35),
           ),
+          const SizedBox(height: 3),
+          Text('${spot.municipality} · Organic recommendation', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
             child: GestureDetector(
-              onTap: () => context.push('/search', extra: {'crowd': 'quiet'}),
+              onTap: () => context.push('/spots/${spot.slug}', extra: spot),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE65100),
+                  color: AppColors.primary,
                   borderRadius: AppSpacing.roundedPill,
                 ),
                 child: const FittedBox(
@@ -384,7 +386,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Filter Tranquil Alternatives',
+                        'View this place',
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       SizedBox(width: 4),
