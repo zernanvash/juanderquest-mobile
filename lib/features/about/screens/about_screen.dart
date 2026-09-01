@@ -8,12 +8,12 @@ import '../../../core/widgets/jdq_scaffold.dart';
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
-  final List<Map<String, String>> _authors = const [
-    {'name': 'Ana Victoria V. Alentajan', 'role': 'Research & UI/UX Lead'},
-    {'name': 'Zernan Vash L. Arive', 'role': 'Lead System Architect & Web3'},
-    {'name': 'Clarissa Angel A. Gutlay', 'role': 'Mobile Frontend & QA'},
-    {'name': 'Carl Jacob Lavaro', 'role': 'Backend & Data Architecture'},
-    {'name': 'Alyana Soriano', 'role': 'Tourism & Community Engagement'},
+  final List<String> _authors = const [
+    'Ana Victoria V. Alentajan',
+    'Zernan Vash L. Arive',
+    'Clarissa Angel A. Gutlay',
+    'Carl Jacob Lavaro',
+    'Alyana Soriano',
   ];
 
   @override
@@ -142,24 +142,15 @@ class AboutScreen extends StatelessWidget {
                     radius: 14,
                     backgroundColor: AppColors.primaryContainer,
                     child: Text(
-                      author['name']!.substring(0, 1),
+                      author.substring(0, 1),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onPrimaryContainer),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          author['name']!,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-                        ),
-                        Text(
-                          author['role']!,
-                          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                        ),
-                      ],
+                    child: Text(
+                      author,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
                     ),
                   ),
                 ],
