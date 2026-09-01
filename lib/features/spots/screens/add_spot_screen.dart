@@ -99,6 +99,48 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
     }
   }
 
+  Future<void> _pickVideo(ImageSource source) async {
+    setState(() {
+      _uploadError = null;
+    });
+
+    try {
+      final picked = await _picker.pickVideo(
+        source: source,
+        maxDuration: const Duration(seconds: 30),
+      );
+
+      if (picked == null) return;
+
+      final length = await picked.length();
+      if (length > 30 * 1024 * 1024) {
+        setState(() {
+          _uploadError = 'Video file size exceeds 30 MB limit.';
+        });
+        return;
+      }
+
+      setState(() {
+        _selectedFile = picked;
+        _uploadedAssetId = null;
+        _uploadedUrl = null;
+      });
+    } catch (e) {
+      setState(() {
+        _uploadError = 'Failed to select video: $e';
+      });
+    }
+  }
+
+  bool get _isSelectedFileVideo {
+    if (_selectedFile == null) return false;
+    final path = _selectedFile!.path.toLowerCase();
+    return path.endsWith('.mp4') ||
+        path.endsWith('.webm') ||
+        path.endsWith('.mov') ||
+        path.endsWith('.m4v');
+  }
+
   Future<void> _uploadPhoto() async {
     if (_selectedFile == null) return;
 
@@ -114,14 +156,14 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
       final fileBytes = await _selectedFile!.readAsBytes();
 
       final formData = FormData.fromMap({
-        'photo': MultipartFile.fromBytes(
+        'media': MultipartFile.fromBytes(
           fileBytes,
           filename: fileName,
         ),
       });
 
       final response = await client.dio.post(
-        '/spot-photos',
+        '/spot-media',
         data: formData,
         onSendProgress: (sent, total) {
           if (total > 0 && mounted) {
@@ -131,6 +173,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
           }
         },
       );
+
 
       if (response.statusCode == 201 && response.data['success'] == true) {
         final data = response.data['data'];
@@ -290,10 +333,10 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
 
             const SizedBox(height: AppSpacing.lg),
 
-            // Photo Upload Section
+            // Photo / Video Upload Section
             const JdqSectionHeader(
-              title: '1. Destination Photo',
-              subtitle: 'Attach a clear photo of the destination (Max 8 MB).',
+              title: '1. Destination Photo or Video',
+              subtitle: 'Attach a photo (up to 8 MB) or video clip (up to 30 MB).',
             ),
 
             Container(
@@ -318,10 +361,34 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            Image.file(
-                              File(_selectedFile!.path),
-                              fit: BoxFit.cover,
-                            ),
+                            if (_isSelectedFileVideo)
+                              Container(
+                                color: const Color(0xFF0F172A),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.videocam_rounded, size: 48, color: AppColors.sunGold),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _selectedFile!.name,
+                                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Video Clip Ready for Upload',
+                                      style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              Image.file(
+                                File(_selectedFile!.path),
+                                fit: BoxFit.cover,
+                              ),
                             if (_uploadedAssetId != null)
                               Positioned(
                                 top: 8,
@@ -332,14 +399,14 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                                     color: AppColors.success,
                                     borderRadius: AppSpacing.roundedPill,
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.check_circle_rounded, color: Colors.white, size: 14),
-                                      SizedBox(width: 4),
+                                      const Icon(Icons.check_circle_rounded, color: Colors.white, size: 14),
+                                      const SizedBox(width: 4),
                                       Text(
-                                        'Uploaded',
-                                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                        _isSelectedFileVideo ? 'Video Uploaded' : 'Photo Uploaded',
+                                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                                       ),
                                     ],
                                   ),
@@ -361,9 +428,16 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                       child: const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_a_photo_rounded, size: 40, color: AppColors.primary),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_a_photo_rounded, size: 36, color: AppColors.primary),
+                              SizedBox(width: 12),
+                              Icon(Icons.videocam_rounded, size: 36, color: AppColors.primary),
+                            ],
+                          ),
                           SizedBox(height: 8),
-                          Text('No photo selected yet', style: TextStyle(color: AppColors.textMuted)),
+                          Text('Select a photo or video clip', style: TextStyle(color: AppColors.textMuted)),
                         ],
                       ),
                     ),
@@ -374,7 +448,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                     LinearProgressIndicator(value: _uploadProgress, color: AppColors.primary),
                     const SizedBox(height: 6),
                     Text(
-                      'Uploading photo... ${(_uploadProgress * 100).toInt()}%',
+                      'Uploading media... ${(_uploadProgress * 100).toInt()}%',
                       style: AppTypography.bodySmall,
                     ),
                     const SizedBox(height: 8),
@@ -388,28 +462,32 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                     const SizedBox(height: 8),
                   ],
 
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
                     children: [
-                      Expanded(
-                        child: SecondaryButton(
-                          label: 'Camera',
-                          icon: Icons.camera_alt_rounded,
-                          onPressed: _uploading ? null : () => _pickImage(ImageSource.camera),
-                        ),
+                      SecondaryButton(
+                        label: 'Photo',
+                        icon: Icons.photo_library_rounded,
+                        onPressed: _uploading ? null : () => _pickImage(ImageSource.gallery),
                       ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: SecondaryButton(
-                          label: 'Gallery',
-                          icon: Icons.photo_library_rounded,
-                          onPressed: _uploading ? null : () => _pickImage(ImageSource.gallery),
-                        ),
+                      SecondaryButton(
+                        label: 'Video Clip',
+                        icon: Icons.videocam_rounded,
+                        onPressed: _uploading ? null : () => _pickVideo(ImageSource.gallery),
+                      ),
+                      SecondaryButton(
+                        label: 'Camera',
+                        icon: Icons.camera_alt_rounded,
+                        onPressed: _uploading ? null : () => _pickImage(ImageSource.camera),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
+
 
             const SizedBox(height: AppSpacing.sectionGap),
 

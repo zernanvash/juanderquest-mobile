@@ -49,6 +49,17 @@ class SpotModel {
       ? [SpotPhoto(url: imageUrl!)]
       : const [];
 
+  bool get isVideo {
+    if (imageUrl == null || imageUrl!.isEmpty) return false;
+    final url = imageUrl!.toLowerCase().split('?').first;
+    return url.endsWith('.mp4') ||
+        url.endsWith('.webm') ||
+        url.endsWith('.mov') ||
+        url.endsWith('.m4v') ||
+        url.contains('spot_video');
+  }
+
+
   static const Map<String, String> _defaultCuratedPhotos = {
     'hundred-islands-national-park':
         'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?auto=format&fit=crop&w=1200&q=80',

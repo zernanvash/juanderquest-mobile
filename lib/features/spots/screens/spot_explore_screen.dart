@@ -241,7 +241,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
-                        'Share a hidden beach, spot, or food tip...',
+                        'Share a video clip, spot, or food tip...',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -256,6 +256,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ),
               ),
             ),
+
 
             if (state.isRefreshing)
               const Padding(
@@ -562,6 +563,34 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         ),
                       ),
                     ),
+                    if (spot.isVideo)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                            borderRadius: AppSpacing.roundedPill,
+                            boxShadow: AppSpacing.cardShadow,
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.videocam_rounded, size: 13, color: AppColors.sunGold),
+                              SizedBox(width: 4),
+                              Text(
+                                'Video Post',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     if (spot.questId != null && spot.questId!.isNotEmpty) ...[
                       Positioned(
                         top: 8,
@@ -591,6 +620,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ),
               ),
             ],
+
 
             // 3. Compact Social Action Row
             Padding(
