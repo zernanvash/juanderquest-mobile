@@ -31,13 +31,24 @@ class ARExperienceScreen extends ConsumerStatefulWidget {
   ConsumerState<ARExperienceScreen> createState() => _ARExperienceScreenState();
 }
 
+class _GazeAnchor {
+  final double bearingDegrees;
+  final double pitchDegrees;
+
+  const _GazeAnchor({
+    required this.bearingDegrees,
+    required this.pitchDegrees,
+  });
+}
+
 class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
     with SingleTickerProviderStateMixin {
   QuestModel? _quest;
   bool _isLoadingQuest = false;
+  String? _questLoadError;
   Position? _currentPosition;
   bool _markerDetected = false;
-  bool _benchmarkObjectVisible = false;
+  _GazeAnchor? _gazeAnchor;
   bool _isCapturingGPS = true;
   String? _gpsError;
   StreamSubscription<Position>? _positionSub;
@@ -60,7 +71,10 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
   }
 
   Future<void> _fetchQuestById(String qId) async {
-    setState(() => _isLoadingQuest = true);
+    setState(() {
+      _isLoadingQuest = true;
+      _questLoadError = null;
+    });
     try {
       final apiClient = ref.read(apiClientProvider);
       final res = await apiClient.dio.get('/quests/$qId');
@@ -76,8 +90,186 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
       }
     } catch (_) {}
     if (mounted) {
-      setState(() => _isLoadingQuest = false);
+      setState(() {
+        _isLoadingQuest = false;
+        _questLoadError =
+            'Quest details could not be loaded. Camera test mode is still available.';
+      });
     }
+  }
+
+  void _spawnAtGaze() {
+    final orientation = ref.read(sensorFusionProvider);
+    setState(() {
+      _gazeAnchor = _GazeAnchor(
+        bearingDegrees: orientation.headingDegrees,
+        pitchDegrees: orientation.pitchDegrees,
+      );
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text(
+          '3D gem anchored where you were looking • '
+          '${orientation.headingDegrees.toStringAsFixed(0)}°',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGazeAnchor(
+    SensorOrientation orientation,
+    Size screenSize,
+  ) {
+    final anchor = _gazeAnchor;
+    if (anchor == null) return const SizedBox.shrink();
+
+    final relativeAzimuth = SpatialMath.normalizeAngleDelta(
+      anchor.bearingDegrees,
+      orientation.headingDegrees,
+    );
+    final relativePitch = anchor.pitchDegrees - orientation.pitchDegrees;
+    final point = SpatialMath.projectWorldToScreen(
+      relativeAzimuthDeg: relativeAzimuth,
+      pitchDeg: relativePitch,
+      rollDeg: orientation.rollDegrees,
+      distanceMeters: 4,
+      screenSize: screenSize,
+    );
+
+    if (!point.isVisibleInViewport) {
+      final direction = relativeAzimuth.abs() > 90
+          ? 'behind you'
+          : relativeAzimuth < 0
+              ? 'to your left'
+              : 'to your right';
+      return Positioned(
+        top: MediaQuery.paddingOf(context).top + 132,
+        left: 16,
+        right: 16,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.76),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFB703)),
+            ),
+            child: Text(
+              'Spawned gem is $direction • turn to find it',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final size = (110 * point.scaleFactor).clamp(72.0, 150.0);
+    return Positioned(
+      left: point.offset.dx - size / 2,
+      top: point.offset.dy - size / 2,
+      width: size,
+      height: size,
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _rotationController,
+          builder: (context, child) => Ar3dCanvas(
+            mesh: ShapesFactory.createShape(
+              ShapeType.gem,
+              themeColor: const Color(0xFFFFB703),
+            ),
+            rotX: 0.3,
+            rotY: _rotationController.value * 2 * 3.14159265,
+            rotZ: 0.1,
+            scale: size * 0.58,
+            renderStyle: RenderStyle.hybrid,
+            showShadow: true,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGazeSpawnButton() {
+    return Positioned(
+      key: const ValueKey('ar_gaze_spawn_control'),
+      right: 12,
+      top: MediaQuery.paddingOf(context).top + 184,
+      child: FloatingActionButton.extended(
+        heroTag: 'ar-gaze-spawn',
+        onPressed: _spawnAtGaze,
+        backgroundColor: const Color(0xFFFFB703),
+        foregroundColor: const Color(0xFF3D2B00),
+        icon: const Icon(Icons.add_location_alt_rounded),
+        label: Text(
+          _gazeAnchor == null ? 'Spawn Here' : 'Respawn Here',
+          style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestLoadFailure() {
+    final orientation = ref.watch(sensorFusionProvider);
+    final screenSize = MediaQuery.sizeOf(context);
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ArCameraViewport(),
+          _buildGazeAnchor(orientation, screenSize),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/quests'),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.76),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _questLoadError ?? 'Quest details unavailable.',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: widget.questId == null
+                          ? null
+                          : () => _fetchQuestById(widget.questId!),
+                      icon: const Icon(Icons.refresh_rounded),
+                      tooltip: 'Retry quest',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          _buildGazeSpawnButton(),
+        ],
+      ),
+    );
   }
 
   Future<void> _checkPermissionRationaleAndCapture() async {
@@ -620,13 +812,14 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingQuest || _quest == null) {
+    if (_isLoadingQuest) {
       return const Scaffold(
         backgroundColor: Color(0xFF1B1C1A),
         body:
             Center(child: CircularProgressIndicator(color: Color(0xFFFFB703))),
       );
     }
+    if (_quest == null) return _buildQuestLoadFailure();
 
     final disableAnimations = MediaQuery.of(context).disableAnimations;
 
@@ -646,8 +839,7 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
     final subState = ref.watch(submissionProvider);
     final sensorOrientation = ref.watch(sensorFusionProvider);
     final diagState = ref.watch(arDiagnosticsProvider);
-    final isBenchmarkVisible =
-        _benchmarkObjectVisible || diagState.showCenteredBenchmarkGem;
+    final isBenchmarkVisible = diagState.showCenteredBenchmarkGem;
 
     final hasUsableGps = _currentPosition != null &&
         _currentPosition!.accuracy > 0 &&
@@ -841,6 +1033,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
               ),
             ),
 
+          _buildGazeAnchor(sensorOrientation, screenSize),
+
           // 5. Header HUD with 360° Radar & GPS Guards
           SafeArea(
             child: SingleChildScrollView(
@@ -1024,6 +1218,8 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
             ),
           ),
 
+          _buildGazeSpawnButton(),
+
           // Bottom Action Controls
           Positioned(
             bottom: 24,
@@ -1031,33 +1227,6 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
             right: 16,
             child: Column(
               children: [
-                ElevatedButton.icon(
-                  key: const ValueKey('ar_summon_benchmark_button'),
-                  onPressed: () => setState(
-                    () => _benchmarkObjectVisible = !_benchmarkObjectVisible,
-                  ),
-                  icon: Icon(
-                    _benchmarkObjectVisible
-                        ? Icons.visibility_off_rounded
-                        : Icons.view_in_ar_rounded,
-                    size: 18,
-                  ),
-                  label: Text(
-                    _benchmarkObjectVisible
-                        ? 'Hide Benchmark Object'
-                        : 'Summon 3D Benchmark Object',
-                    style: GoogleFonts.epilogue(fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(44),
-                    backgroundColor: const Color(0xFF7D5800),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
                 if (!_markerDetected) ...[
                   UiSpecContainer(
                     spec: const UiSpec(
@@ -1144,4 +1313,3 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
     );
   }
 }
-
