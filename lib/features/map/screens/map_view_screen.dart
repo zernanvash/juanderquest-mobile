@@ -133,10 +133,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFB703),
+                  color: const Color(0xFF935610),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF582F0E) : Colors.white,
+                    color: isSelected ? const Color(0xFFFFB703) : const Color(0xFFFAF9F5),
                     width: isSelected ? 2.5 : 2.0,
                   ),
                   boxShadow: [
@@ -149,8 +149,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 ),
                 child: Center(
                   child: Icon(
-                    Icons.emoji_events_rounded,
-                    color: const Color(0xFF582F0E),
+                    Icons.explore_rounded,
+                    color: const Color(0xFFFFB703),
                     size: isSelected ? 24 : 20,
                   ),
                 ),
@@ -182,10 +182,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2D6A4F),
+                  color: const Color(0xFF1B4332),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white,
+                    color: isSelected ? const Color(0xFF52B788) : const Color(0xFFFAF9F5),
                     width: isSelected ? 2.5 : 2.0,
                   ),
                   boxShadow: [
@@ -198,8 +198,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 ),
                 child: Center(
                   child: Icon(
-                    Icons.location_on_rounded,
-                    color: Colors.white,
+                    Icons.park_rounded,
+                    color: const Color(0xFFFAF9F5),
                     size: isSelected ? 22 : 18,
                   ),
                 ),
@@ -209,6 +209,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
         );
       }
     }
+
 
 
     return JdqScaffold(

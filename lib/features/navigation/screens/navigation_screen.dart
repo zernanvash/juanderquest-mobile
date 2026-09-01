@@ -96,9 +96,9 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
           alignment: Alignment.center,
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.woodBrown,
+              color: const Color(0xFF1B4332),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2.5),
+              border: Border.all(color: const Color(0xFFFAF9F5), width: 2.5),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.3),
@@ -119,7 +119,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
       );
     }
 
-    // 2. Destination Marker (Emerald Pin)
+    // 2. Destination Marker (Terra Cotta Pin)
     markers.add(
       Marker(
         point: LatLng(widget.destination.lat, widget.destination.lng),
@@ -128,9 +128,9 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
         alignment: Alignment.center,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF2D6A4F),
+            color: const Color(0xFF8B3A2B),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2.5),
+            border: Border.all(color: const Color(0xFFFAF9F5), width: 2.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.35),
@@ -142,7 +142,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
           child: const Center(
             child: Icon(
               Icons.flag_rounded,
-              color: Colors.white,
+              color: Color(0xFFFAF9F5),
               size: 20,
             ),
           ),
@@ -150,8 +150,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
       ),
     );
 
-
-    // 3. Active Step Focus Marker (Gold Target)
+    // 3. Active Step Focus Marker (Wood Brown Target)
     if (route != null && navState.activeStepIndex != null && route.coordinates.isNotEmpty) {
       final ratio = navState.activeStepIndex! /
           (route.maneuvers.length > 1 ? route.maneuvers.length - 1 : 1);
@@ -167,9 +166,9 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
           alignment: Alignment.center,
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFFFB703),
+              color: const Color(0xFF582F0E),
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF582F0E), width: 2.0),
+              border: Border.all(color: const Color(0xFFFAF9F5), width: 2.0),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.3),
@@ -183,7 +182,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF582F0E),
+                  color: Color(0xFFFAF9F5),
                 ),
               ),
             ),
@@ -191,6 +190,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
         ),
       );
     }
+
 
     final polylineList = <Polyline>[];
     if (route != null && route.coordinates.isNotEmpty) {
