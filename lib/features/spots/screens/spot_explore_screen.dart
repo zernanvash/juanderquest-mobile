@@ -14,6 +14,8 @@ import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
+import '../../juanchoice/providers/juanchoice_provider.dart';
+import '../../juanchoice/models/juanchoice_models.dart';
 
 class SpotExploreScreen extends ConsumerStatefulWidget {
   const SpotExploreScreen({super.key});
@@ -32,8 +34,11 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     Future.microtask(() => ref.read(spotDiscoveryProvider.notifier).initialize());
   }
 
-  Future<void> _load({bool refresh = false}) {
-    return ref.read(spotDiscoveryProvider.notifier).load(refresh: refresh);
+  Future<void> _load({bool refresh = false}) async {
+    await Future.wait([
+      ref.read(spotDiscoveryProvider.notifier).load(refresh: refresh),
+      if (refresh) ref.refresh(choiceSpotlightProvider.future),
+    ]);
   }
 
   void _toggleLike(String spotId) {
@@ -59,6 +64,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(spotDiscoveryProvider);
+    final spotlight = ref.watch(choiceSpotlightProvider).valueOrNull;
+    final spotlightPlan = planChoiceSpotlight(state.spots, (spot) => spot.id, spotlight);
     final user = ref.watch(authProvider).user;
     final userInitial = user?.displayName != null && user!.displayName.isNotEmpty
         ? user.displayName.substring(0, 1).toUpperCase()
@@ -202,11 +209,40 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ),
               ),
             ),
+            if (spotlight != null && spotlightPlan.winners.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              Semantics(
+                label: 'JuanChoice community-selected destination spotlight',
+                child: Card(
+                  color: AppColors.sunGold.withOpacity(0.16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Community-selected spotlight',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
+                      Text(spotlight.theme, maxLines: 2, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: AppSpacing.sm),
+                      for (final winner in spotlightPlan.winners)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.workspace_premium_rounded, color: AppColors.woodBrown),
+                          title: Text(winner.name),
+                          subtitle: Text(winner.municipality),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.push('/explore/${winner.slug}', extra: winner),
+                        ),
+                      Text('Expires ${spotlight.expiresAt.toLocal()}',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    ]),
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 12),
 
-            if (state.spots.isNotEmpty) ...[
-              _buildAlternativeRecommendation(state.spots.first),
+            if (spotlightPlan.ordinary.isNotEmpty) ...[
+              _buildAlternativeRecommendation(spotlightPlan.ordinary.first),
               const SizedBox(height: 12),
             ],
 
@@ -283,7 +319,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   runSpacing: 4,
                   children: [
                     Text(
-                      '${state.spots.length} Community Field Reports',
+                      '${spotlightPlan.ordinary.length} Community Field Reports',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
                     ),
                     GestureDetector(
@@ -298,7 +334,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               ),
 
               // Facebook-Style Edge-to-Edge Post Feed
-              ...state.spots.map((spot) => _buildForumPostCard(spot)),
+              ...spotlightPlan.ordinary.map((spot) => _buildForumPostCard(spot)),
             ],
           ],
         ),

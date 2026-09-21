@@ -40,6 +40,7 @@ import 'package:juanderquest_app/features/app_update/domain/update_repository.da
 import 'package:juanderquest_app/features/app_update/models/app_version_info.dart';
 import 'package:juanderquest_app/features/app_update/providers/startup_update_controller.dart';
 import 'package:juanderquest_app/features/app_update/widgets/startup_update_gate.dart';
+import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 
 
 
@@ -304,6 +305,7 @@ void main() {
           governanceProvider.overrideWith((ref) => InertGovernanceNotifier(ref, [dummyProposal])),
           walletProvider.overrideWith((ref) => InertWalletNotifier(ref, dummyWallet)),
           spotDiscoveryProvider.overrideWith((ref) => InertSpotDiscoveryNotifier(ref, [dummySpot])),
+          choiceSpotlightProvider.overrideWith((ref) async => null),
           startupUpdateControllerProvider.overrideWith((ref) => InertStartupUpdateController(
                 InertUpdateRepository(),
                 const StartupGateState(phase: GatePhase.ready),

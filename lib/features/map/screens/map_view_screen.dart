@@ -14,6 +14,8 @@ import '../../quests/models/quest_model.dart';
 import '../../quests/providers/quest_provider.dart';
 import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
+import '../../juanchoice/providers/juanchoice_provider.dart';
+import '../../juanchoice/models/juanchoice_models.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
   const MapViewScreen({super.key});
@@ -87,6 +89,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       await Future.wait([
         ref.read(questProvider.notifier).fetchQuests(),
         ref.read(spotDiscoveryProvider.notifier).load(),
+        ref.refresh(choiceSpotlightProvider.future),
       ]);
     } finally {
       if (mounted) {
@@ -106,9 +109,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   Widget build(BuildContext context) {
     final questState = ref.watch(questProvider);
     final spotState = ref.watch(spotDiscoveryProvider);
+    final spotlight = ref.watch(choiceSpotlightProvider).valueOrNull;
 
     final quests = questState.quests;
     final spots = spotState.spots;
+    final plannedSpots = planChoiceSpotlight(spots, (spot) => spot.id, spotlight);
 
     final markers = <Marker>[];
 
@@ -163,7 +168,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
     // 2. Spots Markers (Emerald Badges)
     if (_activeFilter == 'all' || _activeFilter == 'spots') {
-      for (final spot in spots) {
+      for (final spot in plannedSpots.ordinary) {
         final isSelected = _selectedSpot?.id == spot.id;
         markers.add(
           Marker(
@@ -207,6 +212,40 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             ),
           ),
         );
+      }
+    }
+
+    // The winner coordinates come from the already-loaded spot catalog. This
+    // adds a marker without remounting FlutterMap or its tile layer.
+    if (spotlight != null && (_activeFilter == 'all' || _activeFilter == 'spots')) {
+      for (final spot in plannedSpots.winners) {
+        final isSelected = _selectedSpot?.id == spot.id;
+        markers.add(Marker(
+          point: LatLng(spot.gpsLat, spot.gpsLng),
+          width: isSelected ? 48 : 42,
+          height: isSelected ? 48 : 42,
+          alignment: Alignment.center,
+          child: Semantics(
+            label: 'JuanChoice community spotlight: ${spot.name}',
+            button: true,
+            child: GestureDetector(
+              onTap: () {
+                setState(() { _selectedSpot = spot; _selectedQuest = null; });
+                _mapController.move(LatLng(spot.gpsLat, spot.gpsLng), 13);
+              },
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.sunGold,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.woodBrown, width: isSelected ? 3 : 2),
+                  boxShadow: AppSpacing.cardShadow,
+                ),
+                child: Icon(Icons.workspace_premium_rounded,
+                  color: AppColors.woodBrown, size: isSelected ? 28 : 24),
+              ),
+            ),
+          ),
+        ));
       }
     }
 

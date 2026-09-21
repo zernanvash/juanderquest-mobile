@@ -1,4 +1,4 @@
-name: Build and Deploy Android APK (OTA Distribution)
+name: Build Android APK (CI Artifact Only)
 
 on:
   push:
@@ -112,18 +112,7 @@ jobs:
             dist/version.json
           retention-days: 14
 
-      - name: Deploy to Azure VM (Downloads Server)
-        if: env.AZURE_SSH_HOST != '' && env.AZURE_SSH_KEY != ''
-        env:
-          AZURE_SSH_HOST: ${{ secrets.AZURE_SSH_HOST }}
-          AZURE_SSH_USER: ${{ secrets.AZURE_SSH_USER || 'azureuser' }}
-          AZURE_SSH_KEY: ${{ secrets.AZURE_SSH_KEY }}
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.AZURE_SSH_HOST }}
-          username: ${{ secrets.AZURE_SSH_USER || 'azureuser' }}
-          key: ${{ secrets.AZURE_SSH_KEY }}
-          source: 'dist/juanderquest-latest.apk,dist/juanderquest-alpha-*.apk,dist/version.json'
-          target: '/var/www/jdq-downloads/'
-          strip_components: 1
+      # VM deployment retired. Artifacts are CI downloads, not a public update feed.
+      # GitHub Releases distribution requires the signing and manifest cutover
+      # described in the workspace VM-free distribution plan.
 

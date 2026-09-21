@@ -6,6 +6,7 @@ import '../features/companion/widgets/companion_card.dart';
 import '../features/spots/providers/spot_discovery_provider.dart';
 import '../features/quests/providers/quest_provider.dart';
 import '../features/quests/providers/campaign_provider.dart';
+import '../features/juanchoice/providers/juanchoice_provider.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -28,6 +29,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       ref.read(spotDiscoveryProvider.notifier).load();
       ref.read(questProvider.notifier).fetchQuests();
       ref.read(campaignProvider.notifier).fetchCampaigns();
+      ref.read(choiceSpotlightProvider.future);
     });
   }
 

@@ -13,6 +13,7 @@ import '../features/profile/screens/profile_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
+import '../features/juanchoice/screens/juanchoice_screen.dart';
 import '../features/shop/screens/shop_screen.dart';
 import '../features/spots/screens/spot_explore_screen.dart';
 import '../features/spots/screens/spot_search_screen.dart';
@@ -27,6 +28,7 @@ import '../features/about/screens/about_screen.dart';
 import '../features/navigation/models/route_model.dart';
 import '../features/navigation/screens/navigation_screen.dart';
 import 'main_shell.dart';
+import 'auth_redirect.dart';
 
 
 CustomTransitionPage buildDirectionalSlidePage<T>({
@@ -69,14 +71,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final loggedIn = authState.isAuthenticated;
-      final onLogin = state.matchedLocation == '/';
-      final publicDiscovery = state.matchedLocation == '/explore' || state.matchedLocation.startsWith('/explore/');
-
-      if (!loggedIn && !onLogin && !publicDiscovery) return '/';
-      if (loggedIn && onLogin) return '/explore';
-      return null;
+      return resolveAuthRedirect(loggedIn: loggedIn,
+        matchedLocation: state.matchedLocation, uri: state.uri);
     },
     routes: [
+      GoRoute(path: '/choice', builder: (context, state) => const JuanChoiceScreen(), routes: [
+        GoRoute(path: ':id', builder: (context, state) => JuanChoiceDetailScreen(campaignId: state.pathParameters['id']!)),
+      ]),
       GoRoute(
         path: '/',
         builder: (context, state) => const DemoLoginScreen(),

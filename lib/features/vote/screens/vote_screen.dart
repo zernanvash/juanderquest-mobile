@@ -376,6 +376,11 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: AppSpacing.md),
+            PrimaryButton(
+              label: 'Explore JuanChoice (free community vote)',
+              onPressed: () => context.push('/choice'),
+            ),
+            const SizedBox(height: AppSpacing.md),
 
             // Wallet Balance Header
             UiSpecContainer(
