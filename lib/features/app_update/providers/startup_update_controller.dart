@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import '../../auth/providers/auth_provider.dart';
 import '../data/update_repository_impl.dart';
 
 import '../domain/update_classification.dart';
@@ -11,8 +10,7 @@ import '../domain/update_repository.dart';
 import '../models/app_version_info.dart';
 
 final updateRepositoryProvider = Provider<IUpdateRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return UpdateRepositoryImpl(apiClient: apiClient);
+  return UpdateRepositoryImpl();
 });
 
 

@@ -176,7 +176,8 @@ class _BaseRequiredView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final downloadUrl = state.latestVersion?.downloadUrl ?? 'https://jdq.zernanvash.dev/download/juanderquest-latest.apk';
+    final downloadUrl = state.latestVersion?.downloadUrl ??
+        'https://github.com/zernanvash/juanderquest-mobile/releases/latest/download/juanderquest-latest.apk';
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),

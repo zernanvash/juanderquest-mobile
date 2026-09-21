@@ -41,6 +41,9 @@ class AppVersionInfo {
   final ContentManifestMetadata? content;
   final String? commitHash;
   final String? fileName;
+  final String? packageName;
+  final String? sha256;
+  final int? sizeBytes;
 
   const AppVersionInfo({
     required this.versionCode,
@@ -56,6 +59,9 @@ class AppVersionInfo {
     this.content,
     this.commitHash,
     this.fileName,
+    this.packageName,
+    this.sha256,
+    this.sizeBytes,
   });
 
   factory AppVersionInfo.fromJson(Map<String, dynamic> json) {
@@ -88,6 +94,9 @@ class AppVersionInfo {
           : null,
       commitHash: json['commitHash'] as String?,
       fileName: json['fileName'] as String?,
+      packageName: json['packageName'] as String?,
+      sha256: json['sha256'] as String?,
+      sizeBytes: json['sizeBytes'] as int?,
     );
   }
 }

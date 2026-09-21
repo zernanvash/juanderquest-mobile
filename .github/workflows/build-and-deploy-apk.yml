@@ -1,118 +1,118 @@
-name: Build Android APK (CI Artifact Only)
+name: Build and Publish Android APK
 
 on:
   push:
-    branches:
-      - master
-      - main
+    branches: [main]
   workflow_dispatch:
     inputs:
       changelog:
-        description: 'Release changelog notes'
+        description: Release notes
         required: false
-        default: 'Automated release build with latest fixes and features.'
+        default: Automated JuanDerQuest alpha release.
       force_update:
-        description: 'Force all users to update'
+        description: Require this base APK before entering the app
         type: boolean
         default: false
 
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
 jobs:
-  build:
-    name: Build Flutter Release APK
+  build-and-release:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java 21 (Temurin)
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
-          cache: 'gradle'
-
-      - name: Set up Flutter SDK
-        uses: subosito/flutter-action@v2
+          cache: gradle
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
           cache: true
-
-      - name: Extract Version Info from pubspec.yaml
-        id: version_info
+      - name: Resolve release metadata
+        id: release
+        shell: bash
         run: |
-          if [ -d "juanderquest_app" ]; then cd juanderquest_app; fi
-          FULL_VERSION=$(grep 'version:' pubspec.yaml | head -n 1 | sed 's/version: //')
-          VERSION_NAME=$(echo $FULL_VERSION | cut -d'+' -f1)
-          # Use GitHub run number as incremental version code for reliable OTA increments
-          VERSION_CODE=$(( ${{ github.run_number }} + 100 ))
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "Building Version: $VERSION_NAME (Code: $VERSION_CODE)"
-
-      - name: Install Flutter Dependencies
+          set -euo pipefail
+          full_version="$(sed -n 's/^version: //p' pubspec.yaml | head -n 1)"
+          version_name="${full_version%%+*}"
+          version_code="$((GITHUB_RUN_NUMBER + 100))"
+          short_sha="${GITHUB_SHA:0:7}"
+          tag="android-v${version_name}+${version_code}.${GITHUB_RUN_ATTEMPT}"
+          echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${version_code}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Build signed release APK
+        run: >-
+          flutter build apk --release
+          --build-name="${{ steps.release.outputs.version_name }}"
+          --build-number="${{ steps.release.outputs.version_code }}"
+          --dart-define=UPDATE_MANIFEST_URL=https://github.com/${{ github.repository }}/releases/latest/download/version.json
+          --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://jdq.zernanvash.dev/api/v1' }}
+      - name: Create release assets and manifest
+        env:
+          CHANGELOG_INPUT: ${{ inputs.changelog }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          FORCE_UPDATE: ${{ inputs.force_update || 'false' }}
+        shell: bash
         run: |
-          if [ -d "juanderquest_app" ]; then cd juanderquest_app; fi
-          flutter pub get
-
-      - name: Build Android Release APK
-        run: |
-          if [ -d "juanderquest_app" ]; then cd juanderquest_app; fi
-          flutter build apk --release \
-            --build-name="${{ steps.version_info.outputs.version_name }}" \
-            --build-number=${{ steps.version_info.outputs.version_code }} \
-            --dart-define=API_BASE_URL=https://jdq.zernanvash.dev/api/v1
-
-      - name: Locate Output APK
-        id: apk_locator
-        run: |
-          if [ -f "juanderquest_app/build/app/outputs/flutter-apk/app-release.apk" ]; then
-            echo "apk_path=juanderquest_app/build/app/outputs/flutter-apk/app-release.apk" >> $GITHUB_OUTPUT
-          else
-            echo "apk_path=build/app/outputs/flutter-apk/app-release.apk" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Generate version.json Metadata
-        run: |
+          set -euo pipefail
           mkdir -p dist
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          APK_NAME="juanderquest-alpha-${COMMIT_SHA}.apk"
-          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
-          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
-          
-          cp "${{ steps.apk_locator.outputs.apk_path }}" dist/juanderquest-latest.apk
-          cp "${{ steps.apk_locator.outputs.apk_path }}" "dist/${APK_NAME}"
-          
-          CHANGELOG_TEXT="${{ github.event.inputs.changelog || github.event.head_commit.message || 'Latest automated release update.' }}"
-          # Clean newlines from changelog for JSON safety
-          SAFE_CHANGELOG=$(echo "$CHANGELOG_TEXT" | tr '\n' ' ' | sed 's/"/\\"/g')
-          
-          cat <<EOF > dist/version.json
-          {
-            "versionCode": ${{ steps.version_info.outputs.version_code }},
-            "versionName": "alpha-${COMMIT_SHA}",
-            "commitHash": "${COMMIT_SHA}",
-            "fileName": "${APK_NAME}",
-            "downloadUrl": "https://jdq.zernanvash.dev/downloads/${APK_NAME}",
-            "changelog": "$SAFE_CHANGELOG",
-            "publishedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-            "forceUpdate": ${{ github.event.inputs.force_update || false }},
-            "minSupportedVersionCode": 1
-          }
-          EOF
-          cat dist/version.json
-
-      - name: Upload Artifacts to GitHub Actions
+          apk_source="build/app/outputs/flutter-apk/app-release.apk"
+          apk_name="juanderquest-${{ steps.release.outputs.tag }}.apk"
+          cp "$apk_source" "dist/$apk_name"
+          cp "$apk_source" dist/juanderquest-latest.apk
+          sha256="$(sha256sum "$apk_source" | cut -d' ' -f1)"
+          size_bytes="$(stat -c '%s' "$apk_source")"
+          notes="${CHANGELOG_INPUT:-${COMMIT_MESSAGE:-Automated JuanDerQuest alpha release.}}"
+          jq -n \
+            --argjson versionCode '${{ steps.release.outputs.version_code }}' \
+            --arg versionName '${{ steps.release.outputs.version_name }}' \
+            --arg commitHash '${{ steps.release.outputs.short_sha }}' \
+            --arg fileName "$apk_name" \
+            --arg downloadUrl 'https://github.com/${{ github.repository }}/releases/latest/download/juanderquest-latest.apk' \
+            --arg sha256 "$sha256" \
+            --argjson sizeBytes "$size_bytes" \
+            --arg changelog "$notes" \
+            --arg publishedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --argjson forceUpdate "$FORCE_UPDATE" \
+            '{schemaVersion: 1, packageName: "dev.zernanvash.juanderquest", versionCode: $versionCode, versionName: $versionName, commitHash: $commitHash, fileName: $fileName, downloadUrl: $downloadUrl, sha256: $sha256, sizeBytes: $sizeBytes, changelog: $changelog, publishedAt: $publishedAt, forceUpdate: $forceUpdate, minSupportedVersionCode: (if $forceUpdate then $versionCode else 1 end), minimumBaseVersionCode: (if $forceUpdate then $versionCode else 1 end), baseReleaseRequired: $forceUpdate, updatePolicy: (if $forceUpdate then "mandatory" else "optional" end)}' \
+            > dist/version.json
+          sha256sum dist/juanderquest-latest.apk "dist/$apk_name" dist/version.json > dist/SHA256SUMS
+          jq -e '.schemaVersion == 1 and .versionCode > 0 and (.sha256 | test("^[a-f0-9]{64}$")) and .sizeBytes > 5000000' dist/version.json
+      - name: Upload diagnostic artifact
         uses: actions/upload-artifact@v4
         with:
-          name: juanderquest-android-apk
-          path: |
-            dist/juanderquest-latest.apk
-            dist/juanderquest-alpha-*.apk
-            dist/version.json
-          retention-days: 14
-
-      # VM deployment retired. Artifacts are CI downloads, not a public update feed.
-      # GitHub Releases distribution requires the signing and manifest cutover
-      # described in the workspace VM-free distribution plan.
-
+          name: juanderquest-android-${{ steps.release.outputs.version_code }}
+          path: dist/
+          retention-days: 30
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create '${{ steps.release.outputs.tag }}' \
+            dist/juanderquest-latest.apk \
+            'dist/juanderquest-${{ steps.release.outputs.tag }}.apk' \
+            dist/version.json \
+            dist/SHA256SUMS \
+            --target "$GITHUB_SHA" \
+            --title 'JuanDerQuest Android ${{ steps.release.outputs.version_name }} (${{ steps.release.outputs.version_code }})' \
+            --notes-file <(jq -r '.changelog' dist/version.json) \
+            --draft
+          gh release edit '${{ steps.release.outputs.tag }}' --draft=false \
+            --latest

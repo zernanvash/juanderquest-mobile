@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
+import '../data/release_manifest_client.dart';
 import '../models/app_version_info.dart';
 
 enum UpdateStatus {
@@ -72,10 +74,10 @@ class AppUpdateState {
 }
 
 class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
-  final ApiClient _apiClient;
+  final ReleaseManifestClient _manifestClient;
   CancelToken? _cancelToken;
 
-  AppUpdateNotifier(this._apiClient) : super(const AppUpdateState()) {
+  AppUpdateNotifier(this._manifestClient) : super(const AppUpdateState()) {
     _initCurrentVersion();
   }
 
@@ -102,6 +104,15 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
     return '${tempDir.path}/juanderquest-v$versionCode.apk';
   }
 
+  Future<bool> _isVerifiedApk(File file, AppVersionInfo release) async {
+    if (!await file.exists() || release.sizeBytes == null || release.sha256 == null) {
+      return false;
+    }
+    if (await file.length() != release.sizeBytes) return false;
+    final digest = await crypto.sha256.bind(file.openRead()).first;
+    return digest.toString() == release.sha256;
+  }
+
   /// Checks server for latest app version and verifies if APK is already cached
   Future<bool> checkForUpdates({bool silent = false}) async {
     if (!silent) {
@@ -111,10 +122,8 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
     try {
       await _initCurrentVersion();
 
-      final response = await _apiClient.dio.get('/app/version');
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['data'] as Map<String, dynamic>;
-        final latest = AppVersionInfo.fromJson(data);
+      final latest = await _manifestClient.fetch();
+      if (latest != null) {
 
         final isUpdateAvailable = latest.versionCode > state.installedVersionCode;
 
@@ -124,7 +133,7 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         if (isUpdateAvailable) {
           final filePath = await _getCachedFilePath(latest.versionCode);
           final file = File(filePath);
-          if (await file.exists() && (await file.length()) > 5 * 1024 * 1024) {
+          if (await _isVerifiedApk(file, latest)) {
             isCached = true;
             cachedPath = filePath;
           }
@@ -146,7 +155,7 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         if (!silent) {
           state = state.copyWith(
             status: UpdateStatus.error,
-            errorMessage: 'Server returned invalid response',
+            errorMessage: 'No valid release manifest is available.',
           );
         }
         return false;
@@ -156,7 +165,7 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
       if (!silent) {
         state = state.copyWith(
           status: UpdateStatus.error,
-          errorMessage: 'Could not connect to update server.',
+          errorMessage: 'Could not check GitHub Releases.',
         );
       }
       return false;
@@ -179,7 +188,7 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
       final completedFile = File(completedFilePath);
 
       // 1. If APK is already fully cached and no forced re-download requested, launch immediately!
-      if (!forceRedownload && await completedFile.exists() && (await completedFile.length()) > 5 * 1024 * 1024) {
+      if (!forceRedownload && await _isVerifiedApk(completedFile, latest)) {
         debugPrint('[AppUpdate] Using cached APK at $completedFilePath');
         state = state.copyWith(
           status: UpdateStatus.installing,
@@ -218,44 +227,24 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         ),
       );
 
-      final downloadTarget = latest.downloadUrl;
-      try {
-        await dio.download(
-          downloadTarget,
-          tempFilePath,
-          cancelToken: _cancelToken,
-          onReceiveProgress: (received, total) {
-            if (total != -1) {
-              final progress = ((received / total) * 100).toInt().clamp(0, 100);
-              state = state.copyWith(
-                status: UpdateStatus.downloading,
-                downloadProgress: progress,
-              );
-            }
-          },
-        );
-      } on DioException catch (dioErr) {
-        // Fallback to direct API streaming endpoint if static URL 404s
-        if (dioErr.response?.statusCode == 404 && !downloadTarget.contains('/app/download')) {
-          final fallbackUrl = '${_apiClient.dio.options.baseUrl}/app/download';
-          debugPrint('[AppUpdate] Static URL 404, attempting fallback to $fallbackUrl');
-          await dio.download(
-            fallbackUrl,
-            tempFilePath,
-            cancelToken: _cancelToken,
-            onReceiveProgress: (received, total) {
-              if (total != -1) {
-                final progress = ((received / total) * 100).toInt().clamp(0, 100);
-                state = state.copyWith(
-                  status: UpdateStatus.downloading,
-                  downloadProgress: progress,
-                );
-              }
-            },
-          );
-        } else {
-          rethrow;
-        }
+      await dio.download(
+        latest.downloadUrl,
+        tempFilePath,
+        cancelToken: _cancelToken,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = ((received / total) * 100).toInt().clamp(0, 100);
+            state = state.copyWith(
+              status: UpdateStatus.downloading,
+              downloadProgress: progress,
+            );
+          }
+        },
+      );
+
+      if (!await _isVerifiedApk(tempFile, latest)) {
+        await tempFile.delete();
+        throw const FormatException('Downloaded APK failed integrity verification');
       }
 
       // 3. Rename temp file to final APK (atomic cache completion)
@@ -312,6 +301,5 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 final appUpdateProvider =
     StateNotifierProvider<AppUpdateNotifier, AppUpdateState>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return AppUpdateNotifier(apiClient);
+  return AppUpdateNotifier(ReleaseManifestClient());
 });

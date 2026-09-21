@@ -1,22 +1,19 @@
-import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
-
-import '../../../core/network/api_client.dart';
 import '../domain/update_repository.dart';
 import '../models/app_version_info.dart';
 import 'content_manifest_service.dart';
 import 'shorebird_update_service.dart';
+import 'release_manifest_client.dart';
 
 class UpdateRepositoryImpl implements IUpdateRepository {
-  final ApiClient _apiClient;
+  final ReleaseManifestClient _manifestClient;
   final ShorebirdUpdateService _shorebirdService;
   final ContentManifestService _contentService;
 
   UpdateRepositoryImpl({
-    required ApiClient apiClient,
+    ReleaseManifestClient? manifestClient,
     ShorebirdUpdateService? shorebirdService,
     ContentManifestService? contentService,
-  })  : _apiClient = apiClient,
+  })  : _manifestClient = manifestClient ?? ReleaseManifestClient(),
         _shorebirdService = shorebirdService ?? ShorebirdUpdateService(),
         _contentService = contentService ?? ContentManifestService();
 
@@ -24,26 +21,7 @@ class UpdateRepositoryImpl implements IUpdateRepository {
   Future<AppVersionInfo?> fetchBackendVersionMetadata({
     Duration timeout = const Duration(seconds: 3),
   }) async {
-    try {
-      final response = await _apiClient.dio.get(
-        '/app/version',
-        options: Options(
-          sendTimeout: timeout,
-          receiveTimeout: timeout,
-        ),
-      );
-
-
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['data'] as Map<String, dynamic>?;
-        if (data != null) {
-          return AppVersionInfo.fromJson(data);
-        }
-      }
-    } catch (e) {
-      debugPrint('[UpdateRepositoryImpl] Error fetching version metadata: $e');
-    }
-    return null;
+    return _manifestClient.fetch(timeout: timeout);
   }
 
   @override
