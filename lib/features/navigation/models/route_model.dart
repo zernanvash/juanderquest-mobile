@@ -133,7 +133,7 @@ class NavTarget {
     required this.name,
     required this.lat,
     required this.lng,
-    this.address = 'Pangasinan, Philippines',
+    this.address = '',
   });
 }
 

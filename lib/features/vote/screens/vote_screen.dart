@@ -248,7 +248,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Submit a new Pangasinan tourist destination for community governance screening.',
+                'Suggest a destination for community review. The current pilot reviews Pangasinan locations.',
                 style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -266,7 +266,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                 controller: _locationController,
                 decoration: const InputDecoration(
                   labelText: 'Municipality / Location',
-                  hintText: 'e.g. Bolinao, Pangasinan',
+                  hintText: 'e.g. Municipality, province',
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -306,7 +306,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                   final title = _titleController.text.trim();
                   final location = _locationController.text.trim();
                   final desc = _descriptionController.text.trim().isEmpty
-                      ? 'Community suggested Pangasinan destination.'
+                      ? 'Community-suggested destination.'
                       : _descriptionController.text.trim();
 
                   final messenger = ScaffoldMessenger.of(context);
@@ -405,7 +405,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
 
             const JdqSectionHeader(
               title: 'Active Community Proposals',
-              subtitle: 'Vote on new destinations and quest features for Pangasinan.',
+              subtitle: 'Vote on community destinations and quest features. Current pilot proposals focus on Pangasinan.',
             ),
 
             AsyncStateView(

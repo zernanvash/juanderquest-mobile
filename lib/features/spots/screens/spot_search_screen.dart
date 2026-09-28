@@ -42,17 +42,6 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
   final Map<String, int> _likes = {};
   final Set<String> _likedSpots = {};
 
-  final List<String> _popularSearches = const [
-    'Cape Bolinao Lighthouse',
-    'Patar White Beach',
-    'Hundred Islands',
-    'Dasol Salt Beds',
-    'Bangus Grill',
-    'Minor Basilica of Manaoag',
-    'Timmaw Cave',
-    'Lingayen Baywalk',
-  ];
-
   final List<Map<String, String>> _categories = const [
     {'id': 'all', 'label': 'All Destinations', 'emoji': '✨'},
     {'id': 'eat_drink', 'label': 'Food & Culinary', 'emoji': '🍜'},
@@ -60,22 +49,6 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
     {'id': 'culture_heritage', 'label': 'Heritage & Shrines', 'emoji': '🏛️'},
     {'id': 'activities_wellness', 'label': 'Outdoor & Eco', 'emoji': '🧗'},
     {'id': 'shopping_local', 'label': 'Local MSME Crafts', 'emoji': '🛍️'},
-  ];
-
-  final List<String> _municipalities = const [
-    'All Municipalities',
-    'Alaminos City',
-    'Bolinao',
-    'Dagupan City',
-    'Lingayen',
-    'Manaoag',
-    'Dasol',
-    'Bani',
-    'San Fabian',
-    'Anda',
-    'Burgos',
-    'Agno',
-    'Infanta',
   ];
 
   @override
@@ -136,6 +109,22 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(spotDiscoveryProvider);
     final query = _searchController.text.trim().toLowerCase();
+    final featuredSearches = (state.trending.isNotEmpty ? state.trending : state.spots)
+        .map((spot) => spot.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .take(8)
+        .toList();
+    final municipalities = state.spots
+        .map((spot) => spot.municipality.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final municipalityOptions = ['All Municipalities', ...municipalities];
+    final selectedMunicipality = municipalityOptions.contains(_selectedMunicipality)
+        ? _selectedMunicipality
+        : 'All Municipalities';
 
     final filteredSpots = state.spots.where((spot) {
       // Query filter
@@ -149,8 +138,8 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
       final matchesCategory = _selectedCategory == 'all' || spot.category == _selectedCategory;
 
       // Municipality filter
-      final matchesMuni = _selectedMunicipality == 'All Municipalities' ||
-          spot.municipality.toLowerCase().contains(_selectedMunicipality.toLowerCase());
+      final matchesMuni = selectedMunicipality == 'All Municipalities' ||
+          spot.municipality.toLowerCase() == selectedMunicipality.toLowerCase();
 
       // Quiet toggle
       final matchesQuiet = !_quietOnly || (spot.crowdStatus == 'quiet' || spot.crowdStatus == 'moderate');
@@ -183,7 +172,7 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
             onChanged: _onSearchChanged,
             style: const TextStyle(fontSize: 13, color: AppColors.woodBrown, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
-              hintText: 'Search Pangasinan spots, food, beaches...',
+              hintText: 'Search places, food, beaches…',
               hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
               prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
               suffixIcon: _searchController.text.isNotEmpty
@@ -206,16 +195,16 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         children: [
           // Popular Searches Horizontal Chips
-          if (query.isEmpty) ...[
+          if (query.isEmpty && featuredSearches.isNotEmpty) ...[
             const Text(
-              'Popular Searches',
+              'Explore Current Destinations',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: _popularSearches.map((term) {
+              children: featuredSearches.map((term) {
                 return GestureDetector(
                   onTap: () {
                     _searchController.text = term;
@@ -269,12 +258,16 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                     children: [
                       Text(cat['emoji']!, style: const TextStyle(fontSize: 12)),
                       const SizedBox(width: 4),
-                      Text(
-                        cat['label']!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : AppColors.woodBrown,
+                      Flexible(
+                        child: Text(
+                          cat['label']!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? Colors.white : AppColors.woodBrown,
+                          ),
                         ),
                       ),
                     ],
@@ -302,11 +295,11 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: _selectedMunicipality,
+                    value: selectedMunicipality,
                     isDense: true,
                     icon: const Icon(Icons.arrow_drop_down_rounded, color: AppColors.woodBrown, size: 20),
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-                    items: _municipalities.map((muni) {
+                    items: municipalityOptions.map((muni) {
                       return DropdownMenuItem<String>(
                         value: muni,
                         child: Text(muni),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
@@ -93,7 +94,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: ':slug',
-                    builder: (context, state) => SpotDetailScreen(spot: state.extra as SpotModel),
+                    builder: (context, state) => SpotDetailRouteScreen(
+                      slug: state.pathParameters['slug']!,
+                      initialSpot: state.extra is SpotModel ? state.extra as SpotModel : null,
+                    ),
                   ),
                 ],
               ),
@@ -234,7 +238,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             final lat = double.tryParse(state.uri.queryParameters['lat'] ?? '') ?? 16.2045;
             final lng = double.tryParse(state.uri.queryParameters['lng'] ?? '') ?? 120.0435;
             final name = state.uri.queryParameters['name'] ?? 'Hundred Islands';
-            final address = state.uri.queryParameters['address'] ?? 'Alaminos City, Pangasinan';
+            final address = state.uri.queryParameters['address'] ?? name;
             destination = NavTarget(
               name: name,
               lat: lat,
@@ -279,6 +283,57 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Resolves a shared/deep-linked destination without requiring navigation extra.
+class SpotDetailRouteScreen extends ConsumerStatefulWidget {
+  final String slug;
+  final SpotModel? initialSpot;
+
+  const SpotDetailRouteScreen({super.key, required this.slug, this.initialSpot});
+
+  @override
+  ConsumerState<SpotDetailRouteScreen> createState() => _SpotDetailRouteScreenState();
+}
+
+class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
+  late Future<SpotModel> _spotFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _spotFuture = _fetchSpot();
+  }
+
+  Future<SpotModel> _fetchSpot() async {
+    if (widget.initialSpot != null) return widget.initialSpot!;
+    final response = await ref.read(apiClientProvider).dio.get('/spots/${Uri.encodeComponent(widget.slug)}');
+    return SpotModel.fromJson(Map<String, dynamic>.from(response.data['data'] as Map));
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<SpotModel>(
+    future: _spotFuture,
+    builder: (context, snapshot) {
+      if (snapshot.hasData) return SpotDetailScreen(spot: snapshot.data!);
+      final error = snapshot.error;
+      final missing = error is DioException && error.response?.statusCode == 404;
+      return Scaffold(
+        appBar: AppBar(title: const Text('Destination')),
+        body: Center(child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: snapshot.hasError
+          ? Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(missing ? 'Destination not found.' : 'Destination unavailable. Check your connection.', textAlign: TextAlign.center),
+              if (!missing) TextButton(
+                onPressed: () => setState(() => _spotFuture = _fetchSpot()),
+                child: const Text('Retry'),
+              ),
+            ])
+          : const CircularProgressIndicator())),
+      );
+    },
+  );
+}
 
 
 

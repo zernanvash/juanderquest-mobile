@@ -111,7 +111,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
             tooltip: 'Share Destination',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Share link copied: https://jdq.zernanvash.dev/spots/${spot.slug}')),
+                SnackBar(content: Text('Share link copied: https://juanderquest.app/spots/${spot.slug}')),
               );
             },
           ),
@@ -237,8 +237,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         Expanded(
                           child: Text(
                             spot.municipality.isNotEmpty
-                                ? '${spot.municipality}, Pangasinan'
-                                : 'Pangasinan, Philippines',
+                                ? spot.municipality
+                                : 'Location unavailable',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 13,
@@ -361,7 +361,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   Text(
                     spot.description.isNotEmpty
                         ? spot.description
-                        : 'Explore this cultural and scenic gem located in ${spot.municipality}, Pangasinan. Part of the JuanDerQuest eco-tourism network.',
+                        : spot.municipality.isNotEmpty
+                            ? 'Explore this destination in ${spot.municipality} and discover what the local community has to offer.'
+                            : 'Explore this destination and discover what the local community has to offer.',
                     style: AppTypography.bodyMedium.copyWith(
                       color: AppColors.textPrimary,
                       height: 1.5,
@@ -532,7 +534,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Visit this spot in person to verify GPS proximity, scan the cultural marker, and earn reward points redeemable for Pangasinan merchant vouchers!',
+            'Visit this destination in person to verify your quest and earn available rewards.',
             style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -571,7 +573,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Lesser-known serene alternatives curated across Pangasinan.',
+          'Discover quieter alternatives and local favorites.',
           style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -656,7 +658,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    alt.municipality.isNotEmpty ? alt.municipality : 'Pangasinan',
+                    alt.municipality.isNotEmpty ? alt.municipality : 'Location unavailable',
                     style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
                   ),
                   const SizedBox(height: 6),

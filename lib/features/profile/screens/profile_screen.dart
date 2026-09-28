@@ -67,7 +67,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               figmaLayer: '#Profile_Header_Card',
               dimensions: 'Full width, Padding: 20dp, Avatar: 76x76dp circular',
               dataBinding: 'authProvider.user (displayName, email, avatarUrl, demoPoints)',
-              stateNotes: 'Logged In -> PANGASINAN EXPLORER pill -> Avatar with Gold ring',
+              stateNotes: 'Logged In -> EXPLORER pill -> Avatar with Gold ring',
               uxNotes: 'Wood brown typography with Epilogue display headers.',
             ),
             child: Container(
@@ -110,7 +110,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       borderRadius: AppSpacing.roundedPill,
                     ),
                     child: const Text(
-                      'PANGASINAN EXPLORER',
+                      'EXPLORER',
                       style: TextStyle(
                         color: AppColors.onPrimaryContainer,
                         fontWeight: FontWeight.bold,
@@ -262,7 +262,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      'View top Pangasinan scouts, rankings, and sprint leaderboards.',
+                      'View top explorers, rankings, and sprint leaderboards.',
                       style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),

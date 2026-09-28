@@ -25,7 +25,15 @@ class CampaignDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
-  bool _isRegistered = false;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialCampaign == null) {
+      Future.microtask(() {
+        if (mounted) ref.read(campaignProvider.notifier).fetchCampaigns();
+      });
+    }
+  }
 
   Map<String, int> _calculateTimeRemaining(String dateString) {
     try {
@@ -47,16 +55,24 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final campaignState = ref.watch(campaignProvider);
-    final campaign = widget.initialCampaign ??
-        campaignState.campaigns.firstWhere(
-          (c) => c.id == widget.campaignId,
-          orElse: () => CampaignNotifier.defaultCampaigns.first,
-        );
+    CampaignModel? campaign = widget.initialCampaign?.id == widget.campaignId
+        ? widget.initialCampaign
+        : null;
+    for (final item in campaignState.campaigns) {
+      if (item.id == widget.campaignId) campaign = item;
+    }
+    if (campaign == null) {
+      return JdqScaffold(
+        appBar: AppBar(title: const Text('Event Campaign')),
+        body: Center(child: Text(!campaignState.hasLoaded || campaignState.isLoading
+            ? 'Loading campaign...'
+            : campaignState.failure != null
+                ? 'Campaigns are unavailable. Check your connection.'
+                : 'Campaign not found.')),
+      );
+    }
 
     final timeLeft = _calculateTimeRemaining(campaign.eventDate);
-    final quotaPercent = campaign.maxParticipants > 0
-        ? (campaign.reservedParticipants / campaign.maxParticipants).clamp(0.0, 1.0)
-        : 0.0;
 
     return JdqScaffold(
       appBar: AppBar(
@@ -115,16 +131,16 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
                         color: AppColors.sunGold,
                         borderRadius: AppSpacing.roundedPill,
                       ),
-                      child: FittedBox(
+                      child: const FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.emoji_events_rounded, size: 14, color: AppColors.woodBrown),
-                            const SizedBox(width: 4),
+                            Icon(Icons.emoji_events_rounded, size: 14, color: AppColors.woodBrown),
+                            SizedBox(width: 4),
                             Text(
-                              '+${campaign.rewardPerParticipantMjdq} mJDQ Reward',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                              'Event preview',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
                             ),
                           ],
                         ),
@@ -239,7 +255,7 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
 
           const SizedBox(height: 12),
 
-          // Locked Escrow Pool & Quota Progress
+          // This legacy flow has no durable escrow or registration yet.
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -248,52 +264,14 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
               border: Border.all(color: AppColors.borderLowContrast),
               boxShadow: AppSpacing.cardShadow,
             ),
-            child: Column(
+            child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    const Text(
-                      'Locked Prize Escrow Pool',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-                    ),
-                    Text(
-                      '${campaign.totalBudgetMjdq} mJDQ',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.primary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: AppSpacing.roundedPill,
-                  child: LinearProgressIndicator(
-                    value: quotaPercent,
-                    minHeight: 7,
-                    backgroundColor: AppColors.surfaceContainerLow,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    Text(
-                      '${campaign.reservedParticipants} / ${campaign.maxParticipants} Pre-Registered',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
-                    ),
-                    Text(
-                      '${(quotaPercent * 100).toInt()}% Quota Filled',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
-                    ),
-                  ],
-                ),
+                Text('Registration and rewards under development',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
+                SizedBox(height: 6),
+                Text('This event is a preview. No tickets, capacity, or funds are reserved.',
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -357,20 +335,9 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
           ],
 
           // Action Button (Pre-Register / Attend)
-          PrimaryButton(
-            label: _isRegistered ? '✓ Pre-Registration Confirmed' : 'Pre-Register for Event (+${campaign.rewardPerParticipantMjdq} mJDQ)',
-            onPressed: () {
-              setState(() => _isRegistered = !_isRegistered);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_isRegistered
-                      ? 'Pre-Registration Confirmed! Your check-in ticket has been generated.'
-                      : 'Registration cancelled.'),
-                  backgroundColor: AppColors.primary,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+          const PrimaryButton(
+            label: 'Registration under development',
+            onPressed: null,
           ),
           const SizedBox(height: 16),
         ],

@@ -394,7 +394,7 @@ class _ArCalibrationScreenState extends ConsumerState<ArCalibrationScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'Your magnetometer, horizon level, and GPS sensors are now synchronized with Pangasinan coordinates.',
+              'Your magnetometer, horizon level, and GPS sensors are ready for nearby AR experiences.',
               textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(
                 color: Colors.white70,

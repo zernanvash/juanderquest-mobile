@@ -510,10 +510,6 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
   }
 
   Widget _buildCampaignCard(CampaignModel campaign) {
-    final quotaPercent = campaign.maxParticipants > 0
-        ? (campaign.reservedParticipants / campaign.maxParticipants)
-            .clamp(0.0, 1.0)
-        : 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -557,15 +553,15 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       color: AppColors.sunGold,
                       borderRadius: AppSpacing.roundedPill,
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.emoji_events_rounded,
+                        Icon(Icons.emoji_events_rounded,
                             size: 13, color: AppColors.woodBrown),
-                        const SizedBox(width: 3),
+                        SizedBox(width: 3),
                         Text(
-                          '+${campaign.rewardPerParticipantMjdq} mJDQ',
-                          style: const TextStyle(
+                          'Preview',
+                          style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: AppColors.woodBrown),
@@ -637,34 +633,20 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
 
-                  // Quota Progress Bar
-                  ClipRRect(
-                    borderRadius: AppSpacing.roundedPill,
-                    child: LinearProgressIndicator(
-                      value: quotaPercent,
-                      minHeight: 5,
-                      backgroundColor: AppColors.surfaceContainerLow,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.primary),
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // Footer: Quota & Action Link
-                  Row(
+                  // Footer: honest feature status and detail link
+                  const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${campaign.reservedParticipants} / ${campaign.maxParticipants} Registered',
-                        style: const TextStyle(
+                        'Registration under development',
+                        style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textSecondary),
                       ),
-                      const Row(
+                      Row(
                         children: [
                           Text(
                             'View Details',

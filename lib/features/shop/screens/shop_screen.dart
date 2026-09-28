@@ -475,7 +475,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Complete quests to earn points and redeem exclusive discounts from partner Pangasinan stores!',
+                      'Complete quests to earn points and explore rewards from participating local merchants.',
                       textAlign: TextAlign.center,
                       style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                     ),

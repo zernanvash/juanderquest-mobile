@@ -59,7 +59,7 @@ class CampaignModel {
     return CampaignModel(
       id: j['id'] ?? '',
       hostId: j['host_id'] ?? '',
-      hostName: j['host_name'] ?? 'Pangasinan Tourism Office',
+      hostName: j['host_name'] ?? 'Community organizer',
       title: j['title'] ?? '',
       category: j['category'] ?? 'eco',
       locationName: loc,

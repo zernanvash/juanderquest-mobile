@@ -711,7 +711,7 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
             context,
             title: 'Outside Quest Radius',
             message: err ??
-                'You are outside the required location radius for this quest. Please travel to the physical destination in Pangasinan.',
+                'You are outside the required location radius for this quest. Travel to the quest destination to continue.',
             icon: Icons.location_off_rounded,
             iconColor: const Color(0xFFBC4749),
             buttonText: 'Got It',

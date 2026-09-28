@@ -5,6 +5,28 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+val releaseKeystorePath = System.getenv("JDQ_RELEASE_KEYSTORE_PATH")
+val releaseStorePassword = System.getenv("JDQ_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = System.getenv("JDQ_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("JDQ_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseKeystorePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
+// Debug builds use Android's normal debug certificate. Never silently publish an
+// unsigned APK or reuse the old, publicly exposed alpha signing identity.
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.path == ":app:assembleRelease" || it.path == ":app:bundleRelease" }) {
+        require(hasReleaseSigning && file(releaseKeystorePath!!).isFile) {
+            "Release signing is not configured. Set JDQ_RELEASE_KEYSTORE_PATH, " +
+                "JDQ_RELEASE_STORE_PASSWORD, JDQ_RELEASE_KEY_ALIAS, and JDQ_RELEASE_KEY_PASSWORD."
+        }
+    }
+}
+
 android {
     namespace = "dev.zernanvash.juanderquest"
     compileSdk = flutter.compileSdkVersion
@@ -26,20 +48,19 @@ android {
 
 
     signingConfigs {
-        create("unified") {
-            storeFile = file("juanderquest-keystore.jks")
-            storePassword = "juanderquest"
-            keyAlias = "juanderquest"
-            keyPassword = "juanderquest"
+        create("protectedRelease") {
+            if (hasReleaseSigning) {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
-        debug {
-            signingConfig = signingConfigs.getByName("unified")
-        }
         release {
-            signingConfig = signingConfigs.getByName("unified")
+            signingConfig = signingConfigs.getByName("protectedRelease")
         }
     }
 }

@@ -39,7 +39,7 @@ class AsyncStateView extends StatelessWidget {
               CircularProgressIndicator(color: AppColors.primary),
               SizedBox(height: AppSpacing.md),
               Text(
-                'Discovering Pangasinan...',
+                'Discovering destinations…',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
             ],

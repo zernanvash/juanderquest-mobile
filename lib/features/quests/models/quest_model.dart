@@ -40,7 +40,7 @@ class QuestModel {
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       category: json['category'] ?? 'eco',
-      locationName: json['location_name'] ?? 'Pangasinan',
+      locationName: json['location_name'] ?? 'Location unavailable',
       gpsLat: (json['gps_lat'] as num?)?.toDouble() ?? 0.0,
       gpsLng: (json['gps_lng'] as num?)?.toDouble() ?? 0.0,
       radiusMeters: json['radius_meters'] ?? 200,

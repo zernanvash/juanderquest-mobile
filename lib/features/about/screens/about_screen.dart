@@ -109,7 +109,7 @@ class AboutScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
                 ),
                 const SizedBox(height: 8),
-                _buildFlywheelRow('🧭 Travelers & Explorers', 'Complete verified GPS quest trails, unlock Soulbound badges, and earn mJDQ reward bounties.'),
+                _buildFlywheelRow('🧭 Travelers & Explorers', 'Complete GPS quest trails and earn demo mJDQ rewards. Soulbound badges are under development.'),
                 const SizedBox(height: 6),
                 _buildFlywheelRow('🏪 Local MSME Merchants', 'Fund discount vouchers with zero upfront costs; enjoy foot traffic diverted away from crowded hotspots.'),
                 const SizedBox(height: 6),

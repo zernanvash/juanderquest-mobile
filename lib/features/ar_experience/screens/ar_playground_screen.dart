@@ -11,7 +11,7 @@ import '../widgets/ar_3d_canvas.dart';
 
 enum EnvironmentMode {
   studio('🌌 Studio Matrix'),
-  sunset('🌅 Pangasinan Sunset'),
+  sunset('🌅 Coastal Sunset'),
   cameraView('📷 Camera AR View');
 
   final String label;

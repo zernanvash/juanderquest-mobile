@@ -22,7 +22,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     {'rank': 3, 'name': 'Clarissa Angel', 'points': 3900, 'quests': 14, 'tier': 'Pioneer Scout', 'avatar': 'C'},
     {'rank': 4, 'name': 'Carl Jacob', 'points': 3450, 'quests': 12, 'tier': 'Trailblazer', 'avatar': 'C'},
     {'rank': 5, 'name': 'Alyana S.', 'points': 3100, 'quests': 11, 'tier': 'Trailblazer', 'avatar': 'A'},
-    {'rank': 6, 'name': 'Juan Dela Cruz (You)', 'points': 1250, 'quests': 4, 'tier': 'Pathfinder', 'avatar': 'J', 'isUser': true},
+    {'rank': 6, 'name': 'Sample Explorer', 'points': 1250, 'quests': 4, 'tier': 'Pathfinder', 'avatar': 'S'},
     {'rank': 7, 'name': 'Maria Santos', 'points': 980, 'quests': 3, 'tier': 'Pathfinder', 'avatar': 'M'},
   ];
 
@@ -32,7 +32,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     {'rank': 3, 'name': 'Clarissa Angel', 'points': 21900, 'quests': 65, 'tier': 'Master Scout', 'avatar': 'C'},
     {'rank': 4, 'name': 'Carl Jacob', 'points': 19450, 'quests': 58, 'tier': 'Master Scout', 'avatar': 'C'},
     {'rank': 5, 'name': 'Alyana S.', 'points': 17100, 'quests': 51, 'tier': 'Pioneer Scout', 'avatar': 'A'},
-    {'rank': 14, 'name': 'Juan Dela Cruz (You)', 'points': 5250, 'quests': 16, 'tier': 'Trailblazer', 'avatar': 'J', 'isUser': true},
+    {'rank': 14, 'name': 'Sample Explorer', 'points': 5250, 'quests': 16, 'tier': 'Trailblazer', 'avatar': 'S'},
   ];
 
   final List<Map<String, dynamic>> _municipalActivity = const [
@@ -98,12 +98,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Pangasinan Leaderboard',
+                        'Explorer Leaderboard',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       SizedBox(height: 3),
                       Text(
-                        'Top explorers unlocking eco & cultural bounties across Pangasinan.',
+                        'Illustrative preview using pilot places. Scores are not live.',
                         style: TextStyle(fontSize: 11, color: Color(0xFFE2F0E8), height: 1.3),
                       ),
                     ],

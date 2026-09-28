@@ -86,7 +86,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
-                            'Demo Starter Pack: 100,000 mJDQ + 15 JDQ Governance Tokens included!',
+                            'Demo Starter Pack: 100,000 mJDQ + 15 off-chain governance units included. Real JDQ tokens are under development.',
                             style: AppTypography.bodySmall.copyWith(
                               fontSize: 11,
                               color: AppColors.primaryDark,
@@ -253,7 +253,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
             child: Column(
               children: [
                 const Text(
-                  "PANGASINAN'S HERITAGE QUEST",
+                  'EXPLORE MORE, TOGETHER',
                   style: TextStyle(
                     color: AppColors.woodBrown,
                     fontSize: 11,
@@ -272,7 +272,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'Discover tranquil tourist destinations across Pangasinan, beat overcrowding, and support local MSME merchants.',
+                  'Discover local destinations, find quieter alternatives, and support nearby communities. Our first pilot starts in Pangasinan.',
                   textAlign: TextAlign.center,
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textSecondary,
@@ -397,7 +397,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Demonstration prototype build for Pangasinan tourist destination promotion.',
+                'Demonstration build. The current destination catalog is a Pangasinan pilot.',
                 textAlign: TextAlign.center,
                 style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
               ),

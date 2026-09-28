@@ -27,6 +27,17 @@ class StartupUpdateController extends StateNotifier<StartupGateState> {
   }
 
   Future<void> initStartupGate() async {
+    // APK base releases and Shorebird patches apply to Android, not the web
+    // build. Browsers cannot read the GitHub release asset across origins.
+    if (kIsWeb) {
+      state = state.copyWith(
+        phase: GatePhase.ready,
+        statusMessage: 'Ready',
+        progress: 1.0,
+      );
+      return;
+    }
+
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final buildNumber = int.tryParse(packageInfo.buildNumber) ?? 1;
@@ -52,7 +63,9 @@ class StartupUpdateController extends StateNotifier<StartupGateState> {
         state = state.copyWith(latestVersion: versionInfo);
 
         // Check if a native base release is strictly required
-        if (versionInfo.minimumBaseVersionCode > buildNumber || versionInfo.baseReleaseRequired) {
+        // baseReleaseRequired describes the available release; an already
+        // compatible installed base must never be blocked by that flag.
+        if (versionInfo.minimumBaseVersionCode > buildNumber) {
           state = state.copyWith(
             phase: GatePhase.baseRequired,
             statusMessage: 'A new base platform update is required to continue.',
@@ -62,8 +75,8 @@ class StartupUpdateController extends StateNotifier<StartupGateState> {
         }
       }
 
-      // Step 2: Check Shorebird Dart Code Push patch
-      state = state.copyWith(statusMessage: 'Checking for live updates...');
+      // Step 2: The optional patch adapter is unavailable in ordinary APKs.
+      state = state.copyWith(statusMessage: 'Checking update compatibility...');
       bool patchAvailable = false;
       try {
         patchAvailable = await _repository.isDartPatchAvailable();
@@ -96,13 +109,8 @@ class StartupUpdateController extends StateNotifier<StartupGateState> {
         }
       }
 
-      // Step 3: Check signed content bundle sync
-      if (versionInfo?.content != null) {
-        state = state.copyWith(
-          statusMessage: 'Updating destination content...',
-        );
-        await _repository.syncContentBundle(versionInfo!.content!);
-      }
+      // Content delivery remains disabled until signed bundles can be
+      // verified and atomically installed. Manifest metadata alone is not an update.
 
       // Step 4: Ready to enter application
       state = state.copyWith(

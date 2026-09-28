@@ -89,7 +89,7 @@ class _StartupLoadingView extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Pangasinan Tourism & Discovery',
+                  'Community-Powered Travel & Discovery',
                   style: AppTypography.bodySmall.copyWith(
                     color: Colors.white70,
                   ),

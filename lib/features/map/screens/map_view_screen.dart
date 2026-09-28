@@ -263,7 +263,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               Icon(Icons.map_rounded, color: AppColors.primary, size: 20),
               SizedBox(width: 8),
               Text(
-                'Pangasinan Tourism Map',
+                'Destination Map',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
               ),
             ],

@@ -26,7 +26,7 @@ class VoucherModel {
       offerTitle: json['offer_title'] ?? json['offerTitle'] ?? 'Voucher Offer',
       costPoints: (json['cost_points'] ?? json['costPoints'] ?? 50) as int,
       category: json['category'] ?? 'REWARDS',
-      location: json['location'] ?? 'Pangasinan',
+      location: json['location'] ?? 'Location unavailable',
       description: json['description'] ?? '',
       isActive: json['is_active'] ?? json['isActive'] ?? true,
     );

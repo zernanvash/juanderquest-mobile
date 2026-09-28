@@ -501,7 +501,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
               controller: _nameController,
               decoration: const InputDecoration(
                 labelText: 'Spot Name',
-                hintText: 'e.g. Cape Bolinao Lighthouse',
+                hintText: 'e.g. Local beach or heritage site',
               ),
               validator: (val) => (val == null || val.trim().isEmpty) ? 'Please enter a spot name.' : null,
             ),

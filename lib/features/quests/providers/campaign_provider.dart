@@ -7,23 +7,27 @@ import '../models/campaign_model.dart';
 class CampaignState {
   final List<CampaignModel> campaigns;
   final bool isLoading;
+  final bool hasLoaded;
   final ApiFailure? failure;
 
   const CampaignState({
     this.campaigns = const [],
     this.isLoading = false,
+    this.hasLoaded = false,
     this.failure,
   });
 
   CampaignState copyWith({
     List<CampaignModel>? campaigns,
     bool? isLoading,
+    bool? hasLoaded,
     ApiFailure? failure,
     bool clearFailure = false,
   }) {
     return CampaignState(
       campaigns: campaigns ?? this.campaigns,
       isLoading: isLoading ?? this.isLoading,
+      hasLoaded: hasLoaded ?? this.hasLoaded,
       failure: clearFailure ? null : failure ?? this.failure,
     );
   }
@@ -73,7 +77,7 @@ class CampaignNotifier extends StateNotifier<CampaignState> {
       locationName: 'Lucap Wharf & Quezon Island',
       municipality: 'Alaminos City',
       bannerImageUrl: 'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?auto=format&fit=crop&w=1200&q=80',
-      description: 'Help preserve the coral reefs across Governor Island and Quezon Island. Earn verified Eco-Scout Soulbound NFT badge upon completion.',
+      description: 'Help preserve the coral reefs across Governor Island and Quezon Island. Eco-Scout Soulbound NFT badges are under development.',
       eventDate: '2026-10-05T07:00:00Z',
       startDate: '2026-09-20T00:00:00Z',
       endDate: '2026-10-05T18:00:00Z',
@@ -129,17 +133,17 @@ class CampaignNotifier extends StateNotifier<CampaignState> {
       final response = await _apiClient.dio.get('/campaigns');
       if (response.data != null && response.data['success'] == true) {
         final rawList = response.data['data'] as List?;
-        if (rawList != null && rawList.isNotEmpty) {
+        if (rawList != null) {
           final items = rawList.map((e) => CampaignModel.fromJson(e as Map<String, dynamic>)).toList();
-          state = state.copyWith(campaigns: items, isLoading: false);
+          state = state.copyWith(campaigns: items, isLoading: false, hasLoaded: true);
           return;
         }
       }
-      // Fallback to seeded prototype campaigns if endpoint is empty
-      state = state.copyWith(campaigns: defaultCampaigns, isLoading: false);
-    } catch (_) {
-      // Graceful fallback for offline prototype testing
-      state = state.copyWith(campaigns: defaultCampaigns, isLoading: false);
+      state = state.copyWith(campaigns: const [], isLoading: false, hasLoaded: true,
+          failure: const ApiFailure(code: 'INVALID_RESPONSE', message: 'Campaigns are unavailable.'));
+    } catch (error) {
+      state = state.copyWith(campaigns: const [], isLoading: false, hasLoaded: true,
+          failure: ApiFailure.from(error));
     }
   }
 }

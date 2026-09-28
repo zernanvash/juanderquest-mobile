@@ -55,13 +55,44 @@ jobs:
         run: flutter analyze
       - name: Test
         run: flutter test
+      - name: Prepare protected release signing
+        shell: bash
+        env:
+          JDQ_RELEASE_KEYSTORE_BASE64: ${{ secrets.JDQ_RELEASE_KEYSTORE_BASE64 }}
+          JDQ_RELEASE_STORE_PASSWORD: ${{ secrets.JDQ_RELEASE_STORE_PASSWORD }}
+          JDQ_RELEASE_KEY_ALIAS: ${{ secrets.JDQ_RELEASE_KEY_ALIAS }}
+          JDQ_RELEASE_KEY_PASSWORD: ${{ secrets.JDQ_RELEASE_KEY_PASSWORD }}
+          JDQ_RELEASE_CERT_SHA256: ${{ vars.JDQ_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          for name in JDQ_RELEASE_KEYSTORE_BASE64 JDQ_RELEASE_STORE_PASSWORD JDQ_RELEASE_KEY_ALIAS JDQ_RELEASE_KEY_PASSWORD JDQ_RELEASE_CERT_SHA256; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing protected release signing setting: $name" >&2
+              exit 1
+            fi
+          done
+          signing_path="$RUNNER_TEMP/jdq-release.jks"
+          umask 077
+          printf '%s' "$JDQ_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$signing_path"
+          actual_cert="$(keytool -list -v -keystore "$signing_path" -alias "$JDQ_RELEASE_KEY_ALIAS" -storepass:env JDQ_RELEASE_STORE_PASSWORD | sed -n 's/.*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]' | awk 'NR == 1 { print }')"
+          expected_cert="$(printf '%s' "$JDQ_RELEASE_CERT_SHA256" | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$actual_cert" =~ ^[a-f0-9]{64}$ || "$actual_cert" != "$expected_cert" ]]; then
+            echo 'Release signing certificate does not match JDQ_RELEASE_CERT_SHA256.' >&2
+            exit 1
+          fi
+          echo "JDQ_RELEASE_KEYSTORE_PATH=$signing_path" >> "$GITHUB_ENV"
+          echo "Release signing certificate SHA-256: $actual_cert" >> "$GITHUB_STEP_SUMMARY"
       - name: Build signed release APK
+        env:
+          JDQ_RELEASE_STORE_PASSWORD: ${{ secrets.JDQ_RELEASE_STORE_PASSWORD }}
+          JDQ_RELEASE_KEY_ALIAS: ${{ secrets.JDQ_RELEASE_KEY_ALIAS }}
+          JDQ_RELEASE_KEY_PASSWORD: ${{ secrets.JDQ_RELEASE_KEY_PASSWORD }}
         run: >-
           flutter build apk --release
           --build-name="${{ steps.release.outputs.version_name }}"
           --build-number="${{ steps.release.outputs.version_code }}"
           --dart-define=UPDATE_MANIFEST_URL=https://github.com/${{ github.repository }}/releases/latest/download/version.json
-          --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://jdq.zernanvash.dev/api/v1' }}
+          --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.juanderquest.app/api/v1' }}
       - name: Create release assets and manifest
         env:
           CHANGELOG_INPUT: ${{ inputs.changelog }}
@@ -78,6 +109,7 @@ jobs:
           sha256="$(sha256sum "$apk_source" | cut -d' ' -f1)"
           size_bytes="$(stat -c '%s' "$apk_source")"
           notes="${CHANGELOG_INPUT:-${COMMIT_MESSAGE:-Automated JuanDerQuest alpha release.}}"
+          notes="${notes}"$'\n\n'"Signing generation 2: installations signed with the legacy alpha key require a one-time uninstall/reinstall. Once installed, generation-2 releases update in place. Back up any unsynced local data before uninstalling."
           jq -n \
             --argjson versionCode '${{ steps.release.outputs.version_code }}' \
             --arg versionName '${{ steps.release.outputs.version_name }}' \
@@ -89,7 +121,7 @@ jobs:
             --arg changelog "$notes" \
             --arg publishedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             --argjson forceUpdate "$FORCE_UPDATE" \
-            '{schemaVersion: 1, packageName: "dev.zernanvash.juanderquest", versionCode: $versionCode, versionName: $versionName, commitHash: $commitHash, fileName: $fileName, downloadUrl: $downloadUrl, sha256: $sha256, sizeBytes: $sizeBytes, changelog: $changelog, publishedAt: $publishedAt, forceUpdate: $forceUpdate, minSupportedVersionCode: (if $forceUpdate then $versionCode else 1 end), minimumBaseVersionCode: (if $forceUpdate then $versionCode else 1 end), baseReleaseRequired: $forceUpdate, updatePolicy: (if $forceUpdate then "mandatory" else "optional" end)}' \
+            '{schemaVersion: 1, packageName: "dev.zernanvash.juanderquest", signingKeyGeneration: 2, legacyInstallRequiresReinstall: true, versionCode: $versionCode, versionName: $versionName, commitHash: $commitHash, fileName: $fileName, downloadUrl: $downloadUrl, sha256: $sha256, sizeBytes: $sizeBytes, changelog: $changelog, publishedAt: $publishedAt, forceUpdate: $forceUpdate, minSupportedVersionCode: (if $forceUpdate then $versionCode else 1 end), minimumBaseVersionCode: (if $forceUpdate then $versionCode else 1 end), baseReleaseRequired: $forceUpdate, updatePolicy: (if $forceUpdate then "mandatory" else "optional" end)}' \
             > dist/version.json
           sha256sum dist/juanderquest-latest.apk "dist/$apk_name" dist/version.json > dist/SHA256SUMS
           jq -e '.schemaVersion == 1 and .versionCode > 0 and (.sha256 | test("^[a-f0-9]{64}$")) and .sizeBytes > 5000000' dist/version.json

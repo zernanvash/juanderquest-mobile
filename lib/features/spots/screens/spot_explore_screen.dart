@@ -102,7 +102,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     ),
                   ),
                   Text(
-                    'Pangasinan Travel & Quest Feed',
+                    'Travel & Quest Feed',
                     style: TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                   ),
                 ],

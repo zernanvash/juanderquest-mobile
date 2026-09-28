@@ -288,7 +288,18 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
 
+    final List<FlutterErrorDetails> overflowErrors = [];
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      final msg = details.toString();
+      if (msg.contains('RenderFlex overflowed') || msg.contains('A RenderFlex overflowed')) {
+        overflowErrors.add(details);
+      }
+      originalOnError?.call(details);
+    };
+
     addTearDown(() {
+      FlutterError.onError = originalOnError;
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
       tester.platformDispatcher.clearTextScaleFactorTestValue();
@@ -325,6 +336,13 @@ void main() {
       expect(exception.toString().contains('RenderFlex overflowed'), isFalse,
           reason: 'Screen overflowed: $exception');
     }
+
+    expect(
+      overflowErrors,
+      isEmpty,
+      reason: 'RenderFlex overflowed in test (${overflowErrors.length} errors):\n'
+          '${overflowErrors.map((e) => e.exceptionAsString()).join('\n')}',
+    );
   }
 
   group('Screen Overflow Tests (320x568 portrait & 568x320 landscape, 2.0 text scale)', () {
