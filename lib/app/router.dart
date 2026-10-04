@@ -11,6 +11,7 @@ import '../features/ar_experience/screens/ar_test_screen.dart';
 import '../features/ar_experience/screens/ar_calibration_screen.dart';
 import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/settings/screens/settings_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
@@ -30,7 +31,6 @@ import '../features/navigation/models/route_model.dart';
 import '../features/navigation/screens/navigation_screen.dart';
 import 'main_shell.dart';
 import 'auth_redirect.dart';
-
 
 CustomTransitionPage buildDirectionalSlidePage<T>({
   required BuildContext context,
@@ -64,21 +64,36 @@ CustomTransitionPage buildDirectionalSlidePage<T>({
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final refreshNotifier = ref.watch(authRefreshProvider);
+  // GoRouter listens to auth changes itself. Watching the notifier here also
+  // rebuilds the router during a redirect, leaving the old callback with a
+  // stale Riverpod ref when sign-in triggers notifyListeners().
+  final refreshNotifier = ref.read(authRefreshProvider);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/',
     refreshListenable: refreshNotifier,
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final loggedIn = authState.isAuthenticated;
-      return resolveAuthRedirect(loggedIn: loggedIn,
-        matchedLocation: state.matchedLocation, uri: state.uri);
+      return resolveAuthRedirect(
+        loggedIn: loggedIn,
+        matchedLocation: state.matchedLocation,
+        uri: state.uri,
+      );
     },
     routes: [
-      GoRoute(path: '/choice', builder: (context, state) => const JuanChoiceScreen(), routes: [
-        GoRoute(path: ':id', builder: (context, state) => JuanChoiceDetailScreen(campaignId: state.pathParameters['id']!)),
-      ]),
+      GoRoute(
+        path: '/choice',
+        builder: (context, state) => const JuanChoiceScreen(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => JuanChoiceDetailScreen(
+              campaignId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
+      ),
       GoRoute(
         path: '/',
         builder: (context, state) => const DemoLoginScreen(),
@@ -146,10 +161,26 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/profile',
                 builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':username',
+                    builder: (context, state) => ProfileScreen(
+                      username: state.pathParameters['username'],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/settings',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const SettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/search',
@@ -282,6 +313,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(router.dispose);
+  return router;
 });
 
 /// Resolves a shared/deep-linked destination without requiring navigation extra.
@@ -334,7 +367,3 @@ class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
     },
   );
 }
-
-
-
-

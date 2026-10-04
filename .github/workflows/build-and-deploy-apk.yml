@@ -1,7 +1,9 @@
-name: Build and Publish Android APK
+name: Validate Flutter and Publish Android APK
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -15,14 +17,33 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: android-release
+  group: android-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+
   build-and-release:
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,10 +72,6 @@ jobs:
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         run: flutter pub get
-      - name: Analyze
-        run: flutter analyze
-      - name: Test
-        run: flutter test
       - name: Prepare protected release signing
         shell: bash
         env:
@@ -115,7 +132,7 @@ jobs:
             --arg versionName '${{ steps.release.outputs.version_name }}' \
             --arg commitHash '${{ steps.release.outputs.short_sha }}' \
             --arg fileName "$apk_name" \
-            --arg downloadUrl 'https://github.com/${{ github.repository }}/releases/latest/download/juanderquest-latest.apk' \
+            --arg downloadUrl 'https://github.com/${{ github.repository }}/releases/download/${{ steps.release.outputs.tag }}/juanderquest-latest.apk' \
             --arg sha256 "$sha256" \
             --argjson sizeBytes "$size_bytes" \
             --arg changelog "$notes" \
@@ -148,3 +165,11 @@ jobs:
             --draft
           gh release edit '${{ steps.release.outputs.tag }}' --draft=false \
             --latest
+      - name: Remove temporary signing material
+        if: always()
+        shell: bash
+        run: |
+          signing_path="$RUNNER_TEMP/jdq-release.jks"
+          if [[ -f "$signing_path" ]]; then
+            rm -- "$signing_path"
+          fi

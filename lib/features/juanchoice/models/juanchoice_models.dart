@@ -14,6 +14,64 @@ class ChoiceCampaign {
       !DateTime.now().isBefore(opensAt);
 }
 
+class ChoiceOverview {
+  const ChoiceOverview({required this.current, required this.nextOpensAt,
+    required this.nextClosesAt, required this.nextTheme, required this.previous,
+    required this.notice, required this.votingEnabled, this.serverTime, this.receivedAt,
+    this.monotonicClock});
+  final ChoiceCampaign? current;
+  final DateTime? nextOpensAt, nextClosesAt;
+  final String? nextTheme, notice;
+  final ChoicePreviousResult? previous;
+  final bool votingEnabled;
+  final DateTime? serverTime, receivedAt;
+  final Stopwatch? monotonicClock;
+
+  // Server time is the display gate. The API still enforces the deadline on write.
+  bool isCampaignOpen(ChoiceCampaign campaign) {
+    if (!votingEnabled || serverTime == null || receivedAt == null) return false;
+    final serverNow = serverTime!.add(monotonicClock?.elapsed ?? DateTime.now().difference(receivedAt!));
+    return (campaign.status == 'voting' || campaign.status == 'scheduled') &&
+        !serverNow.isBefore(campaign.opensAt) && serverNow.isBefore(campaign.closesAt);
+  }
+
+  factory ChoiceOverview.fromJson(Map<String, dynamic> json) {
+    final next = (json['next'] as Map?)?.cast<String, dynamic>();
+    final availability = (json['availability'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final notice = (json['notice'] as Map?)?.cast<String, dynamic>();
+    final current = (json['current'] as Map?)?.cast<String, dynamic>();
+    final previous = (json['previous'] as Map?)?.cast<String, dynamic>();
+    return ChoiceOverview(
+      current: current == null ? null : ChoiceCampaign.fromJson(current),
+      nextOpensAt: next?['opens_at'] == null ? null : DateTime.parse(next!['opens_at'] as String),
+      nextClosesAt: next?['closes_at'] == null ? null : DateTime.parse(next!['closes_at'] as String),
+      nextTheme: next?['theme'] as String?,
+      previous: previous == null ? null : ChoicePreviousResult.fromJson(previous),
+      notice: notice?['message'] as String?,
+      votingEnabled: availability['voting_enabled'] == true,
+      serverTime: json['server_time'] == null ? null : DateTime.parse(json['server_time'] as String),
+      receivedAt: DateTime.now(),
+      monotonicClock: Stopwatch()..start(),
+    );
+  }
+}
+
+class ChoicePreviousResult {
+  const ChoicePreviousResult({required this.periodLabel, required this.validBallots,
+    required this.coWinnerIds, required this.standings});
+  final String periodLabel;
+  final int validBallots;
+  final Set<String> coWinnerIds;
+  final List<ChoiceStanding> standings;
+  factory ChoicePreviousResult.fromJson(Map<String, dynamic> json) => ChoicePreviousResult(
+    periodLabel: json['period_label'] as String,
+    validBallots: (json['valid_ballots'] as num).toInt(),
+    coWinnerIds: (json['co_winner_ids'] as List<dynamic>).cast<String>().toSet(),
+    standings: (json['standings'] as List<dynamic>)
+        .map((item) => ChoiceStanding.fromJson((item as Map).cast<String, dynamic>())).toList(),
+  );
+}
+
 class ChoiceStanding {
   const ChoiceStanding({required this.candidateId, required this.spotName, required this.votes});
   final String candidateId, spotName;
@@ -33,11 +91,36 @@ class ChoiceBallot {
     version: (json['version'] as num).toInt());
 }
 
+class ChoiceEligibility {
+  const ChoiceEligibility({required this.eligible, required this.reason,
+    required this.eligibleAt, required this.canVoteNow});
+  final bool eligible, canVoteNow;
+  final String? reason;
+  final DateTime? eligibleAt;
+
+  static ChoiceEligibility? fromOwnerJson(Map<String, dynamic> json) {
+    final raw = json['eligibility'];
+    final serverTime = DateTime.tryParse(json['server_time']?.toString() ?? '');
+    if (raw is! Map || raw['eligible'] is! bool || json['can_vote_now'] is! bool || serverTime == null) {
+      return null; // Older or incomplete API responses cannot authorize voting.
+    }
+    final eligibleAt = DateTime.tryParse(raw['eligible_at']?.toString() ?? '');
+    return ChoiceEligibility(
+      eligible: raw['eligible'] as bool,
+      reason: raw['reason'] as String?,
+      eligibleAt: eligibleAt,
+      canVoteNow: raw['eligible'] == true && json['can_vote_now'] == true,
+    );
+  }
+}
+
 class ChoiceDetail {
-  const ChoiceDetail({required this.campaign, required this.standings, required this.ballot});
+  const ChoiceDetail({required this.campaign, required this.standings, required this.ballot,
+    this.eligibility});
   final ChoiceCampaign campaign;
   final List<ChoiceStanding> standings;
   final ChoiceBallot? ballot;
+  final ChoiceEligibility? eligibility;
 }
 
 class ChoiceSpotlight {

@@ -8,6 +8,9 @@ import '../models/juanchoice_models.dart';
 final choiceCampaignsProvider = FutureProvider<List<ChoiceCampaign>>((ref) =>
     ref.read(choiceRepositoryProvider).campaigns());
 
+final choiceOverviewProvider = FutureProvider<ChoiceOverview>((ref) =>
+    ref.read(choiceRepositoryProvider).overview());
+
 final choiceSpotlightProvider = FutureProvider<ChoiceSpotlight?>((ref) async {
   final spotlight = await ref.read(choiceRepositoryProvider).spotlight();
   if (spotlight != null) {

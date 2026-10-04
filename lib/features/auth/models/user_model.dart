@@ -18,6 +18,7 @@ class UserModel {
   });
 
   int get points => demoPoints;
+  String get handle => seedId.isNotEmpty ? '@$seedId' : '@${id.substring(0, id.length > 8 ? 8 : id.length)}';
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(

@@ -6,25 +6,83 @@ import '../../../core/widgets/designer_guide.dart';
 import '../providers/juanchoice_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
-class JuanChoiceScreen extends ConsumerWidget {
+class JuanChoiceScreen extends ConsumerStatefulWidget {
   const JuanChoiceScreen({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final campaigns = ref.watch(choiceCampaignsProvider);
-    final supporterQuest = ref.watch(choiceSupporterQuestProvider);
-    final engagement = ref.watch(choiceEngagementProvider);
-    final claimState = ref.watch(choiceSupporterClaimProvider);
+  ConsumerState<JuanChoiceScreen> createState() => _JuanChoiceScreenState();
+}
+
+class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen> with WidgetsBindingObserver {
+  @override
+  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); }
+  @override
+  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) ref.invalidate(choiceOverviewProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authenticated = ref.watch(authProvider).isAuthenticated;
+    final overview = ref.watch(choiceOverviewProvider);
+    final supporterQuest = ref.watch(choiceSupporterQuestProvider);
+    final engagement = authenticated ? ref.watch(choiceEngagementProvider) : null;
+    final claimState = ref.watch(choiceSupporterClaimProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('JuanChoice')),
       body: SafeArea(child: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(choiceCampaignsProvider),
+        onRefresh: () async => ref.invalidate(choiceOverviewProvider),
         child: ListView(padding: const EdgeInsets.all(16), children: [
           const Text('Community spotlight votes are free and separate from governance voting.'),
           const SizedBox(height: 12),
-          if (authenticated) engagement.when(
+          overview.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, __) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Community voting is temporarily unavailable.'),
+                SecondaryButton(label: 'Retry', onPressed: () => ref.invalidate(choiceOverviewProvider)),
+              ]))),
+            data: (data) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (data.current != null) Card(child: ListTile(
+                title: Text(data.current!.theme),
+                subtitle: Text('Voting closes ${_manilaDate(data.current!.closesAt)} PHT'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/choice/${data.current!.id}'),
+              )) else Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Next community vote', style: Theme.of(context).textTheme.titleMedium),
+                  Text(data.nextOpensAt == null ? 'The next date has not been confirmed yet.'
+                      : 'Opens ${_manilaDate(data.nextOpensAt!)} PHT'),
+                  if (data.nextClosesAt != null) Text('Closes ${_manilaDate(data.nextClosesAt!)} PHT'),
+                  if (data.nextTheme != null) Text(data.nextTheme!),
+                ],
+              ))),
+              if (data.notice != null) Padding(padding: const EdgeInsets.all(8), child: Text(data.notice!)),
+              const SizedBox(height: 8),
+              Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Previous results', style: Theme.of(context).textTheme.titleMedium),
+                  if (data.previous == null) const Text('Results will appear after the first community round.')
+                  else ...[
+                    Text('${data.previous!.periodLabel} · ${data.previous!.validBallots} valid ballots'),
+                    for (final standing in data.previous!.standings) Text(
+                      '${data.previous!.coWinnerIds.contains(standing.candidateId) ? '★ ' : ''}${standing.spotName}: ${standing.votes} votes'),
+                    if (data.previous!.coWinnerIds.isEmpty) const Text('No winner this round.'),
+                    const Text('Community support is popularity, not a visitor rating.'),
+                  ],
+                ],
+              ))),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          if (authenticated) engagement!.when(
             loading: () => const LinearProgressIndicator(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, __) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Your community journey could not be loaded.'),
+                SecondaryButton(label: 'Retry journey', onPressed: () => ref.invalidate(choiceEngagementProvider)),
+              ]))),
             data: (summary) => Card(
               child: Padding(padding: const EdgeInsets.all(12), child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,7 +105,11 @@ class JuanChoiceScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           supporterQuest.when(
             loading: () => const SizedBox.shrink(),
-            error: (error, stackTrace) => const SizedBox.shrink(),
+            error: (_, __) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Visit rewards could not be checked.'),
+                SecondaryButton(label: 'Retry visit rewards', onPressed: () => ref.invalidate(choiceSupporterQuestProvider)),
+              ]))),
             data: (quest) => quest == null ? const SizedBox.shrink() : Card(
               color: Theme.of(context).colorScheme.primaryContainer,
               child: Padding(padding: const EdgeInsets.all(12),child: Column(
@@ -73,26 +135,13 @@ class JuanChoiceScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          campaigns.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stackTrace) => Column(children: [
-              const Text('Campaigns unavailable. Please try again.'),
-              PrimaryButton(label: 'Retry', onPressed: () => ref.invalidate(choiceCampaignsProvider)),
-            ]),
-            data: (items) => items.isEmpty
-                ? const Text('No public campaigns are available right now.')
-                : Column(children: [for (final campaign in items)
-                    Card(child: ListTile(
-                      title: Text(campaign.theme),
-                      subtitle: Text('${campaign.region} · ${campaign.status}'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/choice/${campaign.id}'),
-                    ))]),
-          ),
         ]),
       )),
     );
   }
+
+  String _manilaDate(DateTime value) => value.toUtc().add(const Duration(hours: 8))
+      .toIso8601String().substring(0, 16).replaceFirst('T', ' ');
 }
 
 class JuanChoiceDetailScreen extends ConsumerStatefulWidget {
@@ -118,6 +167,7 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.invalidate(choiceDetailProvider(widget.campaignId));
+      ref.invalidate(choiceOverviewProvider);
     }
   }
 
@@ -138,17 +188,24 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
   @override
   Widget build(BuildContext context) {
     final detail = ref.watch(choiceDetailProvider(widget.campaignId));
+    final overview = ref.watch(choiceOverviewProvider).asData?.value;
     final vote = ref.watch(choiceVoteProvider);
     final authenticated = ref.watch(authProvider).isAuthenticated;
     return Scaffold(appBar: AppBar(title: const Text('Community choice')),
       body: SafeArea(child: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(choiceDetailProvider(widget.campaignId)),
+        onRefresh: () async {
+          ref.invalidate(choiceOverviewProvider);
+          ref.invalidate(choiceDetailProvider(widget.campaignId));
+        },
         child: ListView(padding: const EdgeInsets.all(16), children: [
           detail.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stackTrace) => Column(children: [
               const Text('Campaign unavailable. Please try again.'),
-              PrimaryButton(label: 'Retry', onPressed: () => ref.invalidate(choiceDetailProvider(widget.campaignId))),
+              PrimaryButton(label: 'Retry', onPressed: () {
+                ref.invalidate(choiceOverviewProvider);
+                ref.invalidate(choiceDetailProvider(widget.campaignId));
+              }),
             ]),
             data: (data) => UiSpecContainer(
               spec: const UiSpec(title: 'JuanChoice ballot', figmaLayer: 'Community Choice',
@@ -158,12 +215,16 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                 uxNotes: 'Free promotional voting distinct from governance', deferred: false),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(data.campaign.theme, style: Theme.of(context).textTheme.headlineSmall),
-                Text('${data.campaign.region} · ${data.campaign.status}'),
+                Text('${data.campaign.region} · ${overview?.isCampaignOpen(data.campaign) == true ? 'Voting open' : data.campaign.status}'),
                 Text('Closes ${data.campaign.closesAt.toLocal()}'),
                 if (data.ballot != null) Text('Your ballot: version ${data.ballot!.version}'),
+                if (authenticated && data.eligibility?.reason == 'ACCOUNT_TOO_NEW')
+                  Text('Voting unlocks after ${data.eligibility!.eligibleAt?.toLocal() ?? 'your account is 72 hours old'} or after one approved destination visit.'),
+                if (authenticated && data.eligibility == null && overview?.isCampaignOpen(data.campaign) == true)
+                  const Text('Voting eligibility could not be confirmed. Pull to retry.'),
                 if (vote.receipt != null) const Text('Ballot recorded. Participation reward per round: +25 Civic XP and +1 stamp; 0 mJDQ issued.'),
                 if (vote.error != null) Text(vote.error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                if (!authenticated && data.campaign.isOpen) PrimaryButton(
+                if (!authenticated && overview?.isCampaignOpen(data.campaign) == true) PrimaryButton(
                   label: 'Sign in to vote',
                   onPressed: () => context.go('/?redirect=${Uri.encodeComponent('/choice/${widget.campaignId}')}'),
                 ),
@@ -172,13 +233,17 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(standing.spotName),
                     Text('${standing.votes} provisional votes'),
-                    if (authenticated && data.campaign.isOpen) PrimaryButton(
+                    if (authenticated && overview?.current?.id == data.campaign.id &&
+                        overview?.isCampaignOpen(data.campaign) == true &&
+                        data.eligibility?.canVoteNow == true) PrimaryButton(
                       label: vote.pending ? 'Submitting…' : data.ballot == null ? 'Vote for this place' : 'Change vote',
                       onPressed: vote.pending ? null : () => _confirm(standing.candidateId,
                         standing.spotName, data.ballot?.version ?? 0)),
                   ]),
                 )),
-                if (!data.campaign.isOpen) const Text('Voting is closed. No ballot can be queued offline.'),
+                if (overview == null || !overview.votingEnabled) const Text('Voting is temporarily unavailable.')
+                else if (!overview.isCampaignOpen(data.campaign))
+                  const Text('Voting is closed or not yet open. No ballot can be queued offline.'),
               ]),
             ),
           ),

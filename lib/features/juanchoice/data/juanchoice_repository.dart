@@ -12,6 +12,11 @@ class ChoiceRepository {
   final Dio _dio;
   static const _uuid = Uuid();
 
+  Future<ChoiceOverview> overview() async {
+    final response = await _dio.get('/juanchoice/overview');
+    return ChoiceOverview.fromJson((response.data['data'] as Map).cast<String, dynamic>());
+  }
+
   Future<List<ChoiceCampaign>> campaigns() async {
     final response = await _dio.get('/juanchoice/campaigns');
     final items = response.data['data']['items'] as List<dynamic>;
@@ -46,19 +51,23 @@ class ChoiceRepository {
   }
 
   Future<ChoiceDetail> detail(String id, {required bool authenticated}) async {
+    final ownerFuture = authenticated ? _dio.get('/juanchoice/campaigns/$id/me') : null;
     final response = await _dio.get('/juanchoice/campaigns/$id');
     final data = response.data['data'] as Map<String, dynamic>;
     ChoiceBallot? ballot;
-    if (authenticated) {
-      final owner = await _dio.get('/juanchoice/campaigns/$id/me');
-      final raw = owner.data['data']['ballot'];
+    ChoiceEligibility? eligibility;
+    if (ownerFuture != null) {
+      final owner = await ownerFuture;
+      final ownerData = (owner.data['data'] as Map).cast<String, dynamic>();
+      final raw = ownerData['ballot'];
       if (raw != null) ballot = ChoiceBallot.fromJson(raw as Map<String, dynamic>);
+      eligibility = ChoiceEligibility.fromOwnerJson(ownerData);
     }
     return ChoiceDetail(
       campaign: ChoiceCampaign.fromJson(data['campaign'] as Map<String, dynamic>),
       standings: (data['standings'] as List<dynamic>)
           .map((item) => ChoiceStanding.fromJson(item as Map<String, dynamic>)).toList(),
-      ballot: ballot);
+      ballot: ballot, eligibility: eligibility);
   }
 
   Future<ChoiceBallot> vote(String campaignId, String candidateId,

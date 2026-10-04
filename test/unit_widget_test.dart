@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/features/shop/models/voucher_model.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
 import 'package:juanderquest_app/features/vote/models/governance_config_model.dart';
@@ -12,6 +13,25 @@ import 'package:juanderquest_app/features/app_update/models/app_version_info.dar
 
 void main() {
   group('Backend Contract Alignment Tests', () {
+    test('ApiClient.normalizeBaseUrl handles various domain formats gracefully', () {
+      expect(
+        ApiClient.normalizeBaseUrl('https://api.juanderquest.app/api/v1'),
+        'https://api.juanderquest.app/api/v1',
+      );
+      expect(
+        ApiClient.normalizeBaseUrl('https://juanderquest.app'),
+        'https://juanderquest.app/api/v1',
+      );
+      expect(
+        ApiClient.normalizeBaseUrl('https://juanderquest.app/'),
+        'https://juanderquest.app/api/v1',
+      );
+      expect(
+        ApiClient.normalizeBaseUrl('http://10.0.2.2:4000/api/v1/'),
+        'http://10.0.2.2:4000/api/v1',
+      );
+    });
+
     test('VoucherModel.fromJson parses API response correctly', () {
       final json = {
         'id': 'v1111111-1111-1111-1111-111111111111',
@@ -127,7 +147,7 @@ void main() {
       final json = {
         'versionCode': 5,
         'versionName': '1.2.0',
-        'downloadUrl': 'https://jdq.zernanvash.dev/downloads/juanderquest-latest.apk',
+        'downloadUrl': 'https://github.com/zernanvash/juanderquest-mobile/releases/latest/download/juanderquest-latest.apk',
         'changelog': 'New quest maps added',
         'publishedAt': '2026-08-22T08:00:00Z',
         'forceUpdate': true,
@@ -137,7 +157,7 @@ void main() {
       final info = AppVersionInfo.fromJson(json);
       expect(info.versionCode, 5);
       expect(info.versionName, '1.2.0');
-      expect(info.downloadUrl, 'https://jdq.zernanvash.dev/downloads/juanderquest-latest.apk');
+      expect(info.downloadUrl, 'https://github.com/zernanvash/juanderquest-mobile/releases/latest/download/juanderquest-latest.apk');
       expect(info.changelog, 'New quest maps added');
       expect(info.forceUpdate, isTrue);
       expect(info.minSupportedVersionCode, 3);
