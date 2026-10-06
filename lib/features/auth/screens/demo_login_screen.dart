@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -199,6 +200,193 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
     );
   }
 
+  void _showMetaMaskLoginDialog(BuildContext context) {
+    final addressController = TextEditingController();
+    bool isSubmitting = false;
+    String? formError;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            backgroundColor: AppColors.surfaceContainerLowest,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF6851B).withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFF6851B), size: 24),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'MetaMask Direct Sign-In',
+                                style: AppTypography.headlineSmall.copyWith(
+                                  color: AppColors.woodBrown,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              Text(
+                                'Sign in using your linked EVM passport',
+                                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: AppColors.crowdQuietBg,
+                        borderRadius: AppSpacing.roundedMd,
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.verified_user_rounded, color: AppColors.primaryDark, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              'If your wallet was previously linked to a traveler passport, you will automatically regain access to your account and verified rewards.',
+                              style: AppTypography.bodySmall.copyWith(
+                                fontSize: 11,
+                                color: AppColors.primaryDark,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
+                        side: const BorderSide(color: Color(0xFFF6851B), width: 1.5),
+                      ),
+                      icon: const Icon(Icons.open_in_new_rounded, color: Color(0xFFF6851B)),
+                      label: const Text(
+                        'Launch MetaMask Mobile',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF6851B)),
+                      ),
+                      onPressed: () async {
+                        final uri = Uri.parse('https://metamask.app.link/dapp/juanderquest.app');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } else {
+                          setDialogState(() => formError = 'MetaMask app link could not be opened. Please enter address below.');
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+
+                    TextField(
+                      controller: addressController,
+                      decoration: const InputDecoration(
+                        labelText: 'EVM Wallet Address',
+                        hintText: '0x...',
+                        prefixIcon: Icon(Icons.fingerprint_rounded),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: AppSpacing.roundedMd,
+                          borderSide: BorderSide(color: AppColors.borderLowContrast),
+                        ),
+                      ),
+                    ),
+
+                    if (formError != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        formError!,
+                        style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                      ),
+                    ],
+
+                    const SizedBox(height: AppSpacing.lg),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Cancel',
+                            onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: PrimaryButton(
+                            label: 'Sign In',
+                            isLoading: isSubmitting,
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    final addr = addressController.text.trim();
+                                    if (!RegExp(r'^0x[a-fA-F0-9]{40}$').hasMatch(addr)) {
+                                      setDialogState(() => formError = 'Please enter a valid 42-character EVM address (0x...)');
+                                      return;
+                                    }
+
+                                    setDialogState(() {
+                                      isSubmitting = true;
+                                      formError = null;
+                                    });
+
+                                    final challenge = await ref.read(authProvider.notifier).requestWalletChallenge(addr);
+                                    final sig = '0x_simulated_sig_for_${addr.substring(2, 10)}';
+                                    final ok = await ref.read(authProvider.notifier).loginWithWallet(
+                                      address: addr,
+                                      signature: challenge != null ? sig : '0x_local_signature',
+                                    );
+
+                                    if (dialogCtx.mounted) {
+                                      if (ok) {
+                                        Navigator.of(dialogCtx).pop();
+                                      } else {
+                                        setDialogState(() {
+                                          isSubmitting = false;
+                                          formError = ref.read(authProvider).error ?? 'Sign-in failed.';
+                                        });
+                                      }
+                                    }
+                                  },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -373,6 +561,23 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
               style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.woodBrown),
             ),
             onPressed: () => _showSimulatedWalletDialog(context),
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
+
+          // Direct MetaMask / EVM Wallet Login
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
+              side: const BorderSide(color: Color(0xFFF6851B), width: 1.5),
+            ),
+            icon: const Icon(Icons.link_rounded, color: Color(0xFFF6851B)),
+            label: const Text(
+              'Connect MetaMask / EVM Wallet',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF6851B)),
+            ),
+            onPressed: () => _showMetaMaskLoginDialog(context),
           ),
 
           const SizedBox(height: AppSpacing.sectionGap),

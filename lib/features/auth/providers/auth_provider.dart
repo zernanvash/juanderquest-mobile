@@ -101,6 +101,113 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<String?> requestWalletChallenge(String address) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/wallet/challenge',
+        data: {'address': address.trim()},
+      );
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data['data']['message'] as String?;
+      }
+    } catch (e) {
+      debugPrint('[auth] requestWalletChallenge failed: $e');
+    }
+    return null;
+  }
+
+  Future<bool> loginWithWallet({required String address, required String signature}) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/wallet/login',
+        data: {
+          'address': address.trim(),
+          'signature': signature.trim(),
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final token = response.data['data']['token'] as String;
+        final userJson = response.data['data']['user'];
+        final user = UserModel.fromJson(userJson);
+
+        _apiClient.setAuthToken(token);
+        state = AuthState(user: user, token: token);
+        _refreshNotifier.notify();
+        return true;
+      } else {
+        final msg = response.data['error']?['message'] ?? 'Wallet sign-in failed.';
+        state = AuthState(error: msg);
+        return false;
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data['error']?['message'] ?? 'Network connection error (${e.message}).';
+      state = AuthState(error: msg);
+      return false;
+    } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred during wallet sign-in.');
+      return false;
+    }
+  }
+
+  Future<bool> bindWallet({required String address, required String signature}) async {
+    if (state.token == null) return false;
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/wallet/bind',
+        data: {
+          'address': address.trim(),
+          'signature': signature.trim(),
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final userJson = response.data['data']['user'];
+        final updatedUser = UserModel.fromJson(userJson);
+        state = AuthState(user: updatedUser, token: state.token);
+        _refreshNotifier.notify();
+        return true;
+      } else {
+        final msg = response.data['error']?['message'] ?? 'Wallet binding failed.';
+        state = AuthState(user: state.user, token: state.token, error: msg);
+        return false;
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data['error']?['message'] ?? 'Failed to bind wallet: ${e.message}';
+      state = AuthState(user: state.user, token: state.token, error: msg);
+      return false;
+    } catch (e) {
+      state = AuthState(user: state.user, token: state.token, error: 'Unexpected error linking wallet.');
+      return false;
+    }
+  }
+
+  Future<bool> unbindWallet() async {
+    if (state.token == null) return false;
+    try {
+      final response = await _apiClient.dio.delete('/auth/wallet/unbind');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final userJson = response.data['data']['user'];
+        final updatedUser = UserModel.fromJson(userJson);
+        state = AuthState(user: updatedUser, token: state.token);
+        _refreshNotifier.notify();
+        return true;
+      } else {
+        final msg = response.data['error']?['message'] ?? 'Wallet unbinding failed.';
+        state = AuthState(user: state.user, token: state.token, error: msg);
+        return false;
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data['error']?['message'] ?? 'Failed to unlink wallet: ${e.message}';
+      state = AuthState(user: state.user, token: state.token, error: msg);
+      return false;
+    } catch (e) {
+      state = AuthState(user: state.user, token: state.token, error: 'Unexpected error unlinking wallet.');
+      return false;
+    }
+  }
+
   Future<void> refreshProfile() async {
     if (state.token == null) return;
     try {
