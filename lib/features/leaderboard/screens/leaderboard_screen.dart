@@ -57,7 +57,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         title: const FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            'Scout Hall of Fame',
+            'Leaderboard',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,

@@ -357,7 +357,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: const Icon(Icons.military_tech_rounded, color: AppColors.woodBrown, size: 22),
                     ),
                     title: Text(
-                      'Scout Hall of Fame',
+                      'Leaderboard',
                       style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(

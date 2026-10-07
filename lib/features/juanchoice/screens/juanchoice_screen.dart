@@ -191,7 +191,7 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
     final overview = ref.watch(choiceOverviewProvider).asData?.value;
     final vote = ref.watch(choiceVoteProvider);
     final authenticated = ref.watch(authProvider).isAuthenticated;
-    return Scaffold(appBar: AppBar(title: const Text('Community choice')),
+    return Scaffold(appBar: AppBar(title: const Text('JuanChoice')),
       body: SafeArea(child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(choiceOverviewProvider);
