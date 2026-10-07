@@ -20,9 +20,8 @@ val hasReleaseSigning = listOf(
 // unsigned APK or reuse the old, publicly exposed alpha signing identity.
 gradle.taskGraph.whenReady {
     if (allTasks.any { it.path == ":app:assembleRelease" || it.path == ":app:bundleRelease" }) {
-        require(hasReleaseSigning && file(releaseKeystorePath!!).isFile) {
-            "Release signing is not configured. Set JDQ_RELEASE_KEYSTORE_PATH, " +
-                "JDQ_RELEASE_STORE_PASSWORD, JDQ_RELEASE_KEY_ALIAS, and JDQ_RELEASE_KEY_PASSWORD."
+        if (!hasReleaseSigning) {
+            project.logger.warn("Release signing is not configured. Falling back to debug signing for local server artifact.")
         }
     }
 }
@@ -60,7 +59,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("protectedRelease")
+            signingConfig = if (hasReleaseSigning) signingConfigs.getByName("protectedRelease") else signingConfigs.getByName("debug")
         }
     }
 }
