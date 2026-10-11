@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
+import '../../spots/repositories/spots_cache_repository.dart';
 import '../models/user_model.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
@@ -31,8 +32,9 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiClient _apiClient;
   final AuthRefreshNotifier _refreshNotifier;
+  final SpotsCacheRepository? _cacheRepo;
 
-  AuthNotifier(this._apiClient, this._refreshNotifier) : super(AuthState());
+  AuthNotifier(this._apiClient, this._refreshNotifier, [this._cacheRepo]) : super(AuthState());
 
   Future<bool> loginWithSeed(String seedId) async {
     state = AuthState(isLoading: true);
@@ -222,6 +224,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void logout() {
+    final userId = state.user?.id;
+    if (userId != null && _cacheRepo != null) {
+      _cacheRepo!.purgeUserPartition(userId);
+    }
     _apiClient.setAuthToken(null);
     state = AuthState();
     _refreshNotifier.notify();
@@ -231,5 +237,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   final refreshNotifier = ref.watch(authRefreshProvider.notifier);
-  return AuthNotifier(apiClient, refreshNotifier);
+  final cacheRepo = ref.watch(spotsCacheRepositoryProvider);
+  return AuthNotifier(apiClient, refreshNotifier, cacheRepo);
 });

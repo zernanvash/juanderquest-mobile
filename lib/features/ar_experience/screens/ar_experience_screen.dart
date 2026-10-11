@@ -682,7 +682,6 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
 
     final success = await ref.read(submissionProvider.notifier).submitProof(
           questId: _quest!.id,
-          markerCode: _quest!.markerCode,
           capturedLat: _currentPosition!.latitude,
           capturedLng: _currentPosition!.longitude,
           accuracy: _currentPosition!.accuracy,
@@ -721,7 +720,7 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
             context,
             title: 'Quest Already Completed',
             message:
-                'You have already completed this quest and earned your demo points reward.',
+                'You have already submitted or completed this quest. Check your submission history for review status.',
             icon: Icons.check_circle_outline,
             iconColor: const Color(0xFF3F6653),
             buttonText: 'View History',
@@ -907,7 +906,7 @@ class _ARExperienceScreenState extends ConsumerState<ARExperienceScreen>
                 title: 'AR Viewfinder & 3D Model Target',
                 figmaLayer: '#AR_Viewfinder_Reticle',
                 dimensions: 'Fullscreen 1080x1920 (Reticle: 240x240dp)',
-                dataBinding: 'quest.markerImageUrl / quest.markerCode',
+                dataBinding: 'quest.markerImageUrl',
                 stateNotes:
                     'Scanning (Yellow) -> Reticle Lock (Emerald Pulse) -> Marker Detected (3D Coin spin)',
                 uxNotes:

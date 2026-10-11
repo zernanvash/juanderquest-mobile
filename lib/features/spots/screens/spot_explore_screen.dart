@@ -14,6 +14,8 @@ import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
+import '../providers/hidden_gem_provider.dart';
+import '../widgets/hidden_gem_card.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 
@@ -38,6 +40,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     await Future.wait([
       ref.read(spotDiscoveryProvider.notifier).load(refresh: refresh),
       if (refresh) ref.refresh(choiceSpotlightProvider.future),
+      if (refresh) ref.refresh(hiddenGemProvider.future).then((_) {}, onError: (_) {}),
     ]);
   }
 
@@ -209,6 +212,33 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ),
               ),
             ),
+            if (state.isOfflineFallback) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.sunGold.withOpacity(0.18),
+                  borderRadius: AppSpacing.roundedMd,
+                  border: Border.all(color: AppColors.sunGold.withOpacity(0.5)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.cloud_off_rounded, color: AppColors.woodBrown, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Offline Mode • Viewing cached destinations from device storage. Connect to refresh.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.woodBrown,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (spotlight != null && spotlightPlan.winners.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
               Semantics(
@@ -241,10 +271,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
             const SizedBox(height: 12),
 
-            if (spotlightPlan.ordinary.isNotEmpty) ...[
-              _buildAlternativeRecommendation(spotlightPlan.ordinary.first),
-              const SizedBox(height: 12),
-            ],
+            // 2. Personalized Hidden Gem (native ad-style feed unit, not sponsored)
+            const HiddenGemCard(),
 
             // 3. Post Creation Prompt Box
             GestureDetector(
@@ -342,102 +370,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     );
   }
 
-  Widget _buildAlternativeRecommendation(SpotModel spot) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            AppColors.primaryContainer,
-            AppColors.surfaceContainerLowest,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
-        boxShadow: AppSpacing.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
-                  borderRadius: AppSpacing.roundedMd,
-                ),
-                child: const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.primary),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'A PLACE YOU MAY LIKE',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      spot.name,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.woodBrown,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Selected from your travel interests, saved places, and similar destination qualities—not only what is closest.',
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.35),
-          ),
-          const SizedBox(height: 3),
-          Text('${spot.municipality} · Organic recommendation', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: () => context.push('/spots/${spot.slug}', extra: spot),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: AppSpacing.roundedPill,
-                ),
-                child: const FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View this place',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildForumPostCard(SpotModel spot) {
     final likeCount = _likes[spot.id] ?? (45 + spot.name.length * 3);
     final isLiked = _likedSpots.contains(spot.id);
@@ -480,12 +412,16 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         children: [
                           const Icon(Icons.location_on_rounded, size: 13, color: AppColors.primary),
                           const SizedBox(width: 2),
-                          Text(
-                            spot.municipality,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primaryDark,
+                          Flexible(
+                            child: Text(
+                              spot.municipality,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryDark,
+                              ),
                             ),
                           ),
                         ],

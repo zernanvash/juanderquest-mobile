@@ -127,6 +127,29 @@ class SpotModel {
       imageUrl: imageUrl,
       saved: saved ?? this.saved);
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'slug': slug,
+        'name': name,
+        'description': description,
+        'category': category,
+        'subcategory': subcategory,
+        'municipality': municipality,
+        'address': address,
+        'source_name': sourceName,
+        'trust_level': trustLevel,
+        'crowd_status': crowdStatus,
+        'crowd_confidence': crowdConfidence,
+        'gps_lat': gpsLat,
+        'gps_lng': gpsLng,
+        'distance_km': distanceKm,
+        'quest_id': questId,
+        'image_url': imageUrl,
+        'saved': saved,
+        'tags': tags,
+        'recommendation_reasons': reasons,
+      };
+
   static String? _firstPhoto(Map<String, dynamic> json) {
     final photos = json['photos'] ?? json['attached_assets'];
     if (photos is List && photos.isNotEmpty && photos.first is Map) {

@@ -29,24 +29,45 @@ class SubmissionNotifier extends StateNotifier<SubmissionState> {
 
   Future<bool> submitProof({
     required String questId,
-    required String markerCode,
     required double capturedLat,
     required double capturedLng,
     required double accuracy,
   }) async {
     state = SubmissionState(submissions: state.submissions, isSubmitting: true);
     try {
+      // The server-issued single-use challenge token is the only proof path the
+      // backend accepts; never fall back to a raw marker code.
+      final String challengeToken;
+      try {
+        final chalRes = await _apiClient.dio.post('/quests/$questId/challenge');
+        if (chalRes.statusCode != 200 || chalRes.data['success'] != true) {
+          final msg = chalRes.data['error']?['message'] ?? 'Quest challenge unavailable.';
+          final errCode = chalRes.data['error']?['code'] ?? 'CHALLENGE_UNAVAILABLE';
+          state = SubmissionState(submissions: state.submissions, error: msg, errorCode: errCode);
+          return false;
+        }
+        challengeToken = chalRes.data['data']['challenge_token'] as String;
+      } on DioException catch (e) {
+        final msg = e.response?.data['error']?['message'] ??
+            'Could not obtain a quest challenge. Check your connection and retry.';
+        final errCode = e.response?.data['error']?['code'] ?? 'CHALLENGE_UNAVAILABLE';
+        state = SubmissionState(submissions: state.submissions, error: msg, errorCode: errCode);
+        return false;
+      }
+
       final idempotencyKey = _uuid.v4();
+      final body = <String, dynamic>{
+        'idempotency_key': idempotencyKey,
+        'quest_id': questId,
+        'challenge_token': challengeToken,
+        'captured_lat': capturedLat,
+        'captured_lng': capturedLng,
+        'captured_accuracy': accuracy,
+      };
+
       final response = await _apiClient.dio.post(
         '/submissions',
-        data: {
-          'idempotency_key': idempotencyKey,
-          'quest_id': questId,
-          'scanned_marker_code': markerCode,
-          'captured_lat': capturedLat,
-          'captured_lng': capturedLng,
-          'captured_accuracy': accuracy,
-        },
+        data: body,
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {

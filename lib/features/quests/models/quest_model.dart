@@ -8,7 +8,6 @@ class QuestModel {
   final double gpsLng;
   final int radiusMeters;
   final int rewardPoints;
-  final String markerCode;
   final String markerImageUrl;
   final String crowdStatus;
   final String? campaignId;
@@ -24,7 +23,6 @@ class QuestModel {
     required this.gpsLng,
     required this.radiusMeters,
     required this.rewardPoints,
-    required this.markerCode,
     required this.markerImageUrl,
     this.crowdStatus = 'unknown',
     this.campaignId,
@@ -45,7 +43,6 @@ class QuestModel {
       gpsLng: (json['gps_lng'] as num?)?.toDouble() ?? 0.0,
       radiusMeters: json['radius_meters'] ?? 200,
       rewardPoints: json['reward_points'] ?? 50,
-      markerCode: json['marker_code'] ?? '',
       markerImageUrl: json['marker_image_url'] ?? json['image_url'] ?? '',
       crowdStatus: json['crowd_status'] ?? json['crowdStatus'] ?? 'unknown',
       campaignId: json['campaign_id'] ?? json['campaignId'],

@@ -28,6 +28,8 @@ import 'package:juanderquest_app/features/spots/screens/spot_explore_screen.dart
 import 'package:juanderquest_app/features/spots/screens/spot_search_screen.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
+import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
+import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
 import 'package:juanderquest_app/features/leaderboard/screens/leaderboard_screen.dart';
 import 'package:juanderquest_app/features/about/screens/about_screen.dart';
 import 'package:juanderquest_app/features/navigation/models/route_model.dart';
@@ -191,7 +193,6 @@ void main() {
     gpsLng: 119.9,
     radiusMeters: 150,
     rewardPoints: 50,
-    markerCode: 'M01',
     markerImageUrl: 'https://example.com/marker.png',
   );
 
@@ -317,6 +318,15 @@ void main() {
           walletProvider.overrideWith((ref) => InertWalletNotifier(ref, dummyWallet)),
           spotDiscoveryProvider.overrideWith((ref) => InertSpotDiscoveryNotifier(ref, [dummySpot])),
           choiceSpotlightProvider.overrideWith((ref) async => null),
+          hiddenGemProvider.overrideWith((ref) async => const [
+                HiddenGemModel(
+                  id: 'spot-mangatarem-citrus-trail',
+                  name: 'Mangatarem Calamansi & Citrus Orchard Heritage Trail',
+                  municipality: 'Mangatarem, Pangasinan',
+                  reason: 'Inspired by places you saved or liked',
+                  crowdStatus: 'unknown',
+                ),
+              ]),
           startupUpdateControllerProvider.overrideWith((ref) => InertStartupUpdateController(
                 InertUpdateRepository(),
                 const StartupGateState(phase: GatePhase.ready),
