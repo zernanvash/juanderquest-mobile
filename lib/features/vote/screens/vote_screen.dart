@@ -8,7 +8,6 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/async_state_view.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/jdq_section_header.dart';
-import '../../../core/widgets/metric_tile.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../models/governance_proposal_model.dart';
@@ -44,154 +43,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
     super.dispose();
   }
 
-  void _showVoteConfirmationDialog(GovernanceProposalModel prop, String choice) {
-    final walletAsync = ref.read(walletProvider);
-    final wallet = walletAsync.asData?.value;
-    final currentBalance = wallet?.balanceMjdq ?? 1000;
-    final config = ref.read(governanceProvider).config;
-    final fee = config?.voteFeeMjdq ?? 10;
-    final burnAmount = (fee * (config?.burnPercent ?? 20) / 100).round();
-    final escrowAmount = fee - burnAmount;
-    final remaining = currentBalance - fee;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          top: 24,
-          left: 24,
-          right: 24,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: const BoxDecoration(
-                    color: AppColors.borderLowContrast,
-                    borderRadius: AppSpacing.roundedPill,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Icon(
-                    choice == 'yes' ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
-                    color: choice == 'yes' ? AppColors.success : AppColors.danger,
-                    size: 26,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Confirm Vote (${choice.toUpperCase()})',
-                      style: AppTypography.headlineSmall.copyWith(
-                        color: AppColors.woodBrown,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Proposal: "${prop.title}"',
-                style: AppTypography.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.woodBrown,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: const BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: AppSpacing.roundedMd,
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Voting Fee:', style: AppTypography.bodySmall),
-                        Text('$fee mJDQ', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Burned (Permanent):', style: AppTypography.bodySmall),
-                        Text('$burnAmount mJDQ', style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Treasury Escrow:', style: AppTypography.bodySmall),
-                        Text('$escrowAmount mJDQ', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Remaining Balance:', style: AppTypography.bodySmall),
-                        Text('$remaining mJDQ', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(
-                label: 'Cast Vote ($fee mJDQ Fee)',
-                onPressed: currentBalance < fee
-                    ? null
-                    : () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        Navigator.pop(ctx);
-
-                        final success = await ref
-                            .read(governanceProvider.notifier)
-                            .voteOnProposal(proposalId: prop.id, voteType: choice);
-
-                        await ref.read(walletProvider.notifier).fetchWallet();
-
-                        if (!mounted) return;
-                        final err = ref.read(governanceProvider).error;
-
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              success ? 'Vote cast successfully for "${prop.title}"!' : 'Voting failed: ${err ?? "Unknown error"}',
-                            ),
-                            backgroundColor: success ? AppColors.success : AppColors.danger,
-                          ),
-                        );
-                      },
-                icon: Icons.check_circle_rounded,
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   void _showSubmitLocationModal(BuildContext context) {
     _titleController.clear();
@@ -346,8 +198,6 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
   @override
   Widget build(BuildContext context) {
     final govState = ref.watch(governanceProvider);
-    final walletAsync = ref.watch(walletProvider);
-    final wallet = walletAsync.asData?.value;
 
     return JdqScaffold(
       scrollable: true,
@@ -376,36 +226,53 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
-              label: 'Explore JuanChoice (free community vote)',
-              onPressed: () => context.push('/choice'),
+
+            // Retirement Notice Banner
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: AppSpacing.roundedMd,
+                border: Border.all(color: const Color(0xFFF59E0B)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: Color(0xFFB45309), size: 20),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Voting System Retired',
+                          style: AppTypography.labelLarge.copyWith(
+                            color: const Color(0xFF92400E),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Destination approval and proposal voting have been retired. All destination posts are published immediately. Community voting is now conducted exclusively in JuanChoice.',
+                    style: AppTypography.bodySmall.copyWith(color: const Color(0xFF78350F)),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
 
-            // Wallet Balance Header
-            UiSpecContainer(
-              spec: const UiSpec(
-                title: 'DAO Voting Weight Header',
-                figmaLayer: '#DAO_Voting_Weight_Card',
-                dimensions: 'Full width, Height: ~80dp, Padding: 16dp',
-                dataBinding: 'walletProvider.balanceMjdq (or demo balance)',
-                stateNotes: 'Dynamic token balance -> Calculates quadratic voting power',
-                uxNotes: 'Emerald primary icon with wood brown typography.',
-                deferred: true,
-              ),
-              child: MetricTile(
-                label: 'Off-chain Prototype Voting Weight',
-                value: '${wallet?.balanceMjdq ?? 1000} mJDQ',
-                icon: Icons.how_to_vote_rounded,
-                iconColor: AppColors.primary,
-              ),
+            PrimaryButton(
+              label: 'Go to JuanChoice Voting',
+              onPressed: () => context.push('/choice'),
+              icon: Icons.how_to_vote_rounded,
             ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
+            const SizedBox(height: AppSpacing.md),
 
             const JdqSectionHeader(
-              title: 'Active Community Proposals',
-              subtitle: 'Vote on community destinations and quest features. Current pilot proposals focus on Pangasinan.',
+              title: 'Historical Proposals (Archive)',
+              subtitle: 'Past governance proposals recorded for transparency and auditability.',
             ),
 
             AsyncStateView(
@@ -534,27 +401,32 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
             ],
           ),
 
-          const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.lg),
 
-          Row(
-            children: [
-              Expanded(
-                child: PrimaryButton(
-                  label: 'Vote YES',
-                  onPressed: () => _showVoteConfirmationDialog(prop, 'yes'),
-                  icon: Icons.thumb_up_rounded,
-                ),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceContainerHigh,
+                borderRadius: AppSpacing.roundedMd,
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: SecondaryButton(
-                  label: 'Vote NO',
-                  onPressed: () => _showVoteConfirmationDialog(prop, 'no'),
-                  icon: Icons.thumb_down_rounded,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.archive_outlined, size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Archived Proposal · Voting Closed',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
         ],
       ),
     ),

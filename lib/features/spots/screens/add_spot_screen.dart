@@ -250,7 +250,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Destination spot submitted for community review!'),
+              content: Text('Destination spot published successfully!'),
               backgroundColor: AppColors.success,
             ),
           );
@@ -312,7 +312,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Community Spot Contribution',
+                          'Community Destination Contribution',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -321,7 +321,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Submissions enter community & LGU review before being published on JuanderQuest.',
+                          'Your destination will be published and visible immediately after posting.',
                           style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                         ),
                       ],
