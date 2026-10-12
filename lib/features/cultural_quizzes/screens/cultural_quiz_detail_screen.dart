@@ -31,7 +31,7 @@ class _CulturalQuizDetailScreenState extends ConsumerState<CulturalQuizDetailScr
     final user = ref.read(authProvider).user;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in or start a guest session to take quizzes.')),
+        const SnackBar(content: Text('Please sign in to take cultural quizzes.')),
       );
       context.push('/login');
       return;
