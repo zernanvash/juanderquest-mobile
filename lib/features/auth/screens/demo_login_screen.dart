@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:reown_appkit/reown_appkit.dart' hide PrimaryButton, SecondaryButton;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../providers/auth_provider.dart';
+import '../services/wallet_signature_service.dart';
 
 class DemoLoginScreen extends ConsumerStatefulWidget {
   const DemoLoginScreen({super.key});
@@ -200,12 +201,26 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
     );
   }
 
-  void _showMetaMaskLoginDialog(BuildContext context) {
-    final addressController = TextEditingController();
+  Future<void> _showWalletLoginDialog(BuildContext context) async {
+    ReownAppKitModal modal;
+    try {
+      modal = await WalletSignatureService.initialize(context);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e is StateError ? e.message : 'Wallet connection is unavailable. Please try again.')),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) {
+      await modal.dispose();
+      return;
+    }
     bool isSubmitting = false;
     String? formError;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
@@ -235,7 +250,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'MetaMask Direct Sign-In',
+                                'Web3 Wallet Sign-In',
                                 style: AppTypography.headlineSmall.copyWith(
                                   color: AppColors.woodBrown,
                                   fontWeight: FontWeight.bold,
@@ -243,7 +258,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                                 ),
                               ),
                               Text(
-                                'Sign in using your linked EVM passport',
+                                'Sign in with MetaMask, Coinbase, Rainbow, or any EVM wallet',
                                 style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
                               ),
                             ],
@@ -266,7 +281,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Text(
-                              'If your wallet was previously linked to a traveler passport, you will automatically regain access to your account and verified rewards.',
+                              'If this wallet was linked to a traveler account, a valid signature signs you back into that account. Signing does not create or transfer tokens.',
                               style: AppTypography.bodySmall.copyWith(
                                 fontSize: 11,
                                 color: AppColors.primaryDark,
@@ -280,42 +295,13 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
 
                     const SizedBox(height: AppSpacing.md),
 
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
-                        side: const BorderSide(color: Color(0xFFF6851B), width: 1.5),
-                      ),
-                      icon: const Icon(Icons.open_in_new_rounded, color: Color(0xFFF6851B)),
-                      label: const Text(
-                        'Launch MetaMask Mobile',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF6851B)),
-                      ),
-                      onPressed: () async {
-                        final uri = Uri.parse('https://metamask.app.link/dapp/juanderquest.app');
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        } else {
-                          setDialogState(() => formError = 'MetaMask app link could not be opened. Please enter address below.');
-                        }
-                      },
-                    ),
+                    AppKitModalConnectButton(appKit: modal, context: context),
 
                     const SizedBox(height: AppSpacing.md),
 
-                    TextField(
-                      controller: addressController,
-                      decoration: const InputDecoration(
-                        labelText: 'EVM Wallet Address',
-                        hintText: '0x...',
-                        prefixIcon: Icon(Icons.fingerprint_rounded),
-                        filled: true,
-                        fillColor: AppColors.surfaceContainerLow,
-                        border: OutlineInputBorder(
-                          borderRadius: AppSpacing.roundedMd,
-                          borderSide: BorderSide(color: AppColors.borderLowContrast),
-                        ),
-                      ),
+                    Text(
+                      'Connect any Web3 wallet (MetaMask, Coinbase, Trust, Rainbow, or any EVM app), then tap "Sign In" to authenticate.',
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                     ),
 
                     if (formError != null) ...[
@@ -344,9 +330,9 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                             onPressed: isSubmitting
                                 ? null
                                 : () async {
-                                    final addr = addressController.text.trim();
-                                    if (!RegExp(r'^0x[a-fA-F0-9]{40}$').hasMatch(addr)) {
-                                      setDialogState(() => formError = 'Please enter a valid 42-character EVM address (0x...)');
+                                    final addr = WalletSignatureService.connectedAddress(modal);
+                                    if (addr == null) {
+                                      setDialogState(() => formError = 'Connect an EVM wallet first.');
                                       return;
                                     }
 
@@ -355,12 +341,20 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                                       formError = null;
                                     });
 
-                                    final challenge = await ref.read(authProvider.notifier).requestWalletChallenge(addr);
-                                    final sig = '0x_simulated_sig_for_${addr.substring(2, 10)}';
-                                    final ok = await ref.read(authProvider.notifier).loginWithWallet(
-                                      address: addr,
-                                      signature: challenge != null ? sig : '0x_local_signature',
-                                    );
+                                    bool ok = false;
+                                    try {
+                                      final challenge = await ref.read(authProvider.notifier).requestWalletChallenge(addr);
+                                      if (challenge == null) throw StateError('Could not get a wallet challenge from the API.');
+                                      final signature = await WalletSignatureService.signChallenge(modal, challenge);
+                                      ok = await ref.read(authProvider.notifier).loginWithWallet(
+                                        address: addr,
+                                        signature: signature,
+                                      );
+                                    } catch (e) {
+                                      if (dialogCtx.mounted) {
+                                        setDialogState(() => formError = e is StateError ? e.message : 'Signature was not completed.');
+                                      }
+                                    }
 
                                     if (dialogCtx.mounted) {
                                       if (ok) {
@@ -368,7 +362,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                                       } else {
                                         setDialogState(() {
                                           isSubmitting = false;
-                                          formError = ref.read(authProvider).error ?? 'Sign-in failed.';
+                                          formError ??= ref.read(authProvider).error ?? 'Sign-in failed.';
                                         });
                                       }
                                     }
@@ -385,6 +379,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
         },
       ),
     );
+    await modal.dispose();
   }
 
   @override
@@ -574,10 +569,10 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
             ),
             icon: const Icon(Icons.link_rounded, color: Color(0xFFF6851B)),
             label: const Text(
-              'Connect MetaMask / EVM Wallet',
+              'Connect Web3 / EVM Wallet',
               style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF6851B)),
             ),
-            onPressed: () => _showMetaMaskLoginDialog(context),
+            onPressed: () => _showWalletLoginDialog(context),
           ),
 
           const SizedBox(height: AppSpacing.sectionGap),
