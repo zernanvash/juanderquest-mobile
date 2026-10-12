@@ -36,6 +36,117 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   AuthNotifier(this._apiClient, this._refreshNotifier, [this._cacheRepo]) : super(AuthState());
 
+  Future<bool> loginWithEmail({required String email, required String password}) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/login',
+        data: {
+          'email': email.trim().toLowerCase(),
+          'password': password,
+          'remember_me': true,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final token = response.data['data']['token'] as String;
+        final userJson = response.data['data']['user'];
+        final user = UserModel.fromJson(userJson);
+
+        _apiClient.setAuthToken(token);
+        state = AuthState(user: user, token: token);
+        _refreshNotifier.notify();
+        return true;
+      } else {
+        final msg = response.data['error']?['message'] ?? 'Invalid email or password.';
+        state = AuthState(error: msg);
+        return false;
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data['error']?['message'] ?? 'Network connection error (${e.message}).';
+      state = AuthState(error: msg);
+      return false;
+    } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred.');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> registerWithEmail({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/register',
+        data: {
+          'email': email.trim().toLowerCase(),
+          'password': password,
+          'display_name': displayName.trim(),
+          'age_eligibility_declared': true,
+          'terms_accepted': true,
+        },
+      );
+
+      if (response.statusCode == 201 && response.data['success'] == true) {
+        state = AuthState(isLoading: false);
+        return {
+          'success': true,
+          'dev_code': response.data['data']?['dev_code'],
+        };
+      } else {
+        final msg = response.data['error']?['message'] ?? 'Registration failed.';
+        state = AuthState(error: msg);
+        return {'success': false, 'error': msg};
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data['error']?['message'] ?? 'Registration error (${e.message}).';
+      state = AuthState(error: msg);
+      return {'success': false, 'error': msg};
+    } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred.');
+      return {'success': false, 'error': 'Unexpected error'};
+    }
+  }
+
+  Future<bool> verifyEmailOtp({required String email, required String code}) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/email/verify',
+        data: {
+          'email': email.trim().toLowerCase(),
+          'code': code.trim(),
+          'remember_me': true,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final token = response.data['data']['token'] as String;
+        final userJson = response.data['data']['user'];
+        final user = UserModel.fromJson(userJson);
+
+        _apiClient.setAuthToken(token);
+        state = AuthState(user: user, token: token);
+        _refreshNotifier.notify();
+        return true;
+      } else {
+        final msg = response.data['error']?['message'] ?? 'Invalid verification code.';
+        state = AuthState(error: msg);
+        return false;
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data['error']?['message'] ?? 'Verification failed (${e.message}).';
+      state = AuthState(error: msg);
+      return false;
+    } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred.');
+      return false;
+    }
+  }
+
   Future<bool> loginWithSeed(String seedId) async {
     state = AuthState(isLoading: true);
     try {

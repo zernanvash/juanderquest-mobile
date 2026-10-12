@@ -22,6 +22,148 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
 
   String get _selectedSeed => _selectedRole == 'admin' ? 'admin-1' : 'user-1';
 
+  void _showEmailLoginDialog(BuildContext context) {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    bool isSubmitting = false;
+    String? formError;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            backgroundColor: AppColors.surfaceContainerLowest,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.mail_outline_rounded, color: AppColors.primary, size: 24),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Sign In with Email',
+                                style: AppTypography.headlineSmall.copyWith(
+                                  color: AppColors.woodBrown,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Enter your JuanDerQuest account credentials',
+                                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email Address',
+                        hintText: 'traveler@example.com',
+                        prefixIcon: Icon(Icons.email_outlined),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: AppSpacing.roundedMd,
+                          borderSide: BorderSide(color: AppColors.borderLowContrast),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: Icon(Icons.lock_outline_rounded),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: AppSpacing.roundedMd,
+                          borderSide: BorderSide(color: AppColors.borderLowContrast),
+                        ),
+                      ),
+                    ),
+                    if (formError != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(formError!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+                    ],
+                    const SizedBox(height: AppSpacing.lg),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Cancel',
+                            onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: PrimaryButton(
+                            label: 'Sign In',
+                            isLoading: isSubmitting,
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    final email = emailController.text.trim();
+                                    final password = passwordController.text;
+                                    if (email.isEmpty || password.isEmpty) {
+                                      setDialogState(() => formError = 'Please enter both email and password.');
+                                      return;
+                                    }
+                                    setDialogState(() {
+                                      isSubmitting = true;
+                                      formError = null;
+                                    });
+                                    final ok = await ref.read(authProvider.notifier).loginWithEmail(
+                                          email: email,
+                                          password: password,
+                                        );
+                                    if (dialogCtx.mounted) {
+                                      if (ok) {
+                                        Navigator.of(dialogCtx).pop();
+                                      } else {
+                                        setDialogState(() {
+                                          isSubmitting = false;
+                                          formError = ref.read(authProvider).error ?? 'Sign in failed.';
+                                        });
+                                      }
+                                    }
+                                  },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _showSimulatedWalletDialog(BuildContext context) {
     final usernameController = TextEditingController();
     final passwordController = TextEditingController(text: 'password123');
@@ -542,6 +684,23 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
           ),
 
           const SizedBox(height: AppSpacing.md),
+
+          // Sign In with Email
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
+              side: const BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+            icon: const Icon(Icons.mail_outline_rounded, color: AppColors.primary),
+            label: const Text(
+              'Sign In with Email & Password',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            onPressed: () => _showEmailLoginDialog(context),
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
 
           // Simulated Custom Wallet Login Option
           OutlinedButton.icon(
