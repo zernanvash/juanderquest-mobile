@@ -42,8 +42,8 @@ void main() {
       'reason': 'Discover somewhere different',
     });
     expect(gem.imageUrl, isNull);
-    expect(gem.crowdLabel, 'Crowd level not yet reported');
-    expect(_gem.crowdLabel, 'Usually quiet');
+    expect(gem.crowdLabel, 'Crowd level unknown');
+    expect(_gem.crowdLabel, 'Estimated quiet');
   });
 
   testWidgets('renders the ad-style card with Not sponsored disclosure', (tester) async {
@@ -54,7 +54,7 @@ void main() {
     expect(find.text('Not sponsored'), findsOneWidget);
     expect(find.text('Antong Falls & Mountain Brook'), findsOneWidget);
     expect(find.text('Matches your travel interests'), findsOneWidget);
-    expect(find.text('Usually quiet'), findsOneWidget);
+    expect(find.text('Estimated quiet'), findsOneWidget);
   });
 
   testWidgets('tapping the CTA opens the destination by id', (tester) async {

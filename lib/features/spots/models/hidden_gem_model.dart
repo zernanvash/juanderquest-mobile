@@ -33,8 +33,8 @@ class HiddenGemModel {
 
   /// Crowd copy stays honest: the backend only estimates, it never measures.
   String get crowdLabel => switch (crowdStatus) {
-        'quiet' => 'Usually quiet',
+        'quiet' => 'Estimated quiet',
         'moderate' => 'Some activity reported',
-        _ => 'Crowd level not yet reported',
+        _ => 'Crowd level unknown',
       };
 }
