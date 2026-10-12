@@ -29,6 +29,10 @@ import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/about/screens/about_screen.dart';
 import '../features/navigation/models/route_model.dart';
 import '../features/navigation/screens/navigation_screen.dart';
+import '../features/cultural_quizzes/models/cultural_quiz_model.dart';
+import '../features/cultural_quizzes/screens/cultural_quiz_detail_screen.dart';
+import '../features/cultural_quizzes/screens/cultural_quiz_play_screen.dart';
+import '../features/cultural_quizzes/screens/cultural_quiz_result_screen.dart';
 import 'main_shell.dart';
 import 'auth_redirect.dart';
 
@@ -310,6 +314,39 @@ final routerProvider = Provider<GoRouter>((ref) {
             returnTo: state.uri.queryParameters['returnTo'] ?? state.extra as String?,
           ),
         ),
+      ),
+      GoRoute(
+        path: '/cultural-quizzes/:id',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: CulturalQuizDetailScreen(
+            quizId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+        routes: [
+          GoRoute(
+            path: 'play',
+            pageBuilder: (context, state) => buildDirectionalSlidePage(
+              context: context,
+              state: state,
+              child: CulturalQuizPlayScreen(
+                quizId: state.pathParameters['id'] ?? '',
+                session: state.extra as ({CulturalQuizAttemptModel attempt, List<CulturalQuizQuestionModel> questions}),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'result',
+            pageBuilder: (context, state) => buildDirectionalSlidePage(
+              context: context,
+              state: state,
+              child: CulturalQuizResultScreen(
+                result: state.extra as CulturalQuizGradedResultModel,
+              ),
+            ),
+          ),
+        ],
       ),
     ],
   );

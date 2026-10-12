@@ -16,6 +16,9 @@ import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
 import '../providers/hidden_gem_provider.dart';
 import '../widgets/hidden_gem_card.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
+import '../../cultural_quizzes/widgets/nearby_quiz_card.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 
@@ -29,11 +32,30 @@ class SpotExploreScreen extends ConsumerStatefulWidget {
 class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   final Map<String, int> _likes = {};
   final Set<String> _likedSpots = {};
+  Position? _currentPosition;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(spotDiscoveryProvider.notifier).initialize());
+    Future.microtask(() {
+      ref.read(spotDiscoveryProvider.notifier).initialize();
+      _fetchLocation();
+    });
+  }
+
+  Future<void> _fetchLocation() async {
+    try {
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) return;
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
+      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
+      if (mounted) {
+        setState(() {
+          _currentPosition = pos;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -41,6 +63,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       ref.read(spotDiscoveryProvider.notifier).load(refresh: refresh),
       if (refresh) ref.refresh(choiceSpotlightProvider.future),
       if (refresh) ref.refresh(hiddenGemProvider.future).then((_) {}, onError: (_) {}),
+      _fetchLocation(),
     ]);
   }
 
@@ -271,7 +294,29 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
             const SizedBox(height: 12),
 
-            // 2. Personalized Hidden Gem (native ad-style feed unit, not sponsored)
+            // 2. Location-Triggered Cultural Quiz Nearby Invitation
+            if (_currentPosition != null)
+              Consumer(
+                builder: (context, ref, _) {
+                  final nearbyAsync = ref.watch(nearbyQuizzesProvider((
+                    lat: _currentPosition!.latitude,
+                    lng: _currentPosition!.longitude,
+                  )));
+                  return nearbyAsync.when(
+                    data: (quizzes) {
+                      if (quizzes.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: quizzes.map((q) => NearbyQuizCard(invitation: q)).toList(),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  );
+                },
+              ),
+
+            // 3. Personalized Hidden Gem (native ad-style feed unit, not sponsored)
             const HiddenGemCard(),
 
             // 3. Post Creation Prompt Box
