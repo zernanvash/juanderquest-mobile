@@ -35,13 +35,14 @@ class UpdateDialog extends ConsumerWidget {
     return Dialog(
       shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
       backgroundColor: AppColors.surfaceContainerLowest,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Top Badge / Icon
             Center(
               child: Container(
@@ -274,6 +275,7 @@ class UpdateDialog extends ConsumerWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

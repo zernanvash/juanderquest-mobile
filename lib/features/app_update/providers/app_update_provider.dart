@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
@@ -8,8 +9,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
-import '../data/release_manifest_client.dart';
+import '../data/update_repository_impl.dart';
+import '../domain/update_repository.dart';
 import '../models/app_version_info.dart';
+import 'startup_update_controller.dart';
 
 enum UpdateStatus {
   idle,
@@ -32,6 +35,8 @@ class AppUpdateState {
   final String? cachedFilePath;
   final String? errorMessage;
 
+  final DateTime? lastCheckedAt;
+
   const AppUpdateState({
     this.status = UpdateStatus.idle,
     this.installedVersionName = '1.0.0',
@@ -41,6 +46,7 @@ class AppUpdateState {
     this.isCached = false,
     this.cachedFilePath,
     this.errorMessage,
+    this.lastCheckedAt,
   });
 
   bool get hasUpdate =>
@@ -59,25 +65,34 @@ class AppUpdateState {
     bool? isCached,
     String? cachedFilePath,
     String? errorMessage,
+    DateTime? lastCheckedAt,
+    bool clearErrorMessage = false,
+    bool clearCachedFilePath = false,
+    bool clearLatestVersion = false,
   }) {
     return AppUpdateState(
       status: status ?? this.status,
       installedVersionName: installedVersionName ?? this.installedVersionName,
       installedVersionCode: installedVersionCode ?? this.installedVersionCode,
-      latestVersion: latestVersion ?? this.latestVersion,
+      latestVersion: clearLatestVersion ? null : (latestVersion ?? this.latestVersion),
       downloadProgress: downloadProgress ?? this.downloadProgress,
       isCached: isCached ?? this.isCached,
-      cachedFilePath: cachedFilePath ?? this.cachedFilePath,
-      errorMessage: errorMessage,
+      cachedFilePath: clearCachedFilePath ? null : (cachedFilePath ?? this.cachedFilePath),
+      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
     );
   }
 }
 
 class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
-  final ReleaseManifestClient _manifestClient;
+  final IUpdateRepository _repository;
   CancelToken? _cancelToken;
+  Completer<bool>? _checkFlight;
 
-  AppUpdateNotifier(this._manifestClient) : super(const AppUpdateState()) {
+  AppUpdateNotifier({
+    IUpdateRepository? repository,
+  })  : _repository = repository ?? UpdateRepositoryImpl(),
+        super(const AppUpdateState()) {
     _initCurrentVersion();
   }
 
@@ -113,18 +128,30 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
     return digest.toString() == release.sha256;
   }
 
-  /// Checks server for latest app version and verifies if APK is already cached
+  /// Checks server for latest app version and verifies if APK is already cached.
+  /// Deduplicates concurrent checks using a single-flight completer.
   Future<bool> checkForUpdates({bool silent = false}) async {
+    if (_checkFlight != null) {
+      return _checkFlight!.future;
+    }
+
+    final completer = Completer<bool>();
+    _checkFlight = completer;
+
     if (!silent) {
-      state = state.copyWith(status: UpdateStatus.checking, errorMessage: null);
+      state = state.copyWith(
+        status: UpdateStatus.checking,
+        clearErrorMessage: true,
+      );
     }
 
     try {
       await _initCurrentVersion();
 
-      final latest = await _manifestClient.fetch();
-      if (latest != null) {
+      final latest = await _repository.fetchBackendVersionMetadata();
+      final now = DateTime.now();
 
+      if (latest != null) {
         final isUpdateAvailable = latest.versionCode > state.installedVersionCode;
 
         // Check if full completed APK is already cached on local storage
@@ -147,17 +174,21 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
           status: isUpdateAvailable
               ? (isCached ? UpdateStatus.readyToInstall : UpdateStatus.updateAvailable)
               : UpdateStatus.upToDate,
-          errorMessage: null,
+          clearErrorMessage: true,
+          lastCheckedAt: now,
         );
 
+        completer.complete(isUpdateAvailable);
         return isUpdateAvailable;
       } else {
         if (!silent) {
           state = state.copyWith(
             status: UpdateStatus.error,
-            errorMessage: 'No valid release manifest is available.',
+            errorMessage: 'Unable to reach the release server. Check your connection and try again.',
+            lastCheckedAt: now,
           );
         }
+        completer.complete(false);
         return false;
       }
     } catch (e) {
@@ -165,10 +196,14 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
       if (!silent) {
         state = state.copyWith(
           status: UpdateStatus.error,
-          errorMessage: 'Could not check GitHub Releases.',
+          errorMessage: 'Could not connect to update service ($e).',
+          lastCheckedAt: DateTime.now(),
         );
       }
+      completer.complete(false);
       return false;
+    } finally {
+      _checkFlight = null;
     }
   }
 
@@ -301,5 +336,6 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 final appUpdateProvider =
     StateNotifierProvider<AppUpdateNotifier, AppUpdateState>((ref) {
-  return AppUpdateNotifier(ReleaseManifestClient());
+  final repository = ref.watch(updateRepositoryProvider);
+  return AppUpdateNotifier(repository: repository);
 });

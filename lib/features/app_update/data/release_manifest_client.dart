@@ -6,8 +6,7 @@ import '../models/app_version_info.dart';
 class ReleaseManifestClient {
   static const manifestUrl = String.fromEnvironment(
     'UPDATE_MANIFEST_URL',
-    defaultValue:
-        'https://github.com/zernanvash/juanderquest-mobile/releases/latest/download/version.json',
+    defaultValue: 'https://api.juanderquest.app/api/v1/app/version',
   );
   static const expectedPackageName = 'dev.zernanvash.juanderquest';
 
@@ -37,7 +36,12 @@ class ReleaseManifestClient {
       );
       final raw = response.data;
       if (response.statusCode != 200 || raw is! Map) return null;
-      return parse(Map<String, dynamic>.from(raw));
+      final map = Map<String, dynamic>.from(raw);
+      // Support backend { success: true, data: { ... } } envelope
+      if (map.containsKey('data') && map['data'] is Map) {
+        return parse(Map<String, dynamic>.from(map['data'] as Map));
+      }
+      return parse(map);
     } catch (error) {
       debugPrint('[ReleaseManifestClient] Update check failed: $error');
       return null;
@@ -45,8 +49,8 @@ class ReleaseManifestClient {
   }
 
   static AppVersionInfo parse(Map<String, dynamic> json) {
-    if (json['schemaVersion'] != 1 ||
-        json['packageName'] != expectedPackageName) {
+    if ((json['schemaVersion'] != null && json['schemaVersion'] != 1) ||
+        (json['packageName'] != null && json['packageName'] != expectedPackageName)) {
       throw const FormatException('Unsupported update manifest');
     }
     final result = AppVersionInfo.fromJson(json);
@@ -54,10 +58,8 @@ class ReleaseManifestClient {
     if (result.versionCode < 1 ||
         downloadUri == null ||
         downloadUri.scheme != 'https' ||
-        result.sha256 == null ||
-        !RegExp(r'^[a-f0-9]{64}$').hasMatch(result.sha256!) ||
-        result.sizeBytes == null ||
-        result.sizeBytes! < 5 * 1024 * 1024) {
+        (result.sha256 != null && !RegExp(r'^[a-f0-9]{64}$').hasMatch(result.sha256!)) ||
+        (result.sizeBytes != null && result.sizeBytes! < 1024 * 1024)) {
       throw const FormatException('Invalid update manifest fields');
     }
     return result;

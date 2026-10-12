@@ -67,6 +67,8 @@ CustomTransitionPage buildDirectionalSlidePage<T>({
   );
 }
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final routerProvider = Provider<GoRouter>((ref) {
   // GoRouter listens to auth changes itself. Watching the notifier here also
   // rebuilds the router during a redirect, leaving the old callback with a
@@ -74,6 +76,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = ref.read(authRefreshProvider);
 
   final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     refreshListenable: refreshNotifier,
     redirect: (context, state) {

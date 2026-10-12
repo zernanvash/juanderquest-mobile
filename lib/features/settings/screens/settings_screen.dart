@@ -154,9 +154,27 @@ class SettingsScreen extends ConsumerWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'You are running the latest version (v${current.installedVersionName}).',
+                                  'App is up to date (v${current.installedVersionName} · Build ${current.installedVersionCode}).',
                                 ),
                                 backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          } else if (current.status == UpdateStatus.readyToInstall && current.latestVersion != null) {
+                            UpdateDialog.show(context, current.latestVersion!);
+                          } else if (current.status == UpdateStatus.error) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  current.errorMessage ?? 'Unable to check for updates. Please try again.',
+                                ),
+                                backgroundColor: AppColors.danger,
+                                action: SnackBarAction(
+                                  label: 'Retry',
+                                  textColor: Colors.white,
+                                  onPressed: () {
+                                    ref.read(appUpdateProvider.notifier).checkForUpdates(silent: false);
+                                  },
+                                ),
                               ),
                             );
                           }
@@ -190,7 +208,7 @@ class SettingsScreen extends ConsumerWidget {
                               runSpacing: 4,
                               children: [
                                 Text(
-                                  'App Version',
+                                  'Check for updates',
                                   style: AppTypography.labelLarge.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -202,7 +220,7 @@ class SettingsScreen extends ConsumerWidget {
                                     borderRadius: AppSpacing.roundedPill,
                                   ),
                                   child: Text(
-                                    'v${updateState.installedVersionName}',
+                                    'v${updateState.installedVersionName} (${updateState.installedVersionCode})',
                                     style: AppTypography.bodySmall.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.textPrimary,
@@ -213,13 +231,21 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              updateState.hasUpdate
-                                  ? 'New version available (v${updateState.latestVersion?.versionName})'
-                                  : 'Tap to check for latest updates',
+                              isChecking
+                                  ? 'Checking server for updates...'
+                                  : updateState.hasUpdate
+                                      ? 'New version available (v${updateState.latestVersion?.versionName})'
+                                      : updateState.status == UpdateStatus.error
+                                          ? (updateState.errorMessage ?? 'Update check failed. Tap to retry.')
+                                          : updateState.lastCheckedAt != null
+                                              ? 'Up to date · Checked today'
+                                              : 'Tap to check for latest updates',
                               style: AppTypography.bodySmall.copyWith(
                                 color: updateState.hasUpdate
                                     ? AppColors.primary
-                                    : AppColors.textSecondary,
+                                    : updateState.status == UpdateStatus.error
+                                        ? AppColors.danger
+                                        : AppColors.textSecondary,
                                 fontWeight: updateState.hasUpdate
                                     ? FontWeight.bold
                                     : FontWeight.normal,

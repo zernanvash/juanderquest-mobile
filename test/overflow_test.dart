@@ -42,6 +42,8 @@ import 'package:juanderquest_app/features/app_update/domain/update_repository.da
 import 'package:juanderquest_app/features/app_update/models/app_version_info.dart';
 import 'package:juanderquest_app/features/app_update/providers/startup_update_controller.dart';
 import 'package:juanderquest_app/features/app_update/widgets/startup_update_gate.dart';
+import 'package:juanderquest_app/features/app_update/widgets/update_dialog.dart';
+import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 
 
@@ -458,6 +460,29 @@ void main() {
         tester,
         const StartupUpdateGate(child: SizedBox()),
         const Size(568, 320),
+        2.0,
+      );
+    });
+
+    testWidgets('SettingsScreen does not overflow in small portrait', (tester) async {
+      await testScreenOverflow(tester, const SettingsScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('SettingsScreen does not overflow in small landscape', (tester) async {
+      await testScreenOverflow(tester, const SettingsScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('UpdateDialog does not overflow in small portrait', (tester) async {
+      const info = AppVersionInfo(
+        versionCode: 151,
+        versionName: '1.0.1',
+        downloadUrl: 'https://api.juanderquest.app/api/v1/app/download',
+        changelog: 'New release notes and features.',
+      );
+      await testScreenOverflow(
+        tester,
+        const Scaffold(body: Center(child: UpdateDialog(versionInfo: info))),
+        const Size(320, 568),
         2.0,
       );
     });
