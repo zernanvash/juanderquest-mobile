@@ -41,7 +41,7 @@ jobs:
 
   build-and-release:
     needs: validate
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     permissions:
       contents: write
     runs-on: ubuntu-latest
