@@ -72,6 +72,14 @@ jobs:
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         run: flutter pub get
+      - name: Require wallet connection configuration
+        env:
+          REOWN_PROJECT_ID: ${{ vars.REOWN_PROJECT_ID }}
+        run: |
+          if [[ -z "$REOWN_PROJECT_ID" ]]; then
+            echo 'Set the REOWN_PROJECT_ID repository variable before publishing a wallet-enabled APK.' >&2
+            exit 1
+          fi
       - name: Prepare protected release signing
         shell: bash
         env:
@@ -104,12 +112,14 @@ jobs:
           JDQ_RELEASE_STORE_PASSWORD: ${{ secrets.JDQ_RELEASE_STORE_PASSWORD }}
           JDQ_RELEASE_KEY_ALIAS: ${{ secrets.JDQ_RELEASE_KEY_ALIAS }}
           JDQ_RELEASE_KEY_PASSWORD: ${{ secrets.JDQ_RELEASE_KEY_PASSWORD }}
+          REOWN_PROJECT_ID: ${{ vars.REOWN_PROJECT_ID }}
         run: >-
           flutter build apk --release
           --build-name="${{ steps.release.outputs.version_name }}"
           --build-number="${{ steps.release.outputs.version_code }}"
           --dart-define=UPDATE_MANIFEST_URL=https://github.com/${{ github.repository }}/releases/latest/download/version.json
           --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.juanderquest.app/api/v1' }}
+          --dart-define=REOWN_PROJECT_ID=$REOWN_PROJECT_ID
       - name: Create release assets and manifest
         env:
           CHANGELOG_INPUT: ${{ inputs.changelog }}

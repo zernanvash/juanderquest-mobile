@@ -104,7 +104,7 @@ void main() {
 
       expect(find.text('Web3 & Blockchain Identity'), findsOneWidget);
       expect(find.text('Off-Chain Demo Account'), findsOneWidget);
-      expect(find.text('Link MetaMask / EVM Wallet'), findsOneWidget);
+      expect(find.text('Link Web3 / EVM Wallet'), findsOneWidget);
     });
 
     testWidgets('renders verified wallet badge and address when traveler has bound wallet', (tester) async {
