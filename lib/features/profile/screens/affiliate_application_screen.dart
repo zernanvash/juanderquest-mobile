@@ -107,10 +107,10 @@ class _AffiliateApplicationScreenState
       _success = null;
     });
     try {
-      final response = await ref
-          .read(apiClientProvider)
-          .dio
-          .post('/affiliate/applications', data: {
+      final isNeedsChanges = _existing?['status'] == 'needs_changes';
+      final appId = _existing?['id']?.toString();
+
+      final payload = {
         'business_name': _business.text.trim(),
         'category': _category,
         'municipality': _municipality.text.trim(),
@@ -119,13 +119,26 @@ class _AffiliateApplicationScreenState
         'contact_phone': _phone.text.trim(),
         'sponsorship_goals': _goals.toList(),
         'proposal_details': _details.text.trim(),
-      });
+      };
+
+      final response = isNeedsChanges && appId != null
+          ? await ref
+              .read(apiClientProvider)
+              .dio
+              .post('/affiliate/applications/$appId/resubmit', data: payload)
+          : await ref
+              .read(apiClientProvider)
+              .dio
+              .post('/affiliate/applications', data: payload);
+
       if (mounted) {
         setState(() {
           _existing = response.data['data'] is Map
               ? Map<String, dynamic>.from(response.data['data'] as Map)
               : _existing;
-          _success = 'Your application was submitted for review.';
+          _success = isNeedsChanges
+              ? 'Your revised application was resubmitted for review.'
+              : 'Your application was submitted for review.';
         });
       }
     } catch (error) {
@@ -161,10 +174,26 @@ class _AffiliateApplicationScreenState
                   if (status != null) ...[
                     const SizedBox(height: 12),
                     Card(
-                        child: ListTile(
+                        child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
                             leading: const Icon(Icons.info_outline),
                             title: const Text('Application status'),
-                            subtitle: Text(status.replaceAll('_', ' ')))),
+                            subtitle: Text(status.replaceAll('_', ' '))),
+                        if (_existing?['applicant_feedback'] != null)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            child: Text(
+                              'Reviewer Note: ${_existing!['applicant_feedback']}',
+                              style: const TextStyle(
+                                  color: Colors.deepOrange,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                      ],
+                    )),
                   ],
                   const SizedBox(height: 18),
                   _field(_business, 'Business name'),
