@@ -138,13 +138,13 @@ class _MainShellState extends ConsumerState<MainShell> {
             },
             items: const [
               BottomNavigationBarItem(
-                  icon: Icon(Icons.explore_rounded), label: 'Explore'),
+                  icon: Icon(Icons.home_rounded), label: 'Home'),
               BottomNavigationBarItem(
                   icon: Icon(Icons.map_rounded), label: 'Map'),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.how_to_vote_rounded), label: 'Vote'),
+                  icon: Icon(Icons.flag_rounded), label: 'Quests'),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.storefront_rounded), label: 'Shop'),
+                  icon: Icon(Icons.how_to_vote_rounded), label: 'JuanChoice'),
               BottomNavigationBarItem(
                   icon: Icon(Icons.person_rounded), label: 'Profile'),
             ],

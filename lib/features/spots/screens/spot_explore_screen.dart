@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-
-
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -48,8 +46,12 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       final enabled = await Geolocator.isLocationServiceEnabled();
       if (!enabled) return;
       final perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium);
       if (mounted) {
         setState(() {
           _currentPosition = pos;
@@ -62,7 +64,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     await Future.wait([
       ref.read(spotDiscoveryProvider.notifier).load(refresh: refresh),
       if (refresh) ref.refresh(choiceSpotlightProvider.future),
-      if (refresh) ref.refresh(hiddenGemProvider.future).then((_) {}, onError: (_) {}),
+      if (refresh)
+        ref.refresh(hiddenGemProvider.future).then((_) {}, onError: (_) {}),
       _fetchLocation(),
     ]);
   }
@@ -86,16 +89,17 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(spotDiscoveryProvider);
     final spotlight = ref.watch(choiceSpotlightProvider).valueOrNull;
-    final spotlightPlan = planChoiceSpotlight(state.spots, (spot) => spot.id, spotlight);
+    final spotlightPlan =
+        planChoiceSpotlight(state.spots, (spot) => spot.id, spotlight);
     final user = ref.watch(authProvider).user;
-    final userInitial = user?.displayName != null && user!.displayName.isNotEmpty
-        ? user.displayName.substring(0, 1).toUpperCase()
-        : 'U';
+    final userInitial =
+        user?.displayName != null && user!.displayName.isNotEmpty
+            ? user.displayName.substring(0, 1).toUpperCase()
+            : 'U';
 
     return JdqScaffold(
       appBar: AppBar(
@@ -112,7 +116,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   color: AppColors.sunGold,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.explore_rounded, color: AppColors.woodBrown, size: 18),
+                child: const Icon(Icons.explore_rounded,
+                    color: AppColors.woodBrown, size: 18),
               ),
               const SizedBox(width: 8),
               const Column(
@@ -129,7 +134,10 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   ),
                   Text(
                     'Travel & Quest Feed',
-                    style: TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -145,9 +153,11 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               decoration: BoxDecoration(
                 color: AppColors.sunGold.withOpacity(0.25),
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.sunGold.withOpacity(0.6), width: 1.2),
+                border: Border.all(
+                    color: AppColors.sunGold.withOpacity(0.6), width: 1.2),
               ),
-              child: const Icon(Icons.view_in_ar_rounded, color: AppColors.woodBrown, size: 18),
+              child: const Icon(Icons.view_in_ar_rounded,
+                  color: AppColors.woodBrown, size: 18),
             ),
             tooltip: 'AR Spatial Viewfinder & Test Bench',
             onPressed: () => context.push('/ar-test'),
@@ -162,7 +172,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 color: AppColors.primary.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.search_rounded, color: AppColors.primary, size: 18),
+              child: const Icon(Icons.search_rounded,
+                  color: AppColors.primary, size: 18),
             ),
             tooltip: 'Search & Filters',
             onPressed: () => context.push('/search'),
@@ -171,7 +182,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
         ],
       ),
       body: RefreshIndicator(
-
         onRefresh: () => _load(refresh: true),
         color: AppColors.primary,
         child: ListView(
@@ -182,7 +192,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
             GestureDetector(
               onTap: () => context.push('/search'),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerLowest,
                   borderRadius: AppSpacing.roundedLg,
@@ -191,7 +202,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+                    const Icon(Icons.search_rounded,
+                        color: AppColors.primary, size: 20),
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
@@ -206,7 +218,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceContainerLow,
                         borderRadius: AppSpacing.roundedMd,
@@ -226,7 +239,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                               ),
                             ),
                             SizedBox(width: 2),
-                            Icon(Icons.tune_rounded, size: 12, color: AppColors.primary),
+                            Icon(Icons.tune_rounded,
+                                size: 12, color: AppColors.primary),
                           ],
                         ),
                       ),
@@ -235,10 +249,26 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 10),
+            Card(
+              color: AppColors.surfaceContainerLowest,
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.sunGold,
+                  child: Icon(Icons.route_rounded, color: AppColors.woodBrown),
+                ),
+                title: const Text('The Trail'),
+                subtitle:
+                    const Text('Route-based destination ideas · Coming soon'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push('/trail'),
+              ),
+            ),
             if (state.isOfflineFallback) ...[
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppColors.sunGold.withOpacity(0.18),
                   borderRadius: AppSpacing.roundedMd,
@@ -246,7 +276,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.cloud_off_rounded, color: AppColors.woodBrown, size: 16),
+                    Icon(Icons.cloud_off_rounded,
+                        color: AppColors.woodBrown, size: 16),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -270,23 +301,33 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   color: AppColors.sunGold.withOpacity(0.16),
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('Community-selected spotlight',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
-                      Text(spotlight.theme, maxLines: 2, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: AppSpacing.sm),
-                      for (final winner in spotlightPlan.winners)
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.workspace_premium_rounded, color: AppColors.woodBrown),
-                          title: Text(winner.name),
-                          subtitle: Text(winner.municipality),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.push('/explore/${winner.slug}', extra: winner),
-                        ),
-                      Text('Expires ${spotlight.expiresAt.toLocal()}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                    ]),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Community-selected spotlight',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.woodBrown)),
+                          Text(spotlight.theme,
+                              maxLines: 2, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: AppSpacing.sm),
+                          for (final winner in spotlightPlan.winners)
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                  Icons.workspace_premium_rounded,
+                                  color: AppColors.woodBrown),
+                              title: Text(winner.name),
+                              subtitle: Text(winner.municipality),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => context.push(
+                                  '/explore/${winner.slug}',
+                                  extra: winner),
+                            ),
+                          Text('Expires ${spotlight.expiresAt.toLocal()}',
+                              style: const TextStyle(
+                                  fontSize: 11, color: AppColors.textMuted)),
+                        ]),
                   ),
                 ),
               ),
@@ -307,7 +348,9 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                       if (quizzes.isEmpty) return const SizedBox.shrink();
                       return Column(
                         mainAxisSize: MainAxisSize.min,
-                        children: quizzes.map((q) => NearbyQuizCard(invitation: q)).toList(),
+                        children: quizzes
+                            .map((q) => NearbyQuizCard(invitation: q))
+                            .toList(),
                       );
                     },
                     loading: () => const SizedBox.shrink(),
@@ -326,7 +369,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 if (added == true) _load(refresh: true);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerLowest,
                   borderRadius: AppSpacing.roundedLg,
@@ -360,17 +404,18 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Icon(Icons.add_a_photo_rounded, color: AppColors.primary, size: 20),
+                    const Icon(Icons.add_a_photo_rounded,
+                        color: AppColors.primary, size: 20),
                   ],
                 ),
               ),
             ),
 
-
             if (state.isRefreshing)
               const Padding(
                 padding: EdgeInsets.only(top: 10),
-                child: LinearProgressIndicator(minHeight: 2, color: AppColors.primary),
+                child: LinearProgressIndicator(
+                    minHeight: 2, color: AppColors.primary),
               ),
 
             const SizedBox(height: 14),
@@ -393,13 +438,19 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   children: [
                     Text(
                       '${spotlightPlan.ordinary.length} Community Field Reports',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.woodBrown),
                     ),
                     GestureDetector(
                       onTap: () => context.push('/search'),
                       child: const Text(
                         'Advanced Search →',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary),
                       ),
                     ),
                   ],
@@ -407,7 +458,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               ),
 
               // Facebook-Style Edge-to-Edge Post Feed
-              ...spotlightPlan.ordinary.map((spot) => _buildForumPostCard(spot)),
+              ...spotlightPlan.ordinary
+                  .map((spot) => _buildForumPostCard(spot)),
             ],
           ],
         ),
@@ -424,9 +476,12 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
         title: 'Destination Community Post Card',
         figmaLayer: '#Spot_Forum_Card',
         dimensions: 'Full width, Radius: 20dp, Edge-to-Edge photo clip',
-        dataBinding: 'spotDiscoveryProvider (municipality, sourceName, trustLevel, crowdStatus, likeCount)',
-        stateNotes: 'Instagram Heart Toggle -> Dynamic like counter -> Quest tag link',
-        uxNotes: 'Wood brown typography with warm sun gold accents and responsive category wrap.',
+        dataBinding:
+            'spotDiscoveryProvider (municipality, sourceName, trustLevel, crowdStatus, likeCount)',
+        stateNotes:
+            'Instagram Heart Toggle -> Dynamic like counter -> Quest tag link',
+        uxNotes:
+            'Wood brown typography with warm sun gold accents and responsive category wrap.',
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
@@ -455,7 +510,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.location_on_rounded, size: 13, color: AppColors.primary),
+                          const Icon(Icons.location_on_rounded,
+                              size: 13, color: AppColors.primary),
                           const SizedBox(width: 2),
                           Flexible(
                             child: Text(
@@ -471,14 +527,20 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                           ),
                         ],
                       ),
-                      const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      const Text('•',
+                          style: TextStyle(
+                              color: AppColors.textMuted, fontSize: 11)),
                       Text(
                         'Shared by ${spot.sourceName}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600),
                       ),
                       if (spot.trustLevel == 'lgu_verified') ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1.5),
                           decoration: const BoxDecoration(
                             color: AppColors.lguVerifiedBg,
                             borderRadius: AppSpacing.roundedPill,
@@ -486,11 +548,15 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.verified_rounded, color: AppColors.lguVerified, size: 11),
+                              Icon(Icons.verified_rounded,
+                                  color: AppColors.lguVerified, size: 11),
                               SizedBox(width: 2),
                               Text(
                                 'LGU Verified',
-                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.lguVerified),
+                                style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.lguVerified),
                               ),
                             ],
                           ),
@@ -503,7 +569,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
                   // Title
                   GestureDetector(
-                    onTap: () => context.push('/explore/${spot.slug}', extra: spot),
+                    onTap: () =>
+                        context.push('/explore/${spot.slug}', extra: spot),
                     child: Text(
                       spot.name,
                       style: AppTypography.headlineSmall.copyWith(
@@ -518,7 +585,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   if (spot.crowdStatus == 'estimated_busy') ...[
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: const BoxDecoration(
                         color: AppColors.crowdBusyBg,
                         borderRadius: AppSpacing.roundedSm,
@@ -526,11 +594,15 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.warning_amber_rounded, size: 12, color: AppColors.crowdBusy),
+                          Icon(Icons.warning_amber_rounded,
+                              size: 12, color: AppColors.crowdBusy),
                           SizedBox(width: 4),
                           Text(
                             'Peak Activity Reported',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.crowdBusy),
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.crowdBusy),
                           ),
                         ],
                       ),
@@ -538,14 +610,18 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   ] else if (spot.crowdStatus == 'quiet') ...[
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: const BoxDecoration(
                         color: AppColors.crowdQuietBg,
                         borderRadius: AppSpacing.roundedSm,
                       ),
                       child: const Text(
                         '🌿 Serene & Low Crowd',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.crowdQuiet),
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.crowdQuiet),
                       ),
                     ),
                   ],
@@ -555,7 +631,10 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   // Description Snippet
                   Text(
                     spot.description,
-                    style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.35, fontSize: 12),
+                    style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                        fontSize: 12),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -577,7 +656,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         errorBuilder: (_, __, ___) => Container(
                           color: AppColors.surfaceContainerLow,
                           child: const Center(
-                            child: Icon(Icons.image_outlined, color: AppColors.textMuted, size: 36),
+                            child: Icon(Icons.image_outlined,
+                                color: AppColors.textMuted, size: 36),
                           ),
                         ),
                       ),
@@ -587,16 +667,19 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         top: 8,
                         left: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                            color:
+                                const Color(0xFF0F172A).withValues(alpha: 0.85),
                             borderRadius: AppSpacing.roundedPill,
                             boxShadow: AppSpacing.cardShadow,
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.videocam_rounded, size: 13, color: AppColors.sunGold),
+                              Icon(Icons.videocam_rounded,
+                                  size: 13, color: AppColors.sunGold),
                               SizedBox(width: 4),
                               Text(
                                 'Video Post',
@@ -615,7 +698,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         top: 8,
                         right: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: const BoxDecoration(
                             color: AppColors.sunGold,
                             borderRadius: AppSpacing.roundedPill,
@@ -624,11 +708,15 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.emoji_events_rounded, size: 13, color: AppColors.woodBrown),
+                              Icon(Icons.emoji_events_rounded,
+                                  size: 13, color: AppColors.woodBrown),
                               SizedBox(width: 4),
                               Text(
                                 '+250 mJDQ Bounty',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.woodBrown),
                               ),
                             ],
                           ),
@@ -639,7 +727,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ),
               ),
             ],
-
 
             // 3. Compact Social Action Row
             Padding(
@@ -653,18 +740,25 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   GestureDetector(
                     onTap: () => _toggleLike(spot.id),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: isLiked ? const Color(0xFFFFF0F1) : AppColors.surfaceContainerLow,
+                        color: isLiked
+                            ? const Color(0xFFFFF0F1)
+                            : AppColors.surfaceContainerLow,
                         borderRadius: AppSpacing.roundedPill,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            isLiked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
                             size: 14,
-                            color: isLiked ? const Color(0xFFE63946) : AppColors.textMuted,
+                            color: isLiked
+                                ? const Color(0xFFE63946)
+                                : AppColors.textMuted,
                           ),
                           const SizedBox(width: 3),
                           Text(
@@ -672,7 +766,9 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: isLiked ? const Color(0xFFE63946) : AppColors.textPrimary,
+                              color: isLiked
+                                  ? const Color(0xFFE63946)
+                                  : AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -682,7 +778,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
                   // Tips Button
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: const BoxDecoration(
                       color: AppColors.surfaceContainerLow,
                       borderRadius: AppSpacing.roundedPill,
@@ -690,11 +787,15 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.chat_bubble_outline_rounded, size: 13, color: AppColors.textMuted),
+                        const Icon(Icons.chat_bubble_outline_rounded,
+                            size: 13, color: AppColors.textMuted),
                         const SizedBox(width: 3),
                         Text(
                           '${spot.reasons.length + 3} Tips',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -703,14 +804,20 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   // Bookmark
                   IconButton(
                     icon: Icon(
-                      spot.saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      spot.saved
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
                       size: 16,
-                      color: spot.saved ? AppColors.sunGold : AppColors.textMuted,
+                      color:
+                          spot.saved ? AppColors.sunGold : AppColors.textMuted,
                     ),
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                    onPressed: () => ref.read(spotDiscoveryProvider.notifier).toggleSaved(spot),
+                    constraints:
+                        const BoxConstraints(minWidth: 24, minHeight: 24),
+                    onPressed: () => ref
+                        .read(spotDiscoveryProvider.notifier)
+                        .toggleSaved(spot),
                   ),
 
                   // Play Quest (if available)
@@ -718,7 +825,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     GestureDetector(
                       onTap: () => context.push('/quests/${spot.questId}'),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 9, vertical: 5),
                         decoration: const BoxDecoration(
                           color: AppColors.sunGold,
                           borderRadius: AppSpacing.roundedPill,
@@ -726,11 +834,15 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.play_arrow_rounded, size: 13, color: AppColors.woodBrown),
+                            Icon(Icons.play_arrow_rounded,
+                                size: 13, color: AppColors.woodBrown),
                             SizedBox(width: 2),
                             Text(
                               'Play Quest',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.woodBrown),
                             ),
                           ],
                         ),
@@ -741,7 +853,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   GestureDetector(
                     onTap: () => _launchDirections(spot),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 5),
                       decoration: const BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: AppSpacing.roundedPill,
@@ -749,11 +862,15 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.navigation_rounded, size: 12, color: Colors.white),
+                          Icon(Icons.navigation_rounded,
+                              size: 12, color: Colors.white),
                           SizedBox(width: 3),
                           Text(
                             'Navigate',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
                           ),
                         ],
                       ),
@@ -778,11 +895,17 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.error_outline_rounded, size: 40, color: AppColors.danger),
+          const Icon(Icons.error_outline_rounded,
+              size: 40, color: AppColors.danger),
           const SizedBox(height: 8),
-          Text('Failed to load feed', style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold)),
+          Text('Failed to load feed',
+              style: AppTypography.labelLarge
+                  .copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(error, textAlign: TextAlign.center, style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
+          Text(error,
+              textAlign: TextAlign.center,
+              style:
+                  AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
           const SizedBox(height: 12),
           PrimaryButton(label: 'Retry', onPressed: () => _load(refresh: true)),
         ],
@@ -800,13 +923,17 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.explore_off_rounded, size: 48, color: AppColors.textMuted),
+          const Icon(Icons.explore_off_rounded,
+              size: 48, color: AppColors.textMuted),
           const SizedBox(height: 12),
-          const Text('No posts found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const Text('No posts found',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 4),
-          const Text('Pull down to refresh destination stream.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          const Text('Pull down to refresh destination stream.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           const SizedBox(height: 16),
-          SecondaryButton(label: 'Refresh Feed', onPressed: () => _load(refresh: true)),
+          SecondaryButton(
+              label: 'Refresh Feed', onPressed: () => _load(refresh: true)),
         ],
       ),
     );
@@ -834,17 +961,42 @@ class _DestinationSkeleton extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(width: 80, height: 12, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
+                  Container(
+                      width: 80,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: AppSpacing.roundedSm)),
                   const SizedBox(width: 8),
-                  Container(width: 60, height: 12, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
+                  Container(
+                      width: 60,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: AppSpacing.roundedSm)),
                 ],
               ),
               const SizedBox(height: 10),
-              Container(width: double.infinity, height: 16, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
+              Container(
+                  width: double.infinity,
+                  height: 16,
+                  decoration: const BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: AppSpacing.roundedSm)),
               const SizedBox(height: 8),
-              Container(width: 140, height: 12, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedSm)),
+              Container(
+                  width: 140,
+                  height: 12,
+                  decoration: const BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: AppSpacing.roundedSm)),
               const SizedBox(height: 12),
-              Container(width: double.infinity, height: 120, decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: AppSpacing.roundedMd)),
+              Container(
+                  width: double.infinity,
+                  height: 120,
+                  decoration: const BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: AppSpacing.roundedMd)),
             ],
           ),
         ),

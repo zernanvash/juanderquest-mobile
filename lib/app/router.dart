@@ -11,6 +11,7 @@ import '../features/ar_experience/screens/ar_test_screen.dart';
 import '../features/ar_experience/screens/ar_calibration_screen.dart';
 import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/profile/screens/affiliate_application_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
@@ -21,12 +22,15 @@ import '../features/spots/screens/spot_explore_screen.dart';
 import '../features/spots/screens/spot_search_screen.dart';
 import '../features/spots/screens/spot_detail_screen.dart';
 import '../features/spots/screens/add_spot_screen.dart';
+import '../features/spots/screens/saved_spots_screen.dart';
 import '../features/quests/screens/quest_list_screen.dart';
 import '../features/quests/screens/campaign_detail_screen.dart';
 import '../features/quests/models/campaign_model.dart';
 import '../features/spots/models/spot_model.dart';
 import '../features/leaderboard/screens/leaderboard_screen.dart';
 import '../features/about/screens/about_screen.dart';
+import '../features/trail/trail_coming_soon_screen.dart';
+import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/navigation/models/route_model.dart';
 import '../features/navigation/screens/navigation_screen.dart';
 import '../features/cultural_quizzes/models/cultural_quiz_model.dart';
@@ -54,7 +58,8 @@ CustomTransitionPage buildDirectionalSlidePage<T>({
         curve: Curves.easeOutCubic,
         reverseCurve: Curves.easeInCubic,
       );
-      final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: Curves.easeOutCubic));
+      final tween = Tween(begin: begin, end: end)
+          .chain(CurveTween(curve: Curves.easeOutCubic));
 
       return SlideTransition(
         position: animation.drive(tween),
@@ -90,26 +95,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
-        path: '/choice',
-        builder: (context, state) => const JuanChoiceScreen(),
-        routes: [
-          GoRoute(
-            path: ':id',
-            builder: (context, state) => JuanChoiceDetailScreen(
-              campaignId: state.pathParameters['id']!,
-            ),
-          ),
-        ],
-      ),
-      GoRoute(
         path: '/',
         builder: (context, state) => const DemoLoginScreen(),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => MainShell(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             routes: [
+              GoRoute(
+                path: '/dashboard',
+                builder: (context, state) => const DashboardScreen(),
+              ),
               GoRoute(
                 path: '/explore',
                 builder: (context, state) => const SpotExploreScreen(),
@@ -118,7 +116,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: ':slug',
                     builder: (context, state) => SpotDetailRouteScreen(
                       slug: state.pathParameters['slug']!,
-                      initialSpot: state.extra is SpotModel ? state.extra as SpotModel : null,
+                      initialSpot: state.extra is SpotModel
+                          ? state.extra as SpotModel
+                          : null,
                     ),
                   ),
                 ],
@@ -140,16 +140,31 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/vote',
-                builder: (context, state) => const VoteScreen(),
+                path: '/quests',
+                builder: (context, state) => const QuestListScreen(),
                 routes: [
                   GoRoute(
-                    path: 'proposals',
+                    path: 'campaigns/:id',
                     pageBuilder: (context, state) => buildDirectionalSlidePage(
                       context: context,
                       state: state,
-                      child: const ProposalListScreen(),
+                      child: CampaignDetailScreen(
+                        campaignId: state.pathParameters['id'] ?? '',
+                        initialCampaign: state.extra as CampaignModel?,
+                      ),
                     ),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => QuestDetailScreen(
+                        questId: state.pathParameters['id'] ?? ''),
+                    routes: [
+                      GoRoute(
+                        path: 'ar',
+                        builder: (context, state) => ARExperienceScreen(
+                            questId: state.pathParameters['id']),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -158,8 +173,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/shop',
-                builder: (context, state) => const ShopScreen(),
+                path: '/choice',
+                builder: (context, state) => const JuanChoiceScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => JuanChoiceDetailScreen(
+                        campaignId: state.pathParameters['id']!),
+                  ),
+                ],
               ),
             ],
           ),
@@ -182,6 +204,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
+        path: '/vote',
+        builder: (context, state) => const VoteScreen(),
+        routes: [
+          GoRoute(
+              path: 'proposals',
+              builder: (context, state) => const ProposalListScreen()),
+        ],
+      ),
+      GoRoute(path: '/shop', builder: (context, state) => const ShopScreen()),
+      GoRoute(
+          path: '/saved',
+          builder: (context, state) => const SavedSpotsScreen()),
+      GoRoute(
+          path: '/affiliate',
+          builder: (context, state) => const AffiliateApplicationScreen()),
+      GoRoute(
         path: '/settings',
         pageBuilder: (context, state) => buildDirectionalSlidePage(
           context: context,
@@ -197,49 +235,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             context: context,
             state: state,
             child: SpotSearchScreen(
-              initialQuery: state.uri.queryParameters['q'] ?? extra?['q']?.toString(),
-              initialCategory: state.uri.queryParameters['category'] ?? extra?['category']?.toString(),
-              initialCrowd: state.uri.queryParameters['crowd'] ?? extra?['crowd']?.toString(),
+              initialQuery:
+                  state.uri.queryParameters['q'] ?? extra?['q']?.toString(),
+              initialCategory: state.uri.queryParameters['category'] ??
+                  extra?['category']?.toString(),
+              initialCrowd: state.uri.queryParameters['crowd'] ??
+                  extra?['crowd']?.toString(),
             ),
           );
         },
-      ),
-      GoRoute(
-        path: '/quests',
-        pageBuilder: (context, state) => buildDirectionalSlidePage(
-          context: context,
-          state: state,
-          child: const QuestListScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/quests/campaigns/:id',
-        pageBuilder: (context, state) => buildDirectionalSlidePage(
-          context: context,
-          state: state,
-          child: CampaignDetailScreen(
-            campaignId: state.pathParameters['id'] ?? '',
-            initialCampaign: state.extra as CampaignModel?,
-          ),
-        ),
-      ),
-      GoRoute(
-        path: '/quests/:id',
-        pageBuilder: (context, state) => buildDirectionalSlidePage(
-          context: context,
-          state: state,
-          child: QuestDetailScreen(questId: state.pathParameters['id'] ?? ''),
-        ),
-        routes: [
-          GoRoute(
-            path: 'ar',
-            pageBuilder: (context, state) => buildDirectionalSlidePage(
-              context: context,
-              state: state,
-              child: ARExperienceScreen(questId: state.pathParameters['id']),
-            ),
-          ),
-        ],
       ),
       GoRoute(
         path: '/history',
@@ -247,6 +251,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const SubmissionHistoryScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/trail',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const TrailComingSoonScreen(),
         ),
       ),
       GoRoute(
@@ -273,8 +285,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (extra is NavTarget) {
             destination = extra;
           } else {
-            final lat = double.tryParse(state.uri.queryParameters['lat'] ?? '') ?? 16.2045;
-            final lng = double.tryParse(state.uri.queryParameters['lng'] ?? '') ?? 120.0435;
+            final lat =
+                double.tryParse(state.uri.queryParameters['lat'] ?? '') ??
+                    16.2045;
+            final lng =
+                double.tryParse(state.uri.queryParameters['lng'] ?? '') ??
+                    120.0435;
             final name = state.uri.queryParameters['name'] ?? 'Hundred Islands';
             final address = state.uri.queryParameters['address'] ?? name;
             destination = NavTarget(
@@ -314,7 +330,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: ArCalibrationScreen(
-            returnTo: state.uri.queryParameters['returnTo'] ?? state.extra as String?,
+            returnTo:
+                state.uri.queryParameters['returnTo'] ?? state.extra as String?,
           ),
         ),
       ),
@@ -335,7 +352,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               state: state,
               child: CulturalQuizPlayScreen(
                 quizId: state.pathParameters['id'] ?? '',
-                session: state.extra as ({CulturalQuizAttemptModel attempt, List<CulturalQuizQuestionModel> questions}),
+                session: state.extra as ({
+                  CulturalQuizAttemptModel attempt,
+                  List<CulturalQuizQuestionModel> questions
+                }),
               ),
             ),
           ),
@@ -362,10 +382,12 @@ class SpotDetailRouteScreen extends ConsumerStatefulWidget {
   final String slug;
   final SpotModel? initialSpot;
 
-  const SpotDetailRouteScreen({super.key, required this.slug, this.initialSpot});
+  const SpotDetailRouteScreen(
+      {super.key, required this.slug, this.initialSpot});
 
   @override
-  ConsumerState<SpotDetailRouteScreen> createState() => _SpotDetailRouteScreenState();
+  ConsumerState<SpotDetailRouteScreen> createState() =>
+      _SpotDetailRouteScreenState();
 }
 
 class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
@@ -379,31 +401,43 @@ class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
 
   Future<SpotModel> _fetchSpot() async {
     if (widget.initialSpot != null) return widget.initialSpot!;
-    final response = await ref.read(apiClientProvider).dio.get('/spots/${Uri.encodeComponent(widget.slug)}');
-    return SpotModel.fromJson(Map<String, dynamic>.from(response.data['data'] as Map));
+    final response = await ref
+        .read(apiClientProvider)
+        .dio
+        .get('/spots/${Uri.encodeComponent(widget.slug)}');
+    return SpotModel.fromJson(
+        Map<String, dynamic>.from(response.data['data'] as Map));
   }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<SpotModel>(
-    future: _spotFuture,
-    builder: (context, snapshot) {
-      if (snapshot.hasData) return SpotDetailScreen(spot: snapshot.data!);
-      final error = snapshot.error;
-      final missing = error is DioException && error.response?.statusCode == 404;
-      return Scaffold(
-        appBar: AppBar(title: const Text('Destination')),
-        body: Center(child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: snapshot.hasError
-          ? Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(missing ? 'Destination not found.' : 'Destination unavailable. Check your connection.', textAlign: TextAlign.center),
-              if (!missing) TextButton(
-                onPressed: () => setState(() => _spotFuture = _fetchSpot()),
-                child: const Text('Retry'),
-              ),
-            ])
-          : const CircularProgressIndicator())),
+        future: _spotFuture,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) return SpotDetailScreen(spot: snapshot.data!);
+          final error = snapshot.error;
+          final missing =
+              error is DioException && error.response?.statusCode == 404;
+          return Scaffold(
+            appBar: AppBar(title: const Text('Destination')),
+            body: Center(
+                child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: snapshot.hasError
+                        ? Column(mainAxisSize: MainAxisSize.min, children: [
+                            Text(
+                                missing
+                                    ? 'Destination not found.'
+                                    : 'Destination unavailable. Check your connection.',
+                                textAlign: TextAlign.center),
+                            if (!missing)
+                              TextButton(
+                                onPressed: () =>
+                                    setState(() => _spotFuture = _fetchSpot()),
+                                child: const Text('Retry'),
+                              ),
+                          ])
+                        : const CircularProgressIndicator())),
+          );
+        },
       );
-    },
-  );
 }

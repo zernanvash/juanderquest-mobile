@@ -45,11 +45,8 @@ import 'package:juanderquest_app/features/app_update/widgets/startup_update_gate
 import 'package:juanderquest_app/features/app_update/widgets/update_dialog.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
-
-
-
-
-
+import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
+import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 
 // Inert Subclasses to prevent Dio/network calls and pending timers
 class InertAuthNotifier extends AuthNotifier {
@@ -71,7 +68,8 @@ class InertQuestNotifier extends QuestNotifier {
 }
 
 class InertSubmissionNotifier extends SubmissionNotifier {
-  InertSubmissionNotifier(super.apiClient, List<SubmissionModel> fixtureSubmissions) {
+  InertSubmissionNotifier(
+      super.apiClient, List<SubmissionModel> fixtureSubmissions) {
     state = SubmissionState(submissions: fixtureSubmissions, isLoading: false);
   }
 
@@ -89,7 +87,8 @@ class InertVoucherNotifier extends VoucherNotifier {
 }
 
 class InertGovernanceNotifier extends GovernanceNotifier {
-  InertGovernanceNotifier(super.ref, List<GovernanceProposalModel> fixtureProposals) {
+  InertGovernanceNotifier(
+      super.ref, List<GovernanceProposalModel> fixtureProposals) {
     state = GovernanceState(
       proposals: fixtureProposals,
       config: GovernanceConfigModel(
@@ -138,25 +137,34 @@ class InertSpotDiscoveryNotifier extends SpotDiscoveryNotifier {
   Future<void> initialize() async {}
 
   @override
-  Future<void> load({String query = '', String category = '', String intent = '', bool refresh = false}) async {}
+  Future<void> load(
+      {String query = '',
+      String category = '',
+      String intent = '',
+      bool refresh = false}) async {}
 }
 
 class InertUpdateRepository implements IUpdateRepository {
-
   final AppVersionInfo? versionInfo;
   InertUpdateRepository({this.versionInfo});
 
   @override
-  Future<AppVersionInfo?> fetchBackendVersionMetadata({Duration timeout = const Duration(seconds: 3)}) async => versionInfo;
+  Future<AppVersionInfo?> fetchBackendVersionMetadata(
+          {Duration timeout = const Duration(seconds: 3)}) async =>
+      versionInfo;
 
   @override
   Future<bool> isDartPatchAvailable() async => false;
 
   @override
-  Future<bool> downloadAndInstallDartPatch({void Function(double progress)? onProgress}) async => false;
+  Future<bool> downloadAndInstallDartPatch(
+          {void Function(double progress)? onProgress}) async =>
+      false;
 
   @override
-  Future<bool> syncContentBundle(ContentManifestMetadata metadata, {void Function(double progress)? onProgress}) async => false;
+  Future<bool> syncContentBundle(ContentManifestMetadata metadata,
+          {void Function(double progress)? onProgress}) async =>
+      false;
 
   @override
   Future<void> restartApp() async {}
@@ -172,7 +180,6 @@ class InertStartupUpdateController extends StartupUpdateController {
 }
 
 void main() {
-
   TestWidgetsFlutterBinding.ensureInitialized();
 
   final dummyUser = UserModel(
@@ -265,7 +272,8 @@ void main() {
     id: 's1',
     slug: 'hundred-islands-national-park',
     name: 'Hundred Islands National Park',
-    description: 'A protected archipelago of 124 pristine limestone islands and coral reefs.',
+    description:
+        'A protected archipelago of 124 pristine limestone islands and coral reefs.',
     category: 'nature_outdoors',
     subcategory: 'islands',
     municipality: 'Alaminos City',
@@ -295,7 +303,8 @@ void main() {
     final originalOnError = FlutterError.onError;
     FlutterError.onError = (FlutterErrorDetails details) {
       final msg = details.toString();
-      if (msg.contains('RenderFlex overflowed') || msg.contains('A RenderFlex overflowed')) {
+      if (msg.contains('RenderFlex overflowed') ||
+          msg.contains('A RenderFlex overflowed')) {
         overflowErrors.add(details);
       }
       originalOnError?.call(details);
@@ -311,15 +320,46 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          authProvider.overrideWith((ref) => InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyUser)),
-          questProvider.overrideWith((ref) => InertQuestNotifier(ref.watch(apiClientProvider), [dummyQuest])),
-          campaignProvider.overrideWith((ref) => InertCampaignNotifier(ref.watch(apiClientProvider), [dummyCampaign])),
-          submissionProvider.overrideWith((ref) => InertSubmissionNotifier(ref.watch(apiClientProvider), [])),
-          voucherProvider.overrideWith((ref) => InertVoucherNotifier(ref, [dummyVoucher])),
-          governanceProvider.overrideWith((ref) => InertGovernanceNotifier(ref, [dummyProposal])),
-          walletProvider.overrideWith((ref) => InertWalletNotifier(ref, dummyWallet)),
-          spotDiscoveryProvider.overrideWith((ref) => InertSpotDiscoveryNotifier(ref, [dummySpot])),
+          authProvider.overrideWith((ref) => InertAuthNotifier(
+              ref.watch(apiClientProvider),
+              ref.watch(authRefreshProvider.notifier),
+              dummyUser)),
+          questProvider.overrideWith((ref) =>
+              InertQuestNotifier(ref.watch(apiClientProvider), [dummyQuest])),
+          campaignProvider.overrideWith((ref) => InertCampaignNotifier(
+              ref.watch(apiClientProvider), [dummyCampaign])),
+          submissionProvider.overrideWith((ref) =>
+              InertSubmissionNotifier(ref.watch(apiClientProvider), [])),
+          voucherProvider
+              .overrideWith((ref) => InertVoucherNotifier(ref, [dummyVoucher])),
+          governanceProvider.overrideWith(
+              (ref) => InertGovernanceNotifier(ref, [dummyProposal])),
+          walletProvider
+              .overrideWith((ref) => InertWalletNotifier(ref, dummyWallet)),
+          spotDiscoveryProvider.overrideWith(
+              (ref) => InertSpotDiscoveryNotifier(ref, [dummySpot])),
           choiceSpotlightProvider.overrideWith((ref) async => null),
+          choiceEngagementProvider
+              .overrideWith((ref) async => const ChoiceEngagementSummary(
+                    currentStreak: 3,
+                    longestStreak: 4,
+                    nextMilestone: 5,
+                    verifiedVisits: 2,
+                    uniqueDestinations: 2,
+                    municipalities: 1,
+                    participations: 1,
+                    challenges: [],
+                  )),
+          choiceOverviewProvider
+              .overrideWith((ref) async => const ChoiceOverview(
+                    current: null,
+                    nextOpensAt: null,
+                    nextClosesAt: null,
+                    nextTheme: null,
+                    previous: null,
+                    notice: null,
+                    votingEnabled: false,
+                  )),
           hiddenGemProvider.overrideWith((ref) async => const [
                 HiddenGemModel(
                   id: 'spot-mangatarem-citrus-trail',
@@ -329,10 +369,11 @@ void main() {
                   crowdStatus: 'unknown',
                 ),
               ]),
-          startupUpdateControllerProvider.overrideWith((ref) => InertStartupUpdateController(
-                InertUpdateRepository(),
-                const StartupGateState(phase: GatePhase.ready),
-              )),
+          startupUpdateControllerProvider
+              .overrideWith((ref) => InertStartupUpdateController(
+                    InertUpdateRepository(),
+                    const StartupGateState(phase: GatePhase.ready),
+                  )),
         ],
         child: MaterialApp(
           home: child,
@@ -343,74 +384,117 @@ void main() {
     await tester.pump();
 
     // Verify no RenderFlex overflow exceptions occurred during layout
-    final exception = tester.takeException();
-    if (exception != null) {
-      expect(exception.toString().contains('RenderFlex overflowed'), isFalse,
-          reason: 'Screen overflowed: $exception');
-    }
+    tester.takeException();
 
     expect(
       overflowErrors,
       isEmpty,
-      reason: 'RenderFlex overflowed in test (${overflowErrors.length} errors):\n'
-          '${overflowErrors.map((e) => e.exceptionAsString()).join('\n')}',
+      reason:
+          'RenderFlex overflowed in test (${overflowErrors.length} errors):\n'
+          '${overflowErrors.map((e) => e.toString()).join('\n')}',
     );
   }
 
-  group('Screen Overflow Tests (320x568 portrait & 568x320 landscape, 2.0 text scale)', () {
-    testWidgets('SpotExploreScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const SpotExploreScreen(), const Size(320, 568), 2.0);
+  group(
+      'Screen Overflow Tests (320x568 portrait & 568x320 landscape, 2.0 text scale)',
+      () {
+    testWidgets('DashboardScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const DashboardScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('SpotExploreScreen does not overflow in small landscape', (tester) async {
-      await testScreenOverflow(tester, const SpotExploreScreen(), const Size(568, 320), 2.0);
+    testWidgets('DashboardScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const DashboardScreen(), const Size(568, 320), 2.0);
     });
 
-    testWidgets('SpotSearchScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const SpotSearchScreen(), const Size(320, 568), 2.0);
+    testWidgets('SpotExploreScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SpotExploreScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('SpotSearchScreen does not overflow in small landscape', (tester) async {
-      await testScreenOverflow(tester, const SpotSearchScreen(), const Size(568, 320), 2.0);
+    testWidgets('SpotExploreScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SpotExploreScreen(), const Size(568, 320), 2.0);
     });
 
-    testWidgets('QuestListScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const QuestListScreen(), const Size(320, 568), 2.0);
+    testWidgets('SpotSearchScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SpotSearchScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('QuestListScreen does not overflow in small landscape', (tester) async {
-      await testScreenOverflow(tester, const QuestListScreen(), const Size(568, 320), 2.0);
+    testWidgets('SpotSearchScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SpotSearchScreen(), const Size(568, 320), 2.0);
     });
 
-    testWidgets('CampaignDetailScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const CampaignDetailScreen(campaignId: 'bangus-festival-2026', initialCampaign: dummyCampaign), const Size(320, 568), 2.0);
+    testWidgets('QuestListScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const QuestListScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('LeaderboardScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const LeaderboardScreen(), const Size(320, 568), 2.0);
+    testWidgets('QuestListScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const QuestListScreen(), const Size(568, 320), 2.0);
     });
 
-    testWidgets('AboutScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const AboutScreen(), const Size(320, 568), 2.0);
+    testWidgets('CampaignDetailScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester,
+          const CampaignDetailScreen(
+              campaignId: 'bangus-festival-2026',
+              initialCampaign: dummyCampaign),
+          const Size(320, 568),
+          2.0);
     });
 
-    testWidgets('ShopScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const ShopScreen(), const Size(320, 568), 2.0);
+    testWidgets('LeaderboardScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const LeaderboardScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('ProfileScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const ProfileScreen(), const Size(320, 568), 2.0);
+    testWidgets('AboutScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const AboutScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('VoteScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const VoteScreen(), const Size(320, 568), 2.0);
+    testWidgets('ShopScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ShopScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('MapViewScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const MapViewScreen(), const Size(320, 568), 2.0);
+    testWidgets('ProfileScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ProfileScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('NavigationScreen does not overflow in small portrait', (tester) async {
+    testWidgets('VoteScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const VoteScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('MapViewScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const MapViewScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('NavigationScreen does not overflow in small portrait',
+        (tester) async {
       await testScreenOverflow(
         tester,
         const NavigationScreen(
@@ -426,27 +510,39 @@ void main() {
       );
     });
 
-    testWidgets('ArPlaygroundScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const ArPlaygroundScreen(), const Size(320, 568), 2.0);
+    testWidgets('ArPlaygroundScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ArPlaygroundScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('ArTestScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const ArTestScreen(), const Size(320, 568), 2.0);
+    testWidgets('ArTestScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ArTestScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('ArTestScreen does not overflow in small landscape', (tester) async {
-      await testScreenOverflow(tester, const ArTestScreen(), const Size(568, 320), 2.0);
+    testWidgets('ArTestScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ArTestScreen(), const Size(568, 320), 2.0);
     });
 
-    testWidgets('ArCalibrationScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const ArCalibrationScreen(), const Size(320, 568), 2.0);
+    testWidgets('ArCalibrationScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ArCalibrationScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('ArCalibrationScreen does not overflow in small landscape', (tester) async {
-      await testScreenOverflow(tester, const ArCalibrationScreen(), const Size(568, 320), 2.0);
+    testWidgets('ArCalibrationScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ArCalibrationScreen(), const Size(568, 320), 2.0);
     });
 
-    testWidgets('StartupUpdateGate checking view does not overflow in small portrait', (tester) async {
+    testWidgets(
+        'StartupUpdateGate checking view does not overflow in small portrait',
+        (tester) async {
       await testScreenOverflow(
         tester,
         const StartupUpdateGate(child: SizedBox()),
@@ -455,7 +551,9 @@ void main() {
       );
     });
 
-    testWidgets('StartupUpdateGate checking view does not overflow in small landscape', (tester) async {
+    testWidgets(
+        'StartupUpdateGate checking view does not overflow in small landscape',
+        (tester) async {
       await testScreenOverflow(
         tester,
         const StartupUpdateGate(child: SizedBox()),
@@ -464,15 +562,20 @@ void main() {
       );
     });
 
-    testWidgets('SettingsScreen does not overflow in small portrait', (tester) async {
-      await testScreenOverflow(tester, const SettingsScreen(), const Size(320, 568), 2.0);
+    testWidgets('SettingsScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SettingsScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('SettingsScreen does not overflow in small landscape', (tester) async {
-      await testScreenOverflow(tester, const SettingsScreen(), const Size(568, 320), 2.0);
+    testWidgets('SettingsScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SettingsScreen(), const Size(568, 320), 2.0);
     });
 
-    testWidgets('UpdateDialog does not overflow in small portrait', (tester) async {
+    testWidgets('UpdateDialog does not overflow in small portrait',
+        (tester) async {
       const info = AppVersionInfo(
         versionCode: 151,
         versionName: '1.0.1',
@@ -488,7 +591,3 @@ void main() {
     });
   });
 }
-
-
-
-
