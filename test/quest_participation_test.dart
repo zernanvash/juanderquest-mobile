@@ -67,12 +67,10 @@ void main() {
     });
     final client = ApiClient();
     var starts = 0;
-    var progressCalls = 0;
 
     client.dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         if (options.path == '/quests/quest-1/progress') {
-          progressCalls++;
           final hasAttempt = starts > 0;
           return handler.resolve(Response(
             requestOptions: options,
