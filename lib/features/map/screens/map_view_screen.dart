@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/map_config.dart';
 
@@ -301,6 +302,27 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               ),
 
               MarkerLayer(markers: markers),
+
+              // OSM policy compliance: keep visible attribution on the canvas.
+              RichAttributionWidget(
+                showFlutterMapAttribution: false,
+                alignment: AttributionAlignment.bottomRight,
+                attributions: [
+                  TextSourceAttribution(
+                    'OpenStreetMap contributors',
+                    onTap: () async {
+                      try {
+                        await launchUrl(
+                          Uri.parse('https://www.openstreetmap.org/copyright'),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      } catch (_) {
+                        // Attribution link is best-effort; the text itself stays visible.
+                      }
+                    },
+                  ),
+                ],
+              ),
             ],
           ),
 
@@ -622,6 +644,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                   ),
                 ),
             ],
+          ),
+
+          // Attribution stays visible even while this card covers the map corner.
+          const SizedBox(height: 6),
+          const Text(
+            '© OpenStreetMap contributors',
+            style: TextStyle(fontSize: 9, color: AppColors.textMuted),
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/map_config.dart';
 import '../../../core/theme/app_colors.dart';
@@ -300,6 +301,27 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
 
               if (polylineList.isNotEmpty) PolylineLayer(polylines: polylineList),
               MarkerLayer(markers: markers),
+
+              // OSM policy compliance: keep visible attribution on the canvas.
+              RichAttributionWidget(
+                showFlutterMapAttribution: false,
+                alignment: AttributionAlignment.bottomRight,
+                attributions: [
+                  TextSourceAttribution(
+                    'OpenStreetMap contributors',
+                    onTap: () async {
+                      try {
+                        await launchUrl(
+                          Uri.parse('https://www.openstreetmap.org/copyright'),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      } catch (_) {
+                        // Attribution link is best-effort; the text itself stays visible.
+                      }
+                    },
+                  ),
+                ],
+              ),
             ],
           ),
 
