@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:dio/dio.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -119,15 +123,551 @@ class _NotFound extends StatelessWidget {
   }
 }
 
-class _DetailContent extends ConsumerWidget {
+class _DetailContent extends ConsumerStatefulWidget {
   final QuestModel quest;
   const _DetailContent({required this.quest});
+
+  @override
+  ConsumerState<_DetailContent> createState() => _DetailContentState();
+}
+
+class _DetailContentState extends ConsumerState<_DetailContent> {
+  QuestAttemptModel? _attempt;
+  bool _completed = false;
+  bool _loading = false;
+  bool _stepSubmitting = false;
+  String? _error;
+
+  String _messageFromDio(DioException error, String fallback) {
+    final body = error.response?.data;
+    if (body is Map && body['error'] is Map) {
+      final message = (body['error'] as Map)['message'];
+      if (message is String && message.isNotEmpty) return message;
+    }
+    return fallback;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_loadProgress);
+  }
+
+  Future<void> _loadProgress() async {
+    if (!ref.read(authProvider).isAuthenticated) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await ref
+          .read(apiClientProvider)
+          .dio
+          .get('/quests/${widget.quest.id}/progress');
+      final data = response.data['data'];
+      if (response.data['success'] != true || data is! Map) {
+        throw StateError('Quest progress is unavailable.');
+      }
+      if (!mounted) return;
+      setState(() {
+        _completed = data['has_completed'] == true;
+        final rawAttempt = data['active_attempt'];
+        if (rawAttempt is Map<String, dynamic>) {
+          _attempt = QuestAttemptModel.fromJson(rawAttempt);
+        } else if (rawAttempt is Map) {
+          _attempt = QuestAttemptModel.fromJson(Map<String, dynamic>.from(rawAttempt));
+        } else {
+          _attempt = null;
+        }
+      });
+    } on DioException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = _messageFromDio(
+            error, 'Could not load quest progress. Retry when connected.');
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load quest progress. Retry when connected.';
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _acceptQuest() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await ref
+          .read(apiClientProvider)
+          .dio
+          .post('/quests/${widget.quest.id}/attempts');
+      if (response.data['success'] != true) {
+        throw StateError('Quest enrollment was not confirmed.');
+      }
+      if (!mounted) return;
+      await _loadProgress();
+    } on DioException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = _messageFromDio(error, 'Could not accept this quest. Please retry.');
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not accept this quest. Please retry.';
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<Position?> _safeGetPosition() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final requested = await Geolocator.requestPermission();
+        if (requested == LocationPermission.denied ||
+            requested == LocationPermission.deniedForever) {
+          return null;
+        }
+      }
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 4),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _verifyLocation(QuestStepModel step) async {
+    setState(() => _stepSubmitting = true);
+    try {
+      final pos = await _safeGetPosition();
+      final res = await ref.read(apiClientProvider).dio.post(
+        '/quests/${widget.quest.id}/steps/${step.order}/evidence',
+        data: {
+          'idempotency_key': const Uuid().v4(),
+          'checkpoint_type': 'location',
+          'captured_lat': pos?.latitude ?? widget.quest.gpsLat,
+          'captured_lng': pos?.longitude ?? widget.quest.gpsLng,
+          'captured_accuracy': pos?.accuracy ?? 5,
+        },
+      );
+      if (res.data['success'] == true) {
+        await _loadProgress();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location verified successfully!')),
+          );
+        }
+      }
+    } on DioException catch (dioErr) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(_messageFromDio(dioErr, 'Location verification failed.'))),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not verify location. Please retry.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _stepSubmitting = false);
+    }
+  }
+
+  void _showQrVerificationModal(QuestStepModel step) {
+    final textController = TextEditingController();
+    String? modalError;
+    bool modalLoading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: AppSpacing.gutter,
+                right: AppSpacing.gutter,
+                top: AppSpacing.lg,
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom + AppSpacing.lg,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.qr_code_scanner_rounded,
+                            color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Scan Checkpoint QR',
+                            style: AppTypography.headlineSmall
+                                .copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Scan the physical destination QR code or enter the code below.',
+                      style: AppTypography.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextField(
+                      controller: textController,
+                      decoration: const InputDecoration(
+                        labelText: 'Marker Code',
+                        hintText: 'e.g. BOLINAO_LIGHTHOUSE_QR_2026',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.qr_code_rounded),
+                      ),
+                    ),
+                    if (modalError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(modalError!,
+                          style: const TextStyle(
+                              color: AppColors.danger, fontSize: 12)),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
+                    PrimaryButton(
+                      label: modalLoading ? 'Verifying...' : 'Verify QR',
+                      icon: Icons.check_circle_outline_rounded,
+                      onPressed: modalLoading
+                          ? null
+                          : () async {
+                              final code = textController.text.trim();
+                              if (code.isEmpty) {
+                                setModalState(() =>
+                                    modalError = 'Please enter a marker code.');
+                                return;
+                              }
+                              setModalState(() {
+                                modalLoading = true;
+                                modalError = null;
+                              });
+                              try {
+                                final pos = await _safeGetPosition();
+                                final res = await ref
+                                    .read(apiClientProvider)
+                                    .dio
+                                    .post(
+                                  '/quests/${widget.quest.id}/steps/${step.order}/evidence',
+                                  data: {
+                                    'idempotency_key': const Uuid().v4(),
+                                    'checkpoint_type': 'qr',
+                                    'qr_code': code,
+                                    'captured_lat':
+                                        pos?.latitude ?? widget.quest.gpsLat,
+                                    'captured_lng':
+                                        pos?.longitude ?? widget.quest.gpsLng,
+                                    'captured_accuracy': pos?.accuracy ?? 5,
+                                  },
+                                );
+                                if (res.data['success'] == true) {
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  await _loadProgress();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'QR code verified successfully!')),
+                                    );
+                                  }
+                                } else {
+                                  setModalState(() =>
+                                      modalError = 'QR verification failed.');
+                                }
+                              } on DioException catch (dioErr) {
+                                setModalState(() => modalError =
+                                    _messageFromDio(dioErr,
+                                        'Invalid QR code or out of radius.'));
+                              } catch (_) {
+                                setModalState(() => modalError =
+                                    'Verification failed. Try again.');
+                              } finally {
+                                setModalState(() => modalLoading = false);
+                              }
+                            },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showPhotoVerificationModal(QuestStepModel step) {
+    XFile? pickedFile;
+    bool galleryOptIn = false;
+    String? modalError;
+    bool modalLoading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: AppSpacing.gutter,
+                right: AppSpacing.gutter,
+                top: AppSpacing.lg,
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom + AppSpacing.lg,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.camera_alt_rounded,
+                            color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Submit Photo Proof',
+                            style: AppTypography.headlineSmall
+                                .copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Capture or upload a photo fulfilling the objective.',
+                      style: AppTypography.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              try {
+                                final picker = ImagePicker();
+                                final file = await picker.pickImage(
+                                    source: ImageSource.camera,
+                                    maxWidth: 1920,
+                                    maxHeight: 1080);
+                                if (file != null) {
+                                  setModalState(() => pickedFile = file);
+                                }
+                              } catch (_) {}
+                            },
+                            icon: const Icon(Icons.camera_rounded),
+                            label: const Text('Camera'),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              try {
+                                final picker = ImagePicker();
+                                final file = await picker.pickImage(
+                                    source: ImageSource.gallery,
+                                    maxWidth: 1920,
+                                    maxHeight: 1080);
+                                if (file != null) {
+                                  setModalState(() => pickedFile = file);
+                                }
+                              } catch (_) {}
+                            },
+                            icon: const Icon(Icons.photo_library_rounded),
+                            label: const Text('Gallery'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (pickedFile != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.image_rounded,
+                                size: 20, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                pickedFile!.name,
+                                style: const TextStyle(fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Icon(Icons.check_circle_rounded,
+                                size: 18, color: AppColors.success),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    CheckboxListTile(
+                      value: galleryOptIn,
+                      onChanged: (val) =>
+                          setModalState(() => galleryOptIn = val ?? false),
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: const Text(
+                        'Feature photo in destination gallery upon review approval',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: const Text(
+                        'Photos remain private evidence for moderation unless checked.',
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                      controlAffinity: ListTileControlAffinity.leading,
+                    ),
+                    if (modalError != null) ...[
+                      const SizedBox(height: 6),
+                      Text(modalError!,
+                          style: const TextStyle(
+                              color: AppColors.danger, fontSize: 12)),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
+                    PrimaryButton(
+                      label: modalLoading ? 'Uploading Proof...' : 'Submit Photo Proof',
+                      icon: Icons.upload_rounded,
+                      onPressed: (pickedFile == null || modalLoading)
+                          ? null
+                          : () async {
+                              setModalState(() {
+                                modalLoading = true;
+                                modalError = null;
+                              });
+                              try {
+                                final bytes = await pickedFile!.readAsBytes();
+                                final pos = await _safeGetPosition();
+                                final formData = FormData.fromMap({
+                                  'idempotency_key': const Uuid().v4(),
+                                  'checkpoint_type': 'photo',
+                                  'gallery_opt_in': galleryOptIn.toString(),
+                                  'captured_lat':
+                                      pos?.latitude ?? widget.quest.gpsLat,
+                                  'captured_lng':
+                                      pos?.longitude ?? widget.quest.gpsLng,
+                                  'captured_accuracy': pos?.accuracy ?? 5,
+                                  'photo': MultipartFile.fromBytes(bytes,
+                                      filename: pickedFile!.name),
+                                });
+                                final res = await ref
+                                    .read(apiClientProvider)
+                                    .dio
+                                    .post(
+                                  '/quests/${widget.quest.id}/steps/${step.order}/evidence',
+                                  data: formData,
+                                );
+                                if (res.data['success'] == true) {
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  await _loadProgress();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Photo proof submitted for independent review!')),
+                                    );
+                                  }
+                                } else {
+                                  setModalState(() =>
+                                      modalError = 'Photo submission failed.');
+                                }
+                              } on DioException catch (dioErr) {
+                                setModalState(() => modalError =
+                                    _messageFromDio(dioErr, 'Photo upload failed.'));
+                              } catch (_) {
+                                setModalState(() => modalError =
+                                    'Photo upload failed. Try again.');
+                              } finally {
+                                setModalState(() => modalLoading = false);
+                              }
+                            },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _submitForReview() async {
+    setState(() => _loading = true);
+    try {
+      final res = await ref
+          .read(apiClientProvider)
+          .dio
+          .post('/quests/${widget.quest.id}/submit-for-review');
+      if (res.data['success'] == true) {
+        await _loadProgress();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Quest submitted for review! Rewards will be granted once approved.')),
+          );
+        }
+      }
+    } on DioException catch (dioErr) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(_messageFromDio(
+                  dioErr, 'Could not submit quest for review.'))),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Could not submit quest for review. Please retry.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   Future<void> _launchAR(BuildContext context, WidgetRef ref) async {
     final isCalibrated = ref.read(calibrationProvider).isCalibrated;
     if (!isCalibrated) {
       if (context.mounted) {
-        context.push('/ar-calibration?returnTo=/quests/${quest.id}/ar');
+        context.push('/ar-calibration?returnTo=/quests/${widget.quest.id}/ar');
       }
       return;
     }
@@ -137,7 +677,7 @@ class _DetailContent extends ConsumerWidget {
 
     if (cameraStatus.isGranted && locationStatus.isGranted) {
       if (context.mounted) {
-        context.push('/quests/${quest.id}/ar', extra: quest);
+        context.push('/quests/${widget.quest.id}/ar', extra: widget.quest);
       }
     } else {
       if (context.mounted) {
@@ -156,12 +696,18 @@ class _DetailContent extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final quest = widget.quest;
     final isCalibrated = ref.watch(calibrationProvider).isCalibrated;
     final hasImage = quest.imageUrl != null &&
         quest.imageUrl!.isNotEmpty &&
         (quest.imageUrl!.startsWith('http://') ||
             quest.imageUrl!.startsWith('https://'));
+
+    // If attempt has live steps, use those; otherwise use default quest steps
+    final displaySteps = _attempt != null && _attempt!.steps.isNotEmpty
+        ? _attempt!.steps
+        : quest.steps;
 
     return JdqScaffold(
       padding: EdgeInsets.zero,
@@ -177,73 +723,43 @@ class _DetailContent extends ConsumerWidget {
               spec: const UiSpec(
                 title: 'Quest Hero Photography & Bounty Pills',
                 figmaLayer: '#Quest_Detail_Hero_Image',
-                dimensions:
-                    'Full width, AspectRatio: 16/9 (1080x608), Radius: 0dp',
-                dataBinding:
-                    'quest.imageUrl / quest.categoryDisplay / quest.rewardPoints',
-                stateNotes:
-                    'Network image with fallback asset placeholder + Gold Bounty Pill',
-                uxNotes:
-                    'High-resolution Pangasinan destination photography with dark overlay gradient.',
+                dimensions: 'Full width hero image, Height: 240dp',
+                dataBinding: 'quest.markerImageUrl / quest.category',
+                stateNotes: 'Displays curated destination photography with category badge overlay',
+                uxNotes: 'Hero visual provides strong sense of place and local Pangasinan heritage.',
               ),
               child: Stack(
                 children: [
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
+                  Container(
+                    height: 240,
+                    width: double.infinity,
+                    color: AppColors.woodBrown,
                     child: hasImage
                         ? Image.network(
                             quest.imageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (context, error, stackTrace) =>
                                 _buildHeaderPlaceholder(),
                           )
                         : _buildHeaderPlaceholder(),
                   ),
                   Positioned(
-                    top: AppSpacing.md,
-                    left: AppSpacing.md,
+                    top: AppSpacing.gutter,
+                    left: AppSpacing.gutter,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryDark,
-                        borderRadius: AppSpacing.roundedPill,
+                          horizontal: AppSpacing.sm, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.woodBrown.withOpacity(0.85),
+                        borderRadius: AppSpacing.roundedSm,
                       ),
                       child: Text(
-                        quest.categoryDisplay.toUpperCase(),
+                        quest.categoryDisplay,
                         style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
                           color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: AppSpacing.md,
-                    right: AppSpacing.md,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: const BoxDecoration(
-                        color: AppColors.surfaceContainerLowest,
-                        borderRadius: AppSpacing.roundedPill,
-                        boxShadow: AppSpacing.cardShadow,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.stars_rounded,
-                              color: AppColors.sunGold, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            '+${quest.rewardPoints} PTS',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.woodBrown,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ),
@@ -392,78 +908,61 @@ class _DetailContent extends ConsumerWidget {
                         border: Border.all(color: AppColors.borderLowContrast),
                         boxShadow: AppSpacing.cardShadow,
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'QUEST REWARD',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textMuted,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.stars_rounded,
-                                        color: AppColors.sunGold, size: 20),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '${quest.rewardPoints} Points',
-                                      style: AppTypography.labelLarge.copyWith(
-                                        color: AppColors.woodBrown,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                          const Text(
+                            'QUEST REWARD',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.8,
                             ),
                           ),
-                          Container(
-                              width: 1,
-                              height: 40,
-                              color: AppColors.borderLowContrast),
-                          Expanded(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.only(left: AppSpacing.md),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'GPS RADIUS GUARD',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textMuted,
-                                      letterSpacing: 0.8,
-                                    ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.stars_rounded,
+                                  color: AppColors.sunGold, size: 20),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  '${quest.rewardPoints} Points',
+                                  style: AppTypography.labelLarge.copyWith(
+                                    color: AppColors.woodBrown,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.radar_rounded,
-                                          color: AppColors.primary, size: 20),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Within ${quest.allowedRadiusMeters}m',
-                                        style:
-                                            AppTypography.labelLarge.copyWith(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                ),
                               ),
+                            ],
+                          ),
+                          const Divider(height: AppSpacing.lg * 2),
+                          const Text(
+                            'GPS RADIUS GUARD',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.8,
                             ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.radar_rounded,
+                                  color: AppColors.primary, size: 20),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Within ${quest.allowedRadiusMeters}m',
+                                  style: AppTypography.labelLarge.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -486,36 +985,29 @@ class _DetailContent extends ConsumerWidget {
                   // Objective Steps
                   const JdqSectionHeader(
                     title: 'Quest Objectives',
-                    subtitle: 'Follow these steps at the physical destination.',
+                    subtitle: 'Requirements set by the destination quest author.',
                   ),
 
-                  _buildObjectiveStep(
-                    stepNumber: '1',
-                    title: 'Travel to Location',
-                    subtitle:
-                        'Arrive within ${quest.allowedRadiusMeters}m of ${quest.locationName}.',
-                    icon: Icons.directions_walk_rounded,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _buildObjectiveStep(
-                    stepNumber: '2',
-                    title: 'Locate Quest Marker',
-                    subtitle:
-                        'Find the official heritage marker or destination landmark.',
-                    icon: Icons.qr_code_scanner_rounded,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _buildObjectiveStep(
-                    stepNumber: '3',
-                    title: 'Capture Evidence (Simulated AR)',
-                    subtitle:
-                        'Use camera experience to submit GPS-verified photo proof.',
-                    icon: Icons.camera_alt_rounded,
-                  ),
+                  if (displaySteps.isEmpty)
+                    _buildStepCard(
+                      step: const QuestStepModel(
+                        order: 1,
+                        title: 'Destination check-in',
+                        description: 'Submit location proof for independent review.',
+                        checkpointType: 'location',
+                        required: true,
+                        status: 'ready',
+                      ),
+                    )
+                  else
+                    for (final step in displaySteps) ...[
+                      _buildStepCard(step: step),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
 
                   const SizedBox(height: AppSpacing.sectionGap),
 
-                  if (!isCalibrated) ...[
+                  if (!isCalibrated && quest.steps.isEmpty) ...[
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
@@ -524,28 +1016,30 @@ class _DetailContent extends ConsumerWidget {
                         border: Border.all(
                             color: AppColors.sunGold.withOpacity(0.5)),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Icon(Icons.explore_rounded,
-                              color: AppColors.woodBrown, size: 22),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Compass Calibration Recommended',
-                                  style: AppTypography.labelMedium.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.woodBrown),
+                          Row(
+                            children: [
+                              const Icon(Icons.explore_rounded,
+                                  color: AppColors.woodBrown, size: 22),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Compass Calibration Recommended',
+                                        style: AppTypography.labelMedium.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.woodBrown)),
+                                    Text(
+                                        'Calibrate sensors for accurate 3D AR positioning.',
+                                        style: AppTypography.bodySmall.copyWith(
+                                            color: AppColors.textSecondary)),
+                                  ],
                                 ),
-                                Text(
-                                  'Calibrate sensors for accurate 3D AR positioning.',
-                                  style: AppTypography.bodySmall
-                                      .copyWith(color: AppColors.textSecondary),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                           TextButton(
                             onPressed: () => context.push(
@@ -561,31 +1055,22 @@ class _DetailContent extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.md),
                   ],
 
-                  // Launch Simulated AR Action & Navigate Action
+                  // Enrollment and Progress CTA
                   UiSpecContainer(
                     spec: const UiSpec(
                       title: 'Start Quest Experience CTA',
                       figmaLayer: '#Quest_Start_Action_Button',
-                      dimensions:
-                          'Full width button, Height: 52dp, Radius: 12dp',
-                      dataBinding:
-                          'Launches /quests/:id/ar with camera & GPS permission check',
-                      stateNotes:
-                          'Active emerald green -> Disabled if quest already completed',
-                      uxNotes:
-                          'Prominent primary CTA to begin interactive verification with in-app navigation shortcut.',
-                      deferred: true,
+                      dimensions: 'Full width button, Height: 52dp, Radius: 12dp',
+                      dataBinding: 'POST /quests/:id/attempts and GET /quests/:id/progress',
+                      stateNotes: 'Shows the server-confirmed enrollment or completion state',
+                      uxNotes: 'Prominent primary CTA to begin interactive verification with in-app navigation shortcut.',
+                      deferred: false,
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: PrimaryButton(
-                            label: 'Start Quest (Simulated AR)',
-                            onPressed: () => _launchAR(context, ref),
-                            icon: Icons.play_arrow_rounded,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
+                        _buildParticipationSection(),
+                        const SizedBox(height: AppSpacing.sm),
                         InkWell(
                           onTap: () {
                             context.push(
@@ -603,6 +1088,7 @@ class _DetailContent extends ConsumerWidget {
                                   color: AppColors.borderLowContrast),
                             ),
                             child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.navigation_rounded,
@@ -633,51 +1119,287 @@ class _DetailContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildObjectiveStep({
-    required String stepNumber,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-  }) {
+  Widget _buildStepCard({required QuestStepModel step}) {
+    final hasAttempt = _attempt != null;
+    final isVerified = step.isVerified;
+    final isPendingReview = step.isPendingReview;
+    final isNeedsChanges = step.isNeedsChanges;
+    final isReady = step.isReady;
+
+    Color badgeBg;
+    Color badgeFg;
+    String badgeText;
+    IconData badgeIcon;
+
+    if (isVerified) {
+      badgeBg = AppColors.success.withOpacity(0.15);
+      badgeFg = AppColors.success;
+      badgeText = 'Verified';
+      badgeIcon = Icons.check_circle_rounded;
+    } else if (isPendingReview) {
+      badgeBg = AppColors.sunGold.withOpacity(0.18);
+      badgeFg = AppColors.woodBrown;
+      badgeText = 'Pending Review';
+      badgeIcon = Icons.hourglass_top_rounded;
+    } else if (isNeedsChanges) {
+      badgeBg = AppColors.danger.withOpacity(0.15);
+      badgeFg = AppColors.danger;
+      badgeText = 'Needs Changes';
+      badgeIcon = Icons.error_outline_rounded;
+    } else if (isReady) {
+      badgeBg = AppColors.primary.withOpacity(0.15);
+      badgeFg = AppColors.primary;
+      badgeText = 'Ready';
+      badgeIcon = Icons.play_circle_fill_rounded;
+    } else {
+      badgeBg = AppColors.borderLowContrast;
+      badgeFg = AppColors.textMuted;
+      badgeText = 'Locked';
+      badgeIcon = Icons.lock_outline_rounded;
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: AppSpacing.roundedMd,
-        border: Border.all(color: AppColors.borderLowContrast),
+        border: Border.all(
+          color: isReady
+              ? AppColors.primary.withOpacity(0.4)
+              : AppColors.borderLowContrast,
+          width: isReady ? 1.5 : 1.0,
+        ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.crowdModerateBg,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: AppColors.woodBrown, size: 20),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Step $stepNumber: $title',
-                  style: AppTypography.labelLarge
-                      .copyWith(fontWeight: FontWeight.bold),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isVerified
+                      ? AppColors.success.withOpacity(0.15)
+                      : AppColors.crowdModerateBg,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: AppTypography.bodySmall
-                      .copyWith(color: AppColors.textSecondary),
+                child: Icon(
+                  switch (step.checkpointType) {
+                    'qr' => Icons.qr_code_scanner_rounded,
+                    'photo' => Icons.camera_alt_rounded,
+                    'location' => Icons.location_on_rounded,
+                    _ => Icons.touch_app_rounded,
+                  },
+                  color: isVerified ? AppColors.success : AppColors.woodBrown,
+                  size: 20,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          'Step ${step.order}: ${step.title}',
+                          style: AppTypography.labelLarge.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (hasAttempt)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: badgeBg,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(badgeIcon, size: 12, color: badgeFg),
+                                const SizedBox(width: 4),
+                                Text(
+                                  badgeText,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: badgeFg,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      step.description,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    if (step.rejectionReason != null &&
+                        step.rejectionReason!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Feedback: ${step.rejectionReason}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
+          if (hasAttempt &&
+              (isReady || isNeedsChanges) &&
+              !_completed &&
+              !(_attempt?.isSubmitted ?? false)) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerRight,
+              child: _buildStepActionButton(step),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildStepActionButton(QuestStepModel step) {
+    final label = switch (step.checkpointType) {
+      'location' => 'Verify Location (GPS)',
+      'qr' => 'Scan QR Code',
+      'photo' => 'Submit Photo Proof',
+      _ => 'Complete Action',
+    };
+    final icon = switch (step.checkpointType) {
+      'location' => Icons.my_location_rounded,
+      'qr' => Icons.qr_code_scanner_rounded,
+      'photo' => Icons.camera_alt_rounded,
+      _ => Icons.check_circle_outline_rounded,
+    };
+
+    return SizedBox(
+      height: 36,
+      child: ElevatedButton.icon(
+        onPressed: _stepSubmitting
+            ? null
+            : () {
+                switch (step.checkpointType) {
+                  case 'location':
+                    _verifyLocation(step);
+                    break;
+                  case 'qr':
+                    _showQrVerificationModal(step);
+                    break;
+                  case 'photo':
+                    _showPhotoVerificationModal(step);
+                    break;
+                  default:
+                    _verifyLocation(step);
+                }
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        icon: Icon(icon, size: 16),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParticipationSection() {
+    final signedIn = ref.watch(authProvider).isAuthenticated;
+    final hasAttempt = _attempt != null;
+    final isSubmitted = _attempt?.isSubmitted ?? false;
+
+    final canSubmitReview = hasAttempt &&
+        _attempt!.isInProgress &&
+        _attempt!.steps.isNotEmpty &&
+        _attempt!.steps
+            .where((s) => s.required)
+            .every((s) => s.isVerified || s.isPendingReview);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_completed)
+          const Text(
+              'Quest completed and reviewed. Your reward is recorded in your account.')
+        else if (isSubmitted)
+          const Text(
+              'Proof submitted. Your quest is waiting for independent review; no reward has been granted yet.')
+        else if (hasAttempt)
+          Text(
+              'Quest accepted. ${_attempt!.verifiedSteps} of ${_attempt!.requiredSteps} required steps verified. Submit required proof for review.')
+        else if (signedIn && !_loading && _error == null)
+          const Text('Accept this quest to register your attempt.'),
+        if (_error != null) ...[
+          const SizedBox(height: 4),
+          Text(_error!, style: const TextStyle(color: AppColors.danger)),
+          TextButton(
+            onPressed: _loading ? null : _loadProgress,
+            child: const Text('Retry progress'),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        if (_loading)
+          const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
+        else if (!signedIn)
+          PrimaryButton(
+            label: 'Sign in to accept',
+            icon: Icons.login_rounded,
+            onPressed: () => context.push('/login'),
+          )
+        else if (!_completed && !hasAttempt)
+          PrimaryButton(
+            label: 'Accept quest',
+            icon: Icons.play_arrow_rounded,
+            onPressed: _error == null ? _acceptQuest : null,
+          )
+        else if (canSubmitReview)
+          PrimaryButton(
+            label: 'Submit Quest for Review',
+            icon: Icons.send_rounded,
+            onPressed: _submitForReview,
+          ),
+        if (hasAttempt && !isSubmitted && !_completed && widget.quest.steps.isEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          TextButton.icon(
+            onPressed: () => _launchAR(context, ref),
+            icon: const Icon(Icons.view_in_ar_rounded),
+            label: const Text('Explore optional AR view'),
+          ),
+        ],
+      ],
     );
   }
 
@@ -691,7 +1413,7 @@ class _DetailContent extends ConsumerWidget {
             const Icon(Icons.stars_rounded, size: 64, color: AppColors.sunGold),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              quest.locationName,
+              widget.quest.locationName,
               style: AppTypography.bodyMedium.copyWith(color: Colors.white70),
             ),
           ],

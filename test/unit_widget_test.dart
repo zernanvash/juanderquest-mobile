@@ -64,12 +64,18 @@ void main() {
         'reward_points': 50,
         'marker_code': 'MARKER_01',
         'marker_image_url': 'http://example.com/img.png',
+        'steps': [
+          {'step_order': 2, 'title': 'Photo proof', 'description': 'Capture the site', 'checkpoint_type': 'photo', 'required': true},
+          {'step_order': 1, 'title': 'Arrive', 'description': 'Reach the destination', 'checkpoint_type': 'location', 'required': true},
+        ],
       };
 
       final quest = QuestModel.fromJson(json);
       expect(quest.id, 'q1');
       expect(quest.categoryDisplay, 'Eco-Tourism');
       expect(quest.rewardPoints, 50);
+      expect(quest.steps.map((step) => step.title).toList(), ['Arrive', 'Photo proof']);
+      expect(quest.steps.last.checkpointType, 'photo');
     });
 
     test('GovernanceConfigModel.fromJson parses API config response correctly', () {

@@ -20,6 +20,7 @@ import 'package:juanderquest_app/features/wallet/models/wallet_model.dart';
 import 'package:juanderquest_app/features/wallet/providers/wallet_provider.dart';
 
 import 'package:juanderquest_app/features/quests/screens/quest_list_screen.dart';
+import 'package:juanderquest_app/features/quests/screens/quest_detail_screen.dart';
 import 'package:juanderquest_app/features/quests/screens/campaign_detail_screen.dart';
 import 'package:juanderquest_app/features/quests/models/campaign_model.dart';
 import 'package:juanderquest_app/features/quests/providers/campaign_provider.dart';
@@ -309,6 +310,14 @@ void main() {
           ));
           return;
         }
+        if (options.path == '/quests/q1/progress') {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'data': {'has_completed': false, 'active_attempt': null}},
+          ));
+          return;
+        }
         handler.next(options);
       },
     ));
@@ -337,7 +346,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          if (child is AffiliateApplicationScreen)
+          if (child is AffiliateApplicationScreen || child is QuestDetailScreen)
             apiClientProvider.overrideWithValue(affiliateApi),
           authProvider.overrideWith((ref) => InertAuthNotifier(
               ref.watch(apiClientProvider),
@@ -401,6 +410,9 @@ void main() {
     );
 
     await tester.pump();
+    if (child is QuestDetailScreen) {
+      await tester.pumpAndSettle();
+    }
     if (child is AffiliateApplicationScreen) {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.scrollUntilVisible(find.text('Business location'), 100,
@@ -483,6 +495,18 @@ void main() {
         (tester) async {
       await testScreenOverflow(
           tester, const QuestListScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('QuestDetailScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(tester, QuestDetailScreen(quest: dummyQuest),
+          const Size(320, 568), 2.0);
+    });
+
+    testWidgets('QuestDetailScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(tester, QuestDetailScreen(quest: dummyQuest),
+          const Size(568, 320), 2.0);
     });
 
     testWidgets('CampaignDetailScreen does not overflow in small portrait',
