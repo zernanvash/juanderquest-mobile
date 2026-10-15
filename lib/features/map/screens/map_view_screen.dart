@@ -19,6 +19,7 @@ import '../../spots/providers/spot_discovery_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../utils/map_focus.dart';
+import '../utils/map_list.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
   const MapViewScreen({super.key});
@@ -147,6 +148,108 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     } finally {
       if (mounted) setState(() => _locating = false);
     }
+  }
+
+  /// Accessible map/list fallback: the same filter semantics as the pins.
+  Future<void> _openPlacesList() async {
+    final quests = ref.read(questProvider).quests;
+    final spots = ref.read(spotDiscoveryProvider).spots;
+    final entries = filterMapEntries(
+      quests: quests,
+      spots: spots,
+      activeFilter: _activeFilter,
+    );
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(
+                    'Places (${entries.length})',
+                    style: AppTypography.headlineSmall.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.woodBrown,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: entries.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                          child: Text(
+                            'No places match this filter yet. Adjust the map filters or refresh the map data.',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.5),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          itemCount: entries.length,
+                          itemBuilder: (context, index) {
+                            final entry = entries[index];
+                            return ListTile(
+                              minVerticalPadding: 10,
+                              leading: Text(
+                                entry.isQuest ? '🏆' : '📍',
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                              title: Text(
+                                entry.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.woodBrown,
+                                ),
+                              ),
+                              subtitle: Text(
+                                entry.isQuest
+                                    ? '${entry.subtitle} • +${entry.rewardPoints ?? 0} mJDQ'
+                                    : entry.subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              ),
+                              onTap: () {
+                                Navigator.of(sheetContext).pop();
+                                setState(() {
+                                  if (entry.isQuest) {
+                                    _selectedQuest =
+                                        quests.firstWhere((q) => q.id == entry.id);
+                                    _selectedSpot = null;
+                                  } else {
+                                    _selectedSpot =
+                                        spots.firstWhere((s) => s.id == entry.id);
+                                    _selectedQuest = null;
+                                  }
+                                });
+                                _focusPlace(entry.lat, entry.lng, 13.0);
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _refreshData() async {
@@ -446,14 +549,45 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () => context.push('/search'),
-                        child: const Text(
-                          'Search →',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: _openPlacesList,
+                                behavior: HitTestBehavior.opaque,
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  child: Text(
+                                    'List ☰',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.woodBrown,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              GestureDetector(
+                                onTap: () => context.push('/search'),
+                                behavior: HitTestBehavior.opaque,
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  child: Text(
+                                    'Search →',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
