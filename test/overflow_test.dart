@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
+import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/features/profile/screens/affiliate_application_screen.dart';
 
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
@@ -295,6 +298,20 @@ void main() {
     Size size,
     double textScale,
   ) async {
+    final affiliateApi = ApiClient();
+    affiliateApi.dio.interceptors.insert(0, InterceptorsWrapper(
+      onRequest: (options, handler) {
+        if (options.path == '/affiliate/applications/me') {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'data': null},
+          ));
+          return;
+        }
+        handler.next(options);
+      },
+    ));
     tester.view.physicalSize = Size(size.width * 2, size.height * 2);
     tester.view.devicePixelRatio = 2.0;
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
@@ -320,6 +337,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          if (child is AffiliateApplicationScreen)
+            apiClientProvider.overrideWithValue(affiliateApi),
           authProvider.overrideWith((ref) => InertAuthNotifier(
               ref.watch(apiClientProvider),
               ref.watch(authRefreshProvider.notifier),
@@ -382,6 +401,13 @@ void main() {
     );
 
     await tester.pump();
+    if (child is AffiliateApplicationScreen) {
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.scrollUntilVisible(find.text('Business location'), 100,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pump();
+      expect(find.text('Business location'), findsOneWidget);
+    }
 
     // Verify no RenderFlex overflow exceptions occurred during layout
     tester.takeException();
@@ -398,6 +424,19 @@ void main() {
   group(
       'Screen Overflow Tests (320x568 portrait & 568x320 landscape, 2.0 text scale)',
       () {
+    testWidgets(
+        'AffiliateApplicationScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(tester, const AffiliateApplicationScreen(),
+          const Size(320, 568), 2.0);
+    });
+
+    testWidgets(
+        'AffiliateApplicationScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(tester, const AffiliateApplicationScreen(),
+          const Size(568, 320), 2.0);
+    });
     testWidgets('DashboardScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
