@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,6 +18,7 @@ import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
+import '../utils/map_focus.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
   const MapViewScreen({super.key});
@@ -31,6 +33,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   SpotModel? _selectedSpot;
   String _activeFilter = 'all'; // 'all', 'quests', 'spots'
   bool _isRefreshing = false;
+  bool _locating = false;
+  LatLng? _userLocation;
 
   @override
   void initState() {
@@ -84,6 +88,67 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     );
   }
 
+  /// Centers a selected pin so it stays visible above the floating card.
+  void _focusPlace(double lat, double lng, double fallbackZoom) {
+    final camera = _mapController.camera;
+    final zoom = camera.zoom < fallbackZoom ? fallbackZoom : camera.zoom;
+    final target = focusTargetAboveCard(
+      lat: lat,
+      lng: lng,
+      zoom: zoom,
+      mapHeightPx: camera.size.height,
+    );
+    _mapController.move(target, zoom);
+  }
+
+  /// Explicit locate flow: no request before the traveler asks, honest fallbacks.
+  Future<void> _useMyLocation() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Location services are turned off. Turn them on, or search and pan the map instead.')),
+        );
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Location permission was denied. Search or pan the map instead.')),
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+      if (!mounted) return;
+      final location = LatLng(position.latitude, position.longitude);
+      setState(() => _userLocation = location);
+      final camera = _mapController.camera;
+      _mapController.move(location, camera.zoom < 14 ? 14.0 : camera.zoom);
+      if (position.accuracy > 2000) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Approximate location shown (±${position.accuracy.round()} m). Move to an open area for a better fix.')),
+        );
+      }
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Finding your location timed out or failed. Try again, or search and pan the map instead.')),
+      );
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
   Future<void> _refreshData() async {
     setState(() => _isRefreshing = true);
     try {
@@ -134,7 +199,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                   _selectedQuest = quest;
                   _selectedSpot = null;
                 });
-                _mapController.move(LatLng(quest.gpsLat, quest.gpsLng), 13.0);
+                          _focusPlace(quest.gpsLat, quest.gpsLng, 13.0);
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -183,7 +248,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                   _selectedSpot = spot;
                   _selectedQuest = null;
                 });
-                _mapController.move(LatLng(spot.gpsLat, spot.gpsLng), 13.0);
+                          _focusPlace(spot.gpsLat, spot.gpsLng, 13.0);
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -232,7 +297,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             child: GestureDetector(
               onTap: () {
                 setState(() { _selectedSpot = spot; _selectedQuest = null; });
-                _mapController.move(LatLng(spot.gpsLat, spot.gpsLng), 13);
+                    _focusPlace(spot.gpsLat, spot.gpsLng, 13.0);
               },
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -251,6 +316,29 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     }
 
 
+
+    if (_userLocation != null) {
+      markers.add(Marker(
+        point: _userLocation!,
+        width: 22,
+        height: 22,
+        alignment: Alignment.center,
+        child: Semantics(
+          label: 'Your current location',
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF1D4ED8),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: const [
+                BoxShadow(color: Color(0x591D4ED8), spreadRadius: 3, blurRadius: 2),
+                BoxShadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
+              ],
+            ),
+          ),
+        ),
+      ));
+    }
 
     return JdqScaffold(
       padding: EdgeInsets.zero,
@@ -393,6 +481,22 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             right: 12,
             child: Column(
               children: [
+                // Use My Location (explicit action; no background tracking)
+                FloatingActionButton.small(
+                  heroTag: 'locate_me_map',
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1D4ED8),
+                  onPressed: _locating ? null : _useMyLocation,
+                  tooltip: 'Use My Location',
+                  child: _locating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1D4ED8)),
+                        )
+                      : const Icon(Icons.my_location_rounded, size: 18),
+                ),
+                const SizedBox(height: 8),
                 // Fit All Bounds / Recenter
                 FloatingActionButton.small(
                   heroTag: 'fit_bounds_map',
