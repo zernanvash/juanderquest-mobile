@@ -56,6 +56,27 @@ void main() {
     expect(requestedHosts, ['github.com', 'api.juanderquest.app']);
   });
 
+  test('selects the newest valid manifest when the API copy is behind',
+      () async {
+    final dio = Dio();
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      final manifest = validManifest()
+        ..['versionCode'] =
+            options.uri.host == 'api.juanderquest.app' ? 174 : 175;
+      handler.resolve(Response<Map<String, dynamic>>(
+        requestOptions: options,
+        statusCode: 200,
+        data: options.uri.host == 'api.juanderquest.app'
+            ? {'success': true, 'data': manifest}
+            : manifest,
+      ));
+    }));
+
+    final release = await ReleaseManifestClient(dio: dio).fetch();
+
+    expect(release?.versionCode, 175);
+  });
+
   test('rejects a manifest for another Android package', () {
     final manifest = validManifest()..['packageName'] = 'dev.example.impostor';
 

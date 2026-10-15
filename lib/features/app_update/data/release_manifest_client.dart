@@ -39,6 +39,7 @@ class ReleaseManifestClient {
   Future<AppVersionInfo?> fetch({
     Duration timeout = const Duration(seconds: 8),
   }) async {
+    AppVersionInfo? newest;
     for (final candidate in _manifestUrls) {
       try {
         final uri = Uri.tryParse(candidate);
@@ -53,16 +54,21 @@ class ReleaseManifestClient {
         if (response.statusCode != 200 || raw is! Map) continue;
         final map = Map<String, dynamic>.from(raw);
         // Support backend { success: true, data: { ... } } envelope
+        late final AppVersionInfo release;
         if (map.containsKey('data') && map['data'] is Map) {
-          return parse(Map<String, dynamic>.from(map['data'] as Map));
+          release = parse(Map<String, dynamic>.from(map['data'] as Map));
+        } else {
+          release = parse(map);
         }
-        return parse(map);
+        if (newest == null || release.versionCode > newest.versionCode) {
+          newest = release;
+        }
       } catch (error) {
         debugPrint(
             '[ReleaseManifestClient] Update check failed for $candidate: $error');
       }
     }
-    return null;
+    return newest;
   }
 
   static AppVersionInfo parse(Map<String, dynamic> json) {
