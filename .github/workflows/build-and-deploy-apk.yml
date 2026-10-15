@@ -117,7 +117,7 @@ jobs:
           flutter build apk --release
           --build-name="${{ steps.release.outputs.version_name }}"
           --build-number="${{ steps.release.outputs.version_code }}"
-          --dart-define=UPDATE_MANIFEST_URL=https://github.com/${{ github.repository }}/releases/latest/download/version.json
+          --dart-define=UPDATE_MANIFEST_URL=https://api.juanderquest.app/api/v1/app/version
           --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.juanderquest.app/api/v1' }}
           --dart-define=REOWN_PROJECT_ID=$REOWN_PROJECT_ID
       - name: Create release assets and manifest

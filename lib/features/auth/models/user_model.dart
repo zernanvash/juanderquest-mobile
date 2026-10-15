@@ -26,8 +26,11 @@ class UserModel {
   });
 
   int get points => demoPoints;
-  String get handle => seedId.isNotEmpty ? '@$seedId' : '@${id.substring(0, id.length > 8 ? 8 : id.length)}';
-  bool get hasBoundWallet => walletAddress != null && walletAddress!.trim().isNotEmpty;
+  String get handle => seedId.isNotEmpty
+      ? '@$seedId'
+      : '@${id.substring(0, id.length > 8 ? 8 : id.length)}';
+  bool get hasBoundWallet =>
+      walletAddress != null && walletAddress!.trim().isNotEmpty;
   String? get formattedWalletAddress {
     if (walletAddress == null || walletAddress!.trim().isEmpty) return null;
     final clean = walletAddress!.trim();
@@ -46,11 +49,27 @@ class UserModel {
       role: json['role'] ?? 'user',
       demoPoints: demoPointsVal,
       walletAddress: json['wallet_address'] as String?,
-      mjdqBalance: (json['mjdq_balance'] as num?)?.toInt() ?? (demoPointsVal * 1000),
-      jdqGovernanceBalance: (json['jdq_governance_balance'] as num?)?.toInt() ?? 0,
+      mjdqBalance:
+          (json['mjdq_balance'] as num?)?.toInt() ?? (demoPointsVal * 1000),
+      jdqGovernanceBalance:
+          (json['jdq_governance_balance'] as num?)?.toInt() ?? 0,
       scoutReputation: (json['scout_reputation'] as num?)?.toInt() ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'seed_id': seedId,
+        'display_name': displayName,
+        'email': email,
+        'avatar_url': avatarUrl,
+        'role': role,
+        'demo_points': demoPoints,
+        'wallet_address': walletAddress,
+        'mjdq_balance': mjdqBalance,
+        'jdq_governance_balance': jdqGovernanceBalance,
+        'scout_reputation': scoutReputation,
+      };
 
   UserModel copyWith({
     int? demoPoints,

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/features/app_update/data/release_manifest_client.dart';
 
@@ -25,9 +26,38 @@ void main() {
     expect(release.sha256, validHash);
   });
 
+  test('prefers the API manifest and falls back when the primary host fails',
+      () async {
+    expect(ReleaseManifestClient.manifestUrl,
+        ReleaseManifestClient.apiManifestUrl);
+
+    final requestedHosts = <String>[];
+    final dio = Dio();
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      requestedHosts.add(options.uri.host);
+      if (options.uri.host == 'github.com') {
+        handler.reject(DioException(requestOptions: options));
+        return;
+      }
+      handler.resolve(Response<Map<String, dynamic>>(
+        requestOptions: options,
+        statusCode: 200,
+        data: {'success': true, 'data': validManifest()},
+      ));
+    }));
+
+    final client = ReleaseManifestClient(
+      dio: dio,
+      primaryManifestUrl: ReleaseManifestClient.githubManifestUrl,
+    );
+    final release = await client.fetch();
+
+    expect(release?.versionCode, 101);
+    expect(requestedHosts, ['github.com', 'api.juanderquest.app']);
+  });
+
   test('rejects a manifest for another Android package', () {
-    final manifest = validManifest()
-      ..['packageName'] = 'dev.example.impostor';
+    final manifest = validManifest()..['packageName'] = 'dev.example.impostor';
 
     expect(
       () => ReleaseManifestClient.parse(manifest),

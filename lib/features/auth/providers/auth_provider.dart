@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
+import '../data/auth_session_store.dart';
 import '../../spots/repositories/spots_cache_repository.dart';
 import '../models/user_model.dart';
 
@@ -11,18 +14,21 @@ class AuthRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
 }
 
-final authRefreshProvider = ChangeNotifierProvider<AuthRefreshNotifier>((ref) => AuthRefreshNotifier());
+final authRefreshProvider =
+    ChangeNotifierProvider<AuthRefreshNotifier>((ref) => AuthRefreshNotifier());
 
 class AuthState {
   final UserModel? user;
   final String? token;
   final bool isLoading;
+  final bool isRestoringSession;
   final String? error;
 
   AuthState({
     this.user,
     this.token,
     this.isLoading = false,
+    this.isRestoringSession = false,
     this.error,
   });
 
@@ -33,10 +39,61 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final ApiClient _apiClient;
   final AuthRefreshNotifier _refreshNotifier;
   final SpotsCacheRepository? _cacheRepo;
+  final AuthSessionStore _sessionStore;
 
-  AuthNotifier(this._apiClient, this._refreshNotifier, [this._cacheRepo]) : super(AuthState());
+  AuthNotifier(
+    this._apiClient,
+    this._refreshNotifier, [
+    this._cacheRepo,
+    AuthSessionStore? sessionStore,
+  ])  : _sessionStore = sessionStore ?? SecureAuthSessionStore(),
+        super(AuthState(isRestoringSession: true));
 
-  Future<bool> loginWithEmail({required String email, required String password}) async {
+  Future<void> restoreSession() async {
+    try {
+      final stored = await _sessionStore.read();
+      if (stored == null) {
+        state = AuthState();
+        _refreshNotifier.notify();
+        return;
+      }
+
+      final user = UserModel.fromJson(stored.user);
+      if (user.id.isEmpty) {
+        await _sessionStore.clear();
+        state = AuthState();
+        _refreshNotifier.notify();
+        return;
+      }
+
+      _apiClient.setAuthToken(stored.token);
+      state = AuthState(user: user, token: stored.token);
+      _refreshNotifier.notify();
+      unawaited(refreshProfile());
+    } catch (error) {
+      debugPrint('[auth] secure session restore failed: $error');
+      _apiClient.setAuthToken(null);
+      state = AuthState();
+      _refreshNotifier.notify();
+    }
+  }
+
+  Future<void> _completeLogin(String token, UserModel user) async {
+    _apiClient.setAuthToken(token);
+    try {
+      await _sessionStore.write(
+        StoredAuthSession(token: token, user: user.toJson()),
+      );
+    } catch (error) {
+      // Keep the current login usable even if the device secure store is unavailable.
+      debugPrint('[auth] secure session persistence failed: $error');
+    }
+    state = AuthState(user: user, token: token);
+    _refreshNotifier.notify();
+  }
+
+  Future<bool> loginWithEmail(
+      {required String email, required String password}) async {
     state = AuthState(isLoading: true);
     try {
       final response = await _apiClient.dio.post(
@@ -53,17 +110,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        _apiClient.setAuthToken(token);
-        state = AuthState(user: user, token: token);
-        _refreshNotifier.notify();
+        await _completeLogin(token, user);
         return true;
       } else {
-        final msg = response.data['error']?['message'] ?? 'Invalid email or password.';
+        final msg =
+            response.data['error']?['message'] ?? 'Invalid email or password.';
         state = AuthState(error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ?? 'Network connection error (${e.message}).';
+      final msg = e.response?.data['error']?['message'] ??
+          'Network connection error (${e.message}).';
       state = AuthState(error: msg);
       return false;
     } catch (e) {
@@ -97,12 +154,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'dev_code': response.data['data']?['dev_code'],
         };
       } else {
-        final msg = response.data['error']?['message'] ?? 'Registration failed.';
+        final msg =
+            response.data['error']?['message'] ?? 'Registration failed.';
         state = AuthState(error: msg);
         return {'success': false, 'error': msg};
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ?? 'Registration error (${e.message}).';
+      final msg = e.response?.data['error']?['message'] ??
+          'Registration error (${e.message}).';
       state = AuthState(error: msg);
       return {'success': false, 'error': msg};
     } catch (e) {
@@ -111,7 +170,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> verifyEmailOtp({required String email, required String code}) async {
+  Future<bool> verifyEmailOtp(
+      {required String email, required String code}) async {
     state = AuthState(isLoading: true);
     try {
       final response = await _apiClient.dio.post(
@@ -128,17 +188,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        _apiClient.setAuthToken(token);
-        state = AuthState(user: user, token: token);
-        _refreshNotifier.notify();
+        await _completeLogin(token, user);
         return true;
       } else {
-        final msg = response.data['error']?['message'] ?? 'Invalid verification code.';
+        final msg =
+            response.data['error']?['message'] ?? 'Invalid verification code.';
         state = AuthState(error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ?? 'Verification failed (${e.message}).';
+      final msg = e.response?.data['error']?['message'] ??
+          'Verification failed (${e.message}).';
       state = AuthState(error: msg);
       return false;
     } catch (e) {
@@ -160,17 +220,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        _apiClient.setAuthToken(token);
-        state = AuthState(user: user, token: token);
-        _refreshNotifier.notify();
+        await _completeLogin(token, user);
         return true;
       } else {
-        final msg = response.data['error']?['message'] ?? 'Authentication failed.';
+        final msg =
+            response.data['error']?['message'] ?? 'Authentication failed.';
         state = AuthState(error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ?? 'Network connection error (${e.message}).';
+      final msg = e.response?.data['error']?['message'] ??
+          'Network connection error (${e.message}).';
       state = AuthState(error: msg);
       return false;
     } catch (e) {
@@ -179,7 +239,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> loginWithSimulatedWallet({required String username, required String password}) async {
+  Future<bool> loginWithSimulatedWallet(
+      {required String username, required String password}) async {
     state = AuthState(isLoading: true);
     try {
       final response = await _apiClient.dio.post(
@@ -195,17 +256,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        _apiClient.setAuthToken(token);
-        state = AuthState(user: user, token: token);
-        _refreshNotifier.notify();
+        await _completeLogin(token, user);
         return true;
       } else {
-        final msg = response.data['error']?['message'] ?? 'Simulated wallet login failed.';
+        final msg = response.data['error']?['message'] ??
+            'Simulated wallet login failed.';
         state = AuthState(error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ?? 'Network connection error (${e.message}).';
+      final msg = e.response?.data['error']?['message'] ??
+          'Network connection error (${e.message}).';
       state = AuthState(error: msg);
       return false;
     } catch (e) {
@@ -229,7 +290,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return null;
   }
 
-  Future<bool> loginWithWallet({required String address, required String signature}) async {
+  Future<bool> loginWithWallet(
+      {required String address, required String signature}) async {
     state = AuthState(isLoading: true);
     try {
       final response = await _apiClient.dio.post(
@@ -237,6 +299,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         data: {
           'address': address.trim(),
           'signature': signature.trim(),
+          'remember_me': true,
         },
       );
 
@@ -245,26 +308,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        _apiClient.setAuthToken(token);
-        state = AuthState(user: user, token: token);
-        _refreshNotifier.notify();
+        await _completeLogin(token, user);
         return true;
       } else {
-        final msg = response.data['error']?['message'] ?? 'Wallet sign-in failed.';
+        final msg =
+            response.data['error']?['message'] ?? 'Wallet sign-in failed.';
         state = AuthState(error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ?? 'Network connection error (${e.message}).';
+      final msg = e.response?.data['error']?['message'] ??
+          'Network connection error (${e.message}).';
       state = AuthState(error: msg);
       return false;
     } catch (e) {
-      state = AuthState(error: 'An unexpected error occurred during wallet sign-in.');
+      state = AuthState(
+          error: 'An unexpected error occurred during wallet sign-in.');
       return false;
     }
   }
 
-  Future<bool> bindWallet({required String address, required String signature}) async {
+  Future<bool> bindWallet(
+      {required String address, required String signature}) async {
     if (state.token == null) return false;
     try {
       final response = await _apiClient.dio.post(
@@ -282,16 +347,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _refreshNotifier.notify();
         return true;
       } else {
-        final msg = response.data['error']?['message'] ?? 'Wallet binding failed.';
+        final msg =
+            response.data['error']?['message'] ?? 'Wallet binding failed.';
         state = AuthState(user: state.user, token: state.token, error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ?? 'Failed to bind wallet: ${e.message}';
+      final msg = e.response?.data['error']?['message'] ??
+          'Failed to bind wallet: ${e.message}';
       state = AuthState(user: state.user, token: state.token, error: msg);
       return false;
     } catch (e) {
-      state = AuthState(user: state.user, token: state.token, error: 'Unexpected error linking wallet.');
+      state = AuthState(
+          user: state.user,
+          token: state.token,
+          error: 'Unexpected error linking wallet.');
       return false;
     }
   }
@@ -307,16 +377,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _refreshNotifier.notify();
         return true;
       } else {
-        final msg = response.data['error']?['message'] ?? 'Wallet unbinding failed.';
+        final msg =
+            response.data['error']?['message'] ?? 'Wallet unbinding failed.';
         state = AuthState(user: state.user, token: state.token, error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ?? 'Failed to unlink wallet: ${e.message}';
+      final msg = e.response?.data['error']?['message'] ??
+          'Failed to unlink wallet: ${e.message}';
       state = AuthState(user: state.user, token: state.token, error: msg);
       return false;
     } catch (e) {
-      state = AuthState(user: state.user, token: state.token, error: 'Unexpected error unlinking wallet.');
+      state = AuthState(
+          user: state.user,
+          token: state.token,
+          error: 'Unexpected error unlinking wallet.');
       return false;
     }
   }
@@ -329,6 +404,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final user = UserModel.fromJson(response.data['data']);
         state = AuthState(user: user, token: state.token);
       }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        logout();
+      }
+      debugPrint('Failed to refresh profile: ${e.message}');
     } catch (e) {
       print('Failed to refresh profile: $e');
     }
@@ -340,6 +420,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _cacheRepo!.purgeUserPartition(userId);
     }
     _apiClient.setAuthToken(null);
+    unawaited(_sessionStore.clear().catchError((Object error) {
+      debugPrint('[auth] secure session removal failed: $error');
+    }));
     state = AuthState();
     _refreshNotifier.notify();
   }
@@ -349,5 +432,7 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   final refreshNotifier = ref.watch(authRefreshProvider.notifier);
   final cacheRepo = ref.watch(spotsCacheRepositoryProvider);
-  return AuthNotifier(apiClient, refreshNotifier, cacheRepo);
+  final notifier = AuthNotifier(apiClient, refreshNotifier, cacheRepo);
+  unawaited(notifier.restoreSession());
+  return notifier;
 });

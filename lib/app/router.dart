@@ -86,6 +86,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: refreshNotifier,
     redirect: (context, state) {
       final authState = ref.read(authProvider);
+      if (authState.isRestoringSession) {
+        if (state.matchedLocation == '/') return null;
+        return '/?redirect=${Uri.encodeComponent(state.uri.toString())}';
+      }
       final loggedIn = authState.isAuthenticated;
       return resolveAuthRedirect(
         loggedIn: loggedIn,
@@ -96,7 +100,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) => const DemoLoginScreen(),
+        builder: (context, state) => Consumer(
+          builder: (context, ref, _) =>
+              ref.watch(authProvider).isRestoringSession
+                  ? const _RestoringSessionScreen()
+                  : const DemoLoginScreen(),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -376,6 +385,24 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(router.dispose);
   return router;
 });
+
+class _RestoringSessionScreen extends StatelessWidget {
+  const _RestoringSessionScreen();
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Restoring your account…'),
+            ],
+          ),
+        ),
+      );
+}
 
 /// Resolves a shared/deep-linked destination without requiring navigation extra.
 class SpotDetailRouteScreen extends ConsumerStatefulWidget {

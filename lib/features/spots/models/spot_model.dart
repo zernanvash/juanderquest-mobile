@@ -1,3 +1,5 @@
+import '../../../core/network/api_client.dart';
+
 class SpotPhoto {
   final String url;
   const SpotPhoto({required this.url});
@@ -59,7 +61,6 @@ class SpotModel {
         url.contains('spot_video');
   }
 
-
   static const Map<String, String> _defaultCuratedPhotos = {
     'hundred-islands-national-park':
         'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?auto=format&fit=crop&w=1200&q=80',
@@ -77,8 +78,8 @@ class SpotModel {
     final slug = (j['slug'] ?? '').toString();
     final rawImg = j['image_url'] ?? j['photo_url'] ?? _firstPhoto(j);
     final fallbackImg = _defaultCuratedPhotos[slug];
-    final finalImg = (rawImg != null && rawImg.toString().isNotEmpty)
-        ? rawImg.toString()
+    final finalImg = (rawImg != null && rawImg.toString().trim().isNotEmpty)
+        ? _resolveImageUrl(rawImg.toString())
         : fallbackImg;
 
     return SpotModel(
@@ -103,6 +104,22 @@ class SpotModel {
       tags: List<String>.from(j['tags'] ?? []),
       reasons: List<String>.from(j['recommendation_reasons'] ?? []),
     );
+  }
+
+  static String _resolveImageUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    if (uri != null && (uri.scheme == 'https' || uri.scheme == 'http')) {
+      return uri.toString();
+    }
+    final apiUri = Uri.parse(ApiClient.apiBaseUrl);
+    final apiOrigin = Uri(
+      scheme: apiUri.scheme,
+      host: apiUri.host,
+      port: apiUri.hasPort ? apiUri.port : null,
+    );
+    final path =
+        value.trim().startsWith('/') ? value.trim() : '/${value.trim()}';
+    return apiOrigin.resolve(path).toString();
   }
 
   SpotModel copyWith({bool? saved}) => SpotModel(
