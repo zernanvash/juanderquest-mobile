@@ -45,6 +45,11 @@ class AppVersionInfo {
   final String? sha256;
   final int? sizeBytes;
 
+  /// Manifest v2 fields (optional; absent in v1 manifests).
+  final int? buildNumber;
+  final int? minSupportedBuildNumber;
+  final int? signingKeyGeneration;
+
   const AppVersionInfo({
     required this.versionCode,
     required this.versionName,
@@ -62,6 +67,9 @@ class AppVersionInfo {
     this.packageName,
     this.sha256,
     this.sizeBytes,
+    this.buildNumber,
+    this.minSupportedBuildNumber,
+    this.signingKeyGeneration,
   });
 
   factory AppVersionInfo.fromJson(Map<String, dynamic> json) {
@@ -97,6 +105,9 @@ class AppVersionInfo {
       packageName: json['packageName'] as String?,
       sha256: json['sha256'] as String?,
       sizeBytes: json['sizeBytes'] as int?,
+      buildNumber: json['buildNumber'] as int?,
+      minSupportedBuildNumber: json['minSupportedBuildNumber'] as int?,
+      signingKeyGeneration: json['signingKeyGeneration'] as int?,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
+import 'core/network/api_client.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -19,6 +20,9 @@ void main() async {
     debugPrint('[PlatformDispatcher Error] $error\n$stack');
     return true; // Handled, prevent app termination
   };
+
+  await ApiClient.initAppInfo();
+  await ApiClient.applyStoredServerOverride();
 
   try {
     await Firebase.initializeApp(

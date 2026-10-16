@@ -4,11 +4,32 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_failure.dart';
+import '../../../core/network/connection_monitor.dart';
 import '../data/auth_session_store.dart';
 import '../../spots/repositories/spots_cache_repository.dart';
 import '../models/user_model.dart';
 
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+class _ConnectionMonitorObserver implements ApiObserver {
+  _ConnectionMonitorObserver(this._monitor);
+
+  final ConnectionMonitor _monitor;
+
+  @override
+  void onFailure(ApiFailure failure) => _monitor.reportApiFailure(failure);
+
+  @override
+  void onSuccess(Duration elapsed) => _monitor.reportApiSuccess(elapsed);
+}
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final client = ApiClient();
+  final monitor = ref.watch(connectionMonitorProvider.notifier);
+  client.observer = _ConnectionMonitorObserver(monitor);
+  client.isOffline = () =>
+      ref.read(connectionMonitorProvider) == ConnectionStatus.offline;
+  return client;
+});
 
 class AuthRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
@@ -405,13 +426,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(user: user, token: state.token);
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        logout();
+      // A single 401 handler lives in the API client interceptor: it emits
+      // onSessionExpired once, which clears the session and prompts re-sign-in.
+      // This refresh must not log the traveler out silently on its own.
+      if (e.response?.statusCode != 401) {
+        debugPrint('Failed to refresh profile: ${e.message}');
       }
-      debugPrint('Failed to refresh profile: ${e.message}');
     } catch (e) {
-      print('Failed to refresh profile: $e');
+      debugPrint('Failed to refresh profile: $e');
     }
+  }
+
+  /// Session expired (401 on an authenticated call): clear credentials but
+  /// keep cached data and unsent drafts; the app shell prompts re-sign-in.
+  void handleSessionExpired() {
+    _apiClient.setAuthToken(null);
+    unawaited(_sessionStore.clear().catchError((Object error) {
+      debugPrint('[auth] secure session removal failed: $error');
+    }));
+    state = AuthState();
+    _refreshNotifier.notify();
   }
 
   void logout() {
@@ -434,5 +468,9 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final cacheRepo = ref.watch(spotsCacheRepositoryProvider);
   final notifier = AuthNotifier(apiClient, refreshNotifier, cacheRepo);
   unawaited(notifier.restoreSession());
+  final sessionSubscription = apiClient.onSessionExpired.listen((_) {
+    notifier.handleSessionExpired();
+  });
+  ref.onDispose(sessionSubscription.cancel);
   return notifier;
 });

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'connection_banner.dart';
 
 /// Standard layout container for JuanderQuest screens.
 ///
@@ -52,10 +54,28 @@ class JdqScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: appBar,
-      body: SafeArea(child: content),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _bannerFor(context),
+            Expanded(child: content),
+          ],
+        ),
+      ),
       bottomNavigationBar: bottomNavigationBar,
       floatingActionButton: floatingActionButton,
       floatingActionButtonLocation: floatingActionButtonLocation,
     );
+  }
+
+  /// Render the connectivity banner only where a ProviderScope exists so
+  /// isolated widget tests and previews keep working without one.
+  Widget _bannerFor(BuildContext context) {
+    try {
+      ProviderScope.containerOf(context, listen: false);
+      return const ConnectionBanner();
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
   }
 }
