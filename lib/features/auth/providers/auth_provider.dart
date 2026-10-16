@@ -280,14 +280,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await _completeLogin(token, user);
         return true;
       } else {
-        final msg = response.data['error']?['message'] ??
-            'Simulated wallet login failed.';
+        final error = response.data['error'];
+        final code = error is Map ? error['code'] : null;
+        final msg = code == 'SIMULATED_LOGIN_DISABLED' || code == 'SIMULATED_LOGIN_RESERVED'
+            ? 'Simulated login is unavailable on this server. Connect a wallet instead.'
+            : (error is Map ? error['message'] : null) ?? 'Simulated wallet login failed.';
         state = AuthState(error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ??
-          'Network connection error (${e.message}).';
+      final error = e.response?.data is Map ? e.response?.data['error'] : null;
+      final code = error is Map ? error['code'] : null;
+      final msg = code == 'SIMULATED_LOGIN_DISABLED' || code == 'SIMULATED_LOGIN_RESERVED'
+          ? 'Simulated login is unavailable on this server. Connect a wallet instead.'
+          : (error is Map ? error['message'] : null) ?? 'Network connection error (${e.message}).';
       state = AuthState(error: msg);
       return false;
     } catch (e) {
