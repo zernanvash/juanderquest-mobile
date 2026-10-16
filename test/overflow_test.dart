@@ -47,6 +47,7 @@ import 'package:juanderquest_app/features/app_update/models/app_version_info.dar
 import 'package:juanderquest_app/features/app_update/providers/startup_update_controller.dart';
 import 'package:juanderquest_app/features/app_update/widgets/startup_update_gate.dart';
 import 'package:juanderquest_app/features/app_update/widgets/update_dialog.dart';
+import 'package:juanderquest_app/features/spots/widgets/spot_posting_sheet.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
@@ -554,6 +555,26 @@ void main() {
         (tester) async {
       await testScreenOverflow(
           tester, const MapViewScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('SpotPostingSheet does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        const SpotPostingSheet(initialLat: 14.5995, initialLng: 120.9842),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('SpotPostingSheet does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        const SpotPostingSheet(initialLat: 14.5995, initialLng: 120.9842),
+        const Size(568, 320),
+        2.0,
+      );
     });
 
     testWidgets('NavigationScreen does not overflow in small portrait',

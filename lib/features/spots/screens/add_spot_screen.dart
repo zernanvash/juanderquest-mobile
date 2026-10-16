@@ -13,6 +13,7 @@ import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../utils/spot_posting.dart';
 
 class AddSpotScreen extends ConsumerStatefulWidget {
   const AddSpotScreen({super.key});
@@ -43,15 +44,6 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
 
   bool _submitting = false;
   String? _submitError;
-
-  final Map<String, List<String>> _subcategoriesMap = {
-    'eat_drink': ['restaurant', 'carinderia', 'cafe', 'bakery', 'street_food', 'bar'],
-    'nature_outdoors': ['beach', 'waterfall', 'cave', 'park', 'trailhead', 'viewpoint'],
-    'culture_heritage': ['church', 'museum', 'heritage_site', 'arts_crafts'],
-    'activities_wellness': ['sports_venue', 'running_spot', 'gym', 'recreation', 'water_activity'],
-    'shopping_local': ['market', 'souvenir', 'local_products'],
-    'stay': ['hotel', 'resort', 'homestay', 'campsite'],
-  };
 
   @override
   void dispose() {
@@ -226,23 +218,24 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
         }
       }
 
-      final payload = {
-        'name': _nameController.text.trim(),
-        'category': _category,
-        'subcategory': _subcategory,
-        'description': _descController.text.trim(),
-        'municipality': _muniController.text.trim(),
-        'address': _addressController.text.trim(),
-        'gps_lat': double.tryParse(_latController.text) ?? 16.0218,
-        'gps_lng': double.tryParse(_lngController.text) ?? 120.2319,
-        'price_level': 0,
-        'hours': {'daily': '08:00-18:00'},
-        'tags': ['community', 'scenic'],
-        'amenities': ['parking'],
-        'image_url': _uploadedUrl ?? '',
-        if (_uploadedAssetId != null) 'asset_id': _uploadedAssetId,
-        if (_uploadedAssetId != null) 'asset_ids': [_uploadedAssetId!],
-      };
+      final payload = buildSpotPayload(
+        SpotPostingDraft(
+          name: _nameController.text.trim(),
+          category: _category,
+          subcategory: _subcategory,
+          description: _descController.text.trim(),
+          municipality: _muniController.text.trim(),
+          address: _addressController.text.trim(),
+          lat: double.tryParse(_latController.text) ?? 16.0218,
+          lng: double.tryParse(_lngController.text) ?? 120.2319,
+          dailyHours: '08:00-18:00',
+          priceLevel: 0,
+          tags: const ['community', 'scenic'],
+          amenities: const ['parking'],
+        ),
+        assetId: _uploadedAssetId,
+        imageUrl: _uploadedUrl,
+      );
 
       final response = await client.dio.post('/spots', data: payload);
 
@@ -281,7 +274,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final subcategories = _subcategoriesMap[_category] ?? ['park'];
+    final subcategories = subcategoriesForCategory(_category);
 
     return JdqScaffold(
       scrollable: true,
@@ -523,7 +516,7 @@ class _AddSpotScreenState extends ConsumerState<AddSpotScreen> {
                 if (val != null) {
                   setState(() {
                     _category = val;
-                    _subcategory = (_subcategoriesMap[val] ?? ['park']).first;
+                    _subcategory = subcategoriesForCategory(val).first;
                   });
                 }
               },

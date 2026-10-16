@@ -16,10 +16,13 @@ import '../../quests/models/quest_model.dart';
 import '../../quests/providers/quest_provider.dart';
 import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
+import '../../spots/utils/spot_posting.dart';
+import '../../spots/widgets/spot_posting_sheet.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../utils/map_focus.dart';
 import '../utils/map_list.dart';
+import '../widgets/trail_preview_card.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
   const MapViewScreen({super.key});
@@ -36,6 +39,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   bool _isRefreshing = false;
   bool _locating = false;
   LatLng? _userLocation;
+  bool _pinPlacementActive = false;
+  SpotPostingDraft? _pendingDraft;
+  int _pendingResumeStep = 0;
 
   @override
   void initState() {
@@ -100,6 +106,74 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       mapHeightPx: camera.size.height,
     );
     _mapController.move(target, zoom);
+  }
+
+  /// Map-first posting: arm pin placement, then open the progressive wizard.
+  void _startPinPlacement() {
+    setState(() {
+      _pinPlacementActive = true;
+      _selectedQuest = null;
+      _selectedSpot = null;
+    });
+  }
+
+  void _cancelPinPlacement() {
+    setState(() => _pinPlacementActive = false);
+  }
+
+  Future<void> _handleMapTap(LatLng point) async {
+    if (!_pinPlacementActive) return;
+    setState(() => _pinPlacementActive = false);
+    await _openPostingSheet(point.latitude, point.longitude);
+  }
+
+  Future<void> _openPostingSheet(double lat, double lng) async {
+    final draft = _pendingDraft;
+    final resumeStep = _pendingResumeStep;
+    final result = await showModalBottomSheet<SpotPostingSheetResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SpotPostingSheet(
+        initialLat: lat,
+        initialLng: lng,
+        initialDraft: draft,
+        initialStep: resumeStep,
+      ),
+    );
+    if (!mounted) return;
+    if (result == null) {
+      setState(() {
+        _pendingDraft = null;
+        _pendingResumeStep = 0;
+      });
+      return;
+    }
+    if (result.movePinRequested) {
+      setState(() {
+        _pendingDraft = result.draft;
+        _pendingResumeStep = result.resumeStep;
+        _pinPlacementActive = true;
+      });
+      return;
+    }
+    final published = result.publishedSpot;
+    if (published != null) {
+      setState(() {
+        _pendingDraft = null;
+        _pendingResumeStep = 0;
+        _selectedSpot = published;
+        _selectedQuest = null;
+      });
+      ref.invalidate(spotDiscoveryProvider);
+      _focusPlace(published.gpsLat, published.gpsLng, 14.0);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${published.name} published.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
   }
 
   /// Explicit locate flow: no request before the traveler asks, honest fallbacks.
@@ -443,6 +517,28 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       ));
     }
 
+    final pendingDraft = _pendingDraft;
+    if (_pinPlacementActive && pendingDraft?.lat != null && pendingDraft?.lng != null) {
+      markers.add(Marker(
+        point: LatLng(pendingDraft!.lat!, pendingDraft.lng!),
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        child: Semantics(
+          label: 'Draft destination pin',
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.sunGold.withOpacity(0.25),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.sunGold, width: 3),
+              boxShadow: AppSpacing.cardShadow,
+            ),
+            child: const Icon(Icons.place_rounded, color: AppColors.woodBrown, size: 22),
+          ),
+        ),
+      ));
+    }
+
     return JdqScaffold(
       padding: EdgeInsets.zero,
       appBar: AppBar(
@@ -475,12 +571,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           // 1. Edge-to-Edge OpenStreetMap Canvas (1:1 with Web Leaflet engine)
           FlutterMap(
             mapController: _mapController,
-            options: const MapOptions(
-              initialCenter: LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
+            options: MapOptions(
+              initialCenter: const LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
               initialZoom: MapConfig.defaultZoom,
               minZoom: 6.0,
               maxZoom: 19.0,
-              interactionOptions: InteractionOptions(
+              onTap: (_, point) => _handleMapTap(point),
+              interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
             ),
@@ -615,6 +712,22 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             right: 12,
             child: Column(
               children: [
+                // Pin a New Destination (map-first posting entry)
+                FloatingActionButton.small(
+                  heroTag: 'pin_destination_map',
+                  backgroundColor: _pinPlacementActive ? AppColors.sunGold : Colors.white,
+                  foregroundColor: _pinPlacementActive ? AppColors.woodBrown : AppColors.primary,
+                  onPressed: () {
+                    if (_pinPlacementActive) {
+                      _cancelPinPlacement();
+                    } else {
+                      _startPinPlacement();
+                    }
+                  },
+                  tooltip: _pinPlacementActive ? 'Cancel Pin Placement' : 'Pin a New Destination',
+                  child: const Icon(Icons.add_location_alt_rounded, size: 18),
+                ),
+                const SizedBox(height: 8),
                 // Use My Location (explicit action; no background tracking)
                 FloatingActionButton.small(
                   heroTag: 'locate_me_map',
@@ -660,7 +773,48 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             ),
           ),
 
-          // 4. Bottom-Left Floating Marker Inspector Overlay Card (Web Parity)
+          // 4. Armed pin placement banner
+          if (_pinPlacementActive)
+            Positioned(
+              top: 110,
+              left: 12,
+              right: 64,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.sunGold.withOpacity(0.95),
+                  borderRadius: AppSpacing.roundedLg,
+                  boxShadow: AppSpacing.cardShadow,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.place_rounded, size: 16, color: AppColors.woodBrown),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _pendingDraft != null
+                            ? 'Tap the map to move the destination pin.'
+                            : 'Tap the map to place your destination pin.',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.woodBrown,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _cancelPinPlacement,
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // 5. Bottom-Left Floating Marker Inspector Overlay Card (Web Parity)
           if (_selectedQuest != null || _selectedSpot != null)
             Positioned(
               bottom: 16,
@@ -883,6 +1037,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 ),
             ],
           ),
+
+          // Trail preview: honest in-development card for destination spots only.
+          if (!isQuest) ...[
+            const SizedBox(height: 10),
+            TrailPreviewCard(key: ValueKey(_selectedSpot!.id)),
+          ],
 
           // Attribution stays visible even while this card covers the map corner.
           const SizedBox(height: 6),
