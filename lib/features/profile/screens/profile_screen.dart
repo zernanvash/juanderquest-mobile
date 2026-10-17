@@ -88,6 +88,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         actions: [
           if (isMine)
             IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              tooltip: 'Notifications',
+              onPressed: () => context.push('/notifications'),
+            ),
+          if (isMine)
+            IconButton(
               icon: const Icon(Icons.settings_outlined),
               tooltip: 'Explorer Settings',
               onPressed: () => context.push('/settings'),

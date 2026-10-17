@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/demo_login_screen.dart';
 import '../features/quests/screens/quest_detail_screen.dart';
+import '../features/quests/screens/quest_funding_screen.dart';
 import '../features/ar_experience/screens/ar_experience_screen.dart';
 import '../features/ar_experience/screens/ar_playground_screen.dart';
 import '../features/ar_experience/screens/ar_test_screen.dart';
@@ -12,6 +13,7 @@ import '../features/ar_experience/screens/ar_calibration_screen.dart';
 import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/affiliate_application_screen.dart';
+import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
@@ -169,6 +171,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                         questId: state.pathParameters['id'] ?? ''),
                     routes: [
                       GoRoute(
+                        path: 'funding',
+                        builder: (context, state) => QuestFundingScreen(
+                          questId: state.pathParameters['id'] ?? '',
+                        ),
+                      ),
+                      GoRoute(
                         path: 'ar',
                         builder: (context, state) => ARExperienceScreen(
                             questId: state.pathParameters['id']),
@@ -222,6 +230,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/shop', builder: (context, state) => const ShopScreen()),
+      GoRoute(
+        path: '/notifications',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const NotificationsScreen(),
+        ),
+      ),
       GoRoute(
           path: '/saved',
           builder: (context, state) => const SavedSpotsScreen()),

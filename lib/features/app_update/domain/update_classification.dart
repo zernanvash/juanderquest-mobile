@@ -8,6 +8,46 @@ enum UpdateChannel {
   baseRelease,
 }
 
+/// UX class for an available update (Plan 40 §B6).
+enum UpdateClass {
+  none,
+  optional,
+  recommended,
+  required,
+  reinstallRequired,
+}
+
+/// Signing-key generation baked into this build at compile time.
+const int installedSigningGeneration =
+    int.fromEnvironment('SIGNING_KEY_GENERATION', defaultValue: 1);
+
+/// Single source of truth for how an update should present itself.
+/// Pure function so every combination is unit-testable.
+UpdateClass classifyUpdate({
+  required int installedBuild,
+  AppVersionInfo? manifest,
+  int installedGeneration = installedSigningGeneration,
+}) {
+  if (manifest == null) return UpdateClass.none;
+
+  final manifestGeneration = manifest.signingKeyGeneration;
+  if (manifestGeneration != null && manifestGeneration > installedGeneration) {
+    return UpdateClass.reinstallRequired;
+  }
+
+  final latestBuild = manifest.buildNumber ?? manifest.versionCode;
+  if (latestBuild <= installedBuild) return UpdateClass.none;
+
+  final minSupported = manifest.minSupportedBuildNumber ?? manifest.minSupportedVersionCode;
+  if (manifest.forceUpdate || manifest.updatePolicy == UpdatePolicy.mandatory || installedBuild < minSupported) {
+    return UpdateClass.required;
+  }
+
+  if (manifest.baseReleaseRequired) return UpdateClass.recommended;
+
+  return UpdateClass.optional;
+}
+
 /// Operational phase of the startup update gate.
 enum GatePhase {
   checking,

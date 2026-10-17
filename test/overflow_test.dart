@@ -208,6 +208,16 @@ void main() {
     radiusMeters: 150,
     rewardPoints: 50,
     markerImageUrl: 'https://example.com/marker.png',
+    funding: const QuestFundingSummary(
+      status: 'active',
+      mode: 'budget',
+      rewardPoints: 50,
+      completionsLeftEstimate: 4,
+      sponsors: [
+        {'name': 'A Very Long Local Tourism Merchant Name'},
+      ],
+      perk: {'title': 'A Community Visit Reward', 'remaining': 3},
+    ),
   );
 
   const dummyCampaign = CampaignModel(

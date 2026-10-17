@@ -146,6 +146,8 @@ class QuestModel {
   final String? campaignId;
   final int? remainingSlots;
   final List<QuestStepModel> steps;
+  final String? authorId;
+  final QuestFundingSummary? funding;
 
   QuestModel({
     required this.id,
@@ -162,6 +164,8 @@ class QuestModel {
     this.campaignId,
     this.remainingSlots,
     this.steps = const [],
+    this.authorId,
+    this.funding,
   });
 
   int get allowedRadiusMeters => radiusMeters;
@@ -187,6 +191,10 @@ class QuestModel {
           .map(QuestStepModel.fromJson)
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order)),
+      authorId: json['author_id'] as String? ?? json['authorId'] as String?,
+      funding: json['funding'] is Map<String,dynamic>
+          ? QuestFundingSummary.fromJson(json['funding'] as Map<String,dynamic>)
+          : null,
     );
   }
 
@@ -204,4 +212,22 @@ class QuestModel {
         return category.toUpperCase();
     }
   }
+}
+
+class QuestFundingSummary {
+  final String status;
+  final String mode;
+  final DateTime? endsAt;
+  final int rewardPoints;
+  final int completionsLeftEstimate;
+  final List<Map<String,dynamic>> sponsors;
+  final Map<String,dynamic>? perk;
+  const QuestFundingSummary({required this.status,required this.mode,this.endsAt,required this.rewardPoints,required this.completionsLeftEstimate,this.sponsors=const [],this.perk});
+  factory QuestFundingSummary.fromJson(Map<String,dynamic> json)=>QuestFundingSummary(
+    status:json['status']?.toString()??'unknown',mode:json['mode']?.toString()??'budget',
+    endsAt:DateTime.tryParse(json['ends_at']?.toString()??''),rewardPoints:(json['reward_points'] as num?)?.toInt()??0,
+    completionsLeftEstimate:(json['completions_left_estimate'] as num?)?.toInt()??0,
+    sponsors:(json['sponsors'] is List ? (json['sponsors'] as List).whereType<Map<String,dynamic>>().toList() : const []),
+    perk:json['perk'] is Map<String,dynamic>?json['perk'] as Map<String,dynamic>:null,
+  );
 }
