@@ -1,13 +1,21 @@
 class MapConfig {
-  /// OpenStreetMap Standard Tile Layer (100% Free, Zero Watermarks, Zero API Key Required)
-  static const String tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-  static const List<String> subdomains = [];
-
-  /// OpenStreetMap Humanitarian (HOT) Warm Pastel Style (Zero Watermarks)
-  static const String hotTileUrl = 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png';
-  static const List<String> hotSubdomains = ['a', 'b', 'c'];
+  /// Fetch volunteer OSM tiles through the bounded first-party proxy.
+  static const String tileUrl = String.fromEnvironment(
+    'TILE_URL_TEMPLATE',
+    defaultValue:
+        'https://juanderquest.app/map-tiles/{z}/{x}/{y}.png?style=osm-standard-v1',
+  );
 
   static const String userAgentPackageName = 'dev.zernanvash.juanderquest';
+
+  static const int maxNativeZoom = 18;
+  static const double maxZoom = 19;
+  static const double minZoom = 5;
+
+  static const double phMinLat = 4.5;
+  static const double phMaxLat = 21.5;
+  static const double phMinLng = 116.0;
+  static const double phMaxLng = 127.0;
 
   // Pangasinan Default Coordinates
   static const double pangasinanLat = 16.0350;

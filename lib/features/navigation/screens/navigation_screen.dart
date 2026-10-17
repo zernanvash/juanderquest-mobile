@@ -1,3 +1,6 @@
+// flutter_map's dashed pattern constructor validates its segment list at runtime.
+// ignore_for_file: prefer_const_literals_to_create_immutables, prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +13,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/widgets/base_tile_layer.dart';
 import '../models/route_model.dart';
 import '../providers/navigation_provider.dart';
+import '../widgets/route_fallback_notice_card.dart';
 
 class NavigationScreen extends ConsumerStatefulWidget {
   final NavTarget destination;
@@ -200,7 +205,10 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
         Polyline(
           points: route.coordinates,
           strokeWidth: 8.0,
-          color: Colors.white.withOpacity(0.95),
+          color: Colors.white.withOpacity(route.isStraightLineFallback ? 0.55 : 0.95),
+          pattern: route.isStraightLineFallback
+              ? StrokePattern.dashed(segments: [8, 8])
+              : StrokePattern.solid(),
         ),
       );
 
@@ -208,7 +216,10 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
       polylineList.add(
         Polyline(
           points: route.coordinates,
-          strokeWidth: 5.0,
+          strokeWidth: route.isStraightLineFallback ? 4.0 : 5.0,
+          pattern: route.isStraightLineFallback
+              ? StrokePattern.dashed(segments: [8, 8])
+              : StrokePattern.solid(),
           color: navState.avoidCongested
               ? const Color(0xFF2D6A4F) // Emerald for Tranquil Diversion
               : const Color(0xFF0284C7), // Sky Blue for Standard
@@ -244,9 +255,9 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                       color: const Color(0xFF2D6A4F).withOpacity(0.12),
                       borderRadius: AppSpacing.roundedPill,
                     ),
-                    child: const Text(
-                      'Valhalla Engine',
-                      style: TextStyle(
+                    child: Text(
+                      route?.isStraightLineFallback == true ? 'Distance estimate' : 'Valhalla Engine',
+                      style: const TextStyle(
                         fontSize: 8.5,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF2D6A4F),
@@ -285,19 +296,20 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
             options: MapOptions(
               initialCenter: LatLng(widget.destination.lat, widget.destination.lng),
               initialZoom: 13.0,
-              minZoom: 6.0,
-              maxZoom: 19.0,
+              minZoom: MapConfig.minZoom,
+              maxZoom: MapConfig.maxZoom,
+              cameraConstraint: CameraConstraint.contain(
+                bounds: LatLngBounds(
+                  const LatLng(MapConfig.phMinLat, MapConfig.phMinLng),
+                  const LatLng(MapConfig.phMaxLat, MapConfig.phMaxLng),
+                ),
+              ),
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
             ),
             children: [
-              TileLayer(
-                urlTemplate: MapConfig.tileUrl,
-                subdomains: MapConfig.subdomains,
-                userAgentPackageName: MapConfig.userAgentPackageName,
-                maxZoom: 20,
-              ),
+              buildBaseTileLayer(),
 
               if (polylineList.isNotEmpty) PolylineLayer(polylines: polylineList),
               MarkerLayer(markers: markers),
@@ -492,7 +504,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                     ],
 
                     // Route Summary Bar
-                    if (route != null) ...[
+                    if (route != null && !route.isStraightLineFallback) ...[
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -580,7 +592,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                 const SizedBox(height: 8),
 
                 // Locate User GPS
-                FloatingActionButton.small(
+                if (route?.isStraightLineFallback != true) FloatingActionButton.small(
                   heroTag: 'locate_user_btn',
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.woodBrown,
@@ -704,7 +716,17 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
             ),
 
           // 6. Bottom Floating Turn Guidance Drawer
-          if (route != null && _showDirectionsDrawer && route.maneuvers.isNotEmpty)
+          if (route != null && route.isStraightLineFallback)
+            Positioned(
+              bottom: 12,
+              left: 12,
+              right: 12,
+              child: RouteFallbackNoticeCard(
+                route: route,
+                destination: '${widget.destination.lat},${widget.destination.lng}',
+              ),
+            ),
+          if (route != null && !route.isStraightLineFallback && _showDirectionsDrawer && route.maneuvers.isNotEmpty)
             Positioned(
               bottom: 12,
               left: 12,

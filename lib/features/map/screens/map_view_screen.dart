@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +15,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/widgets/base_tile_layer.dart';
 import '../../quests/models/quest_model.dart';
 import '../../quests/providers/quest_provider.dart';
 import '../../spots/models/spot_model.dart';
@@ -21,7 +25,9 @@ import '../../spots/widgets/spot_posting_sheet.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../utils/map_focus.dart';
+import '../utils/map_cluster.dart';
 import '../utils/map_list.dart';
+import '../widgets/map_cluster_list_sheet.dart';
 import '../widgets/trail_preview_card.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
@@ -42,6 +48,90 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   bool _pinPlacementActive = false;
   SpotPostingDraft? _pendingDraft;
   int _pendingResumeStep = 0;
+  Timer? _clusterRefreshTimer;
+  DateTime _lastClusterRefresh = DateTime.fromMillisecondsSinceEpoch(0);
+  double? _pendingClusterZoom;
+  double _clusterZoom = MapConfig.defaultZoom;
+
+  @override
+  void dispose() {
+    _clusterRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleClusterRefresh(MapCamera camera, bool hasGesture) {
+    _pendingClusterZoom = camera.zoom;
+    final now = DateTime.now();
+    final remaining = const Duration(milliseconds: 150) - now.difference(_lastClusterRefresh);
+    if (remaining <= Duration.zero) {
+      _clusterRefreshTimer?.cancel();
+      _flushClusterRefresh();
+      return;
+    }
+    _clusterRefreshTimer ??= Timer(remaining, _flushClusterRefresh);
+  }
+
+  void _flushClusterRefresh() {
+    _clusterRefreshTimer = null;
+    _lastClusterRefresh = DateTime.now();
+    final zoom = _pendingClusterZoom;
+    _pendingClusterZoom = null;
+    if (mounted && zoom != null && _clusterZoom != zoom) {
+      setState(() => _clusterZoom = zoom);
+    }
+  }
+
+  Future<void> _openIdenticalCluster(
+    MapCluster cluster,
+    Map<String, QuestModel> questsByPointId,
+    Map<String, SpotModel> spotsByPointId,
+  ) async {
+    final items = <MapClusterListItem>[];
+    for (final id in cluster.ids) {
+      final quest = questsByPointId[id];
+      if (quest != null) {
+        items.add(MapClusterListItem(
+          id: id,
+          title: quest.title,
+          subtitle: quest.locationName,
+          icon: Icons.explore_rounded,
+        ));
+        continue;
+      }
+      final spot = spotsByPointId[id];
+      if (spot != null) {
+        items.add(MapClusterListItem(
+          id: id,
+          title: spot.name,
+          subtitle: spot.address.trim().isNotEmpty ? spot.address : spot.municipality,
+          icon: Icons.place_rounded,
+        ));
+      }
+    }
+
+    final selectedPointId = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => MapClusterListSheet(
+        items: items,
+        onSelect: (id) => Navigator.of(sheetContext).pop(id),
+      ),
+    );
+    if (!mounted || selectedPointId == null) return;
+
+    final quest = questsByPointId[selectedPointId];
+    if (quest != null) {
+      setState(() { _selectedQuest = quest; _selectedSpot = null; });
+      _focusPlace(quest.gpsLat, quest.gpsLng, 13.0);
+      return;
+    }
+    final spot = spotsByPointId[selectedPointId];
+    if (spot != null) {
+      setState(() { _selectedSpot = spot; _selectedQuest = null; });
+      _focusPlace(spot.gpsLat, spot.gpsLng, 13.0);
+    }
+  }
 
   @override
   void initState() {
@@ -359,24 +449,99 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     final plannedSpots = planChoiceSpotlight(spots, (spot) => spot.id, spotlight);
 
     final markers = <Marker>[];
+    final visibleQuests = (_activeFilter == 'all' || _activeFilter == 'quests')
+        ? quests
+        : <QuestModel>[];
+    final visibleSpots = (_activeFilter == 'all' || _activeFilter == 'spots')
+        ? <SpotModel>[...plannedSpots.ordinary, ...plannedSpots.winners]
+        : <SpotModel>[];
+    final questsByPointId = <String, QuestModel>{};
+    final spotsByPointId = <String, SpotModel>{};
+    final clusterInputs = <MapClusterPoint>[];
 
-    // 1. Quests Markers (Gold Badges)
-    if (_activeFilter == 'all' || _activeFilter == 'quests') {
-      for (final quest in quests) {
-        final isSelected = _selectedQuest?.id == quest.id;
-        markers.add(
-          Marker(
+    for (final quest in visibleQuests) {
+      final id = 'quest:${quest.id}';
+      questsByPointId[id] = quest;
+      clusterInputs.add(MapClusterPoint(
+        id: id,
+        kind: MapClusterPointKind.quest,
+        lat: quest.gpsLat,
+        lng: quest.gpsLng,
+        pinned: _selectedQuest?.id == quest.id || quest.funding?.status == 'active',
+      ));
+    }
+    for (final spot in visibleSpots) {
+      final id = 'spot:${spot.id}';
+      spotsByPointId[id] = spot;
+      clusterInputs.add(MapClusterPoint(
+        id: id,
+        kind: MapClusterPointKind.spot,
+        lat: spot.gpsLat,
+        lng: spot.gpsLng,
+        pinned: _selectedSpot?.id == spot.id || spot.saved,
+      ));
+    }
+
+    final clusterResults = clusterPoints(clusterInputs, _clusterZoom);
+    for (final result in clusterResults) {
+      if (result is MapCluster) {
+        final size = result.count < 10 ? 34.0 : result.count < 50 ? 40.0 : 48.0;
+        markers.add(Marker(
+          point: LatLng(result.lat, result.lng),
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          child: Semantics(
+            label: '${result.count} destinations, zoom in',
+            button: true,
+            child: GestureDetector(
+              onTap: () {
+                if (result.hasNonZeroSpan) {
+                  _mapController.fitCamera(CameraFit.bounds(
+                    bounds: LatLngBounds(
+                      LatLng(result.minLat, result.minLng),
+                      LatLng(result.maxLat, result.maxLng),
+                    ),
+                    padding: const EdgeInsets.all(48),
+                    maxZoom: math.min(_mapController.camera.zoom + 3, 16),
+                  ));
+                } else {
+                  _openIdenticalCluster(result, questsByPointId, spotsByPointId);
+                }
+              },
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: result.hasQuest ? AppColors.sunGold : Colors.white,
+                    width: result.hasQuest ? 3 : 2,
+                  ),
+                  boxShadow: AppSpacing.cardShadow,
+                ),
+                child: Center(
+                  child: Text(
+                    '${result.count}',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ));
+      } else if (result is MapPointResult) {
+        final quest = questsByPointId[result.id];
+        if (quest != null) {
+          final isSelected = _selectedQuest?.id == quest.id;
+          markers.add(Marker(
             point: LatLng(quest.gpsLat, quest.gpsLng),
             width: isSelected ? 44 : 38,
             height: isSelected ? 44 : 38,
             alignment: Alignment.center,
             child: GestureDetector(
               onTap: () {
-                setState(() {
-                  _selectedQuest = quest;
-                  _selectedSpot = null;
-                });
-                          _focusPlace(quest.gpsLat, quest.gpsLng, 13.0);
+                setState(() { _selectedQuest = quest; _selectedSpot = null; });
+                _focusPlace(quest.gpsLat, quest.gpsLng, 13.0);
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -388,111 +553,55 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     width: isSelected ? 2.5 : 2.0,
                   ),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: isSelected ? 8 : 4,
-                      offset: const Offset(0, 2),
-                    ),
+                    BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: isSelected ? 8 : 4, offset: const Offset(0, 2)),
                   ],
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.explore_rounded,
-                    color: const Color(0xFFFFB703),
-                    size: isSelected ? 24 : 20,
-                  ),
-                ),
+                child: Center(child: Icon(Icons.explore_rounded, color: const Color(0xFFFFB703), size: isSelected ? 24 : 20)),
               ),
             ),
-          ),
-        );
-      }
-    }
+          ));
+          continue;
+        }
 
-    // 2. Spots Markers (Emerald Badges)
-    if (_activeFilter == 'all' || _activeFilter == 'spots') {
-      for (final spot in plannedSpots.ordinary) {
+        final spot = spotsByPointId[result.id];
+        if (spot == null) continue;
         final isSelected = _selectedSpot?.id == spot.id;
-        markers.add(
-          Marker(
-            point: LatLng(spot.gpsLat, spot.gpsLng),
-            width: isSelected ? 40 : 34,
-            height: isSelected ? 40 : 34,
-            alignment: Alignment.center,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedSpot = spot;
-                  _selectedQuest = null;
-                });
-                          _focusPlace(spot.gpsLat, spot.gpsLng, 13.0);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1B4332),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? const Color(0xFF52B788) : const Color(0xFFFAF9F5),
-                    width: isSelected ? 2.5 : 2.0,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: isSelected ? 8 : 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.park_rounded,
-                    color: const Color(0xFFFAF9F5),
-                    size: isSelected ? 22 : 18,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }
-    }
-
-    // The winner coordinates come from the already-loaded spot catalog. This
-    // adds a marker without remounting FlutterMap or its tile layer.
-    if (spotlight != null && (_activeFilter == 'all' || _activeFilter == 'spots')) {
-      for (final spot in plannedSpots.winners) {
-        final isSelected = _selectedSpot?.id == spot.id;
+        final isSpotlight = plannedSpots.winners.any((item) => item.id == spot.id);
+        final size = isSpotlight ? (isSelected ? 48.0 : 42.0) : (isSelected ? 40.0 : 34.0);
         markers.add(Marker(
           point: LatLng(spot.gpsLat, spot.gpsLng),
-          width: isSelected ? 48 : 42,
-          height: isSelected ? 48 : 42,
+          width: size,
+          height: size,
           alignment: Alignment.center,
           child: Semantics(
-            label: 'JuanChoice community spotlight: ${spot.name}',
+            label: isSpotlight ? 'JuanChoice community spotlight: ${spot.name}' : spot.name,
             button: true,
             child: GestureDetector(
               onTap: () {
                 setState(() { _selectedSpot = spot; _selectedQuest = null; });
-                    _focusPlace(spot.gpsLat, spot.gpsLng, 13.0);
+                _focusPlace(spot.gpsLat, spot.gpsLng, 13.0);
               },
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppColors.sunGold,
+                  color: isSpotlight ? AppColors.sunGold : const Color(0xFF1B4332),
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.woodBrown, width: isSelected ? 3 : 2),
+                  border: Border.all(
+                    color: isSpotlight ? AppColors.woodBrown : (isSelected ? const Color(0xFF52B788) : const Color(0xFFFAF9F5)),
+                    width: isSelected ? 3 : 2,
+                  ),
                   boxShadow: AppSpacing.cardShadow,
                 ),
-                child: Icon(Icons.workspace_premium_rounded,
-                  color: AppColors.woodBrown, size: isSelected ? 28 : 24),
+                child: Icon(
+                  isSpotlight ? Icons.workspace_premium_rounded : Icons.park_rounded,
+                  color: isSpotlight ? AppColors.woodBrown : const Color(0xFFFAF9F5),
+                  size: isSpotlight ? (isSelected ? 28 : 24) : (isSelected ? 22 : 18),
+                ),
               ),
             ),
           ),
         ));
       }
     }
-
-
 
     if (_userLocation != null) {
       markers.add(Marker(
@@ -574,20 +683,22 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             options: MapOptions(
               initialCenter: const LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
               initialZoom: MapConfig.defaultZoom,
-              minZoom: 6.0,
-              maxZoom: 19.0,
+              minZoom: MapConfig.minZoom,
+              maxZoom: MapConfig.maxZoom,
+              cameraConstraint: CameraConstraint.contain(
+                bounds: LatLngBounds(
+                  const LatLng(MapConfig.phMinLat, MapConfig.phMinLng),
+                  const LatLng(MapConfig.phMaxLat, MapConfig.phMaxLng),
+                ),
+              ),
+              onPositionChanged: _scheduleClusterRefresh,
               onTap: (_, point) => _handleMapTap(point),
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
             ),
             children: [
-              TileLayer(
-                urlTemplate: MapConfig.tileUrl,
-                subdomains: MapConfig.subdomains,
-                userAgentPackageName: MapConfig.userAgentPackageName,
-                maxZoom: 20,
-              ),
+              buildBaseTileLayer(),
 
               MarkerLayer(markers: markers),
 
@@ -857,7 +968,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   Widget _buildMarkerInspectorCard() {
     final isQuest = _selectedQuest != null;
     final title = isQuest ? _selectedQuest!.title : _selectedSpot!.name;
-    final location = isQuest ? _selectedQuest!.locationName : _selectedSpot!.municipality;
+    final location = isQuest
+        ? _selectedQuest!.locationName
+        : (_selectedSpot!.address.trim().isNotEmpty
+            ? _selectedSpot!.address
+            : _selectedSpot!.municipality);
     final lat = isQuest ? _selectedQuest!.gpsLat : _selectedSpot!.gpsLat;
     final lng = isQuest ? _selectedQuest!.gpsLng : _selectedSpot!.gpsLng;
     final bountyText = isQuest ? '+${_selectedQuest!.rewardPoints} mJDQ' : (_selectedSpot!.questId != null ? '+250 mJDQ' : null);
@@ -947,9 +1062,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
           const SizedBox(height: 2),
 
-          // Location & Coordinates
+          // Place description without exposing raw coordinates.
           Text(
-            '$location • (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
+            location,
             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

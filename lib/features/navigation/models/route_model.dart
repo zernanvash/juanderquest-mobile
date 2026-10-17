@@ -87,11 +87,21 @@ class RouteModel {
   final RouteSummary summary;
   final List<LatLng> coordinates;
   final List<RouteManeuver> maneuvers;
+  final bool degraded;
+  final String? warningCode;
+  final String? warningMessage;
+  final String? coverageLabel;
+
+  bool get isStraightLineFallback => degraded || warningCode == 'STRAIGHT_LINE_FALLBACK';
 
   const RouteModel({
     required this.summary,
     required this.coordinates,
     required this.maneuvers,
+    this.degraded = false,
+    this.warningCode,
+    this.warningMessage,
+    this.coverageLabel,
   });
 
   factory RouteModel.fromJson(Map<String, dynamic> json) {
@@ -118,6 +128,10 @@ class RouteModel {
       summary: RouteSummary.fromJson(summaryData),
       coordinates: coordinates,
       maneuvers: maneuvers,
+      degraded: json['degraded'] == true,
+      warningCode: (json['warning'] as Map?)?['code']?.toString(),
+      warningMessage: (json['warning'] as Map?)?['message']?.toString(),
+      coverageLabel: (json['warning'] as Map?)?['coverageLabel']?.toString(),
     );
   }
 }

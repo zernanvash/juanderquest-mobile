@@ -1,0 +1,70 @@
+[
+  {
+    "name": "three nearby spots form one cluster at z9",
+    "zoom": 9,
+    "points": [
+      { "id": "spot-a", "kind": "spot", "lat": 16, "lng": 120, "pinned": false },
+      { "id": "spot-b", "kind": "spot", "lat": 16.001, "lng": 120.001, "pinned": false },
+      { "id": "spot-c", "kind": "spot", "lat": 16.002, "lng": 120.002, "pinned": false }
+    ],
+    "expected": [
+      { "type": "cluster", "key": "z9:1706:931", "count": 3, "lat": 16.001, "lng": 120.001, "bounds": { "minLat": 16, "maxLat": 16.002, "minLng": 120, "maxLng": 120.002 }, "ids": ["spot-a", "spot-b", "spot-c"], "hasQuest": false }
+    ]
+  },
+  {
+    "name": "the same destinations stay separate at z16",
+    "zoom": 16,
+    "points": [
+      { "id": "spot-a", "kind": "spot", "lat": 16, "lng": 120, "pinned": false },
+      { "id": "spot-b", "kind": "spot", "lat": 16.001, "lng": 120.001, "pinned": false },
+      { "id": "spot-c", "kind": "spot", "lat": 16.002, "lng": 120.002, "pinned": false }
+    ],
+    "expected": [
+      { "type": "point", "id": "spot-a" },
+      { "type": "point", "id": "spot-b" },
+      { "type": "point", "id": "spot-c" }
+    ]
+  },
+  {
+    "name": "pinned quest stays separate from nearby unpinned spots",
+    "zoom": 9,
+    "points": [
+      { "id": "spot-a", "kind": "spot", "lat": 16, "lng": 120, "pinned": false },
+      { "id": "spot-b", "kind": "spot", "lat": 16.001, "lng": 120.001, "pinned": false },
+      { "id": "quest-pinned", "kind": "quest", "lat": 16.0015, "lng": 120.0015, "pinned": true }
+    ],
+    "expected": [
+      { "type": "cluster", "key": "z9:1706:931", "count": 2, "lat": 16.0005, "lng": 120.0005, "bounds": { "minLat": 16, "maxLat": 16.001, "minLng": 120, "maxLng": 120.001 }, "ids": ["spot-a", "spot-b"], "hasQuest": false },
+      { "type": "point", "id": "quest-pinned" }
+    ]
+  },
+  {
+    "name": "points across a grid boundary remain separate",
+    "zoom": 9,
+    "points": [
+      { "id": "spot-west", "kind": "spot", "lat": 16, "lng": 120.058, "pinned": false },
+      { "id": "spot-east", "kind": "spot", "lat": 16, "lng": 120.059, "pinned": false }
+    ],
+    "expected": [
+      { "type": "point", "id": "spot-east" },
+      { "type": "point", "id": "spot-west" }
+    ]
+  },
+  {
+    "name": "identical coordinates create a zero-span cluster",
+    "zoom": 9,
+    "points": [
+      { "id": "quest-same", "kind": "quest", "lat": 16, "lng": 120, "pinned": false },
+      { "id": "spot-same", "kind": "spot", "lat": 16, "lng": 120, "pinned": false }
+    ],
+    "expected": [
+      { "type": "cluster", "key": "z9:1706:931", "count": 2, "lat": 16, "lng": 120, "bounds": { "minLat": 16, "maxLat": 16, "minLng": 120, "maxLng": 120 }, "ids": ["quest-same", "spot-same"], "hasQuest": true }
+    ]
+  },
+  {
+    "name": "empty input stays empty",
+    "zoom": 9,
+    "points": [],
+    "expected": []
+  }
+]
