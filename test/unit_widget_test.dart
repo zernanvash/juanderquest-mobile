@@ -62,6 +62,16 @@ void main() {
         'gps_lng': 119.9,
         'radius_meters': 150,
         'reward_points': 50,
+        'funding': {
+          'mode': 'budget',
+          'status': 'active',
+          'ends_at': '2026-10-30T00:00:00.000Z',
+          'reward_points': 50,
+          'completions_left_estimate': 4,
+          'sponsors': [{'name': 'Local Tourism Merchant', 'logo': null}],
+          'perk': {'title': 'Community drink', 'remaining': 2},
+          'simulated': true,
+        },
         'marker_code': 'MARKER_01',
         'marker_image_url': 'http://example.com/img.png',
         'steps': [
@@ -74,6 +84,9 @@ void main() {
       expect(quest.id, 'q1');
       expect(quest.categoryDisplay, 'Eco-Tourism');
       expect(quest.rewardPoints, 50);
+      expect(quest.funding?.completionsLeftEstimate, 4);
+      expect(quest.funding?.sponsors.single['name'], 'Local Tourism Merchant');
+      expect(quest.funding?.perk?['title'], 'Community drink');
       expect(quest.steps.map((step) => step.title).toList(), ['Arrive', 'Photo proof']);
       expect(quest.steps.last.checkpointType, 'photo');
     });

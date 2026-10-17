@@ -937,6 +937,57 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                               ),
                             ],
                           ),
+                          if (quest.funding != null) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(AppSpacing.sm),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Funded Eco-Quest · ${quest.funding!.completionsLeftEstimate} estimated rewards left',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if (quest.funding!.sponsors.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Supported by ${quest.funding!.sponsors.map((sponsor) => sponsor['name']?.toString()).whereType<String>().join(', ')}',
+                                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                  if (quest.funding!.perk case final perk?) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Sponsor perk: ${perk['title'] ?? 'available'} · ${perk['remaining'] ?? 0} available',
+                                      style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Simulated points only; no cash or blockchain value.',
+                                    style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (quest.authorId != null &&
+                              ref.watch(authProvider).user?.id == quest.authorId) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            OutlinedButton.icon(
+                              onPressed: () => context.push('/quests/${quest.id}/funding'),
+                              icon: const Icon(Icons.account_balance_wallet_outlined),
+                              label: const Text('Manage funding'),
+                            ),
+                          ],
                           const Divider(height: AppSpacing.lg * 2),
                           const Text(
                             'GPS RADIUS GUARD',
