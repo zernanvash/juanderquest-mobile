@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'app/app.dart';
 import 'core/network/api_client.dart';
+import 'core/services/push_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -35,6 +36,14 @@ void main() async {
     debugPrint('[Firebase] Initialized successfully with options');
   } catch (e) {
     debugPrint('[Firebase] Initialization note (continuing safely): $e');
+  }
+
+  // Push notifications background listener registration
+  try {
+    final container = ProviderContainer();
+    await container.read(pushServiceProvider).init();
+  } catch (e) {
+    debugPrint('[Push] Startup init note: $e');
   }
 
   runApp(

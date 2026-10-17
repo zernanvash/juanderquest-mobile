@@ -442,7 +442,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const Divider(height: 1, color: AppColors.borderLowContrast),
                   ListTile(
-                    onTap: () => context.push('/leaderboard'),
+                    onTap: () => context.push('/plaza'),
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(

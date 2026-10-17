@@ -29,7 +29,7 @@ import '../features/quests/screens/quest_list_screen.dart';
 import '../features/quests/screens/campaign_detail_screen.dart';
 import '../features/quests/models/campaign_model.dart';
 import '../features/spots/models/spot_model.dart';
-import '../features/leaderboard/screens/leaderboard_screen.dart';
+import '../features/plaza/plaza_screen.dart';
 import '../features/about/screens/about_screen.dart';
 import '../features/trail/trail_coming_soon_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
@@ -287,12 +287,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/leaderboard',
+        path: '/plaza',
         pageBuilder: (context, state) => buildDirectionalSlidePage(
           context: context,
           state: state,
-          child: const LeaderboardScreen(),
+          child: PlazaScreen(
+            initialActivityId: state.uri.queryParameters['activity'],
+            initialOpenComments: state.uri.queryParameters['comments'] == '1',
+          ),
         ),
+      ),
+      GoRoute(
+        path: '/leaderboard',
+        redirect: (context, state) => '/plaza',
       ),
       GoRoute(
         path: '/about',
