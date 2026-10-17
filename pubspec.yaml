@@ -32,6 +32,7 @@ dependencies:
   reown_appkit: 1.9.0
   flutter_secure_storage: ^10.3.4
   connectivity_plus: ^6.0.0
+  firebase_messaging: ^16.7.0
 
 
 dev_dependencies:

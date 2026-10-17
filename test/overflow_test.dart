@@ -35,6 +35,9 @@ import 'package:juanderquest_app/features/spots/providers/spot_discovery_provide
 import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
 import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
 import 'package:juanderquest_app/features/leaderboard/screens/leaderboard_screen.dart';
+import 'package:juanderquest_app/features/plaza/plaza_screen.dart';
+import 'package:juanderquest_app/features/plaza/plaza_provider.dart';
+import 'package:juanderquest_app/core/services/push_service.dart';
 import 'package:juanderquest_app/features/about/screens/about_screen.dart';
 import 'package:juanderquest_app/features/navigation/models/route_model.dart';
 import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
@@ -182,6 +185,28 @@ class InertStartupUpdateController extends StartupUpdateController {
 
   @override
   Future<void> initStartupGate() async {}
+}
+
+class InertPushService extends PushService {
+  InertPushService(super.apiClient);
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<bool> hasAskedPermission() async => true;
+
+  @override
+  Future<bool> requestPermissionAndRegister() async => false;
+}
+
+class InertPlazaFeedNotifier extends PlazaFeedNotifier {
+  InertPlazaFeedNotifier(super.api) {
+    state = const AsyncValue.data([]);
+  }
+
+  @override
+  Future<void> loadFeed({bool reset = false}) async {}
 }
 
 void main() {
@@ -413,6 +438,31 @@ void main() {
                     InertUpdateRepository(),
                     const StartupGateState(phase: GatePhase.ready),
                   )),
+          pushServiceProvider.overrideWith((ref) => InertPushService(ref.watch(apiClientProvider))),
+          plazaFeedProvider.overrideWith((ref) => InertPlazaFeedNotifier(ref.watch(apiClientProvider))),
+          plazaStandingsProvider.overrideWith((ref, key) async => {
+                'entries': [
+                  {
+                    'rank': 1,
+                    'user_id': 'u1',
+                    'display_name': 'Juan Dela Cruz',
+                    'score': 1500,
+                    'quests': 5,
+                    'home_town': 'Dagupan City',
+                    'is_self': true,
+                  },
+                ],
+                'me': {
+                  'rank': 1,
+                  'user_id': 'u1',
+                  'display_name': 'Juan Dela Cruz',
+                  'score': 1500,
+                  'quests': 5,
+                  'home_town': 'Dagupan City',
+                  'is_self': true,
+                  'delta': 1,
+                },
+              }),
         ],
         child: MaterialApp(
           home: child,
@@ -535,6 +585,18 @@ void main() {
         (tester) async {
       await testScreenOverflow(
           tester, const LeaderboardScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('PlazaScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const PlazaScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('PlazaScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const PlazaScreen(), const Size(568, 320), 2.0);
     });
 
     testWidgets('AboutScreen does not overflow in small portrait',
