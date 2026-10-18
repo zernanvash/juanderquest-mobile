@@ -30,11 +30,11 @@ class AsyncStateView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Center(
+      return const Center(
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.sectionGap),
-          child: const Column(
+          physics: AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.all(AppSpacing.sectionGap),
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(color: AppColors.primary),
