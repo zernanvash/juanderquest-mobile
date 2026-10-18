@@ -115,4 +115,55 @@ void main() {
       );
     });
   });
+
+  group('SubmissionNotifier fetchSubmissions deduplication and throttling', () {
+    test('concurrent fetchSubmissions calls deduplicate to exactly 1 network request', () async {
+      int requestCount = 0;
+      final client = ApiClient();
+      client.dio.httpClientAdapter = _FakeAdapter((options) async {
+        if (options.method == 'GET' && options.path == '/submissions') {
+          requestCount++;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          return _json({'success': true, 'data': []}, 200);
+        }
+        return _json({'success': false}, 404);
+      });
+
+      final notifier = SubmissionNotifier(client);
+      // Fire 5 concurrent calls
+      await Future.wait([
+        notifier.fetchSubmissions(),
+        notifier.fetchSubmissions(),
+        notifier.fetchSubmissions(),
+        notifier.fetchSubmissions(),
+        notifier.fetchSubmissions(),
+      ]);
+
+      expect(requestCount, equals(1));
+    });
+
+    test('automatic repeated calls within 30s throttle to 1 request, while force=true bypasses throttle', () async {
+      int requestCount = 0;
+      final client = ApiClient();
+      client.dio.httpClientAdapter = _FakeAdapter((options) async {
+        if (options.method == 'GET' && options.path == '/submissions') {
+          requestCount++;
+          return _json({'success': true, 'data': []}, 200);
+        }
+        return _json({'success': false}, 404);
+      });
+
+      final notifier = SubmissionNotifier(client);
+      await notifier.fetchSubmissions();
+      expect(requestCount, equals(1));
+
+      // Immediate second automatic fetch (e.g. repeated resume/re-render)
+      await notifier.fetchSubmissions();
+      expect(requestCount, equals(1), reason: 'Throttled within 30s interval');
+
+      // Manual or post-submit force=true fetch
+      await notifier.fetchSubmissions(force: true);
+      expect(requestCount, equals(2), reason: 'force=true bypasses cooldown');
+    });
+  });
 }

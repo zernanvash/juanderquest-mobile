@@ -77,7 +77,7 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
                         Navigator.of(sheetContext).pop();
                         ProviderScope.containerOf(context, listen: false)
                             .read(routerProvider)
-                            .go('/login');
+                            .go('/');
                       },
                       child: const Text('Sign in'),
                     ),
@@ -122,6 +122,9 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
     });
   }
 
+  DateTime? _lastResumeNetworkRefresh;
+  static const Duration _resumeNetworkRefreshThrottle = Duration(seconds: 30);
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final container = ProviderScope.containerOf(context, listen: false);
@@ -130,13 +133,18 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
     if (state == AppLifecycleState.resumed) {
       monitor.setBackgrounded(false);
       final auth = container.read(authProvider);
+      final now = DateTime.now();
+
       if (auth.isAuthenticated) {
-        container.read(authProvider.notifier).refreshProfile();
-        container.read(submissionProvider.notifier).fetchSubmissions();
+        if (_lastResumeNetworkRefresh == null ||
+            now.difference(_lastResumeNetworkRefresh!) > _resumeNetworkRefreshThrottle) {
+          _lastResumeNetworkRefresh = now;
+          container.read(authProvider.notifier).refreshProfile();
+          container.read(submissionProvider.notifier).fetchSubmissions();
+        }
       }
 
       // Resume check throttled to 15 minutes
-      final now = DateTime.now();
       if (_lastResumeCheck == null || now.difference(_lastResumeCheck!) > const Duration(minutes: 15)) {
         _lastResumeCheck = now;
         container.read(appUpdateProvider.notifier).checkForUpdates(silent: true).then((hasUpdate) {

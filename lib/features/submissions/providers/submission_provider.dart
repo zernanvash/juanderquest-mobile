@@ -25,6 +25,10 @@ class SubmissionNotifier extends StateNotifier<SubmissionState> {
   final ApiClient _apiClient;
   final _uuid = const Uuid();
 
+  Future<void>? _inFlightFetch;
+  DateTime? _lastFetchTime;
+  static const Duration minAutoRefetchInterval = Duration(seconds: 30);
+
   SubmissionNotifier(this._apiClient) : super(SubmissionState());
 
   Future<bool> submitProof({
@@ -71,7 +75,7 @@ class SubmissionNotifier extends StateNotifier<SubmissionState> {
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        await fetchSubmissions();
+        await fetchSubmissions(force: true);
         return true;
       } else {
         final msg = response.data['error']?['message'] ?? 'Submission rejected.';
@@ -90,7 +94,29 @@ class SubmissionNotifier extends StateNotifier<SubmissionState> {
     }
   }
 
-  Future<void> fetchSubmissions() async {
+  /// Fetches the user's submissions.
+  ///
+  /// Deduplicates concurrent in-flight requests.
+  /// Throttles automatic triggers (e.g. app lifecycle resume, screen mount)
+  /// with a 30-second cooldown unless [force] is true (e.g. pull-to-refresh or post-submit).
+  Future<void> fetchSubmissions({bool force = false}) {
+    if (_inFlightFetch != null) {
+      return _inFlightFetch!;
+    }
+
+    final now = DateTime.now();
+    if (!force && _lastFetchTime != null && now.difference(_lastFetchTime!) < minAutoRefetchInterval) {
+      return Future.value();
+    }
+
+    final future = _executeFetch();
+    _inFlightFetch = future;
+    return future.whenComplete(() {
+      _inFlightFetch = null;
+    });
+  }
+
+  Future<void> _executeFetch() async {
     state = SubmissionState(submissions: state.submissions, isLoading: true);
     try {
       final response = await _apiClient.dio.get('/submissions');
@@ -98,6 +124,7 @@ class SubmissionNotifier extends StateNotifier<SubmissionState> {
         final list = (response.data['data'] as List)
             .map((s) => SubmissionModel.fromJson(s))
             .toList();
+        _lastFetchTime = DateTime.now();
         state = SubmissionState(submissions: list);
       }
     } catch (e) {
