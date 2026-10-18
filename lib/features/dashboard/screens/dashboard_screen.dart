@@ -73,7 +73,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             await Future.wait([
               ref.refresh(choiceEngagementProvider.future),
               ref.refresh(choiceOverviewProvider.future),
-              ref.read(submissionProvider.notifier).fetchSubmissions(),
+              ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
               ref.read(spotDiscoveryProvider.notifier).load(refresh: true),
               ref.read(questProvider.notifier).fetchQuests(),
             ]);
@@ -193,7 +193,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     message: 'Recent activity is unavailable.',
                     onRetry: () => ref
                         .read(submissionProvider.notifier)
-                        .fetchSubmissions())
+                        .fetchSubmissions(force: true))
               else if (submissions.submissions.isEmpty)
                 const _EmptyPanel(
                     message: 'Your quest submissions will appear here.')

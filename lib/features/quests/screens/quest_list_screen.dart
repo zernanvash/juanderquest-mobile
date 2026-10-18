@@ -152,7 +152,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
             ref
                 .read(campaignProvider.notifier)
                 .fetchCampaigns(forceRefresh: true),
-            ref.read(submissionProvider.notifier).fetchSubmissions(),
+            ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
           ]);
         },
         color: AppColors.primary,

@@ -36,7 +36,7 @@ class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScree
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await ref.read(submissionProvider.notifier).fetchSubmissions();
+          await ref.read(submissionProvider.notifier).fetchSubmissions(force: true);
         },
         color: AppColors.primary,
         child: AsyncStateView(
