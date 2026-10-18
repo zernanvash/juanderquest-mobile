@@ -159,8 +159,13 @@ class ApiClient {
             code: failure.code,
           );
 
-          final wasAuthenticated = error.requestOptions.headers.containsKey('Authorization') || _authToken != null;
-          if (failure.code == ApiFailureCodes.unauthorized && wasAuthenticated && !_sessionExpiredEmitted) {
+          final requestAuth = error.requestOptions.headers['Authorization'];
+          final failedToken = requestAuth is String && requestAuth.startsWith('Bearer ')
+              ? requestAuth.substring(7)
+              : null;
+          final isCurrentSessionFailed = _authToken != null && failedToken == _authToken;
+
+          if (failure.code == ApiFailureCodes.unauthorized && isCurrentSessionFailed && !_sessionExpiredEmitted) {
             _sessionExpiredEmitted = true;
             _authToken = null;
             if (!_sessionExpiredController.isClosed) {

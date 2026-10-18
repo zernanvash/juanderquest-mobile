@@ -61,6 +61,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRefreshNotifier _refreshNotifier;
   final SpotsCacheRepository? _cacheRepo;
   final AuthSessionStore _sessionStore;
+  int _sessionGeneration = 0;
 
   AuthNotifier(
     this._apiClient,
@@ -71,8 +72,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         super(AuthState(isRestoringSession: true));
 
   Future<void> restoreSession() async {
+    final gen = _sessionGeneration;
     try {
       final stored = await _sessionStore.read();
+      if (gen != _sessionGeneration) return;
+
       if (stored == null) {
         state = AuthState();
         _refreshNotifier.notify();
@@ -82,6 +86,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = UserModel.fromJson(stored.user);
       if (user.id.isEmpty) {
         await _sessionStore.clear();
+        if (gen != _sessionGeneration) return;
         state = AuthState();
         _refreshNotifier.notify();
         return;
@@ -92,6 +97,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _refreshNotifier.notify();
       unawaited(refreshProfile());
     } catch (error) {
+      if (gen != _sessionGeneration) return;
       debugPrint('[auth] secure session restore failed: $error');
       _apiClient.setAuthToken(null);
       state = AuthState();
@@ -100,6 +106,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _completeLogin(String token, UserModel user) async {
+    _sessionGeneration++;
     _apiClient.setAuthToken(token);
     try {
       await _sessionStore.write(
@@ -371,6 +378,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final updatedUser = UserModel.fromJson(userJson);
         state = AuthState(user: updatedUser, token: state.token);
+        if (state.token != null) {
+          unawaited(_sessionStore.write(StoredAuthSession(token: state.token!, user: updatedUser.toJson())));
+        }
         _refreshNotifier.notify();
         return true;
       } else {
@@ -401,6 +411,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final updatedUser = UserModel.fromJson(userJson);
         state = AuthState(user: updatedUser, token: state.token);
+        if (state.token != null) {
+          unawaited(_sessionStore.write(StoredAuthSession(token: state.token!, user: updatedUser.toJson())));
+        }
         _refreshNotifier.notify();
         return true;
       } else {
@@ -425,11 +438,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> refreshProfile() async {
     if (state.token == null) return;
+    final gen = _sessionGeneration;
     try {
       final response = await _apiClient.dio.get('/auth/me');
+      if (gen != _sessionGeneration) return;
       if (response.statusCode == 200 && response.data['success'] == true) {
         final user = UserModel.fromJson(response.data['data']);
         state = AuthState(user: user, token: state.token);
+        if (state.token != null) {
+          unawaited(_sessionStore.write(StoredAuthSession(token: state.token!, user: user.toJson())));
+        }
       }
     } on DioException catch (e) {
       // A single 401 handler lives in the API client interceptor: it emits
@@ -446,6 +464,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Session expired (401 on an authenticated call): clear credentials but
   /// keep cached data and unsent drafts; the app shell prompts re-sign-in.
   void handleSessionExpired() {
+    _sessionGeneration++;
     _apiClient.setAuthToken(null);
     unawaited(_sessionStore.clear().catchError((Object error) {
       debugPrint('[auth] secure session removal failed: $error');
@@ -455,6 +474,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void logout() {
+    _sessionGeneration++;
     final userId = state.user?.id;
     if (userId != null && _cacheRepo != null) {
       _cacheRepo!.purgeUserPartition(userId);
