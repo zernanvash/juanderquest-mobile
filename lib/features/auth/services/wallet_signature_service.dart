@@ -18,6 +18,7 @@ class WalletSignatureService {
     final modal = ReownAppKitModal(
       context: context,
       projectId: projectId,
+      disconnectOnDispose: false,
       metadata: const PairingMetadata(
         name: 'JuanDerQuest',
         description: 'Traveler passport sign-in; no token transaction',
