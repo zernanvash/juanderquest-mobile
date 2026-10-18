@@ -41,11 +41,12 @@ class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScree
         color: AppColors.primary,
         child: AsyncStateView(
           isLoading: subState.isLoading,
+          errorMessage: subState.error,
           isEmpty: subState.submissions.isEmpty,
           emptyMessage: 'No Submissions Yet',
           emptySubtitle: 'Complete quests or submit destination spots to earn reward points.',
           emptyIcon: Icons.history_rounded,
-          onRetry: () => ref.read(submissionProvider.notifier).fetchSubmissions(),
+          onRetry: () => ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
           content: ListView.builder(
             padding: const EdgeInsets.all(AppSpacing.gutter),
             itemCount: subState.submissions.length,
@@ -60,6 +61,10 @@ class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScree
   }
 
   Widget _buildSubmissionCard(SubmissionModel sub) {
+    final isApproved = sub.status == 'approved';
+    final pointsPrefix = isApproved ? '+${sub.rewardPoints}' : '${sub.rewardPoints}';
+    final pointsLabel = isApproved ? 'Points awarded' : 'Points potential';
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       decoration: BoxDecoration(
@@ -69,32 +74,35 @@ class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScree
         boxShadow: AppSpacing.cardShadow,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              alignment: WrapAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    sub.questTitle,
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                Text(
+                  sub.questTitle,
+                  style: AppTypography.headlineSmall.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
                 SubmissionStatusBadge(status: sub.status),
               ],
             ),
-            const SizedBox(height: 6),
-            Row(
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 16),
-                const SizedBox(width: 4),
                 Text(
-                  '+${sub.rewardPoints} Points',
+                  '$pointsPrefix $pointsLabel',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -102,7 +110,7 @@ class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScree
                   ),
                 ),
                 Text(
-                  ' · Submitted on ${sub.submittedAt.split('T').first}',
+                  '· Submitted ${sub.submittedAt.split('T').first}',
                   style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
                 ),
               ],

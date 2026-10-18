@@ -30,10 +30,11 @@ class AsyncStateView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(AppSpacing.sectionGap),
-          child: Column(
+      return Center(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.sectionGap),
+          child: const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(color: AppColors.primary),
@@ -50,20 +51,21 @@ class AsyncStateView extends StatelessWidget {
 
     if (errorMessage != null && errorMessage!.isNotEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: const BoxDecoration(
                   color: AppColors.dangerBg,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.cloud_off_rounded, size: 44, color: AppColors.danger),
+                child: const Icon(Icons.cloud_off_rounded, size: 36, color: AppColors.danger),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 'Connection Issue',
                 style: AppTypography.headlineSmall.copyWith(color: AppColors.woodBrown),
@@ -75,7 +77,7 @@ class AsyncStateView extends StatelessWidget {
                 style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
               ),
               if (onRetry != null) ...[
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.lg),
                 SizedBox(
                   width: 180,
                   child: PrimaryButton(
@@ -93,20 +95,21 @@ class AsyncStateView extends StatelessWidget {
 
     if (isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: const BoxDecoration(
                   color: AppColors.surfaceContainer,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(emptyIcon, size: 44, color: AppColors.textMuted),
+                child: Icon(emptyIcon, size: 36, color: AppColors.textMuted),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 emptyMessage,
                 style: AppTypography.headlineSmall.copyWith(color: AppColors.woodBrown),
@@ -119,7 +122,7 @@ class AsyncStateView extends StatelessWidget {
                 style: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
               ),
               if (onRetry != null) ...[
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.lg),
                 SizedBox(
                   width: 160,
                   child: SecondaryButton(

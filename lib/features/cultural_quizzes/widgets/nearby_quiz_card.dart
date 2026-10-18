@@ -64,7 +64,10 @@ class NearbyQuizCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: AppSpacing.sm,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -80,7 +83,6 @@ class NearbyQuizCard extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const Spacer(),
                               Text(
                                 '${invitation.distanceMeters}m away',
                                 style: AppTypography.labelSmall.copyWith(

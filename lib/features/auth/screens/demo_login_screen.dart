@@ -688,7 +688,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
           // Sign In with Email
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
               shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
               side: const BorderSide(color: AppColors.primary, width: 1.5),
             ),
@@ -705,7 +705,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
           // Simulated Custom Wallet Login Option
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
               shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
               side: const BorderSide(color: AppColors.sunGold, width: 1.5),
             ),
@@ -722,7 +722,7 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
           // Direct MetaMask / EVM Wallet Login
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
               shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
               side: const BorderSide(color: Color(0xFFF6851B), width: 1.5),
             ),
@@ -739,11 +739,12 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
           // Prototype Disclosure Footer
           Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
                 children: [
                   const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.textMuted),
-                  const SizedBox(width: 4),
                   Text(
                     'PROTOTYPE BUILD V0.4.2',
                     style: AppTypography.labelSmall.copyWith(

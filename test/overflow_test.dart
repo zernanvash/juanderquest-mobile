@@ -82,7 +82,7 @@ class InertSubmissionNotifier extends SubmissionNotifier {
   }
 
   @override
-  Future<void> fetchSubmissions() async {}
+  Future<void> fetchSubmissions({bool force = false}) async {}
 }
 
 class InertVoucherNotifier extends VoucherNotifier {

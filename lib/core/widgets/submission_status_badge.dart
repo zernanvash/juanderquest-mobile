@@ -58,12 +58,16 @@ class SubmissionStatusBadge extends StatelessWidget {
         children: [
           Icon(icon, size: compact ? 12 : 14, color: fgColor),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: compact ? 11 : 12,
-              fontWeight: FontWeight.w700,
-              color: fgColor,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: compact ? 11 : 12,
+                fontWeight: FontWeight.w700,
+                color: fgColor,
+              ),
             ),
           ),
         ],

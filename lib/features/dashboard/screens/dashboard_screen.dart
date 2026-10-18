@@ -206,8 +206,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 icon: Icons.quiz_outlined,
                 title: 'Cultural quizzes',
                 subtitle:
-                    'Quizzes appear when you are near participating destinations.',
-                onTap: () => context.go('/map'),
+                    'Discover quizzes near participating heritage and cultural destinations.',
+                onTap: () => context.go('/explore'),
               ),
             ],
           ),
@@ -277,13 +277,24 @@ class _SectionHeading extends StatelessWidget {
   final String title, action;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Expanded(
-            child: Text(title,
-                style: AppTypography.headlineSmall.copyWith(
-                    color: AppColors.woodBrown, fontWeight: FontWeight.bold))),
-        TextButton(onPressed: onTap, child: Text(action)),
-      ]);
+  Widget build(BuildContext context) => Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(title,
+              style: AppTypography.headlineSmall.copyWith(
+                  color: AppColors.woodBrown, fontWeight: FontWeight.bold)),
+          TextButton(
+            onPressed: onTap,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(action),
+          ),
+        ],
+      );
 }
 
 class _ImpactGrid extends StatelessWidget {
@@ -486,9 +497,8 @@ class _InfoRow extends StatelessWidget {
       child: ListTile(
           onTap: onTap,
           leading: Icon(icon, color: AppColors.primary),
-          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle:
-              Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+          title: Text(title),
+          subtitle: Text(subtitle),
           trailing: const Icon(Icons.chevron_right_rounded)));
 }
 
