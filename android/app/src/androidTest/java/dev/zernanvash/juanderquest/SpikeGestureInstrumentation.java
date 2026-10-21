@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.InputDevice;
@@ -31,13 +32,27 @@ public final class SpikeGestureInstrumentation extends Instrumentation {
             Intent intent = getTargetContext().getPackageManager().getLaunchIntentForPackage(target);
             if (intent == null) throw new IllegalStateException("No spike launcher");
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            long launchTime = SystemClock.elapsedRealtime();
             startActivitySync(intent);
-            SystemClock.sleep(8000);
-            Bitmap initial = getUiAutomation().takeScreenshot();
-            if (initial == null) throw new IllegalStateException("No screenshot");
-            width = initial.getWidth();
-            height = initial.getHeight();
-            initial.recycle();
+            long firstVisual = -1;
+            while (SystemClock.elapsedRealtime() - launchTime < 15000) {
+                Bitmap frame = getUiAutomation().takeScreenshot();
+                if (frame != null) {
+                    width = frame.getWidth();
+                    height = frame.getHeight();
+                    if (hasTileColors(frame)) {
+                        firstVisual = SystemClock.elapsedRealtime() - launchTime;
+                        save(frame, "00-first-tile-colors");
+                        frame.recycle();
+                        break;
+                    }
+                    frame.recycle();
+                }
+                SystemClock.sleep(100);
+            }
+            if (firstVisual < 0) throw new IllegalStateException("No visual tile sample within 15s");
+            result.putLong("firstVisualTileSampleUpperBoundMs", firstVisual);
+            SystemClock.sleep(2500);
             capture("01-street-labels");
             gesture("pinch");
             capture("02-pinch");
@@ -62,13 +77,37 @@ public final class SpikeGestureInstrumentation extends Instrumentation {
         SystemClock.sleep(1200);
         Bitmap bitmap = getUiAutomation().takeScreenshot();
         if (bitmap == null) throw new IllegalStateException("Screenshot unavailable");
+        try {
+            save(bitmap, name);
+        } finally {
+            bitmap.recycle();
+        }
+    }
+
+    private boolean hasTileColors(Bitmap bitmap) {
+        int matches = 0;
+        // Check the map's outer columns, below the HUD, to exclude the splash
+        // logo and loading spinner. These colors belong to the served style's
+        // water and roads; inspect the saved image before accepting the sample.
+        for (int y = (int)(height * .30f); y < height * .82f; y += 24) {
+            for (int x = (int)(width * .06f); x < width * .94f; x += 24) {
+                if (x > width * .30f && x < width * .70f) continue;
+                int pixel = bitmap.getPixel(x, y);
+                int red = Color.red(pixel), green = Color.green(pixel), blue = Color.blue(pixel);
+                boolean water = red >= 180 && red <= 230 && green >= 210 && green <= 245 && blue > 225 && blue > green && green > red;
+                boolean road = red > 235 && green > 160 && green < 235 && blue < 180;
+                if (water || road) matches++;
+            }
+        }
+        return matches >= 10;
+    }
+
+    private void save(Bitmap bitmap, String name) throws Exception {
         File directory = getTargetContext().getExternalFilesDir("phase0");
         if (directory == null) throw new IllegalStateException("No isolated evidence directory");
         File file = new File(directory, name + ".png");
         try (FileOutputStream output = new FileOutputStream(file)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, output);
-        } finally {
-            bitmap.recycle();
         }
     }
 
