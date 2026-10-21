@@ -47,6 +47,9 @@ import 'package:juanderquest_app/features/ar_experience/screens/ar_diagnostics_s
 import 'package:juanderquest_app/features/ar_experience/screens/ar_quest_screen.dart';
 import 'package:juanderquest_app/features/ar_experience/widgets/ar_overlay.dart';
 import 'package:juanderquest_app/features/quests/screens/qr_scan_screen.dart';
+import 'package:juanderquest_app/features/auth/screens/forgot_password_screen.dart';
+import 'package:juanderquest_app/features/spots/screens/interests_screen.dart';
+import 'package:juanderquest_app/features/spots/widgets/spot_community_section.dart';
 import 'package:juanderquest_app/features/app_update/domain/update_classification.dart';
 import 'package:juanderquest_app/features/app_update/domain/update_repository.dart';
 import 'package:juanderquest_app/features/app_update/models/app_version_info.dart';
@@ -349,6 +352,14 @@ void main() {
           ));
           return;
         }
+        if (options.path == '/me/discovery-preferences') {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'data': {'categories': ['nature_outdoors'], 'onboarding_state': 'pending'}},
+          ));
+          return;
+        }
         if (options.path == '/quests/q1/progress') {
           handler.resolve(Response(
             requestOptions: options,
@@ -385,7 +396,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          if (child is AffiliateApplicationScreen || child is QuestDetailScreen)
+          if (child is AffiliateApplicationScreen ||
+              child is QuestDetailScreen ||
+              child is InterestsScreen)
             apiClientProvider.overrideWithValue(affiliateApi),
           authProvider.overrideWith((ref) => InertAuthNotifier(
               ref.watch(apiClientProvider),
@@ -474,7 +487,7 @@ void main() {
     );
 
     await tester.pump();
-    if (child is QuestDetailScreen) {
+    if (child is QuestDetailScreen || child is InterestsScreen) {
       await tester.pumpAndSettle();
     }
     if (child is AffiliateApplicationScreen) {
@@ -724,6 +737,35 @@ void main() {
           'ArDiagnosticsScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
         await testScreenOverflow(tester, const ArDiagnosticsScreen(), size, 2.0);
+      });
+
+      testWidgets(
+          'ForgotPasswordScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(
+            tester, const ForgotPasswordScreen(initialEmail: 'juan@example.com'), size, 2.0);
+      });
+
+      testWidgets(
+          'InterestsScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(tester, const InterestsScreen(), size, 2.0);
+      });
+
+      testWidgets(
+          'SpotReportSheet does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: SpotReportSheet(
+              spotName: 'Hundred Islands National Park',
+              onSubmit: (_, __) async {},
+            ),
+          ),
+          size,
+          2.0,
+        );
       });
 
       testWidgets(

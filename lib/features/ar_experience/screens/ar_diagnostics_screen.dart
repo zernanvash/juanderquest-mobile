@@ -123,13 +123,40 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
                     child: SingleChildScrollView(
                       child: ValueListenableBuilder<ArPose>(
                         valueListenable: _device.pose,
-                        builder: (context, pose, _) =>
+                        builder: (context, pose, _) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             _Readout(lines: _lines(pose, focal)),
+                            const SizedBox(height: 8),
+                            Material(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(12),
+                              child: SwitchListTile(
+                                key: const ValueKey('ar_diag_world_toggle'),
+                                dense: true,
+                                title: const Text('World AR (ARCore, beta)',
+                                    style: TextStyle(color: Colors.white)),
+                                subtitle: Text(
+                                  'Use ARCore in quests when available. '
+                                  'ARCore: ${_worldAvailability?.name ?? '…'}',
+                                  style: const TextStyle(color: Colors.white70),
+                                ),
+                                value: _worldEnabled,
+                                onChanged: (v) async {
+                                  await WorldArPrefs.setEnabled(v);
+                                  if (mounted) {
+                                    setState(() => _worldEnabled = v);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  // Leave room for the bottom controls.
-                  const SizedBox(height: 150),
+                  // Leave room for the bottom button.
+                  const SizedBox(height: 72),
                 ],
               ),
             ),
@@ -142,29 +169,6 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: SwitchListTile(
-                      key: const ValueKey('ar_diag_world_toggle'),
-                      dense: true,
-                      title: const Text('World AR (ARCore, beta)',
-                          style: TextStyle(color: Colors.white)),
-                      subtitle: Text(
-                        'Use ARCore in quests when available. '
-                        'ARCore: ${_worldAvailability?.name ?? '…'}',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      value: _worldEnabled,
-                      onChanged: (v) async {
-                        await WorldArPrefs.setEnabled(v);
-                        if (mounted) setState(() => _worldEnabled = v);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   FilledButton.icon(
                     key: const ValueKey('ar_diag_place'),
                     onPressed: _ready ? _placeAhead : null,

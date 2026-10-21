@@ -77,7 +77,7 @@ class _InterestsScreenState extends ConsumerState<InterestsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCurrent();
+    Future.microtask(_loadCurrent);
   }
 
   Future<void> _loadCurrent() async {
@@ -108,8 +108,9 @@ class _InterestsScreenState extends ConsumerState<InterestsScreen> {
       final userId = ref.read(authProvider).user?.id;
       if (userId != null) await InterestsPrompt.markAnswered(userId);
       if (!mounted) return;
-      if (context.canPop()) {
-        context.pop(true);
+      final nav = Navigator.of(context);
+      if (nav.canPop()) {
+        nav.pop(true);
       } else {
         context.go('/explore');
       }
