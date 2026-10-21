@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/primary_button.dart';
 import '../engine/style_loader.dart';
 
 class MapOriginCard extends StatefulWidget {
@@ -34,12 +35,14 @@ class _MapOriginCardState extends State<MapOriginCard> {
       } else {
         await MapOriginStore.write(_controller.text);
       }
-      if (mounted)
+      if (mounted) {
         setState(() => _message = 'Saved. Reopen Map to reload the style.');
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
             () => _message = 'Use a site origin, e.g. http://127.0.0.1:3120');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -60,12 +63,14 @@ class _MapOriginCardState extends State<MapOriginCard> {
                     hintText: 'http://127.0.0.1:3120')),
             if (_message != null) Text(_message!),
             Wrap(spacing: 8, children: [
-              TextButton(
+              SecondaryButton(
                   onPressed: _busy ? null : _save,
-                  child: const Text('Save map site')),
-              TextButton(
+                  fullWidth: false,
+                  label: 'Save map site'),
+              SecondaryButton(
                   onPressed: _busy ? null : () => _save(reset: true),
-                  child: const Text('Reset map site')),
+                  fullWidth: false,
+                  label: 'Reset map site'),
             ]),
           ])));
 }

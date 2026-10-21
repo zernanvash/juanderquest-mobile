@@ -9,6 +9,9 @@ import 'package:path_provider/path_provider.dart';
 
 const mapSiteOrigin = 'https://juanderquest.app';
 
+String effectiveMapOrigin(String? override, {required bool debug}) =>
+    debug && override != null ? validateMapOrigin(override) : mapSiteOrigin;
+
 String validateMapOrigin(String value) {
   final uri = Uri.tryParse(value.trim());
   if (uri == null ||
@@ -59,15 +62,16 @@ abstract final class MapOriginStore {
     if (!kDebugMode) return mapSiteOrigin;
     try {
       final value = await _storage.read(key: _key);
-      return value == null ? mapSiteOrigin : validateMapOrigin(value);
+      return effectiveMapOrigin(value, debug: kDebugMode);
     } catch (_) {
       return mapSiteOrigin;
     }
   }
 
   static Future<void> write(String value) async {
-    if (kDebugMode)
+    if (kDebugMode) {
       await _storage.write(key: _key, value: validateMapOrigin(value));
+    }
   }
 
   static Future<void> clear() async {

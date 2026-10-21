@@ -8,6 +8,7 @@ import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
 import 'package:juanderquest_app/features/map/engine/jdq_map_canvas.dart';
 import 'package:juanderquest_app/features/map/engine/style_loader.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:juanderquest_app/features/map/widgets/map_origin_card.dart';
 
 Map<String, dynamic> style() => {
       'version': 8,
@@ -40,7 +41,48 @@ class _Adapter implements HttpClientAdapter {
   }
 }
 
+class _NeverReadyMap extends FakeJdqMap {
+  @override
+  Widget build(
+          {required VoidCallback onReady, required VoidCallback onFailure}) =>
+      const SizedBox.expand();
+}
+
 void main() {
+  test('non-debug builds ignore even an invalid persisted map origin', () {
+    expect(effectiveMapOrigin('http://127.0.0.1:3120', debug: false),
+        mapSiteOrigin);
+    expect(effectiveMapOrigin('not a URL', debug: false), mapSiteOrigin);
+    expect(effectiveMapOrigin('http://127.0.0.1:3120', debug: true),
+        'http://127.0.0.1:3120');
+  });
+  testWidgets('native creation timeout also falls back after style loads',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+        home: JdqMapCanvas(
+            map: _NeverReadyMap(),
+            style: Future.value('{}'),
+            fallback: const Text('raster'),
+            onFallback: () {})));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 10));
+    expect(find.text('Basic map'), findsOneWidget);
+  });
+  testWidgets('developer map-site card fits small screens at 2x text',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+        home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: const Scaffold(
+                body: SingleChildScrollView(child: MapOriginCard())))));
+    await tester.pump();
+    expect(find.text('Save map site'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   test('absolutizes without encoding templates or mutating input', () {
     final raw = style();
     final result = absolutizeStyle(raw, 'https://juanderquest.app/');
@@ -96,12 +138,14 @@ void main() {
   });
   testWidgets('style error automatically selects Basic map', (tester) async {
     var failures = 0;
+    final pending = Completer<String>();
     await tester.pumpWidget(MaterialApp(
         home: JdqMapCanvas(
             map: FakeJdqMap(),
-            style: Future.error(StateError('offline')),
+            style: pending.future,
             fallback: const Text('raster'),
             onFallback: () => failures++)));
+    pending.completeError(StateError('offline'));
     await tester.pump();
     expect(find.text('Basic map'), findsOneWidget);
     expect(find.text('raster'), findsOneWidget);
