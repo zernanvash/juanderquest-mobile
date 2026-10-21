@@ -4,12 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/demo_login_screen.dart';
+import '../features/quests/models/quest_model.dart';
 import '../features/quests/screens/quest_detail_screen.dart';
 import '../features/quests/screens/quest_funding_screen.dart';
-import '../features/ar_experience/screens/ar_experience_screen.dart';
-import '../features/ar_experience/screens/ar_playground_screen.dart';
-import '../features/ar_experience/screens/ar_test_screen.dart';
-import '../features/ar_experience/screens/ar_calibration_screen.dart';
+import '../features/ar_experience/screens/ar_diagnostics_screen.dart';
+import '../features/ar_experience/screens/ar_quest_screen.dart';
 import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/affiliate_application_screen.dart';
@@ -178,8 +177,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ),
                       GoRoute(
                         path: 'ar',
-                        builder: (context, state) => ARExperienceScreen(
-                            questId: state.pathParameters['id']),
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => ArQuestScreen(
+                          questId: state.pathParameters['id'] ?? '',
+                          stepOrder: int.tryParse(
+                              state.uri.queryParameters['step'] ?? ''),
+                          quest: state.extra is QuestModel
+                              ? state.extra as QuestModel
+                              : null,
+                        ),
                       ),
                     ],
                   ),
@@ -341,30 +347,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/ar-playground',
+        path: '/ar-diagnostics',
         pageBuilder: (context, state) => buildDirectionalSlidePage(
           context: context,
           state: state,
-          child: const ArPlaygroundScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/ar-test',
-        pageBuilder: (context, state) => buildDirectionalSlidePage(
-          context: context,
-          state: state,
-          child: const ArTestScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/ar-calibration',
-        pageBuilder: (context, state) => buildDirectionalSlidePage(
-          context: context,
-          state: state,
-          child: ArCalibrationScreen(
-            returnTo:
-                state.uri.queryParameters['returnTo'] ?? state.extra as String?,
-          ),
+          child: const ArDiagnosticsScreen(),
         ),
       ),
       GoRoute(

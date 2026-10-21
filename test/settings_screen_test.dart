@@ -57,7 +57,8 @@ void main() {
 
     expect(find.text('Explorer Settings'), findsOneWidget);
     expect(find.text('App System & Updates', skipOffstage: false), findsOneWidget);
-    expect(find.text('Augmented Reality Studio', skipOffstage: false), findsOneWidget);
+    // Plan 47: the AR calibration/test studio is gone; travelers never calibrate.
+    expect(find.text('Augmented Reality Studio', skipOffstage: false), findsNothing);
     expect(find.text('Developer & UI Designer Mode', skipOffstage: false), findsOneWidget);
     expect(find.text('Log Out of Account', skipOffstage: false), findsOneWidget);
   });

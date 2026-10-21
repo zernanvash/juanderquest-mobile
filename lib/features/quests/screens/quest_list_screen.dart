@@ -10,7 +10,6 @@ import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/jdq_search_field.dart';
 import '../../../core/widgets/quest_card.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../ar_experience/controllers/calibration_controller.dart';
 import '../../submissions/providers/submission_provider.dart';
 import '../models/campaign_model.dart';
 import '../models/quest_model.dart';
@@ -160,70 +159,6 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           children: [
-            // AR Calibration Prompt Banner if uncalibrated
-            if (!ref.watch(calibrationProvider).isCalibrated) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.sunGold.withOpacity(0.14),
-                  borderRadius: AppSpacing.roundedLg,
-                  border: Border.all(color: AppColors.sunGold.withOpacity(0.6)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: AppColors.surfaceContainerLowest,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.explore_rounded,
-                          color: AppColors.woodBrown, size: 20),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Calibrate AR Sensors',
-                            style: AppTypography.labelMedium.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.woodBrown,
-                            ),
-                          ),
-                          Text(
-                            'Align the compass for stable AR tracking.',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.sunGold,
-                        foregroundColor: AppColors.woodBrown,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: () =>
-                          context.push('/ar-calibration?returnTo=/quests'),
-                      child: const Text('Setup',
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
             // Segmented Tab Switcher (Ongoing Trails vs Event Campaigns)
             Container(
               padding: const EdgeInsets.all(4),

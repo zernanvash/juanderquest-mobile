@@ -33,6 +33,7 @@ dependencies:
   flutter_secure_storage: ^10.3.4
   connectivity_plus: ^6.0.0
   firebase_messaging: ^16.7.0
+  mobile_scanner: ^7.4.2
 
 
 dev_dependencies:

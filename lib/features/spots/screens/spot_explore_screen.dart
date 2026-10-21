@@ -151,24 +151,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
             icon: Container(
               padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: AppColors.sunGold.withOpacity(0.25),
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: AppColors.sunGold.withOpacity(0.6), width: 1.2),
-              ),
-              child: const Icon(Icons.view_in_ar_rounded,
-                  color: AppColors.woodBrown, size: 18),
-            ),
-            tooltip: 'AR Spatial Viewfinder & Test Bench',
-            onPressed: () => context.push('/ar-test'),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            icon: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),

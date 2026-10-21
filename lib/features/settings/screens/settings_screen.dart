@@ -289,104 +289,6 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: AppSpacing.sectionGap),
 
-          // Augmented Reality & Calibration Studio
-          const JdqSectionHeader(
-            title: 'Augmented Reality Studio',
-            subtitle: 'Calibrate spatial sensors and test 3D parametric meshes.',
-          ),
-
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: Column(
-                children: [
-                  ListTile(
-                    onTap: () => context.push('/ar-calibration?returnTo=/settings'),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2D6A4F).withOpacity(0.12),
-                        borderRadius: AppSpacing.roundedMd,
-                      ),
-                      child: const Icon(
-                        Icons.explore_rounded,
-                        color: Color(0xFF2D6A4F),
-                        size: 22,
-                      ),
-                    ),
-                    title: Text(
-                      'Sensor & Compass Calibration',
-                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      '3-step calibration: Magnetometer figure-8, spirit level, and GPS sync.',
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                  ),
-                  const Divider(height: 1, color: AppColors.borderLowContrast),
-                  ListTile(
-                    onTap: () => context.push('/ar-test'),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.sunGold.withOpacity(0.18),
-                        borderRadius: AppSpacing.roundedMd,
-                      ),
-                      child: const Icon(
-                        Icons.view_in_ar_rounded,
-                        color: AppColors.woodBrown,
-                        size: 22,
-                      ),
-                    ),
-                    title: Text(
-                      'AR Spatial Viewfinder Testbed',
-                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      'Live camera feed, 3D object summoner, and sensor HUD.',
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                  ),
-                  const Divider(height: 1, color: AppColors.borderLowContrast),
-                  ListTile(
-                    onTap: () => context.push('/ar-playground'),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.12),
-                        borderRadius: AppSpacing.roundedMd,
-                      ),
-                      child: const Icon(
-                        Icons.token_rounded,
-                        color: AppColors.primary,
-                        size: 22,
-                      ),
-                    ),
-                    title: Text(
-                      'AR 3D Geometry Studio',
-                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      'Parametric meshes (Token, Gem, Box, Beacon) with Lambertian lighting.',
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.sectionGap),
-
           // Developer & UI Designer Tools
           const JdqSectionHeader(
             title: 'Developer & UI Designer Mode',
@@ -448,6 +350,18 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: 'Debug and profile builds only. Point this device at another backend.',
             ),
             const _ApiServerOverrideCard(),
+            const SizedBox(height: AppSpacing.sm),
+            Card(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                key: const ValueKey('settings_ar_diagnostics'),
+                leading: const Icon(Icons.view_in_ar_rounded, color: AppColors.woodBrown),
+                title: const Text('AR diagnostics'),
+                subtitle: const Text('Live sensor readout and a test object.'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push('/ar-diagnostics'),
+              ),
+            ),
             const SizedBox(height: AppSpacing.sectionGap),
           ],
 

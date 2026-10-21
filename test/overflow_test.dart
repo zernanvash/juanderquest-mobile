@@ -41,9 +41,12 @@ import 'package:juanderquest_app/core/services/push_service.dart';
 import 'package:juanderquest_app/features/about/screens/about_screen.dart';
 import 'package:juanderquest_app/features/navigation/models/route_model.dart';
 import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
-import 'package:juanderquest_app/features/ar_experience/screens/ar_playground_screen.dart';
-import 'package:juanderquest_app/features/ar_experience/screens/ar_test_screen.dart';
-import 'package:juanderquest_app/features/ar_experience/screens/ar_calibration_screen.dart';
+import 'package:juanderquest_app/features/ar_experience/core/ar_hunt.dart';
+import 'package:juanderquest_app/features/ar_experience/core/heading_fusion.dart';
+import 'package:juanderquest_app/features/ar_experience/screens/ar_diagnostics_screen.dart';
+import 'package:juanderquest_app/features/ar_experience/screens/ar_quest_screen.dart';
+import 'package:juanderquest_app/features/ar_experience/widgets/ar_overlay.dart';
+import 'package:juanderquest_app/features/quests/screens/qr_scan_screen.dart';
 import 'package:juanderquest_app/features/app_update/domain/update_classification.dart';
 import 'package:juanderquest_app/features/app_update/domain/update_repository.dart';
 import 'package:juanderquest_app/features/app_update/models/app_version_info.dart';
@@ -666,35 +669,69 @@ void main() {
       );
     });
 
-    testWidgets('ArPlaygroundScreen does not overflow in small portrait',
-        (tester) async {
-      await testScreenOverflow(
-          tester, const ArPlaygroundScreen(), const Size(320, 568), 2.0);
-    });
+    for (final size in const [Size(320, 568), Size(568, 320)]) {
+      for (final phase in ArHuntPhase.values) {
+        testWidgets(
+            'ArStatusCard (${phase.name}) does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+            (tester) async {
+          await testScreenOverflow(
+            tester,
+            Scaffold(
+              backgroundColor: Colors.black,
+              body: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: ArStatusCard(
+                    phase: phase,
+                    error:
+                        'You are 240m away from this AR checkpoint. Must be within 50m.',
+                    onCollect: () {},
+                    onDone: () {},
+                    onRetry: () {},
+                  ),
+                ),
+              ),
+            ),
+            size,
+            2.0,
+          );
+        });
+      }
 
-    testWidgets('ArTestScreen does not overflow in small portrait',
-        (tester) async {
-      await testScreenOverflow(
-          tester, const ArTestScreen(), const Size(320, 568), 2.0);
-    });
+      testWidgets(
+          'ArFinder does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: ArFinder(
+                pose: ValueNotifier(ArPose.unknown),
+                bearingToTarget: 45,
+                distanceMeters: 12840,
+                radiusMeters: 50,
+              ),
+            ),
+          ),
+          size,
+          2.0,
+        );
+      });
 
-    testWidgets('ArTestScreen does not overflow in small landscape',
-        (tester) async {
-      await testScreenOverflow(
-          tester, const ArTestScreen(), const Size(568, 320), 2.0);
-    });
+      testWidgets(
+          'ArDiagnosticsScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(tester, const ArDiagnosticsScreen(), size, 2.0);
+      });
 
-    testWidgets('ArCalibrationScreen does not overflow in small portrait',
-        (tester) async {
-      await testScreenOverflow(
-          tester, const ArCalibrationScreen(), const Size(320, 568), 2.0);
-    });
-
-    testWidgets('ArCalibrationScreen does not overflow in small landscape',
-        (tester) async {
-      await testScreenOverflow(
-          tester, const ArCalibrationScreen(), const Size(568, 320), 2.0);
-    });
+      testWidgets(
+          'QrScanScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(tester, const QrScanScreen(), size, 2.0);
+      });
+    }
 
     testWidgets(
         'StartupUpdateGate checking view does not overflow in small portrait',

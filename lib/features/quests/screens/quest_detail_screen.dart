@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,12 +9,11 @@ import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/error_dialog.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../ar_experience/controllers/calibration_controller.dart';
+import 'qr_scan_screen.dart';
 import '../models/quest_model.dart';
 import '../../../core/widgets/designer_guide.dart';
 
@@ -237,8 +235,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         }
       }
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 4),
+        desiredAccuracy: LocationAccuracy.best,
+        timeLimit: const Duration(seconds: 12),
       );
     } catch (_) {
       return null;
@@ -249,14 +247,22 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     setState(() => _stepSubmitting = true);
     try {
       final pos = await _safeGetPosition();
+      if (pos == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(_noGpsMessage)),
+          );
+        }
+        return;
+      }
       final res = await ref.read(apiClientProvider).dio.post(
         '/quests/${widget.quest.id}/steps/${step.order}/evidence',
         data: {
           'idempotency_key': const Uuid().v4(),
           'checkpoint_type': 'location',
-          'captured_lat': pos?.latitude ?? widget.quest.gpsLat,
-          'captured_lng': pos?.longitude ?? widget.quest.gpsLng,
-          'captured_accuracy': pos?.accuracy ?? 5,
+          'captured_lat': pos.latitude,
+          'captured_lng': pos.longitude,
+          'captured_accuracy': pos.accuracy,
         },
       );
       if (res.data['success'] == true) {
@@ -299,6 +305,63 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            Future<void> verify(StateSetter setModalState) async {
+                              final code = textController.text.trim();
+                              if (code.isEmpty) {
+                                setModalState(() =>
+                                    modalError = 'Please enter a marker code.');
+                                return;
+                              }
+                              setModalState(() {
+                                modalLoading = true;
+                                modalError = null;
+                              });
+                              try {
+                                final pos = await _safeGetPosition();
+                                if (pos == null) {
+                                  setModalState(() => modalError = _noGpsMessage);
+                                  return;
+                                }
+                                final res = await ref
+                                    .read(apiClientProvider)
+                                    .dio
+                                    .post(
+                                  '/quests/${widget.quest.id}/steps/${step.order}/evidence',
+                                  data: {
+                                    'idempotency_key': const Uuid().v4(),
+                                    'checkpoint_type': 'qr',
+                                    'qr_code': code,
+                                    'captured_lat': pos.latitude,
+                                    'captured_lng': pos.longitude,
+                                    'captured_accuracy': pos.accuracy,
+                                  },
+                                );
+                                if (res.data['success'] == true) {
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  await _loadProgress();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'QR code verified successfully!')),
+                                    );
+                                  }
+                                } else {
+                                  setModalState(() =>
+                                      modalError = 'QR verification failed.');
+                                }
+                              } on DioException catch (dioErr) {
+                                setModalState(() => modalError =
+                                    _messageFromDio(dioErr,
+                                        'Invalid QR code or out of radius.'));
+                              } catch (_) {
+                                setModalState(() => modalError =
+                                    'Verification failed. Try again.');
+                              } finally {
+                                setModalState(() => modalLoading = false);
+                              }
+            }
+
             return Padding(
               padding: EdgeInsets.only(
                 left: AppSpacing.gutter,
@@ -332,6 +395,24 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                           .copyWith(color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: AppSpacing.md),
+                    PrimaryButton(
+                      key: const ValueKey('qr_scan_camera'),
+                      label: 'Scan with camera',
+                      icon: Icons.qr_code_scanner_rounded,
+                      onPressed: modalLoading
+                          ? null
+                          : () async {
+                              final code = await Navigator.of(ctx).push<String>(
+                                MaterialPageRoute(
+                                  builder: (_) => const QrScanScreen(),
+                                ),
+                              );
+                              if (code == null) return;
+                              textController.text = code;
+                              await verify(setModalState);
+                            },
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: textController,
                       decoration: const InputDecoration(
@@ -351,62 +432,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     PrimaryButton(
                       label: modalLoading ? 'Verifying...' : 'Verify QR',
                       icon: Icons.check_circle_outline_rounded,
-                      onPressed: modalLoading
-                          ? null
-                          : () async {
-                              final code = textController.text.trim();
-                              if (code.isEmpty) {
-                                setModalState(() =>
-                                    modalError = 'Please enter a marker code.');
-                                return;
-                              }
-                              setModalState(() {
-                                modalLoading = true;
-                                modalError = null;
-                              });
-                              try {
-                                final pos = await _safeGetPosition();
-                                final res = await ref
-                                    .read(apiClientProvider)
-                                    .dio
-                                    .post(
-                                  '/quests/${widget.quest.id}/steps/${step.order}/evidence',
-                                  data: {
-                                    'idempotency_key': const Uuid().v4(),
-                                    'checkpoint_type': 'qr',
-                                    'qr_code': code,
-                                    'captured_lat':
-                                        pos?.latitude ?? widget.quest.gpsLat,
-                                    'captured_lng':
-                                        pos?.longitude ?? widget.quest.gpsLng,
-                                    'captured_accuracy': pos?.accuracy ?? 5,
-                                  },
-                                );
-                                if (res.data['success'] == true) {
-                                  if (ctx.mounted) Navigator.pop(ctx);
-                                  await _loadProgress();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'QR code verified successfully!')),
-                                    );
-                                  }
-                                } else {
-                                  setModalState(() =>
-                                      modalError = 'QR verification failed.');
-                                }
-                              } on DioException catch (dioErr) {
-                                setModalState(() => modalError =
-                                    _messageFromDio(dioErr,
-                                        'Invalid QR code or out of radius.'));
-                              } catch (_) {
-                                setModalState(() => modalError =
-                                    'Verification failed. Try again.');
-                              } finally {
-                                setModalState(() => modalLoading = false);
-                              }
-                            },
+                      onPressed:
+                          modalLoading ? null : () => verify(setModalState),
                     ),
                   ],
                 ),
@@ -576,11 +603,11 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                                   'idempotency_key': const Uuid().v4(),
                                   'checkpoint_type': 'photo',
                                   'gallery_opt_in': galleryOptIn.toString(),
-                                  'captured_lat':
-                                      pos?.latitude ?? widget.quest.gpsLat,
-                                  'captured_lng':
-                                      pos?.longitude ?? widget.quest.gpsLng,
-                                  'captured_accuracy': pos?.accuracy ?? 5,
+                                  if (pos != null) ...{
+                                    'captured_lat': pos.latitude,
+                                    'captured_lng': pos.longitude,
+                                    'captured_accuracy': pos.accuracy,
+                                  },
                                   'photo': MultipartFile.fromBytes(bytes,
                                       filename: pickedFile!.name),
                                 });
@@ -663,42 +690,72 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     }
   }
 
-  Future<void> _launchAR(BuildContext context, WidgetRef ref) async {
-    final isCalibrated = ref.read(calibrationProvider).isCalibrated;
-    if (!isCalibrated) {
-      if (context.mounted) {
-        context.push('/ar-calibration?returnTo=/quests/${widget.quest.id}/ar');
-      }
-      return;
+  static const _noGpsMessage =
+      'We need a fresh GPS reading. Turn on location, step outside if you can, and try again.';
+
+  Future<void> _launchAR(QuestStepModel step) async {
+    final completed = await context.push<bool>(
+      '/quests/${widget.quest.id}/ar?step=${step.order}',
+      extra: widget.quest,
+    );
+    if (!mounted) return;
+    await _loadProgress();
+    if (completed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('AR task verified!')),
+      );
     }
+  }
 
-    final cameraStatus = await Permission.camera.request();
-    final locationStatus = await Permission.locationWhenInUse.request();
-
-    if (cameraStatus.isGranted && locationStatus.isGranted) {
-      if (context.mounted) {
-        context.push('/quests/${widget.quest.id}/ar', extra: widget.quest);
+  /// In-app task (Plan 43 `action`): the server checks the traveler really
+  /// did it (quiz finished, destination saved/liked, JuanChoice vote).
+  Future<void> _checkInAppTask(QuestStepModel step) async {
+    setState(() => _stepSubmitting = true);
+    try {
+      final task = step.verification?['task'];
+      final res = await ref.read(apiClientProvider).dio.post(
+        '/quests/${widget.quest.id}/steps/${step.order}/evidence',
+        data: {
+          'idempotency_key': const Uuid().v4(),
+          if (task is Map && task['kind'] is String) 'action_name': task['kind'],
+        },
+      );
+      if (res.data['success'] == true) {
+        await _loadProgress();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Task complete!')),
+          );
+        }
       }
-    } else {
-      if (context.mounted) {
-        GlobalErrorDialog.show(
-          context,
-          title: 'Permissions Required',
-          message:
-              'JuanderQuest uses camera to recognize destination markers and location services to verify quest completion radius.',
-          icon: Icons.security_rounded,
-          iconColor: AppColors.danger,
-          buttonText: 'Open Device Settings',
-          onPressed: () => openAppSettings(),
+    } on DioException catch (dioErr) {
+      if (!mounted) return;
+      final route = inAppTaskRoute(step);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_messageFromDio(dioErr, 'This task is not done yet.')),
+          action: route == null
+              ? null
+              : SnackBarAction(
+                  label: 'Go',
+                  onPressed: () => context.push(route),
+                ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not check this task. Please retry.')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _stepSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final quest = widget.quest;
-    final isCalibrated = ref.watch(calibrationProvider).isCalibrated;
     final hasImage = quest.imageUrl != null &&
         quest.imageUrl!.isNotEmpty &&
         (quest.imageUrl!.startsWith('http://') ||
@@ -1058,54 +1115,6 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
 
                   const SizedBox(height: AppSpacing.sectionGap),
 
-                  if (!isCalibrated && quest.steps.isEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: AppColors.sunGold.withOpacity(0.12),
-                        borderRadius: AppSpacing.roundedMd,
-                        border: Border.all(
-                            color: AppColors.sunGold.withOpacity(0.5)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.explore_rounded,
-                                  color: AppColors.woodBrown, size: 22),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Compass Calibration Recommended',
-                                        style: AppTypography.labelMedium.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.woodBrown)),
-                                    Text(
-                                        'Calibrate sensors for accurate 3D AR positioning.',
-                                        style: AppTypography.bodySmall.copyWith(
-                                            color: AppColors.textSecondary)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          TextButton(
-                            onPressed: () => context.push(
-                                '/ar-calibration?returnTo=/quests/${quest.id}/ar'),
-                            child: const Text('Calibrate',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                  ],
-
                   // Enrollment and Progress CTA
                   UiSpecContainer(
                     spec: const UiSpec(
@@ -1341,8 +1350,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       'location' => 'Verify Location (GPS)',
       'qr' => 'Scan QR Code',
       'photo' => 'Submit Photo Proof',
-      'ar' => 'Launch AR Viewfinder',
-      _ => 'Complete Action',
+      'ar' => 'Open AR',
+      _ => 'Check task',
     };
     final icon = switch (step.checkpointType) {
       'location' => Icons.my_location_rounded,
@@ -1369,10 +1378,10 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     _showPhotoVerificationModal(step);
                     break;
                   case 'ar':
-                    _launchAR(context, ref);
+                    _launchAR(step);
                     break;
                   default:
-                    _verifyLocation(step);
+                    _checkInAppTask(step);
                 }
               },
         style: ElevatedButton.styleFrom(
@@ -1448,14 +1457,6 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             icon: Icons.send_rounded,
             onPressed: _submitForReview,
           ),
-        if (hasAttempt && !isSubmitted && !_completed && widget.quest.steps.isEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
-          TextButton.icon(
-            onPressed: () => _launchAR(context, ref),
-            icon: const Icon(Icons.view_in_ar_rounded),
-            label: const Text('Explore optional AR view'),
-          ),
-        ],
       ],
     );
   }
@@ -1477,5 +1478,22 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         ),
       ),
     );
+  }
+}
+
+/// Where the traveler can go to do an in-app task, if the app has a screen
+/// for it.
+String? inAppTaskRoute(QuestStepModel step) {
+  final task = step.verification?['task'];
+  if (task is! Map) return null;
+  switch (task['kind']) {
+    case 'complete_quiz':
+      final id = task['quiz_id'];
+      return id is String && id.isNotEmpty ? '/cultural-quizzes/$id' : null;
+    case 'vote_juanchoice':
+      final id = task['campaign_id'];
+      return id is String && id.isNotEmpty ? '/choice/$id' : '/choice';
+    default:
+      return null;
   }
 }
