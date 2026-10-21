@@ -972,7 +972,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           Positioned(
             top: 12,
             left: 12,
-            right: 64, // Space for right-side action buttons
+            right: _native ? 116 : 64, // Reserve native compass + action buttons.
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(

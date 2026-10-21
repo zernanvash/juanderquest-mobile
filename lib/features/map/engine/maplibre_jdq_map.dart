@@ -266,8 +266,8 @@ class MapLibreJdqMap extends JdqMap {
               rotateGesturesEnabled: true,
               tiltGesturesEnabled: true,
               compassEnabled: true,
-              compassViewPosition: gl.CompassViewPosition.bottomLeft,
-              compassViewMargins: const math.Point(12, 100),
+                compassViewPosition: gl.CompassViewPosition.topRight,
+                compassViewMargins: const math.Point(64, 12),
               attributionButtonPosition:
                   gl.AttributionButtonPosition.bottomLeft,
               trackCameraPosition: true,

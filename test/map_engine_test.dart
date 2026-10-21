@@ -74,10 +74,10 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(const MaterialApp(
         home: MediaQuery(
-            data: const MediaQueryData(textScaler: TextScaler.linear(2)),
-            child: const Scaffold(
+            data: MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: Scaffold(
                 body: SingleChildScrollView(child: MapOriginCard())))));
     await tester.pump();
     expect(find.text('Save map site'), findsOneWidget);
