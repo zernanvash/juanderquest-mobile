@@ -24,6 +24,8 @@ import '../../spots/utils/spot_posting.dart';
 import '../../spots/widgets/spot_posting_sheet.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../utils/admin_areas.dart';
 import '../utils/map_focus.dart';
 import '../utils/map_cluster.dart';
 import '../utils/map_list.dart';
@@ -53,13 +55,119 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   double? _pendingClusterZoom;
   double _clusterZoom = MapConfig.defaultZoom;
 
+  // Plan 45 §9 / Plan 47 B2: clickable town & province names with real
+  // PSA/NAMRIA boundaries.
+  late final AdminAreaApi _areaApi =
+      AdminAreaApi(ref.read(apiClientProvider).dio);
+  List<AdminArea> _areas = const [];
+  Set<String> _visibleLabelIds = const {};
+  AdminArea? _focusedArea;
+  AreaShape? _focusedShape;
+  LatLng? _preFocusCenter;
+  double? _preFocusZoom;
+  Timer? _areaRefreshTimer;
+  int _areaRequest = 0;
+
   @override
   void dispose() {
     _clusterRefreshTimer?.cancel();
+    _areaRefreshTimer?.cancel();
     super.dispose();
   }
 
+  void _scheduleAreaRefresh() {
+    _areaRefreshTimer?.cancel();
+    _areaRefreshTimer =
+        Timer(const Duration(milliseconds: 450), _refreshAreas);
+  }
+
+  Future<void> _refreshAreas() async {
+    if (!mounted) return;
+    final MapCamera camera;
+    try {
+      camera = _mapController.camera;
+    } catch (_) {
+      return; // Map not laid out yet.
+    }
+    final b = camera.visibleBounds;
+    final request = ++_areaRequest;
+    try {
+      final areas = await _areaApi.visible(
+        minLat: b.south,
+        minLng: b.west,
+        maxLat: b.north,
+        maxLng: b.east,
+        zoom: camera.zoom,
+      );
+      if (!mounted || request != _areaRequest) return;
+      setState(() {
+        _areas = areas;
+        _visibleLabelIds = _declutter(areas, camera);
+      });
+    } catch (_) {
+      // Names are an enhancement; the map works without them.
+    }
+  }
+
+  Set<String> _declutter(List<AdminArea> areas, MapCamera camera) {
+    return declutterAreaLabels([
+      for (final a in areas)
+        AreaLabelBox(
+          a.id,
+          camera.latLngToScreenOffset(a.label),
+          areaLabelSize(a.name, province: a.level == 'province'),
+          (a.level == 'province' ? 100000 : 0) + a.spotCount,
+        ),
+    ]);
+  }
+
+  Future<void> _focusArea(AdminArea area) async {
+    AreaShape? shape;
+    try {
+      shape = await _areaApi.shape(area.id);
+    } catch (_) {
+      shape = null;
+    }
+    if (!mounted) return;
+    if (shape == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('The boundary of ${area.name} is not available yet.')));
+      return;
+    }
+    final camera = _mapController.camera;
+    setState(() {
+      if (_focusedArea == null) {
+        _preFocusCenter = camera.center;
+        _preFocusZoom = camera.zoom;
+      }
+      _focusedArea = area;
+      _focusedShape = shape;
+      _selectedQuest = null;
+      _selectedSpot = null;
+    });
+    _mapController.fitCamera(CameraFit.bounds(
+      bounds: LatLngBounds.fromPoints(shape.outlinePoints),
+      padding: const EdgeInsets.fromLTRB(32, 140, 32, 120),
+    ));
+  }
+
+  void _clearArea() {
+    final center = _preFocusCenter;
+    final zoom = _preFocusZoom;
+    setState(() {
+      _focusedArea = null;
+      _focusedShape = null;
+      _preFocusCenter = null;
+      _preFocusZoom = null;
+    });
+    if (center != null && zoom != null) _mapController.move(center, zoom);
+  }
+
+  bool _inFocusedArea(double lat, double lng) =>
+      _focusedShape?.contains(lat, lng) ?? true;
+
   void _scheduleClusterRefresh(MapCamera camera, bool hasGesture) {
+    _scheduleAreaRefresh();
     _pendingClusterZoom = camera.zoom;
     final now = DateTime.now();
     final remaining = const Duration(milliseconds: 150) - now.difference(_lastClusterRefresh);
@@ -138,6 +246,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     super.initState();
     // Auto-select initial quest if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshAreas();
       final quests = ref.read(questProvider).quests;
       if (quests.isNotEmpty && _selectedQuest == null && _selectedSpot == null) {
         setState(() {
@@ -212,7 +321,14 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   }
 
   Future<void> _handleMapTap(LatLng point) async {
-    if (!_pinPlacementActive) return;
+    if (!_pinPlacementActive) {
+      // Tapping outside the highlighted area focuses out (web D7/D12).
+      final shape = _focusedShape;
+      if (shape != null && !shape.contains(point.latitude, point.longitude)) {
+        _clearArea();
+      }
+      return;
+    }
     setState(() => _pinPlacementActive = false);
     await _openPostingSheet(point.latitude, point.longitude);
   }
@@ -450,10 +566,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
     final markers = <Marker>[];
     final visibleQuests = (_activeFilter == 'all' || _activeFilter == 'quests')
-        ? quests
+        ? quests.where((q) => _inFocusedArea(q.gpsLat, q.gpsLng)).toList()
         : <QuestModel>[];
     final visibleSpots = (_activeFilter == 'all' || _activeFilter == 'spots')
         ? <SpotModel>[...plannedSpots.ordinary, ...plannedSpots.winners]
+            .where((s) => _inFocusedArea(s.gpsLat, s.gpsLng))
+            .toList()
         : <SpotModel>[];
     final questsByPointId = <String, QuestModel>{};
     final spotsByPointId = <String, SpotModel>{};
@@ -700,6 +818,49 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             children: [
               buildBaseTileLayer(),
 
+              if (_focusedShape != null)
+                PolygonLayer(polygons: [
+                  // Dim everything outside the focused area.
+                  Polygon(
+                    points: const [
+                      LatLng(MapConfig.phMinLat - 5, MapConfig.phMinLng - 5),
+                      LatLng(MapConfig.phMinLat - 5, MapConfig.phMaxLng + 5),
+                      LatLng(MapConfig.phMaxLat + 5, MapConfig.phMaxLng + 5),
+                      LatLng(MapConfig.phMaxLat + 5, MapConfig.phMinLng - 5),
+                    ],
+                    holePointsList: [
+                      for (final p in _focusedShape!.polygons) p.outer,
+                    ],
+                    color: Colors.black.withValues(alpha: 0.28),
+                  ),
+                  for (final p in _focusedShape!.polygons)
+                    Polygon(
+                      points: p.outer,
+                      holePointsList: p.holes,
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderColor: AppColors.primary,
+                      borderStrokeWidth: 2.5,
+                    ),
+                ]),
+
+              MarkerLayer(markers: [
+                for (final a in _areas)
+                  if (_visibleLabelIds.contains(a.id) &&
+                      a.id != _focusedArea?.id)
+                    Marker(
+                      point: a.label,
+                      width: areaLabelSize(a.name,
+                              province: a.level == 'province')
+                          .width,
+                      height: 26,
+                      alignment: Alignment.center,
+                      child: _AreaLabel(
+                        area: a,
+                        onTap: () => _focusArea(a),
+                      ),
+                    ),
+              ]),
+
               MarkerLayer(markers: markers),
 
               // OSM policy compliance: keep visible attribution on the canvas.
@@ -922,6 +1083,22 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+
+          // Focused area banner: name, what's inside, and a way out.
+          if (_focusedArea != null &&
+              _selectedQuest == null &&
+              _selectedSpot == null)
+            Positioned(
+              bottom: 16,
+              left: 12,
+              right: 12,
+              child: _AreaBanner(
+                area: _focusedArea!,
+                places: visibleQuests.length + visibleSpots.length,
+                onClear: _clearArea,
+                onList: _openPlacesList,
               ),
             ),
 
@@ -1164,6 +1341,113 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           const Text(
             '© OpenStreetMap contributors',
             style: TextStyle(fontSize: 9, color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tappable town/province name on the map (no counts, as on the web).
+class _AreaLabel extends StatelessWidget {
+  final AdminArea area;
+  final VoidCallback onTap;
+
+  const _AreaLabel({required this.area, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final province = area.level == 'province';
+    return Semantics(
+      button: true,
+      label: 'Show ${area.name}',
+      child: GestureDetector(
+        key: ValueKey('area_label_${area.id}'),
+        onTap: onTap,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: AppColors.woodBrown.withValues(alpha: 0.25)),
+            ),
+            child: Text(
+              area.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                fontSize: province ? 13 : 11,
+                fontWeight: province ? FontWeight.w900 : FontWeight.w700,
+                color: AppColors.woodBrown,
+                letterSpacing: province ? 0.6 : 0,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AreaBanner extends StatelessWidget {
+  final AdminArea area;
+  final int places;
+  final VoidCallback onClear;
+  final VoidCallback onList;
+
+  const _AreaBanner({
+    required this.area,
+    required this.places,
+    required this.onClear,
+    required this.onList,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('area_banner'),
+      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppSpacing.roundedLg,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+        boxShadow: AppSpacing.cardShadow,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(area.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelLarge
+                        .copyWith(fontWeight: FontWeight.w800)),
+                Text(
+                  '${area.levelLabel} · $places ${places == 1 ? 'place' : 'places'} on the map',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodySmall
+                      .copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'List places',
+            onPressed: onList,
+            icon: const Icon(Icons.list_rounded, color: AppColors.primary),
+          ),
+          IconButton(
+            key: const ValueKey('area_clear'),
+            tooltip: 'Show all areas',
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded),
           ),
         ],
       ),

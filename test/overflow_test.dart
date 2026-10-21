@@ -352,6 +352,17 @@ void main() {
           ));
           return;
         }
+        if (options.path == '/areas') {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'data': [
+              {'id': 'dagupan', 'level': 'city', 'name': 'Dagupan', 'display_name': 'Dagupan City',
+               'label_lat': 16.04, 'label_lng': 120.34, 'has_boundary': true, 'published_spot_count': 3},
+            ]},
+          ));
+          return;
+        }
         if (options.path == '/me/discovery-preferences') {
           handler.resolve(Response(
             requestOptions: options,
@@ -398,7 +409,8 @@ void main() {
         overrides: [
           if (child is AffiliateApplicationScreen ||
               child is QuestDetailScreen ||
-              child is InterestsScreen)
+              child is InterestsScreen ||
+              child is MapViewScreen)
             apiClientProvider.overrideWithValue(affiliateApi),
           authProvider.overrideWith((ref) => InertAuthNotifier(
               ref.watch(apiClientProvider),
@@ -489,6 +501,10 @@ void main() {
     await tester.pump();
     if (child is QuestDetailScreen || child is InterestsScreen) {
       await tester.pumpAndSettle();
+    }
+    if (child is MapViewScreen) {
+      // Let the area-label request (stubbed) and its debounce finish.
+      await tester.pump(const Duration(milliseconds: 600));
     }
     if (child is AffiliateApplicationScreen) {
       await tester.pump(const Duration(milliseconds: 100));
