@@ -1,0 +1,127 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
+import 'package:juanderquest_app/features/map/engine/jdq_map_canvas.dart';
+import 'package:juanderquest_app/features/map/engine/style_loader.dart';
+import 'package:latlong2/latlong.dart';
+
+Map<String, dynamic> style() => {
+      'version': 8,
+      'layers': <Object>[],
+      'sources': {
+        'openmaptiles': {
+          'type': 'vector',
+          'tiles': ['/vt/{z}/{x}/{y}.mvt']
+        }
+      },
+      'glyphs': '/map/fonts/{fontstack}/{range}.pbf',
+      'sprite': '/map/sprite',
+    };
+
+class _Adapter implements HttpClientAdapter {
+  bool fail = false;
+  @override
+  void close({bool force = false}) {}
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? stream,
+      Future<void>? cancelFuture) async {
+    if (fail) throw StateError('offline');
+    expect(options.headers['Authorization'], isNull);
+    return ResponseBody.fromString(
+        '{"version":8,"sources":{"v":{"tiles":["/vt/{z}/{x}/{y}.mvt"]}},"layers":[]}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json']
+        });
+  }
+}
+
+void main() {
+  test('absolutizes without encoding templates or mutating input', () {
+    final raw = style();
+    final result = absolutizeStyle(raw, 'https://juanderquest.app/');
+    expect(result['sources']['openmaptiles']['tiles'],
+        ['https://juanderquest.app/vt/{z}/{x}/{y}.mvt']);
+    expect(result['glyphs'],
+        'https://juanderquest.app/map/fonts/{fontstack}/{range}.pbf');
+    expect(result['sprite'], 'https://juanderquest.app/map/sprite');
+    expect(raw['glyphs'], '/map/fonts/{fontstack}/{range}.pbf');
+  });
+  test('rejects credentials, query, paths and unsupported origin schemes', () {
+    for (final origin in [
+      'file:///tmp',
+      'https://user:pass@host',
+      'https://host/path',
+      'https://host?token=secret',
+      'https://host/#fragment'
+    ]) {
+      expect(() => validateMapOrigin(origin), throwsFormatException);
+    }
+    expect(
+        validateMapOrigin('http://127.0.0.1:3120/'), 'http://127.0.0.1:3120');
+  });
+  test('last-good cache works offline and is isolated per origin', () async {
+    final directory = await Directory.systemTemp.createTemp('jdq-style-test-');
+    addTearDown(() => directory.delete(recursive: true));
+    final adapter = _Adapter();
+    final loader = StyleLoader(
+        client: Dio()..httpClientAdapter = adapter,
+        directory: () async => directory);
+    final first = await loader.load('https://juanderquest.app');
+    adapter.fail = true;
+    expect(await loader.load('https://juanderquest.app'), first);
+    await expectLater(loader.load('http://127.0.0.1:3120'), throwsA(anything));
+  });
+  testWidgets('fake surface loads once and preserves a native-free map',
+      (tester) async {
+    final fake = FakeJdqMap();
+    await tester.pumpWidget(MaterialApp(
+        home: JdqMapCanvas(
+            map: fake,
+            style: Future.value('{}'),
+            fallback: const Text('raster'),
+            onFallback: () {})));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const ValueKey('fake-jdq-map')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 11));
+    expect(find.text('Basic map'), findsNothing);
+    expect(fake.style, '{}');
+    await fake.easeTo(const LatLng(16, 120), 14);
+    expect(fake.camera.zoom, 14);
+  });
+  testWidgets('style error automatically selects Basic map', (tester) async {
+    var failures = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: JdqMapCanvas(
+            map: FakeJdqMap(),
+            style: Future.error(StateError('offline')),
+            fallback: const Text('raster'),
+            onFallback: () => failures++)));
+    await tester.pump();
+    expect(find.text('Basic map'), findsOneWidget);
+    expect(find.text('raster'), findsOneWidget);
+    expect(failures, 1);
+  });
+  testWidgets(
+      '10s deadline covers hung style; late result cannot replace fallback',
+      (tester) async {
+    final pending = Completer<String>();
+    await tester.pumpWidget(MaterialApp(
+        home: JdqMapCanvas(
+            map: FakeJdqMap(),
+            style: pending.future,
+            fallback: const Text('raster'),
+            onFallback: () {})));
+    await tester.pump(const Duration(seconds: 10));
+    expect(find.text('Basic map'), findsOneWidget);
+    pending.complete('{}');
+    await tester.pump();
+    expect(find.text('raster'), findsOneWidget);
+    expect(find.byKey(const ValueKey('fake-jdq-map')), findsNothing);
+  });
+}

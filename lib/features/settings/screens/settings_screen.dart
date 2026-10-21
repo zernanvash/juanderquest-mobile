@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,6 +17,7 @@ import '../../app_update/providers/app_update_provider.dart';
 import '../../app_update/widgets/update_dialog.dart';
 import '../../../core/services/push_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../map/widgets/map_origin_card.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -365,6 +367,7 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: 'Debug and profile builds only. Point this device at another backend.',
             ),
             const _ApiServerOverrideCard(),
+            if (kDebugMode) const MapOriginCard(),
             const SizedBox(height: AppSpacing.sm),
             Card(
               margin: EdgeInsets.zero,

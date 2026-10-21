@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
+import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -430,6 +432,8 @@ void main() {
               .overrideWith((ref) => InertWalletNotifier(ref, dummyWallet)),
           spotDiscoveryProvider.overrideWith(
               (ref) => InertSpotDiscoveryNotifier(ref, [dummySpot])),
+          jdqMapFactoryProvider.overrideWithValue(FakeJdqMap.new),
+          mapStyleProvider.overrideWith((ref) async => '{}'),
           choiceSpotlightProvider.overrideWith((ref) async => null),
           choiceEngagementProvider
               .overrideWith((ref) async => const ChoiceEngagementSummary(
@@ -659,6 +663,12 @@ void main() {
         (tester) async {
       await testScreenOverflow(
           tester, const MapViewScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('MapViewScreen with FakeJdqMap does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const MapViewScreen(), const Size(568, 320), 2.0);
     });
 
     testWidgets('SpotPostingSheet does not overflow in small portrait',

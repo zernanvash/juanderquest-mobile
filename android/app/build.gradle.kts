@@ -71,6 +71,17 @@ kotlin {
     }
 }
 
+// Flutter 3.44 injects defaultConfig filters. AGP merges build-type filters
+// with those defaults, so clear them after DSL evaluation before restricting
+// release only. Debug keeps every ABI supported by the selected Flutter target.
+androidComponents.finalizeDsl {
+    it.defaultConfig.ndk.abiFilters.clear()
+    it.buildTypes.getByName("release").ndk.abiFilters.apply {
+        clear()
+        addAll(listOf("arm64-v8a", "armeabi-v7a"))
+    }
+}
+
 flutter {
     source = "../.."
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -26,6 +27,9 @@ import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../utils/admin_areas.dart';
+import '../engine/jdq_map.dart';
+import '../engine/jdq_map_canvas.dart';
+import '../engine/maplibre_jdq_map.dart';
 import '../utils/map_focus.dart';
 import '../utils/map_cluster.dart';
 import '../utils/map_list.dart';
@@ -41,6 +45,56 @@ class MapViewScreen extends ConsumerStatefulWidget {
 
 class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   final MapController _mapController = MapController();
+  late final JdqMap _nativeMap;
+  late final Future<String> _style;
+  bool _basicMap = false;
+  bool _fellBack = false;
+  String _pinSignature = '';
+  bool get _native => !_basicMap;
+
+  @override
+  void initState() {
+    super.initState();
+    _nativeMap = ref.read(jdqMapFactoryProvider)();
+    _basicMap = _nativeMap is MapLibreJdqMap &&
+        (kIsWeb || ![TargetPlatform.android, TargetPlatform.iOS].contains(defaultTargetPlatform));
+    _style = _native ? ref.read(mapStyleProvider.future) : Future.value('');
+    _nativeMap.onTapEmpty = _handleMapTap;
+    _nativeMap.onTapPlace = (id) {
+      for (final area in _areas) {
+        if (area.id == id) { unawaited(_focusArea(area)); break; }
+      }
+    };
+    _nativeMap.onCameraIdle = () {
+      _scheduleAreaRefresh();
+      if (mounted) setState(() => _clusterZoom = _nativeMap.camera.zoom);
+    };
+    _initSelection();
+  }
+
+  JdqCamera get _camera {
+    if (_native) return _nativeMap.camera;
+    final c = _mapController.camera;
+    return JdqCamera(center: c.center, zoom: c.zoom, size: c.size,
+      southWest: c.visibleBounds.southWest, northEast: c.visibleBounds.northEast);
+  }
+  void _move(LatLng point, double zoom) {
+    if (_native) { unawaited(_nativeMap.easeTo(point, zoom,
+      reducedMotion: MediaQuery.disableAnimationsOf(context))); }
+    else { _mapController.move(point, zoom); }
+  }
+  void _fit(LatLngBounds bounds, EdgeInsets padding, {double? maxZoom}) {
+    if (_native) { unawaited(_nativeMap.fitBounds(bounds.southWest, bounds.northEast, padding)); }
+    else { _mapController.fitCamera(CameraFit.bounds(bounds: bounds,
+      padding: padding, maxZoom: maxZoom ?? double.infinity)); }
+  }
+  Widget _canvas(Widget raster) {
+    if (_basicMap && !_fellBack) return raster;
+    return JdqMapCanvas(map: _nativeMap, style: _style, fallback: raster,
+      onFallback: () {
+        if (mounted) setState(() { _basicMap = true; _fellBack = true; });
+      });
+  }
   QuestModel? _selectedQuest;
   SpotModel? _selectedSpot;
   String _activeFilter = 'all'; // 'all', 'quests', 'spots'
@@ -70,6 +124,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
   @override
   void dispose() {
+    _nativeMap.dispose();
     _clusterRefreshTimer?.cancel();
     _areaRefreshTimer?.cancel();
     super.dispose();
@@ -83,24 +138,24 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
   Future<void> _refreshAreas() async {
     if (!mounted) return;
-    final MapCamera camera;
+    final JdqCamera camera;
     try {
-      camera = _mapController.camera;
+      camera = _camera;
     } catch (_) {
       return; // Map not laid out yet.
     }
-    final b = camera.visibleBounds;
     final request = ++_areaRequest;
     try {
       final areas = await _areaApi.visible(
-        minLat: b.south,
-        minLng: b.west,
-        maxLat: b.north,
-        maxLng: b.east,
+        minLat: camera.southWest.latitude,
+        minLng: camera.southWest.longitude,
+        maxLat: camera.northEast.latitude,
+        maxLng: camera.northEast.longitude,
         zoom: camera.zoom,
       );
       if (!mounted || request != _areaRequest) return;
       setState(() => _areas = areas);
+      if (_native) await _nativeMap.setPlaces(areas);
     } catch (_) {
       // Names are an enhancement; the map works without them.
     }
@@ -111,11 +166,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   /// the province, otherwise the town; inside a focused town it drills down
   /// to the barangay.
   Future<AdminArea?> _areaAt(LatLng point) async {
-    final zoom = _mapController.camera.zoom;
+    final zoom = _camera.zoom;
     final levels = _focusedArea != null && _focusedArea!.level != 'province'
         ? const {'barangay'}
         : _focusedArea?.level == 'province' || zoom >= 9
-            ? const {'city', 'municipality'}
+            ? const {'city', 'municipality', 'town'}
             : const {'province'};
     final candidates = _areas
         .where((a) =>
@@ -150,7 +205,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           content: Text('The boundary of ${area.name} is not available yet.')));
       return;
     }
-    final camera = _mapController.camera;
+    final camera = _camera;
     setState(() {
       if (_focusedArea == null) {
         _preFocusCenter = camera.center;
@@ -161,10 +216,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       _selectedQuest = null;
       _selectedSpot = null;
     });
-    _mapController.fitCamera(CameraFit.bounds(
-      bounds: LatLngBounds.fromPoints(shape.outlinePoints),
-      padding: const EdgeInsets.fromLTRB(32, 140, 32, 120),
-    ));
+    if (_native) await _nativeMap.setFocusArea(shape);
+    _fit(LatLngBounds.fromPoints(shape.outlinePoints), const EdgeInsets.fromLTRB(32, 140, 32, 120));
   }
 
   void _clearArea() {
@@ -176,7 +229,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       _preFocusCenter = null;
       _preFocusZoom = null;
     });
-    if (center != null && zoom != null) _mapController.move(center, zoom);
+    if (_native) unawaited(_nativeMap.clearFocus());
+    if (center != null && zoom != null) _move(center, zoom);
   }
 
   bool _inFocusedArea(double lat, double lng) =>
@@ -257,9 +311,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
+  void _initSelection() {
     // Auto-select initial quest if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshAreas();
@@ -290,7 +342,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     }
 
     if (points.isEmpty) {
-      _mapController.move(
+      _move(
         const LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
         MapConfig.defaultZoom,
       );
@@ -298,21 +350,16 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     }
 
     if (points.length == 1) {
-      _mapController.move(points.first, 13.0);
+      _move(points.first, 13.0);
       return;
     }
 
-    _mapController.fitCamera(
-      CameraFit.bounds(
-        bounds: LatLngBounds.fromPoints(points),
-        padding: const EdgeInsets.all(50),
-      ),
-    );
+    _fit(LatLngBounds.fromPoints(points), const EdgeInsets.all(50));
   }
 
   /// Centers a selected pin so it stays visible above the floating card.
   void _focusPlace(double lat, double lng, double fallbackZoom) {
-    final camera = _mapController.camera;
+    final camera = _camera;
     final zoom = camera.zoom < fallbackZoom ? fallbackZoom : camera.zoom;
     final target = focusTargetAboveCard(
       lat: lat,
@@ -320,7 +367,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       zoom: zoom,
       mapHeightPx: camera.size.height,
     );
-    _mapController.move(target, zoom);
+    _move(target, zoom);
   }
 
   /// Map-first posting: arm pin placement, then open the progressive wizard.
@@ -439,8 +486,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       if (!mounted) return;
       final location = LatLng(position.latitude, position.longitude);
       setState(() => _userLocation = location);
-      final camera = _mapController.camera;
-      _mapController.move(location, camera.zoom < 14 ? 14.0 : camera.zoom);
+      final camera = _camera;
+      if (_native) _nativeMap.setMyLocation(true);
+      _move(location, camera.zoom < 14 ? 14.0 : camera.zoom);
       if (position.accuracy > 2000) {
         messenger.showSnackBar(
           SnackBar(content: Text('Approximate location shown (±${position.accuracy.round()} m). Move to an open area for a better fix.')),
@@ -640,14 +688,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             child: GestureDetector(
               onTap: () {
                 if (result.hasNonZeroSpan) {
-                  _mapController.fitCamera(CameraFit.bounds(
-                    bounds: LatLngBounds(
+                  _fit(LatLngBounds(
                       LatLng(result.minLat, result.minLng),
                       LatLng(result.maxLat, result.maxLng),
                     ),
-                    padding: const EdgeInsets.all(48),
-                    maxZoom: math.min(_mapController.camera.zoom + 3, 16),
-                  ));
+                    const EdgeInsets.all(48),
+                    maxZoom: math.min(_camera.zoom + 3, 16));
                 } else {
                   _openIdenticalCluster(result, questsByPointId, spotsByPointId);
                 }
@@ -791,6 +837,35 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       ));
     }
 
+    if (_native) {
+      final pins = <JdqPin>[
+        for (final q in visibleQuests) JdqPin('quest:${q.id}', LatLng(q.gpsLat, q.gpsLng), q.title, quest: true),
+        for (final s in visibleSpots) JdqPin('spot:${s.id}', LatLng(s.gpsLat, s.gpsLng), s.name),
+      ];
+      _nativeMap.onTapPin = (id) {
+        for (final q in visibleQuests) {
+          if ('quest:${q.id}' == id) {
+            setState(() { _selectedQuest = q; _selectedSpot = null; });
+            _focusPlace(q.gpsLat, q.gpsLng, 14);
+            return;
+          }
+        }
+        for (final s in visibleSpots) {
+          if ('spot:${s.id}' == id) {
+            setState(() { _selectedSpot = s; _selectedQuest = null; });
+            _focusPlace(s.gpsLat, s.gpsLng, 14);
+            return;
+          }
+        }
+      };
+      final signature = pins.map((p) => '${p.id}:${p.point}:${p.label}').join('|');
+      if (signature != _pinSignature) {
+        _pinSignature = signature;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _native) unawaited(_nativeMap.setPins(pins));
+        });
+      }
+    }
     return JdqScaffold(
       padding: EdgeInsets.zero,
       appBar: AppBar(
@@ -821,7 +896,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       body: Stack(
         children: [
           // 1. Edge-to-Edge OpenStreetMap Canvas (1:1 with Web Leaflet engine)
-          FlutterMap(
+          _canvas(FlutterMap(
             mapController: _mapController,
             options: MapOptions(
               initialCenter: const LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng),
@@ -891,7 +966,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 ],
               ),
             ],
-          ),
+          )),
 
           // 2. Top-Left Floating Header & Filter Panel (Web Parity)
           Positioned(
