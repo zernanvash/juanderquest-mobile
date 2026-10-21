@@ -289,6 +289,20 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: AppSpacing.sectionGap),
 
+          Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              key: const ValueKey('settings_interests'),
+              leading: const Icon(Icons.interests_rounded, color: AppColors.primary),
+              title: const Text('Travel interests'),
+              subtitle: const Text('Tune which destinations we recommend.'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push('/onboarding/interests'),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.sectionGap),
+
           // Developer & UI Designer Tools
           const JdqSectionHeader(
             title: 'Developer & UI Designer Mode',

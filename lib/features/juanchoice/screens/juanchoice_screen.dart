@@ -145,18 +145,37 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen> with Widget
 }
 
 class JuanChoiceDetailScreen extends ConsumerStatefulWidget {
-  const JuanChoiceDetailScreen({super.key, required this.campaignId});
+  const JuanChoiceDetailScreen(
+      {super.key, required this.campaignId, this.focusCandidateId});
   final String campaignId;
+
+  /// Shared candidate link (`/choice/:id/candidates/:candidateId`): that
+  /// candidate is highlighted and scrolled into view.
+  final String? focusCandidateId;
   @override
   ConsumerState<JuanChoiceDetailScreen> createState() => _JuanChoiceDetailScreenState();
 }
 
 class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
     with WidgetsBindingObserver {
+  final GlobalKey _focusKey = GlobalKey();
+  bool _scrolledToFocus = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  void _scrollToFocusOnce() {
+    if (_scrolledToFocus || widget.focusCandidateId == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _focusKey.currentContext;
+      if (ctx == null || _scrolledToFocus) return;
+      _scrolledToFocus = true;
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 350), alignment: 0.2);
+    });
   }
   @override
   void dispose() {
@@ -187,6 +206,7 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    _scrollToFocusOnce();
     final detail = ref.watch(choiceDetailProvider(widget.campaignId));
     final overview = ref.watch(choiceOverviewProvider).asData?.value;
     final vote = ref.watch(choiceVoteProvider);
@@ -228,7 +248,14 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                   label: 'Sign in to vote',
                   onPressed: () => context.go('/?redirect=${Uri.encodeComponent('/choice/${widget.campaignId}')}'),
                 ),
-                for (final standing in data.standings) Card(child: Padding(
+                for (final standing in data.standings) Card(
+                  key: standing.candidateId == widget.focusCandidateId ? _focusKey : null,
+                  shape: standing.candidateId == widget.focusCandidateId
+                      ? RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2))
+                      : null,
+                  child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(standing.spotName),

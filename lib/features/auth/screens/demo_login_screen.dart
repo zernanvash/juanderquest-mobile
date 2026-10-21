@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:reown_appkit/reown_appkit.dart' hide PrimaryButton, SecondaryButton;
 
 import '../../../core/theme/app_colors.dart';
@@ -108,7 +109,23 @@ class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
                       const SizedBox(height: AppSpacing.sm),
                       Text(formError!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
                     ],
-                    const SizedBox(height: AppSpacing.lg),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        key: const ValueKey('login_forgot_password'),
+                        onPressed: isSubmitting
+                            ? null
+                            : () {
+                                final email = emailController.text.trim();
+                                Navigator.of(dialogCtx).pop();
+                                context.push(email.isEmpty
+                                    ? '/forgot-password'
+                                    : '/forgot-password?email=${Uri.encodeQueryComponent(email)}');
+                              },
+                        child: const Text('Forgot password?'),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
                         Expanded(

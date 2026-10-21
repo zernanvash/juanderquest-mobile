@@ -12,6 +12,8 @@ import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
+import '../providers/spot_discovery_provider.dart';
+import '../widgets/spot_community_section.dart';
 
 class SpotDetailScreen extends ConsumerStatefulWidget {
   final SpotModel spot;
@@ -96,12 +98,23 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
               color: _isSaved ? AppColors.sunGold : null,
             ),
             tooltip: _isSaved ? 'Saved to Wishlist' : 'Save Spot',
-            onPressed: () {
-              setState(() => _isSaved = !_isSaved);
+            onPressed: () async {
+              // Saved on the server (Plan 43 "save this destination" tasks
+              // depend on it), not just on this screen.
+              final wasSaved = _isSaved;
+              setState(() => _isSaved = !wasSaved);
+              final failure = await ref
+                  .read(spotDiscoveryProvider.notifier)
+                  .toggleSaved(spot.copyWith(saved: wasSaved));
+              if (!context.mounted) return;
+              if (failure != null) setState(() => _isSaved = wasSaved);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(_isSaved ? 'Added "${spot.name}" to saved places.' : 'Removed from saved places.'),
-                  duration: const Duration(seconds: 1),
+                  content: Text(failure?.message ??
+                      (_isSaved
+                          ? 'Added "${spot.name}" to saved places.'
+                          : 'Removed from saved places.')),
+                  duration: const Duration(seconds: 2),
                 ),
               );
             },
@@ -396,6 +409,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                       }).toList(),
                     ),
                   ],
+
+                  const SizedBox(height: AppSpacing.sectionGap),
+
+                  // Likes, explorer notes and problem reports (Plan 47 B3)
+                  SpotCommunitySection(spotId: spot.id, spotName: spot.name),
 
                   const SizedBox(height: AppSpacing.sectionGap),
 

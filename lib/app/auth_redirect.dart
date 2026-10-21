@@ -4,11 +4,13 @@ String? resolveAuthRedirect({
   required Uri uri,
 }) {
   final onLogin = matchedLocation == '/';
+  // Signed-out screens that are not the sign-in page itself.
+  final publicAuth = matchedLocation == '/forgot-password';
   final publicDiscovery = matchedLocation == '/explore' ||
       matchedLocation.startsWith('/explore/') ||
       matchedLocation == '/choice' ||
       matchedLocation.startsWith('/choice/');
-  if (!loggedIn && !onLogin && !publicDiscovery) {
+  if (!loggedIn && !onLogin && !publicDiscovery && !publicAuth) {
     return '/?redirect=${Uri.encodeComponent(uri.toString())}';
   }
   if (loggedIn && onLogin) {

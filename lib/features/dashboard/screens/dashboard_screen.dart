@@ -15,6 +15,7 @@ import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/widgets/hidden_gem_card.dart';
 import '../../submissions/models/submission_model.dart';
 import '../../submissions/providers/submission_provider.dart';
+import '../../spots/screens/interests_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -33,6 +34,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(submissionProvider.notifier).fetchSubmissions();
       ref.read(spotDiscoveryProvider.notifier).load();
       ref.read(questProvider.notifier).fetchQuests();
+      // First sign-in: ask for travel interests once (Plan 47 B5).
+      InterestsPrompt.maybeShow(context, ref);
     });
   }
 

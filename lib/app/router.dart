@@ -8,6 +8,8 @@ import '../features/quests/models/quest_model.dart';
 import '../features/quests/screens/quest_detail_screen.dart';
 import '../features/quests/screens/quest_funding_screen.dart';
 import '../features/ar_experience/screens/ar_diagnostics_screen.dart';
+import '../features/auth/screens/forgot_password_screen.dart';
+import '../features/spots/screens/interests_screen.dart';
 import '../features/ar_experience/screens/ar_quest_screen.dart';
 import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
@@ -203,6 +205,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: ':id',
                     builder: (context, state) => JuanChoiceDetailScreen(
                         campaignId: state.pathParameters['id']!),
+                    routes: [
+                      GoRoute(
+                        path: 'candidates/:candidateId',
+                        builder: (context, state) => JuanChoiceDetailScreen(
+                          campaignId: state.pathParameters['id']!,
+                          focusCandidateId:
+                              state.pathParameters['candidateId'],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -345,6 +357,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             child: NavigationScreen(destination: destination),
           );
         },
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => ForgotPasswordScreen(
+          initialEmail: state.uri.queryParameters['email'],
+        ),
+      ),
+      GoRoute(
+        path: '/onboarding/interests',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const InterestsScreen(),
       ),
       GoRoute(
         path: '/ar-diagnostics',
