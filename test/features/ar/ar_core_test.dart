@@ -113,8 +113,8 @@ void main() {
     test('16:9 stream crops the sensor short side', () {
       final f = CameraOptics.fallback
           .focalPixels(screen: const Size(360, 780), previewAspect: 16 / 9);
-      final scale = 780 / (360 * 16 / 9);
-      final shownLong = 360 * 16 / 9 * scale;
+      const scale = 780 / (360 * 16 / 9);
+      const shownLong = 360 * 16 / 9 * scale;
       expect(f, closeTo((shownLong / 2) / (5.52 / (2 * 4.25)), 0.5));
     });
 

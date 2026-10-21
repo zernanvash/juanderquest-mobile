@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -15,11 +17,21 @@ import '../core/ar_hunt.dart';
 import '../core/ar_task.dart';
 import '../core/camera_optics.dart';
 import '../core/heading_fusion.dart';
+import '../core/world_ar.dart';
 import '../engine/shapes_factory.dart';
 import '../widgets/ar_camera_layer.dart';
 import '../widgets/ar_overlay.dart';
 
-/// Plays one Plan 43 AR task (Plan 47 Tier C "Compass AR").
+/// Which AR tier is running (Plan 47 §2).
+enum ArTier {
+  /// ARCore world tracking: the object sits on the real ground.
+  world,
+
+  /// Rotation-vector compass AR: works on every phone.
+  compass,
+}
+
+/// Plays one Plan 43 AR task.
 ///
 /// Route: `/quests/:id/ar?step=<order>`; `extra` may carry the [QuestModel].
 class ArQuestScreen extends ConsumerStatefulWidget {
@@ -39,6 +51,9 @@ class ArQuestScreen extends ConsumerStatefulWidget {
 }
 
 class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
+  /// Fall back to Compass AR if World AR can't track for this long.
+  static const worldTrackingGrace = Duration(seconds: 8);
+
   final ArDevice _device = ArDevice();
   ArTaskSpec? _task;
   ArHuntController? _hunt;
@@ -47,6 +62,13 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   double _previewAspect = 4 / 3;
   String? _setupError;
   bool _permissionsDenied = false;
+
+  ArTier? _tier;
+  WorldArSession? _world;
+  DateTime? _worldNotTrackingSince;
+  bool _placing = false;
+  final ValueNotifier<ArScreenObject?> _worldObject = ValueNotifier(null);
+  CompassObjectProjector? _compassObject;
 
   @override
   void initState() {
@@ -122,6 +144,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     if (mounted) setState(() => _permissionsDenied = false);
     _optics = await ArDevice.cameraOptics();
     _device.start();
+    await _chooseTier();
     try {
       final first = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.best,
@@ -141,6 +164,86 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     if (mounted) setState(() {});
   }
 
+  /// World AR when it is enabled and ARCore is installed; otherwise Compass AR.
+  Future<void> _chooseTier() async {
+    var tier = ArTier.compass;
+    if (await WorldArPrefs.enabled()) {
+      var a = await WorldArSupport.check();
+      if (a == WorldArAvailability.installable &&
+          await WorldArSupport.requestInstall()) {
+        a = WorldArAvailability.installed;
+      }
+      if (a == WorldArAvailability.installed) tier = ArTier.world;
+    }
+    if (mounted) setState(() => _tier = tier);
+  }
+
+  void _fallBackToCompass() {
+    final world = _world;
+    _world = null;
+    world?.frame.removeListener(_onWorldFrame);
+    world?.dispose();
+    _worldObject.value = null;
+    if (mounted) setState(() => _tier = ArTier.compass);
+  }
+
+  void _onWorldViewCreated(int id) {
+    final session = WorldArSession(id);
+    session.frame.addListener(_onWorldFrame);
+    _world = session;
+  }
+
+  void _onWorldFrame() {
+    final frame = _world?.frame.value;
+    final hunt = _hunt;
+    if (frame == null || hunt == null || !mounted) return;
+    if (frame.error != null) {
+      _fallBackToCompass();
+      return;
+    }
+    final now = DateTime.now();
+    if (!frame.tracking) {
+      _worldNotTrackingSince ??= now;
+      if (now.difference(_worldNotTrackingSince!) > worldTrackingGrace &&
+          frame.anchor == null) {
+        _fallBackToCompass();
+        return;
+      }
+    } else {
+      _worldNotTrackingSince = null;
+    }
+
+    final screen = MediaQuery.sizeOf(context);
+    final p = WorldProjection.project(frame, screen);
+    if (p == null) {
+      _worldObject.value = null;
+    } else {
+      final o = ArScreenObject.from(
+        p,
+        WorldProjection.focalPx(frame, screen) *
+            ArObjectLayer.objectSizeM /
+            (p.depth <= 0 ? 1 : p.depth),
+        WorldProjection.relativeDegrees(frame),
+      );
+      _worldObject.value = o;
+      // Close enough to reach out and grab it.
+      hunt.onCentred(o.centredOn(screen) && p.depth <= 4.5);
+    }
+
+    // Once the object is unlocked, drop it on the first ground plane ahead.
+    final searching = hunt.phase == ArHuntPhase.searching ||
+        hunt.phase == ArHuntPhase.aligned;
+    if (searching &&
+        frame.tracking &&
+        frame.anchor == null &&
+        frame.planes > 0 &&
+        !_placing) {
+      _placing = true;
+      _world!.placeAnchor().whenComplete(() => _placing = false);
+    }
+    setState(() {}); // refresh the status hint (the overlay is separate)
+  }
+
   void _onPosition(Position p) {
     _hunt?.onFix(
       ArFix(
@@ -153,7 +256,11 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     );
   }
 
-  void _onPose() => _hunt?.onCamera(_device.pose.value.camera);
+  void _onPose() {
+    if (_tier == ArTier.compass) {
+      _hunt?.onCamera(_device.pose.value.camera);
+    }
+  }
 
   void _onHunt() {
     if (!mounted) return;
@@ -171,7 +278,11 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     SystemChrome.setPreferredOrientations(const []);
     _gps?.cancel();
     _device.pose.removeListener(_onPose);
+    _compassObject?.dispose();
     _device.dispose();
+    _world?.frame.removeListener(_onWorldFrame);
+    _world?.dispose();
+    _worldObject.dispose();
     _hunt?.removeListener(_onHunt);
     _hunt?.dispose();
     super.dispose();
@@ -189,16 +300,19 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   Widget build(BuildContext context) {
     final task = _task;
     final hunt = _hunt;
+    final ready = task != null && !_permissionsDenied && _tier != null;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (task != null && !_permissionsDenied)
+          if (ready && _tier == ArTier.world)
+            _WorldArView(onCreated: _onWorldViewCreated)
+          else if (ready)
             ArCameraLayer(
               onPreviewAspect: (a) => setState(() => _previewAspect = a),
             ),
-          if (task != null && hunt != null) ..._buildScene(task, hunt),
+          if (ready && hunt != null) ..._buildScene(task, hunt),
           SafeArea(child: _buildTopBar(task)),
           if (_setupError != null)
             _MessagePanel(
@@ -218,7 +332,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
                 await _startSensors();
               },
             )
-          else if (task == null)
+          else if (!ready)
             const Center(
                 child: CircularProgressIndicator(color: Color(0xFFFFB703))),
         ],
@@ -226,22 +340,42 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     );
   }
 
-  List<Widget> _buildScene(ArTaskSpec task, ArHuntController hunt) {
+  ValueListenable<ArScreenObject?> _objectSource(ArHuntController hunt) {
+    if (_tier == ArTier.world) return _worldObject;
     final size = MediaQuery.sizeOf(context);
     final focal =
         _optics.focalPixels(screen: size, previewAspect: _previewAspect);
+    final c = _compassObject ??= CompassObjectProjector(
+      pose: _device.pose,
+      focalPx: focal,
+      screen: size,
+    );
+    c
+      ..focalPx = focal
+      ..screen = size
+      ..position = hunt.objectPosition;
+    return c;
+  }
+
+  List<Widget> _buildScene(ArTaskSpec task, ArHuntController hunt) {
     final phase = hunt.phase;
-    final showObject = hunt.objectPosition != null &&
-        (phase == ArHuntPhase.searching ||
-            phase == ArHuntPhase.aligned ||
-            phase == ArHuntPhase.submitting);
+    final unlocked = phase == ArHuntPhase.searching ||
+        phase == ArHuntPhase.aligned ||
+        phase == ArHuntPhase.submitting;
+    final world = _tier == ArTier.world;
+    final frame = _world?.frame.value;
+    final waitingForGround = world && unlocked && frame?.anchor == null;
+    String? searchingHint;
+    if (waitingForGround) {
+      searchingHint = (frame?.tracking ?? false)
+          ? 'Point at the ground a few steps ahead.'
+          : frame?.trackingHint ?? 'Move your phone slowly to scan the ground.';
+    }
     return [
-      if (showObject) ...[
+      if (unlocked) ...[
         ArReticle(active: phase == ArHuntPhase.aligned),
         ArObjectLayer(
-          pose: _device.pose,
-          position: hunt.objectPosition!,
-          focalPx: focal,
+          object: _objectSource(hunt),
           mesh: ShapesFactory.createShape(task.shape, themeColor: task.color),
           color: task.color,
           collectable: phase == ArHuntPhase.aligned,
@@ -259,12 +393,20 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
             radiusMeters: task.fence.radiusMeters,
           ),
         ),
-      _CompassHint(pose: _device.pose, phase: phase),
+      if (!world) _CompassHint(pose: _device.pose, phase: phase),
       Align(
         alignment: Alignment.bottomCenter,
         child: SafeArea(
           minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: _buildBottom(hunt),
+          child: ArStatusCard(
+            phase: phase,
+            error: hunt.error,
+            searchingHint: searchingHint,
+            onCollect: hunt.collect,
+            onDone: () => _close(completed: true),
+            onRetry: () =>
+                hunt.retry(cameraBearing: _device.pose.value.camera.bearing),
+          ),
         ),
       ),
     ];
@@ -304,15 +446,38 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       ),
     );
   }
+}
 
-  Widget _buildBottom(ArHuntController hunt) {
-    return ArStatusCard(
-      phase: hunt.phase,
-      error: hunt.error,
-      onCollect: hunt.collect,
-      onDone: () => _close(completed: true),
-      onRetry: () =>
-          hunt.retry(cameraBearing: _device.pose.value.camera.bearing),
+/// Native ARCore camera view (Hybrid Composition, needed for a SurfaceView).
+class _WorldArView extends StatelessWidget {
+  final ValueChanged<int> onCreated;
+
+  const _WorldArView({required this.onCreated});
+
+  static const viewType = 'jdq/arcore_view';
+
+  @override
+  Widget build(BuildContext context) {
+    return PlatformViewLink(
+      viewType: viewType,
+      surfaceFactory: (context, controller) => AndroidViewSurface(
+        controller: controller as AndroidViewController,
+        gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+      ),
+      onCreatePlatformView: (params) {
+        final controller = PlatformViewsService.initExpensiveAndroidView(
+          id: params.id,
+          viewType: viewType,
+          layoutDirection: TextDirection.ltr,
+          creationParamsCodec: const StandardMessageCodec(),
+          onFocus: () => params.onFocusChanged(true),
+        )
+          ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
+          ..addOnPlatformViewCreatedListener(onCreated);
+        controller.create();
+        return controller;
+      },
     );
   }
 }
@@ -321,6 +486,10 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
 class ArStatusCard extends StatelessWidget {
   final ArHuntPhase phase;
   final String? error;
+
+  /// Replaces the default "look around" text while searching (World AR uses
+  /// it to guide ground scanning).
+  final String? searchingHint;
   final VoidCallback onCollect;
   final VoidCallback onDone;
   final VoidCallback onRetry;
@@ -329,6 +498,7 @@ class ArStatusCard extends StatelessWidget {
     super.key,
     required this.phase,
     required this.error,
+    this.searchingHint,
     required this.onCollect,
     required this.onDone,
     required this.onRetry,
@@ -349,7 +519,7 @@ class ArStatusCard extends StatelessWidget {
         text = 'You are here! Unlocking the AR object…';
         break;
       case ArHuntPhase.searching:
-        text = 'Look around. Centre the object in the ring.';
+        text = searchingHint ?? 'Look around. Centre the object in the ring.';
         break;
       case ArHuntPhase.aligned:
         text = 'Got it in sight. Tap to collect!';

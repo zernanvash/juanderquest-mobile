@@ -38,7 +38,8 @@ android {
 
     defaultConfig {
         applicationId = "dev.zernanvash.juanderquest"
-        minSdk = flutter.minSdkVersion
+        // ARCore (Plan 47 World AR) needs API 24+.
+        minSdk = maxOf(24, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -76,5 +77,7 @@ flutter {
 
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
+    // World AR (Plan 47). "AR Optional": the app installs on phones without ARCore.
+    implementation("com.google.ar:core:1.56.0")
 }
 

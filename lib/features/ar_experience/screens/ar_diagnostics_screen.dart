@@ -8,6 +8,7 @@ import '../core/ar_hunt.dart';
 import '../core/ar_math.dart';
 import '../core/camera_optics.dart';
 import '../core/heading_fusion.dart';
+import '../core/world_ar.dart';
 import '../engine/shapes_factory.dart';
 import '../widgets/ar_camera_layer.dart';
 import '../widgets/ar_overlay.dart';
@@ -29,6 +30,9 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
   Vec3? _object;
   bool _ready = false;
   bool _denied = false;
+  bool _worldEnabled = false;
+  WorldArAvailability? _worldAvailability;
+  CompassObjectProjector? _projector;
 
   @override
   void initState() {
@@ -50,6 +54,8 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
     }
     _optics = await ArDevice.cameraOptics();
     _caps = await ArDevice.capabilities();
+    _worldEnabled = await WorldArPrefs.enabled();
+    _worldAvailability = await WorldArSupport.check();
     _device.start();
     if (mounted) setState(() => _ready = true);
   }
@@ -57,6 +63,7 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
   @override
   void dispose() {
     SystemChrome.setPreferredOrientations(const []);
+    _projector?.dispose();
     _device.dispose();
     super.dispose();
   }
@@ -82,9 +89,14 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
             ),
           if (_ready && _object != null)
             ArObjectLayer(
-              pose: _device.pose,
-              position: _object!,
-              focalPx: focal,
+              object: (_projector ??= CompassObjectProjector(
+                pose: _device.pose,
+                focalPx: focal,
+                screen: size,
+              ))
+                ..focalPx = focal
+                ..screen = size
+                ..position = _object,
               mesh: ShapesFactory.createShape(ShapeType.gem),
               color: const Color(0xFFFFB703),
               collectable: false,
@@ -116,8 +128,8 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
                       ),
                     ),
                   ),
-                  // Leave room for the bottom button.
-                  const SizedBox(height: 72),
+                  // Leave room for the bottom controls.
+                  const SizedBox(height: 150),
                 ],
               ),
             ),
@@ -126,13 +138,42 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
             alignment: Alignment.bottomCenter,
             child: SafeArea(
               minimum: const EdgeInsets.all(16),
-              child: FilledButton.icon(
-                key: const ValueKey('ar_diag_place'),
-                onPressed: _ready ? _placeAhead : null,
-                icon: const Icon(Icons.add_location_alt_rounded),
-                label: Text(_object == null
-                    ? 'Place test object ahead'
-                    : 'Move test object ahead'),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SwitchListTile(
+                      key: const ValueKey('ar_diag_world_toggle'),
+                      dense: true,
+                      title: const Text('World AR (ARCore, beta)',
+                          style: TextStyle(color: Colors.white)),
+                      subtitle: Text(
+                        'Use ARCore in quests when available. '
+                        'ARCore: ${_worldAvailability?.name ?? '…'}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      value: _worldEnabled,
+                      onChanged: (v) async {
+                        await WorldArPrefs.setEnabled(v);
+                        if (mounted) setState(() => _worldEnabled = v);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    key: const ValueKey('ar_diag_place'),
+                    onPressed: _ready ? _placeAhead : null,
+                    icon: const Icon(Icons.add_location_alt_rounded),
+                    label: Text(_object == null
+                        ? 'Place test object ahead'
+                        : 'Move test object ahead'),
+                  ),
+                ],
               ),
             ),
           ),

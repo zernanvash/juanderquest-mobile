@@ -203,14 +203,20 @@ class ArHuntController extends ChangeNotifier {
     }
   }
 
-  /// Camera moved: update whether the object is centred.
+  /// Compass AR: camera moved; the object is centred when the view
+  /// direction is within [ArHuntRules.alignDegrees] of it.
   void onCamera(CameraPose camera) {
     final pos = _objectPosition;
     if (pos == null) return;
+    onCentred(camera.angleTo(pos) <= ArHuntRules.alignDegrees);
+  }
+
+  /// Either tier reports whether the object is inside the centre ring. It
+  /// becomes collectable after staying centred for [ArHuntRules.holdToCollect].
+  void onCentred(bool centred) {
     if (_phase != ArHuntPhase.searching && _phase != ArHuntPhase.aligned) {
       return;
     }
-    final centred = camera.angleTo(pos) <= ArHuntRules.alignDegrees;
     if (!centred) {
       _alignedSince = null;
       if (_phase == ArHuntPhase.aligned) _set(ArHuntPhase.searching);

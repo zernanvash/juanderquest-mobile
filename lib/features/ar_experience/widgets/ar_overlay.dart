@@ -9,12 +9,89 @@ import '../core/heading_fusion.dart';
 import '../engine/mesh3d.dart';
 import 'ar_3d_canvas.dart';
 
-/// Draws the AR object where it sits in the world, or an edge arrow towards
-/// it when it is off screen. Rebuilds only on pose changes.
-class ArObjectLayer extends StatefulWidget {
+/// Where the AR object is on screen this frame.
+class ArScreenObject {
+  final bool visible;
+  final Offset center;
+  final double sizePx;
+
+  /// Horizontal angle to the object when it is off screen (negative = left).
+  final double relativeDeg;
+
+  const ArScreenObject({
+    required this.visible,
+    required this.center,
+    required this.sizePx,
+    required this.relativeDeg,
+  });
+
+  static const double minSize = 56;
+  static const double maxSize = 260;
+
+  /// Builds the screen object from a projection; [relativeDeg] is used only
+  /// when the object is off screen.
+  factory ArScreenObject.from(
+      ScreenProjection p, double sizePx, double relativeDeg) {
+    final visible = p.inFront && p.onScreen;
+    return ArScreenObject(
+      visible: visible,
+      center: p.offset,
+      sizePx: sizePx.clamp(minSize, maxSize),
+      relativeDeg: relativeDeg,
+    );
+  }
+
+  /// True when the object sits inside the centre ring.
+  bool centredOn(Size screen, {double ringRadius = 60}) =>
+      visible &&
+      (center - Offset(screen.width / 2, screen.height / 2)).distance <=
+          ringRadius;
+}
+
+/// Compass AR: projects a world-relative object with the fused orientation.
+class CompassObjectProjector extends ValueNotifier<ArScreenObject?> {
   final ValueListenable<ArPose> pose;
-  final Vec3 position;
-  final double focalPx;
+  Vec3? position;
+  double focalPx;
+  Size screen;
+
+  CompassObjectProjector({
+    required this.pose,
+    required this.focalPx,
+    required this.screen,
+    this.position,
+  }) : super(null) {
+    pose.addListener(update);
+  }
+
+  void update() {
+    final pos = position;
+    final p = pose.value;
+    if (pos == null || !p.hasData) {
+      value = null;
+      return;
+    }
+    final camera = p.camera;
+    final projector = ArProjector(focalPx: focalPx, screen: screen);
+    final proj = projector.project(camera, pos);
+    value = ArScreenObject.from(
+      proj,
+      projector.pixelSize(ArObjectLayer.objectSizeM, proj.depth),
+      ArGeo.deltaDegrees(ArGeo.bearingOf(pos), camera.bearing),
+    );
+  }
+
+  @override
+  void dispose() {
+    pose.removeListener(update);
+    super.dispose();
+  }
+}
+
+/// Draws the AR object at its screen position, or an edge arrow towards it
+/// when it is off screen. Rebuilds only when the projection changes.
+class ArObjectLayer extends StatefulWidget {
+  final ValueListenable<ArScreenObject?> object;
   final Mesh3D mesh;
   final Color color;
   final bool collectable;
@@ -25,9 +102,7 @@ class ArObjectLayer extends StatefulWidget {
 
   const ArObjectLayer({
     super.key,
-    required this.pose,
-    required this.position,
-    required this.focalPx,
+    required this.object,
     required this.mesh,
     required this.color,
     required this.collectable,
@@ -53,80 +128,70 @@ class _ArObjectLayerState extends State<ArObjectLayer>
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final screen = constraints.biggest;
-      final projector = ArProjector(focalPx: widget.focalPx, screen: screen);
-      return ValueListenableBuilder<ArPose>(
-        valueListenable: widget.pose,
-        builder: (context, pose, _) {
-          if (!pose.hasData) return const SizedBox.shrink();
-          final camera = pose.camera;
-          final p = projector.project(camera, widget.position);
-          if (!p.inFront || !p.onScreen) {
-            final relative = ArGeo.deltaDegrees(
-                ArGeo.bearingOf(widget.position), camera.bearing);
-            return _EdgeHint(relativeDeg: relative, color: widget.color);
-          }
-          final size = projector
-              .pixelSize(ArObjectLayer.objectSizeM, p.depth)
-              .clamp(56.0, 260.0);
-          return Stack(children: [
-            Positioned(
-              left: p.offset.dx - size,
-              top: p.offset.dy - size,
-              width: size * 2,
-              height: size * 2,
-              child: GestureDetector(
-                key: const ValueKey('ar_object'),
-                behavior: HitTestBehavior.translucent,
-                onTap: widget.collectable ? widget.onTap : null,
-                child: AnimatedBuilder(
-                  animation: _spin,
-                  builder: (context, _) {
-                    final t = _spin.value * 2 * math.pi;
-                    return Stack(alignment: Alignment.center, children: [
-                      Container(
-                        width: size * 1.1,
-                        height: size * 1.1,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: (widget.collectable
-                                      ? const Color(0xFF52B788)
-                                      : widget.color)
-                                  .withValues(alpha: 0.45),
-                              blurRadius: size * 0.35,
-                              spreadRadius: size * 0.05,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Transform.translate(
-                        offset: Offset(0, math.sin(t) * size * 0.05),
-                        child: SizedBox(
-                          width: size,
-                          height: size,
-                          child: Ar3dCanvas(
-                            mesh: widget.mesh,
-                            rotX: 0.35,
-                            rotY: t,
-                            rotZ: 0.08,
-                            scale: size * 0.42,
-                            renderStyle: RenderStyle.hybrid,
-                            showShadow: false,
+    return ValueListenableBuilder<ArScreenObject?>(
+      valueListenable: widget.object,
+      builder: (context, o, _) {
+        if (o == null) return const SizedBox.shrink();
+        if (!o.visible) {
+          return _EdgeHint(relativeDeg: o.relativeDeg, color: widget.color);
+        }
+        final size = o.sizePx;
+        return Stack(children: [
+          Positioned(
+            left: o.center.dx - size,
+            top: o.center.dy - size,
+            width: size * 2,
+            height: size * 2,
+            child: GestureDetector(
+              key: const ValueKey('ar_object'),
+              behavior: HitTestBehavior.translucent,
+              onTap: widget.collectable ? widget.onTap : null,
+              child: AnimatedBuilder(
+                animation: _spin,
+                builder: (context, _) {
+                  final t = _spin.value * 2 * math.pi;
+                  return Stack(alignment: Alignment.center, children: [
+                    Container(
+                      width: size * 1.1,
+                      height: size * 1.1,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: (widget.collectable
+                                    ? const Color(0xFF52B788)
+                                    : widget.color)
+                                .withValues(alpha: 0.45),
+                            blurRadius: size * 0.35,
+                            spreadRadius: size * 0.05,
                           ),
+                        ],
+                      ),
+                    ),
+                    Transform.translate(
+                      offset: Offset(0, math.sin(t) * size * 0.05),
+                      child: SizedBox(
+                        width: size,
+                        height: size,
+                        child: Ar3dCanvas(
+                          mesh: widget.mesh,
+                          rotX: 0.35,
+                          rotY: t,
+                          rotZ: 0.08,
+                          scale: size * 0.42,
+                          renderStyle: RenderStyle.hybrid,
+                          showShadow: false,
                         ),
                       ),
-                    ]);
-                  },
-                ),
+                    ),
+                  ]);
+                },
               ),
             ),
-          ]);
-        },
-      );
-    });
+          ),
+        ]);
+      },
+    );
   }
 }
 
