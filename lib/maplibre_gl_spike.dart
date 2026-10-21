@@ -237,12 +237,27 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
                           zoom: 14,
                         ),
                         trackCameraPosition: true,
+                        compassViewPosition: CompassViewPosition.bottomRight,
+                        compassViewMargins: const math.Point(12, 64),
                         rotateGesturesEnabled: true,
                         tiltGesturesEnabled: true,
                         onMapCreated: (controller) => _controller = controller,
                         onStyleLoadedCallback: _onStyleLoaded,
                         onCameraIdle: _onCameraIdle,
                         onMapClick: _queryPlace,
+                      ),
+                      Positioned(
+                        left: 8,
+                        bottom: 48,
+                        child: ElevatedButton(
+                          onPressed: () => _controller?.animateCamera(
+                            CameraUpdate.newCameraPosition(const CameraPosition(
+                              target: LatLng(16.043, 120.334),
+                              zoom: 14,
+                            )),
+                          ),
+                          child: const Text('Dagupan z14'),
+                        ),
                       ),
                       Positioned(
                         left: 8,
