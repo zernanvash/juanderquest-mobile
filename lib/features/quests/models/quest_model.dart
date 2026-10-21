@@ -11,6 +11,8 @@ class QuestStepModel {
   final double? gpsLat;
   final double? gpsLng;
   final int? radiusMeters;
+  final String? key;
+  final Map<String, dynamic>? verification;
 
   const QuestStepModel({
     required this.order,
@@ -25,6 +27,8 @@ class QuestStepModel {
     this.gpsLat,
     this.gpsLng,
     this.radiusMeters,
+    this.key,
+    this.verification,
   });
 
   bool get isVerified => status == 'verified';
@@ -46,6 +50,8 @@ class QuestStepModel {
     double? gpsLat,
     double? gpsLng,
     int? radiusMeters,
+    String? key,
+    Map<String, dynamic>? verification,
   }) {
     return QuestStepModel(
       order: order ?? this.order,
@@ -60,6 +66,8 @@ class QuestStepModel {
       gpsLat: gpsLat ?? this.gpsLat,
       gpsLng: gpsLng ?? this.gpsLng,
       radiusMeters: radiusMeters ?? this.radiusMeters,
+      key: key ?? this.key,
+      verification: verification ?? this.verification,
     );
   }
 
@@ -76,6 +84,10 @@ class QuestStepModel {
         gpsLat: (json['gps_lat'] as num?)?.toDouble(),
         gpsLng: (json['gps_lng'] as num?)?.toDouble(),
         radiusMeters: (json['radius_meters'] as num?)?.toInt(),
+        key: json['key'] as String?,
+        verification: json['verification'] is Map<String, dynamic>
+            ? json['verification'] as Map<String, dynamic>
+            : null,
       );
 }
 
@@ -89,6 +101,7 @@ class QuestAttemptModel {
   final int verifiedSteps;
   final int requiredSteps;
   final String status;
+  final String stepOrderMode;
   final List<QuestStepModel> steps;
   final String? reviewNotes;
 
@@ -102,6 +115,7 @@ class QuestAttemptModel {
     this.verifiedSteps = 0,
     this.requiredSteps = 1,
     this.status = 'in_progress',
+    this.stepOrderMode = 'sequential',
     this.steps = const [],
     this.reviewNotes,
   });
@@ -121,6 +135,7 @@ class QuestAttemptModel {
       verifiedSteps: (json['verified_steps'] as num?)?.toInt() ?? 0,
       requiredSteps: (json['required_steps'] as num?)?.toInt() ?? 1,
       status: json['status'] as String? ?? 'in_progress',
+      stepOrderMode: json['step_order_mode'] as String? ?? 'sequential',
       steps: (json['steps'] is List ? json['steps'] as List : const [])
           .whereType<Map<String, dynamic>>()
           .map(QuestStepModel.fromJson)
@@ -147,6 +162,7 @@ class QuestModel {
   final int? remainingSlots;
   final List<QuestStepModel> steps;
   final String? authorId;
+  final String stepOrderMode;
   final QuestFundingSummary? funding;
 
   QuestModel({
@@ -165,6 +181,7 @@ class QuestModel {
     this.remainingSlots,
     this.steps = const [],
     this.authorId,
+    this.stepOrderMode = 'sequential',
     this.funding,
   });
 
@@ -192,6 +209,7 @@ class QuestModel {
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order)),
       authorId: json['author_id'] as String? ?? json['authorId'] as String?,
+      stepOrderMode: json['step_order_mode'] as String? ?? 'sequential',
       funding: json['funding'] is Map<String,dynamic>
           ? QuestFundingSummary.fromJson(json['funding'] as Map<String,dynamic>)
           : null,

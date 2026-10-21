@@ -1241,6 +1241,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     'qr' => Icons.qr_code_scanner_rounded,
                     'photo' => Icons.camera_alt_rounded,
                     'location' => Icons.location_on_rounded,
+                    'ar' => Icons.view_in_ar_rounded,
                     _ => Icons.touch_app_rounded,
                   },
                   color: isVerified ? AppColors.success : AppColors.woodBrown,
@@ -1340,12 +1341,14 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       'location' => 'Verify Location (GPS)',
       'qr' => 'Scan QR Code',
       'photo' => 'Submit Photo Proof',
+      'ar' => 'Launch AR Viewfinder',
       _ => 'Complete Action',
     };
     final icon = switch (step.checkpointType) {
       'location' => Icons.my_location_rounded,
       'qr' => Icons.qr_code_scanner_rounded,
       'photo' => Icons.camera_alt_rounded,
+      'ar' => Icons.view_in_ar_rounded,
       _ => Icons.check_circle_outline_rounded,
     };
 
@@ -1364,6 +1367,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     break;
                   case 'photo':
                     _showPhotoVerificationModal(step);
+                    break;
+                  case 'ar':
+                    _launchAR(context, ref);
                     break;
                   default:
                     _verifyLocation(step);
