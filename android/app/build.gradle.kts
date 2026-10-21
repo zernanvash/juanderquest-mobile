@@ -2,7 +2,6 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
 }
 
 val releaseKeystorePath = System.getenv("JDQ_RELEASE_KEYSTORE_PATH")
@@ -44,6 +43,14 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+    }
+
+    // Temporary package isolation for the throwaway MapLibre device spike;
+    // this is not part of the feature branch or a release configuration.
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".maplibre_spike"
+        }
     }
 
 
