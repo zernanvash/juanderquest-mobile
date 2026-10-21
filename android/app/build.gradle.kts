@@ -43,6 +43,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+        testInstrumentationRunner = "dev.zernanvash.juanderquest.SpikeGestureInstrumentation"
     }
 
     // Temporary package isolation for the throwaway MapLibre device spike;
