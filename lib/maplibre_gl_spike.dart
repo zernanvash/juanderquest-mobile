@@ -48,6 +48,8 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
   String _queryStatus = 'Tap map to query place features';
   Size _mapSize = Size.zero;
   int _cameraIdleCount = 0;
+  bool _areasReady = false;
+  String _cameraStatus = 'Dagupan, zoom 14';
 
   @override
   void initState() {
@@ -63,7 +65,9 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
 
   Future<void> _checkVisibleTiles() async {
     final controller = _controller;
-    if (controller == null || _vectorLayerIds.isEmpty || _mapSize.isEmpty) return;
+    if (controller == null || _vectorLayerIds.isEmpty || _mapSize.isEmpty) {
+      return;
+    }
     try {
       final features = await controller.queryRenderedFeaturesInRect(
         Rect.fromLTWH(0, 0, _mapSize.width, _mapSize.height),
@@ -84,16 +88,83 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
 
   void _onStyleLoaded() {
     if (!mounted) return;
-    setState(() => _status = 'Style loaded; waiting for visible vector features');
+    setState(
+        () => _status = 'Style loaded; waiting for visible vector features');
     _renderPoll?.cancel();
     _renderPoll = Timer.periodic(
       const Duration(milliseconds: 200),
       (_) => unawaited(_checkVisibleTiles()),
     );
+    unawaited(_addAdminPlaces());
+  }
+
+  Future<void> _addAdminPlaces() async {
+    final controller = _controller;
+    if (controller == null) return;
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(Uri.parse(
+        'https://api.juanderquest.app/api/v1/areas'
+        '?bbox=120.25,15.98,120.42,16.13&zoom=13',
+      ));
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) {
+        throw HttpException('Areas returned ${response.statusCode}');
+      }
+      final payload = jsonDecode(await response.transform(utf8.decoder).join())
+          as Map<String, dynamic>;
+      final areas = (payload['data'] as List).cast<Map<String, dynamic>>();
+      await controller.addGeoJsonSource('admin-places', {
+        'type': 'FeatureCollection',
+        'features': areas
+            .map((area) => {
+                  'type': 'Feature',
+                  'id': area['id'],
+                  'properties': {'id': area['id'], 'name': area['name']},
+                  'geometry': {
+                    'type': 'Point',
+                    'coordinates': [area['label_lng'], area['label_lat']],
+                  },
+                })
+            .toList(),
+      });
+      await controller.addSymbolLayer(
+        'admin-places',
+        'admin-places-label',
+        const SymbolLayerProperties(
+          textField: ['get', 'name'],
+          textFont: ['Noto Sans Bold'],
+          textSize: 16,
+          textColor: '#24382f',
+          textHaloColor: '#ffffff',
+          textHaloWidth: 2,
+        ),
+        enableInteraction: false,
+      );
+      if (mounted) {
+        setState(() {
+          _areasReady = true;
+          _queryStatus =
+              '${areas.length} API areas loaded; tap a name for its id';
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _queryStatus = 'Areas proof failed: $error');
+    } finally {
+      client.close(force: true);
+    }
   }
 
   void _onCameraIdle() {
     _cameraIdleCount++;
+    final camera = _controller?.cameraPosition;
+    if (mounted && camera != null) {
+      setState(() {
+        _cameraStatus = 'z=${camera.zoom.toStringAsFixed(1)} '
+            'bearing=${camera.bearing.toStringAsFixed(1)} '
+            'tilt=${camera.tilt.toStringAsFixed(1)}';
+      });
+    }
     unawaited(_checkVisibleTiles());
   }
 
@@ -106,12 +177,11 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
         _placeLayerIds,
         null,
       );
-      final place = features.isEmpty
-          ? null
-          : features.first as Map<dynamic, dynamic>;
+      final place =
+          features.isEmpty ? null : features.first as Map<dynamic, dynamic>;
       final properties = place?['properties'];
       final result = properties is Map
-          ? 'place feature (country_label) at '
+          ? 'area id=${properties['id']} at '
               '${coordinate.latitude.toStringAsFixed(4)}, '
               '${coordinate.longitude.toStringAsFixed(4)}: ${jsonEncode(properties)}'
           : 'No rendered place feature at '
@@ -132,7 +202,8 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
             future: _styleFuture,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(child: Text('Style load failed: ${snapshot.error}'));
+                return Center(
+                    child: Text('Style load failed: ${snapshot.error}'));
               }
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
@@ -152,6 +223,7 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
                   .map((layer) => layer['id'])
                   .whereType<String>()
                   .toList();
+              if (_areasReady) _placeLayerIds = ['admin-places-label'];
 
               return LayoutBuilder(
                 builder: (context, constraints) {
@@ -162,8 +234,9 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
                         styleString: jsonEncode(style),
                         initialCameraPosition: const CameraPosition(
                           target: LatLng(16.043, 120.334),
-                          zoom: 6,
+                          zoom: 14,
                         ),
+                        trackCameraPosition: true,
                         rotateGesturesEnabled: true,
                         tiltGesturesEnabled: true,
                         onMapCreated: (controller) => _controller = controller,
@@ -183,8 +256,8 @@ class _MapLibreGlSpikeState extends State<MapLibreGlSpike> {
                             child: Text(
                               'maplibre_gl 0.27.1 — first visible tile: '
                               '$_firstVisibleTiles | idle callbacks: $_cameraIdleCount\n'
-                              '$_status\n$_queryStatus',
-                              maxLines: 5,
+                              '$_status\n$_cameraStatus\n$_queryStatus',
+                              maxLines: 6,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
