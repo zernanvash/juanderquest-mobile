@@ -60,7 +60,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   late final AdminAreaApi _areaApi =
       AdminAreaApi(ref.read(apiClientProvider).dio);
   List<AdminArea> _areas = const [];
-  Set<String> _visibleLabelIds = const {};
+  bool _resolvingArea = false;
   AdminArea? _focusedArea;
   AreaShape? _focusedShape;
   LatLng? _preFocusCenter;
@@ -100,25 +100,41 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
         zoom: camera.zoom,
       );
       if (!mounted || request != _areaRequest) return;
-      setState(() {
-        _areas = areas;
-        _visibleLabelIds = _declutter(areas, camera);
-      });
+      setState(() => _areas = areas);
     } catch (_) {
       // Names are an enhancement; the map works without them.
     }
   }
 
-  Set<String> _declutter(List<AdminArea> areas, MapCamera camera) {
-    return declutterAreaLabels([
-      for (final a in areas)
-        AreaLabelBox(
-          a.id,
-          camera.latLngToScreenOffset(a.label),
-          areaLabelSize(a.name, province: a.level == 'province'),
-          (a.level == 'province' ? 100000 : 0) + a.spotCount,
-        ),
-    ]);
+  /// The area under a tap. The base map already prints town names, so the
+  /// tap itself is the selector (no duplicate labels): zoomed out it picks
+  /// the province, otherwise the town; inside a focused town it drills down
+  /// to the barangay.
+  Future<AdminArea?> _areaAt(LatLng point) async {
+    final zoom = _mapController.camera.zoom;
+    final levels = _focusedArea != null && _focusedArea!.level != 'province'
+        ? const {'barangay'}
+        : _focusedArea?.level == 'province' || zoom >= 9
+            ? const {'city', 'municipality'}
+            : const {'province'};
+    final candidates = _areas
+        .where((a) =>
+            levels.contains(a.level) &&
+            a.id != _focusedArea?.id &&
+            areaBboxContains(a.bbox, point.latitude, point.longitude))
+        .toList()
+      ..sort((a, b) => areaBboxSize(a.bbox).compareTo(areaBboxSize(b.bbox)));
+    for (final a in candidates.take(6)) {
+      try {
+        final shape = await _areaApi.shape(a.id);
+        if (shape != null && shape.contains(point.latitude, point.longitude)) {
+          return a;
+        }
+      } catch (_) {
+        // Try the next candidate.
+      }
+    }
+    return null;
   }
 
   Future<void> _focusArea(AdminArea area) async {
@@ -326,6 +342,15 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       final shape = _focusedShape;
       if (shape != null && !shape.contains(point.latitude, point.longitude)) {
         _clearArea();
+        return;
+      }
+      if (_resolvingArea) return;
+      _resolvingArea = true;
+      try {
+        final area = await _areaAt(point);
+        if (area != null && mounted) await _focusArea(area);
+      } finally {
+        _resolvingArea = false;
       }
       return;
     }
@@ -843,24 +868,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     ),
                 ]),
 
-              MarkerLayer(markers: [
-                for (final a in _areas)
-                  if (_visibleLabelIds.contains(a.id) &&
-                      a.id != _focusedArea?.id)
-                    Marker(
-                      point: a.label,
-                      width: areaLabelSize(a.name,
-                              province: a.level == 'province')
-                          .width,
-                      height: 26,
-                      alignment: Alignment.center,
-                      child: _AreaLabel(
-                        area: a,
-                        onTap: () => _focusArea(a),
-                      ),
-                    ),
-              ]),
-
               MarkerLayer(markers: markers),
 
               // OSM policy compliance: keep visible attribution on the canvas.
@@ -1343,50 +1350,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             style: TextStyle(fontSize: 9, color: AppColors.textMuted),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Tappable town/province name on the map (no counts, as on the web).
-class _AreaLabel extends StatelessWidget {
-  final AdminArea area;
-  final VoidCallback onTap;
-
-  const _AreaLabel({required this.area, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final province = area.level == 'province';
-    return Semantics(
-      button: true,
-      label: 'Show ${area.name}',
-      child: GestureDetector(
-        key: ValueKey('area_label_${area.id}'),
-        onTap: onTap,
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: AppColors.woodBrown.withValues(alpha: 0.25)),
-            ),
-            child: Text(
-              area.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                fontSize: province ? 13 : 11,
-                fontWeight: province ? FontWeight.w900 : FontWeight.w700,
-                color: AppColors.woodBrown,
-                letterSpacing: province ? 0.6 : 0,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/features/map/utils/admin_areas.dart';
 
@@ -98,12 +96,11 @@ void main() {
     expect(a.spotCount, 12);
   });
 
-  test('declutter keeps the more important of two overlapping labels', () {
-    final kept = declutterAreaLabels(const [
-      AreaLabelBox('small', Offset(100, 100), Size(60, 20), 1),
-      AreaLabelBox('big', Offset(110, 104), Size(80, 20), 50),
-      AreaLabelBox('far', Offset(300, 300), Size(60, 20), 0),
-    ]);
-    expect(kept, {'big', 'far'});
+  test('bbox helpers pick the most specific area first', () {
+    expect(areaBboxContains([120.3, 16.0, 120.4, 16.1], 16.05, 120.35), isTrue);
+    expect(areaBboxContains([120.3, 16.0, 120.4, 16.1], 16.2, 120.35), isFalse);
+    expect(areaBboxContains(null, 0, 0), isTrue);
+    expect(areaBboxSize([120.3, 16.0, 120.4, 16.1]),
+        lessThan(areaBboxSize([119.7, 15.6, 120.9, 16.5])));
   });
 }

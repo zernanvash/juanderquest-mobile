@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:dio/dio.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -127,42 +125,19 @@ class AreaShape {
   }
 
   /// All outer-ring points, for fitting the camera.
-  List<LatLng> get outlinePoints =>
-      [for (final p in polygons) ...p.outer];
+  List<LatLng> get outlinePoints => [for (final p in polygons) ...p.outer];
 }
 
-/// A label candidate in screen space.
-class AreaLabelBox {
-  final String id;
-  final Offset center;
-  final Size size;
-  final int priority;
+/// True when [bbox] ([minLng, minLat, maxLng, maxLat]) contains the point;
+/// unknown boxes are treated as "maybe" so the exact shape decides.
+bool areaBboxContains(List<double>? bbox, double lat, double lng) =>
+    bbox == null ||
+    (lng >= bbox[0] && lat >= bbox[1] && lng <= bbox[2] && lat <= bbox[3]);
 
-  const AreaLabelBox(this.id, this.center, this.size, this.priority);
-
-  Rect get rect =>
-      Rect.fromCenter(center: center, width: size.width, height: size.height);
-}
-
-/// Keeps the highest-priority labels that don't overlap (greedy), like
-/// MapLibre's symbol collision on the web map.
-Set<String> declutterAreaLabels(List<AreaLabelBox> boxes,
-    {double padding = 4}) {
-  final sorted = [...boxes]..sort((a, b) => b.priority.compareTo(a.priority));
-  final kept = <Rect>[];
-  final ids = <String>{};
-  for (final b in sorted) {
-    final r = b.rect.inflate(padding);
-    if (kept.any((k) => k.overlaps(r))) continue;
-    kept.add(r);
-    ids.add(b.id);
-  }
-  return ids;
-}
-
-/// Approximate label size for a name at the label font size.
-Size areaLabelSize(String name, {bool province = false}) =>
-    Size(name.length * (province ? 8.5 : 7.0) + 18, province ? 26 : 22);
+/// Box size in square degrees (smaller = more specific area).
+double areaBboxSize(List<double>? bbox) => bbox == null
+    ? double.infinity
+    : (bbox[2] - bbox[0]).abs() * (bbox[3] - bbox[1]).abs();
 
 /// `GET /areas`, `GET /areas/:id/shape`, with a small in-memory shape cache.
 class AdminAreaApi {
