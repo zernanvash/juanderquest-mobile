@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../network/api_client.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../firebase_options.dart';
@@ -81,12 +82,41 @@ class PushService {
     }
   }
 
+  /// True when the OS currently allows notifications for the app.
+  Future<bool> isPermitted() async {
+    try {
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Registers this phone for the signed-in account without prompting, if
+  /// notifications are already allowed (e.g. allowed earlier, or Android
+  /// below 13 where no prompt exists). Safe to call on every sign-in.
+  Future<void> syncIfPermitted() async {
+    try {
+      if (!await isPermitted()) return;
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await _syncToken(token);
+    } catch (e) {
+      debugPrint('[Push] Sync note: $e');
+    }
+  }
+
   Future<void> _syncToken(String token) async {
     try {
+      var build = 0;
+      try {
+        build = int.tryParse((await PackageInfo.fromPlatform()).buildNumber) ?? 0;
+      } catch (_) {}
       await _apiClient.dio.put('/me/devices', data: {
         'token': token,
         'platform': Platform.isAndroid ? 'android' : 'ios',
-        'app_build': '1.0.0+1',
+        'app_build': build,
       });
       debugPrint('[Push] Device token registered successfully');
     } catch (e) {

@@ -14,6 +14,7 @@ import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../app_update/providers/app_update_provider.dart';
 import '../../app_update/widgets/update_dialog.dart';
+import '../../../core/services/push_service.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -383,7 +384,10 @@ class SettingsScreen extends ConsumerWidget {
           DestructiveButton(
             label: 'Log Out of Account',
             icon: Icons.logout_rounded,
-            onPressed: () {
+            onPressed: () async {
+              // Stop this phone receiving the account's notifications first,
+              // while the session can still authenticate the request.
+              await ref.read(pushServiceProvider).unregisterDevice();
               ref.read(authProvider.notifier).logout();
               if (context.mounted) context.go('/');
             },

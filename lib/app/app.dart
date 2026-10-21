@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/services/push_listener.dart';
 import '../core/theme/app_theme.dart';
 import '../core/widgets/device_guard.dart';
 import '../features/app_update/widgets/startup_update_gate.dart';
@@ -22,7 +23,7 @@ class JuanderQuestApp extends ConsumerWidget {
         routerConfig: router,
         builder: (context, child) => DeviceGuard(
           child: StartupUpdateGate(
-            child: child ?? const SizedBox(),
+            child: PushListener(child: child ?? const SizedBox()),
           ),
         ),
       ),
