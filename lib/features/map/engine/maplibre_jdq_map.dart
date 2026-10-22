@@ -266,12 +266,17 @@ class MapLibreJdqMap extends JdqMap {
               rotateGesturesEnabled: true,
               tiltGesturesEnabled: true,
               compassEnabled: true,
-                compassViewPosition: gl.CompassViewPosition.topRight,
-                compassViewMargins: const math.Point(64, 12),
+              compassViewPosition: gl.CompassViewPosition.topRight,
+              compassViewMargins: const math.Point(64, 12),
               attributionButtonPosition:
                   gl.AttributionButtonPosition.bottomLeft,
               trackCameraPosition: true,
               myLocationEnabled: enabled,
+              // MapLibre otherwise consumes taps on rendered symbol features
+              // instead of forwarding them to onMapClick. Our place-label
+              // selection is resolved by querying the admin-place layer from
+              // that callback, so feature taps must also trigger map clicks.
+              featureTapsTriggersMapClick: true,
               onMapCreated: (controller) => _controller = controller,
               onStyleLoadedCallback: () => unawaited(_loaded(onReady)),
               onCameraIdle: () => unawaited(_idle()),
