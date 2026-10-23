@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
-import '../features/auth/screens/demo_login_screen.dart';
+import '../features/auth/screens/login_screen.dart';
 import '../features/quests/models/quest_model.dart';
 import '../features/quests/screens/quest_detail_screen.dart';
 import '../features/quests/screens/quest_funding_screen.dart';
@@ -108,7 +108,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (context, ref, _) =>
               ref.watch(authProvider).isRestoringSession
                   ? const _RestoringSessionScreen()
-                  : const DemoLoginScreen(),
+                  : const LoginScreen(),
         ),
       ),
       StatefulShellRoute.indexedStack(
