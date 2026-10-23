@@ -42,7 +42,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Map<String, dynamic>.from(item['asset'] as Map);
   }
 
-  Widget _buildAvatarWidget(String? avatarUrl, String displayName) {
+  Widget _buildAvatarWidget(String? avatarUrl, String displayName, Map<String, dynamic>? cosmetics) {
     final isValidUrl = avatarUrl != null &&
         avatarUrl.isNotEmpty &&
         !avatarUrl.endsWith('.svg') &&
@@ -50,12 +50,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (isValidUrl) {
       return CosmeticAvatar(name: displayName, imageUrl: avatarUrl, size: 84,
-        frame: _cosmeticAsset(ref.read(authProvider).user?.cosmetics, 'frame'));
+        frame: _cosmeticAsset(cosmetics, 'frame'));
     }
 
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'J';
     return CosmeticAvatar(name: initial, size: 84,
-      frame: _cosmeticAsset(ref.read(authProvider).user?.cosmetics, 'frame'));
+      frame: _cosmeticAsset(cosmetics, 'frame'));
   }
 
   @override
@@ -146,6 +146,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: _buildAvatarWidget(
                       isMine ? currentUser?.avatarUrl : null,
                       displayName,
+                      cosmetics,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
