@@ -1,2 +1,59 @@
 import 'package:flutter/material.dart';
-class CosmeticAvatar extends StatelessWidget{const CosmeticAvatar({super.key,required this.name,this.imageUrl,this.frame,this.size=48});final String name;final String? imageUrl;final Map<String,dynamic>? frame;final double size;@override Widget build(BuildContext context){final colors=((frame?['colors'] as List?)??['#ffd166']).map((v){try{return Color(int.parse(v.toString().replaceFirst('#','0xff')));}catch(_){return Colors.amber;}}).toList();final width=((frame?['width'] as num?)??0).toDouble();return SizedBox(width:size+width*2,height:size+width*2,child:DecoratedBox(decoration:BoxDecoration(shape:BoxShape.circle,border:width>0?Border.all(color:colors.first,width:width):null,boxShadow:width>0&&colors.length>1?[BoxShadow(color:colors[1].withOpacity(.6),spreadRadius:1)]:null),child:Padding(padding:EdgeInsets.all(width>0?2:0),child:ClipOval(child:imageUrl!=null&&imageUrl!.isNotEmpty?Image.network(imageUrl!,width:size,height:size,fit:BoxFit.cover,errorBuilder:(_,__,___)=>_fallback()):_fallback()))));}Widget _fallback()=>Container(width:size,height:size,color:Colors.green.shade50,alignment:Alignment.center,child:Text(name.isEmpty?'?':name.substring(0,1).toUpperCase(),style:const TextStyle(fontWeight:FontWeight.bold,color:Color(0xff2d6a4f))));}
+
+class CosmeticAvatar extends StatelessWidget {
+  const CosmeticAvatar(
+      {super.key,
+      required this.name,
+      this.imageUrl,
+      this.frame,
+      this.size = 48});
+  final String name;
+  final String? imageUrl;
+  final Map<String, dynamic>? frame;
+  final double size;
+  @override
+  Widget build(BuildContext context) {
+    final colors = ((frame?['colors'] as List?) ?? ['#ffd166']).map((v) {
+      try {
+        return Color(int.parse(v.toString().replaceFirst('#', '0xff')));
+      } catch (_) {
+        return Colors.amber;
+      }
+    }).toList();
+    final width = ((frame?['width'] as num?) ?? 0).toDouble();
+    return SizedBox(
+        width: size + width * 2,
+        height: size + width * 2,
+        child: DecoratedBox(
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: width > 0
+                    ? Border.all(color: colors.first, width: width)
+                    : null,
+                boxShadow: width > 0 && colors.length > 1
+                    ? [
+                        BoxShadow(
+                            color: colors[1].withOpacity(.6), spreadRadius: 1)
+                      ]
+                    : null),
+            child: Padding(
+                padding: EdgeInsets.all(width > 0 ? 2 : 0),
+                child: ClipOval(
+                    child: imageUrl != null && imageUrl!.isNotEmpty
+                        ? Image.network(imageUrl!,
+                            width: size,
+                            height: size,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _fallback())
+                        : _fallback()))));
+  }
+
+  Widget _fallback() => Container(
+      width: size,
+      height: size,
+      color: Colors.green.shade50,
+      alignment: Alignment.center,
+      child: Text(name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, color: Color(0xff2d6a4f))));
+}
