@@ -91,16 +91,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _refreshNotifier.notify();
         return;
       }
-      if (_isAdmin(user)) {
-        _apiClient.setAuthToken(null);
-        await _sessionStore.clear();
-        if (gen != _sessionGeneration) return;
-        state = AuthState(
-            error: 'Admin accounts sign in through the web dashboard.');
-        _refreshNotifier.notify();
-        return;
-      }
-
       _apiClient.setAuthToken(stored.token);
       state = AuthState(user: user, token: stored.token);
       _refreshNotifier.notify();
@@ -114,19 +104,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  bool _isAdmin(UserModel user) =>
-      user.role.toLowerCase() == 'admin' || user.role.toLowerCase() == 'qa';
-
   Future<bool> _completeLogin(String token, UserModel user) async {
-    if (_isAdmin(user)) {
-      _sessionGeneration++;
-      _apiClient.setAuthToken(null);
-      await _sessionStore.clear();
-      state =
-          AuthState(error: 'Admin accounts sign in through the web dashboard.');
-      _refreshNotifier.notify();
-      return false;
-    }
     _sessionGeneration++;
     _apiClient.setAuthToken(token);
     try {
@@ -389,10 +367,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (gen != _sessionGeneration) return;
       if (response.statusCode == 200 && response.data['success'] == true) {
         final user = UserModel.fromJson(response.data['data']);
-        if (_isAdmin(user)) {
-          handleSessionExpired();
-          return;
-        }
         state = AuthState(user: user, token: state.token);
         if (state.token != null) {
           unawaited(_sessionStore.write(StoredAuthSession(token: state.token!, user: user.toJson())));

@@ -10,10 +10,11 @@ class _Store implements AuthSessionStore {
   _Store({this.stored});
   final StoredAuthSession? stored;
   var clears = 0;
+  final writes = <StoredAuthSession>[];
   @override
   Future<StoredAuthSession?> read() async => stored;
   @override
-  Future<void> write(StoredAuthSession session) async {}
+  Future<void> write(StoredAuthSession session) async => writes.add(session);
   @override
   Future<void> clear() async => clears++;
 }
@@ -23,7 +24,9 @@ class _AdminLoginAdapter implements HttpClientAdapter {
   Future<ResponseBody> fetch(RequestOptions options,
           Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async =>
       ResponseBody.fromString(
-        '{"success":true,"data":{"token":"admin-token","user":{"id":"admin-1","role":"admin","display_name":"Admin"}}}',
+        options.path.endsWith('/auth/me')
+            ? '{"success":true,"data":{"id":"admin-1","role":"admin","display_name":"Admin"}}'
+            : '{"success":true,"data":{"token":"admin-token","user":{"id":"admin-1","role":"admin","display_name":"Admin"}}}',
         200,
         headers: {
           'content-type': ['application/json']
@@ -35,7 +38,7 @@ class _AdminLoginAdapter implements HttpClientAdapter {
 }
 
 void main() {
-  test('mobile rejects admin credentials and never persists an admin session',
+  test('admin account can sign in to the traveler mobile app',
       () async {
     final api = ApiClient(enableRetries: false);
     api.dio.httpClientAdapter = _AdminLoginAdapter();
@@ -45,15 +48,18 @@ void main() {
     final accepted = await notifier.loginWithEmail(
         email: 'admin@example.com', password: 'password123');
 
-    expect(accepted, isFalse);
-    expect(notifier.state.isAuthenticated, isFalse);
-    expect(notifier.state.error, contains('web dashboard'));
-    expect(api.isAuthenticated, isFalse);
-    expect(store.clears, 1);
+    expect(accepted, isTrue);
+    expect(notifier.state.isAuthenticated, isTrue);
+    expect(notifier.state.user?.role, 'admin');
+    expect(api.isAuthenticated, isTrue);
+    expect(store.writes, hasLength(1));
+    expect(store.clears, 0);
   });
 
-  test('mobile clears an existing admin session on restore', () async {
+  test('mobile restores an existing admin session into traveler app view',
+      () async {
     final api = ApiClient(enableRetries: false);
+    api.dio.httpClientAdapter = _AdminLoginAdapter();
     final store = _Store(
       stored: const StoredAuthSession(
         token: 'old-admin-token',
@@ -64,9 +70,9 @@ void main() {
 
     await notifier.restoreSession();
 
-    expect(notifier.state.isAuthenticated, isFalse);
-    expect(notifier.state.error, contains('web dashboard'));
-    expect(api.isAuthenticated, isFalse);
-    expect(store.clears, 1);
+    expect(notifier.state.isAuthenticated, isTrue);
+    expect(notifier.state.user?.role, 'admin');
+    expect(api.isAuthenticated, isTrue);
+    expect(store.clears, 0);
   });
 }
