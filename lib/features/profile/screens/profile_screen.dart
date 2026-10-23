@@ -17,6 +17,9 @@ import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/wallet_signature_service.dart';
 import '../providers/profile_stats_provider.dart';
+import '../../cosmetics/widgets/cosmetic_avatar.dart';
+import '../../cosmetics/widgets/display_name.dart';
+import '../../cosmetics/widgets/profile_banner.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   final String? username;
@@ -29,34 +32,30 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isFollowing = false;
 
-  Widget _buildAvatarWidget(String? avatarUrl, String displayName) {
+  Color? _cosmeticColor(dynamic value) {
+    if (value is! String || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) return null;
+    return Color(int.parse(value.substring(1), radix: 16) | 0xff000000);
+  }
+  Map<String, dynamic>? _cosmeticAsset(Map<String, dynamic>? cosmetics, String slot) {
+    final item = cosmetics?[slot];
+    if (item is! Map || item['asset'] is! Map) return null;
+    return Map<String, dynamic>.from(item['asset'] as Map);
+  }
+
+  Widget _buildAvatarWidget(String? avatarUrl, String displayName, Map<String, dynamic>? cosmetics) {
     final isValidUrl = avatarUrl != null &&
         avatarUrl.isNotEmpty &&
         !avatarUrl.endsWith('.svg') &&
         (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
 
     if (isValidUrl) {
-      return CircleAvatar(
-        radius: 42,
-        backgroundColor: AppColors.surfaceContainer,
-        backgroundImage: NetworkImage(avatarUrl),
-        onBackgroundImageError: (_, __) {},
-      );
+      return CosmeticAvatar(name: displayName, imageUrl: avatarUrl, size: 84,
+        frame: _cosmeticAsset(cosmetics, 'frame'));
     }
 
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'J';
-    return CircleAvatar(
-      radius: 42,
-      backgroundColor: AppColors.sunGold,
-      child: Text(
-        initial,
-        style: const TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.w900,
-          color: AppColors.woodBrown,
-        ),
-      ),
-    );
+    return CosmeticAvatar(name: initial, size: 84,
+      frame: _cosmeticAsset(cosmetics, 'frame'));
   }
 
   @override
@@ -77,6 +76,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final displayHandle = isMine
         ? (currentUser?.handle ?? '@demo-traveler')
         : '@${widget.username}';
+    final cosmetics = isMine ? currentUser?.cosmetics : null;
+    final titleAsset = _cosmeticAsset(cosmetics, 'title');
+    final nameColorAsset = _cosmeticAsset(cosmetics, 'nameColor');
 
     final pointsBalance = currentUser?.points ?? stats.pointsBalance;
     final level = (pointsBalance / 50).floor() + 1;
@@ -126,6 +128,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               child: Column(
                 children: [
+                  if (isMine)
+                    ClipRRect(
+                      borderRadius: AppSpacing.roundedMd,
+                      child: ProfileBanner(
+                        height: 72,
+                        asset: _cosmeticAsset(cosmetics, 'banner'),
+                      ),
+                    ),
+                  if (isMine) const SizedBox(height: AppSpacing.md),
                   Container(
                     padding: const EdgeInsets.all(3.5),
                     decoration: const BoxDecoration(
@@ -135,15 +146,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: _buildAvatarWidget(
                       isMine ? currentUser?.avatarUrl : null,
                       displayName,
+                      cosmetics,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Text(
-                    displayName,
-                    style: AppTypography.displayMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
+                  DisplayName(
+                    name: displayName,
+                    title: titleAsset?['text']?.toString(),
+                    color: _cosmeticColor(nameColorAsset?['color']),
+                    style: AppTypography.displayMedium.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
                   Text(

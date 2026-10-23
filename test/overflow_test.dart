@@ -63,6 +63,8 @@ import 'package:juanderquest_app/features/settings/screens/settings_screen.dart'
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
+import 'package:juanderquest_app/features/cosmetics/screens/appearance_screen.dart';
+import 'package:juanderquest_app/features/shop/providers/cosmetics_provider.dart';
 
 // Inert Subclasses to prevent Dio/network calls and pending timers
 class InertAuthNotifier extends AuthNotifier {
@@ -72,6 +74,12 @@ class InertAuthNotifier extends AuthNotifier {
 
   @override
   Future<void> refreshProfile() async {}
+}
+
+class InertCosmeticsNotifier extends CosmeticsNotifier {
+  InertCosmeticsNotifier(super.ref);
+  @override
+  Future<void> load() async {}
 }
 
 class InertQuestNotifier extends QuestNotifier {
@@ -418,6 +426,7 @@ void main() {
               ref.watch(apiClientProvider),
               ref.watch(authRefreshProvider.notifier),
               dummyUser)),
+          cosmeticsProvider.overrideWith((ref) => InertCosmeticsNotifier(ref)),
           questProvider.overrideWith((ref) =>
               InertQuestNotifier(ref.watch(apiClientProvider), [dummyQuest])),
           campaignProvider.overrideWith((ref) => InertCampaignNotifier(
@@ -645,6 +654,18 @@ void main() {
         (tester) async {
       await testScreenOverflow(
           tester, const ShopScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('AppearanceScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const AppearanceScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('AppearanceScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const AppearanceScreen(), const Size(568, 320), 2.0);
     });
 
     testWidgets('ProfileScreen does not overflow in small portrait',

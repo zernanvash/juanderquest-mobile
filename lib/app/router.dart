@@ -16,6 +16,7 @@ import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/affiliate_application_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
+import '../features/cosmetics/screens/appearance_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
@@ -269,6 +270,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           state: state,
           child: const SettingsScreen(),
         ),
+        routes: [GoRoute(path:'appearance',builder:(context,state)=>const AppearanceScreen())],
       ),
       GoRoute(
         path: '/search',

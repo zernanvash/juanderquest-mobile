@@ -10,6 +10,8 @@ import '../auth/providers/auth_provider.dart';
 import 'plaza_models.dart';
 import 'plaza_provider.dart';
 import 'activity_text.dart';
+import '../cosmetics/widgets/cosmetic_avatar.dart';
+import '../cosmetics/widgets/display_name.dart';
 
 class PlazaScreen extends ConsumerStatefulWidget {
   final String? initialActivityId;
@@ -29,6 +31,11 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen> with SingleTickerProv
   String _board = 'everyone';
   String _period = 'weekly';
   bool _askedPush = true;
+
+  Color? _cosmeticColor(dynamic value) {
+    if (value is! String || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) return null;
+    return Color(int.parse(value.substring(1), radix: 16) | 0xff000000);
+  }
 
   @override
   void initState() {
@@ -607,20 +614,13 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen> with SingleTickerProv
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: AppColors.sunGold.withOpacity(0.3),
-                child: Text(
-                  activity.actorName.isNotEmpty ? activity.actorName[0] : 'E',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.woodBrown),
-                ),
-              ),
+              CosmeticAvatar(name: activity.actorName, imageUrl: activity.actorAvatar,
+                frame: activity.actorCosmetics?['frame']?['asset'] as Map<String, dynamic>?, size: 28),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  activity.actorName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.woodBrown),
-                ),
+                child: DisplayName(name: activity.actorName,
+                  title: activity.actorCosmetics?['title']?['asset']?['text']?.toString(),
+                  color: _cosmeticColor(activity.actorCosmetics?['nameColor']?['asset']?['color'])),
               ),
               if (activity.reason == 'following')
                 Container(

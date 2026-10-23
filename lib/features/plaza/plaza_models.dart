@@ -4,6 +4,7 @@ class ActivityItemModel {
   final String actorName;
   final String? actorHandle;
   final String? actorAvatar;
+  final Map<String, dynamic>? actorCosmetics;
   final bool isFollowing;
   final String subjectType;
   final String subjectTitle;
@@ -23,6 +24,7 @@ class ActivityItemModel {
     required this.actorName,
     this.actorHandle,
     this.actorAvatar,
+    this.actorCosmetics,
     this.isFollowing = false,
     required this.subjectType,
     required this.subjectTitle,
@@ -47,6 +49,7 @@ class ActivityItemModel {
       actorName: actor['display_name'] as String? ?? 'An explorer',
       actorHandle: actor['handle'] as String?,
       actorAvatar: actor['avatar_url'] as String?,
+      actorCosmetics: actor['cosmetics'] is Map<String, dynamic> ? Map<String, dynamic>.from(actor['cosmetics']) : null,
       isFollowing: actor['is_following'] as bool? ?? false,
       subjectType: subject['type'] as String? ?? 'quest',
       subjectTitle: subject['title'] as String? ?? '',
@@ -73,6 +76,7 @@ class ActivityItemModel {
       actorName: actorName,
       actorHandle: actorHandle,
       actorAvatar: actorAvatar,
+      actorCosmetics: actorCosmetics,
       isFollowing: isFollowing,
       subjectType: subjectType,
       subjectTitle: subjectTitle,
