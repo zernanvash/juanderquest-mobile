@@ -1,0 +1,845 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:reown_appkit/reown_appkit.dart' hide PrimaryButton, SecondaryButton;
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/widgets/primary_button.dart';
+import '../providers/auth_provider.dart';
+import '../services/wallet_signature_service.dart';
+
+class DemoLoginScreen extends ConsumerStatefulWidget {
+  const DemoLoginScreen({super.key});
+
+  @override
+  ConsumerState<DemoLoginScreen> createState() => _DemoLoginScreenState();
+}
+
+class _DemoLoginScreenState extends ConsumerState<DemoLoginScreen> {
+  String _selectedRole = 'traveler';
+
+  String get _selectedSeed => _selectedRole == 'admin' ? 'admin-1' : 'user-1';
+
+  void _showEmailLoginDialog(BuildContext context) {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    bool isSubmitting = false;
+    String? formError;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            backgroundColor: AppColors.surfaceContainerLowest,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.mail_outline_rounded, color: AppColors.primary, size: 24),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Sign In with Email',
+                                style: AppTypography.headlineSmall.copyWith(
+                                  color: AppColors.woodBrown,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Enter your JuanDerQuest account credentials',
+                                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email Address',
+                        hintText: 'traveler@example.com',
+                        prefixIcon: Icon(Icons.email_outlined),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: AppSpacing.roundedMd,
+                          borderSide: BorderSide(color: AppColors.borderLowContrast),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: Icon(Icons.lock_outline_rounded),
+                        filled: true,
+                        fillColor: AppColors.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: AppSpacing.roundedMd,
+                          borderSide: BorderSide(color: AppColors.borderLowContrast),
+                        ),
+                      ),
+                    ),
+                    if (formError != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(formError!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+                    ],
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        key: const ValueKey('login_forgot_password'),
+                        onPressed: isSubmitting
+                            ? null
+                            : () {
+                                final email = emailController.text.trim();
+                                Navigator.of(dialogCtx).pop();
+                                context.push(email.isEmpty
+                                    ? '/forgot-password'
+                                    : '/forgot-password?email=${Uri.encodeQueryComponent(email)}');
+                              },
+                        child: const Text('Forgot password?'),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Cancel',
+                            onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: PrimaryButton(
+                            label: 'Sign In',
+                            isLoading: isSubmitting,
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    final email = emailController.text.trim();
+                                    final password = passwordController.text;
+                                    if (email.isEmpty || password.isEmpty) {
+                                      setDialogState(() => formError = 'Please enter both email and password.');
+                                      return;
+                                    }
+                                    setDialogState(() {
+                                      isSubmitting = true;
+                                      formError = null;
+                                    });
+                                    final ok = await ref.read(authProvider.notifier).loginWithEmail(
+                                          email: email,
+                                          password: password,
+                                        );
+                                    if (dialogCtx.mounted) {
+                                      if (ok) {
+                                        Navigator.of(dialogCtx).pop();
+                                      } else {
+                                        setDialogState(() {
+                                          isSubmitting = false;
+                                          formError = ref.read(authProvider).error ?? 'Sign in failed.';
+                                        });
+                                      }
+                                    }
+                                  },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showSimulatedWalletDialog(BuildContext context) {
+    final usernameController = TextEditingController();
+    final passwordController = TextEditingController(text: 'password123');
+    bool isSubmitting = false;
+    String? formError;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            backgroundColor: AppColors.surfaceContainerLowest,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6851B).withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFF6851B), size: 24),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Simulated Web3 Login',
+                              style: AppTypography.headlineSmall.copyWith(
+                                color: AppColors.woodBrown,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Create or enter your test traveler identity',
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Starter Pack Banner
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.crowdQuietBg,
+                      borderRadius: AppSpacing.roundedMd,
+                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.card_giftcard_rounded, color: AppColors.primaryDark, size: 20),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            'Demo Starter Pack: 100,000 mJDQ + 15 off-chain governance units included. Real JDQ tokens are under development.',
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 11,
+                              color: AppColors.primaryDark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  TextField(
+                    controller: usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Traveler Name / Username',
+                      hintText: 'e.g. Prof. Ramos, Juan, Jane',
+                      prefixIcon: Icon(Icons.person_outline_rounded),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: AppSpacing.roundedMd,
+                        borderSide: BorderSide(color: AppColors.borderLowContrast),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: Icon(Icons.lock_outline_rounded),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: AppSpacing.roundedMd,
+                        borderSide: BorderSide(color: AppColors.borderLowContrast),
+                      ),
+                    ),
+                  ),
+
+                  if (formError != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      formError!,
+                      style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                    ),
+                  ],
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SecondaryButton(
+                          label: 'Cancel',
+                          onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: PrimaryButton(
+                          label: 'Connect',
+                          isLoading: isSubmitting,
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  final username = usernameController.text.trim();
+                                  final password = passwordController.text.trim();
+
+                                  if (username.length < 2) {
+                                    setDialogState(() => formError = 'Please enter at least 2 characters.');
+                                    return;
+                                  }
+
+                                  setDialogState(() {
+                                    isSubmitting = true;
+                                    formError = null;
+                                  });
+
+                                  final ok = await ref.read(authProvider.notifier).loginWithSimulatedWallet(
+                                        username: username,
+                                        password: password,
+                                      );
+
+                                  if (dialogCtx.mounted) {
+                                    if (ok) {
+                                      Navigator.of(dialogCtx).pop();
+                                    } else {
+                                      setDialogState(() {
+                                        isSubmitting = false;
+                                        formError = ref.read(authProvider).error ?? 'Login failed.';
+                                      });
+                                    }
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showWalletLoginDialog(BuildContext context) async {
+    ReownAppKitModal modal;
+    try {
+      modal = await WalletSignatureService.initialize(context);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e is StateError ? e.message : 'Wallet connection is unavailable. Please try again.')),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) {
+      await modal.dispose();
+      return;
+    }
+    bool isSubmitting = false;
+    String? formError;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            backgroundColor: AppColors.surfaceContainerLowest,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF6851B).withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFF6851B), size: 24),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Web3 Wallet Sign-In',
+                                style: AppTypography.headlineSmall.copyWith(
+                                  color: AppColors.woodBrown,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              Text(
+                                'Sign in with MetaMask, Coinbase, Rainbow, or any EVM wallet',
+                                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: AppColors.crowdQuietBg,
+                        borderRadius: AppSpacing.roundedMd,
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.verified_user_rounded, color: AppColors.primaryDark, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              'If this wallet was linked to a traveler account, a valid signature signs you back into that account. Signing does not create or transfer tokens.',
+                              style: AppTypography.bodySmall.copyWith(
+                                fontSize: 11,
+                                color: AppColors.primaryDark,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+
+                    AppKitModalConnectButton(appKit: modal, context: context),
+
+                    const SizedBox(height: AppSpacing.md),
+
+                    Text(
+                      'Connect any Web3 wallet (MetaMask, Coinbase, Trust, Rainbow, or any EVM app), then tap "Sign In" to authenticate.',
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                    ),
+
+                    if (formError != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        formError!,
+                        style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                      ),
+                    ],
+
+                    const SizedBox(height: AppSpacing.lg),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Cancel',
+                            onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: PrimaryButton(
+                            label: 'Sign In',
+                            isLoading: isSubmitting,
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    final addr = WalletSignatureService.connectedAddress(modal);
+                                    if (addr == null) {
+                                      setDialogState(() => formError = 'Connect an EVM wallet first.');
+                                      return;
+                                    }
+
+                                    setDialogState(() {
+                                      isSubmitting = true;
+                                      formError = null;
+                                    });
+
+                                    bool ok = false;
+                                    try {
+                                      final challenge = await ref.read(authProvider.notifier).requestWalletChallenge(addr);
+                                      if (challenge == null) throw StateError('Could not get a wallet challenge from the API.');
+                                      final signature = await WalletSignatureService.signChallenge(modal, challenge);
+                                      ok = await ref.read(authProvider.notifier).loginWithWallet(
+                                        address: addr,
+                                        signature: signature,
+                                      );
+                                    } catch (e) {
+                                      if (dialogCtx.mounted) {
+                                        setDialogState(() => formError = e is StateError ? e.message : 'Signature was not completed.');
+                                      }
+                                    }
+
+                                    if (dialogCtx.mounted) {
+                                      if (ok) {
+                                        Navigator.of(dialogCtx).pop();
+                                      } else {
+                                        setDialogState(() {
+                                          isSubmitting = false;
+                                          formError ??= ref.read(authProvider).error ?? 'Sign-in failed.';
+                                        });
+                                      }
+                                    }
+                                  },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    await modal.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+
+    return JdqScaffold(
+      scrollable: true,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: AppSpacing.xl),
+
+          // Logo Header
+          Center(
+            child: Image.asset(
+              'assets/images/logo.png',
+              height: 120,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: const BoxDecoration(
+                      color: AppColors.sunGold,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.explore_rounded, size: 48, color: AppColors.woodBrown),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'JuanDerQuest',
+                    style: AppTypography.displayMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.woodBrown,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.xl),
+
+          // Value Proposition Card
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: AppSpacing.roundedLg,
+              border: Border.all(color: AppColors.borderLowContrast),
+              boxShadow: AppSpacing.cardShadow,
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'EXPLORE MORE, TOGETHER',
+                  style: TextStyle(
+                    color: AppColors.woodBrown,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Explore Hidden Gems, Earn Verified Rewards',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.headlineSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.woodBrown,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Discover local destinations, find quieter alternatives, and support nearby communities. Our first pilot starts in Pangasinan.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.xl),
+
+          // Quick Role Cards
+          Text(
+            'SELECT DEMO ACCOUNT',
+            style: AppTypography.labelSmall.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textMuted,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          Row(
+            children: [
+              Expanded(
+                child: _buildRoleCard(
+                  role: 'traveler',
+                  title: 'Traveler',
+                  subtitle: 'Explore & Quests',
+                  icon: Icons.person_rounded,
+                  bgColor: AppColors.crowdQuietBg,
+                  iconColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _buildRoleCard(
+                  role: 'admin',
+                  title: 'LGU Admin',
+                  subtitle: 'Curate & Validate',
+                  icon: Icons.admin_panel_settings_rounded,
+                  bgColor: const Color(0xFFF3E8FF),
+                  iconColor: const Color(0xFF9333EA),
+                ),
+              ),
+            ],
+          ),
+
+          if (authState.error != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withOpacity(0.1),
+                borderRadius: AppSpacing.roundedMd,
+                border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 18),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      authState.error!,
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.danger),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: AppSpacing.xl),
+
+          // Primary Quick Login Button
+          PrimaryButton(
+            label: 'Start as ${_selectedRole == "admin" ? "LGU Admin" : "Traveler"}',
+            isLoading: authState.isLoading,
+            onPressed: () {
+              ref.read(authProvider.notifier).loginWithSeed(_selectedSeed);
+            },
+            icon: Icons.rocket_launch_rounded,
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          // Sign In with Email
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
+              side: const BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+            icon: const Icon(Icons.mail_outline_rounded, color: AppColors.primary),
+            label: const Text(
+              'Sign In with Email & Password',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            onPressed: () => _showEmailLoginDialog(context),
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
+
+          // Simulated Custom Wallet Login Option
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
+              side: const BorderSide(color: AppColors.sunGold, width: 1.5),
+            ),
+            icon: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFF6851B)),
+            label: const Text(
+              'Custom Name / Simulated Wallet Login',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+            ),
+            onPressed: () => _showSimulatedWalletDialog(context),
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
+
+          // Direct MetaMask / EVM Wallet Login
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedPill),
+              side: const BorderSide(color: Color(0xFFF6851B), width: 1.5),
+            ),
+            icon: const Icon(Icons.link_rounded, color: Color(0xFFF6851B)),
+            label: const Text(
+              'Connect Web3 / EVM Wallet',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF6851B)),
+            ),
+            onPressed: () => _showWalletLoginDialog(context),
+          ),
+
+          const SizedBox(height: AppSpacing.sectionGap),
+
+          // Prototype Disclosure Footer
+          Column(
+            children: [
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.textMuted),
+                  Text(
+                    'PROTOTYPE BUILD V0.4.2',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Demonstration build. The current destination catalog is a Pangasinan pilot.',
+                textAlign: TextAlign.center,
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.sectionGap),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleCard({
+    required String role,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color bgColor,
+    required Color iconColor,
+  }) {
+    final isSelected = _selectedRole == role;
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedRole = role),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg, horizontal: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: AppSpacing.roundedLg,
+          border: Border.all(
+            color: isSelected ? AppColors.sunGold : AppColors.borderLowContrast,
+            width: isSelected ? 2.5 : 1,
+          ),
+          boxShadow: isSelected ? AppSpacing.floatingShadow : AppSpacing.cardShadow,
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 26),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              style: AppTypography.labelLarge.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textMuted,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

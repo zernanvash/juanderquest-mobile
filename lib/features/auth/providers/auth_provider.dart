@@ -91,15 +91,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _refreshNotifier.notify();
         return;
       }
-      if (_isAdmin(user)) {
-        _apiClient.setAuthToken(null);
-        await _sessionStore.clear();
-        if (gen != _sessionGeneration) return;
-        state = AuthState(
-            error: 'Admin accounts sign in through the web dashboard.');
-        _refreshNotifier.notify();
-        return;
-      }
 
       _apiClient.setAuthToken(stored.token);
       state = AuthState(user: user, token: stored.token);
@@ -114,19 +105,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  bool _isAdmin(UserModel user) =>
-      user.role.toLowerCase() == 'admin' || user.role.toLowerCase() == 'qa';
-
-  Future<bool> _completeLogin(String token, UserModel user) async {
-    if (_isAdmin(user)) {
-      _sessionGeneration++;
-      _apiClient.setAuthToken(null);
-      await _sessionStore.clear();
-      state =
-          AuthState(error: 'Admin accounts sign in through the web dashboard.');
-      _refreshNotifier.notify();
-      return false;
-    }
+  Future<void> _completeLogin(String token, UserModel user) async {
     _sessionGeneration++;
     _apiClient.setAuthToken(token);
     try {
@@ -139,7 +118,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     state = AuthState(user: user, token: token);
     _refreshNotifier.notify();
-    return true;
   }
 
   Future<bool> loginWithEmail(
@@ -160,7 +138,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        return _completeLogin(token, user);
+        await _completeLogin(token, user);
+        return true;
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Invalid email or password.';
@@ -237,7 +216,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        return _completeLogin(token, user);
+        await _completeLogin(token, user);
+        return true;
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Invalid verification code.';
@@ -247,6 +227,80 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on DioException catch (e) {
       final msg = e.response?.data['error']?['message'] ??
           'Verification failed (${e.message}).';
+      state = AuthState(error: msg);
+      return false;
+    } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred.');
+      return false;
+    }
+  }
+
+  Future<bool> loginWithSeed(String seedId) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/demo-login',
+        data: {'seed_id': seedId},
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final token = response.data['data']['token'] as String;
+        final userJson = response.data['data']['user'];
+        final user = UserModel.fromJson(userJson);
+
+        await _completeLogin(token, user);
+        return true;
+      } else {
+        final msg =
+            response.data['error']?['message'] ?? 'Authentication failed.';
+        state = AuthState(error: msg);
+        return false;
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data['error']?['message'] ??
+          'Network connection error (${e.message}).';
+      state = AuthState(error: msg);
+      return false;
+    } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred.');
+      return false;
+    }
+  }
+
+  Future<bool> loginWithSimulatedWallet(
+      {required String username, required String password}) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/simulated-wallet-login',
+        data: {
+          'username': username.trim(),
+          'password': password.trim(),
+        },
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final token = response.data['data']['token'] as String;
+        final userJson = response.data['data']['user'];
+        final user = UserModel.fromJson(userJson);
+
+        await _completeLogin(token, user);
+        return true;
+      } else {
+        final error = response.data['error'];
+        final code = error is Map ? error['code'] : null;
+        final msg = code == 'SIMULATED_LOGIN_DISABLED' || code == 'SIMULATED_LOGIN_RESERVED'
+            ? 'Simulated login is unavailable on this server. Connect a wallet instead.'
+            : (error is Map ? error['message'] : null) ?? 'Simulated wallet login failed.';
+        state = AuthState(error: msg);
+        return false;
+      }
+    } on DioException catch (e) {
+      final error = e.response?.data is Map ? e.response?.data['error'] : null;
+      final code = error is Map ? error['code'] : null;
+      final msg = code == 'SIMULATED_LOGIN_DISABLED' || code == 'SIMULATED_LOGIN_RESERVED'
+          ? 'Simulated login is unavailable on this server. Connect a wallet instead.'
+          : (error is Map ? error['message'] : null) ?? 'Network connection error (${e.message}).';
       state = AuthState(error: msg);
       return false;
     } catch (e) {
@@ -288,7 +342,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        return _completeLogin(token, user);
+        await _completeLogin(token, user);
+        return true;
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Wallet sign-in failed.';
@@ -389,10 +444,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (gen != _sessionGeneration) return;
       if (response.statusCode == 200 && response.data['success'] == true) {
         final user = UserModel.fromJson(response.data['data']);
-        if (_isAdmin(user)) {
-          handleSessionExpired();
-          return;
-        }
         state = AuthState(user: user, token: state.token);
         if (state.token != null) {
           unawaited(_sessionStore.write(StoredAuthSession(token: state.token!, user: user.toJson())));
