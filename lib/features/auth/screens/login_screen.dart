@@ -266,6 +266,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final restoredAdminError =
+        authState.error?.contains('Admin accounts') == true
+            ? authState.error
+            : null;
+    final visibleError = _error ?? restoredAdminError;
     return JdqScaffold(
       scrollable: true,
       body: Column(
@@ -477,17 +483,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 style:
                     AppTypography.bodySmall.copyWith(color: AppColors.primary)),
           ],
-          if (_error != null) ...[
+          if (visibleError != null) ...[
             const SizedBox(height: AppSpacing.md),
-            Text(_error!,
+            Text(visibleError,
                 key: const ValueKey('auth_error'),
                 textAlign: TextAlign.center,
                 style:
                     AppTypography.bodySmall.copyWith(color: AppColors.danger)),
           ],
           const SizedBox(height: AppSpacing.xl),
-          Text(
-              'Admin tools are managed in the web dashboard. Your account can still explore here.',
+          Text('Admin access is available in the JuanDerQuest web dashboard.',
               textAlign: TextAlign.center,
               style:
                   AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
