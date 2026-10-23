@@ -293,6 +293,20 @@ class SettingsScreen extends ConsumerWidget {
           Card(
             margin: EdgeInsets.zero,
             child: ListTile(
+              key: const ValueKey('settings_appearance'),
+              leading: const Icon(Icons.palette_outlined, color: AppColors.primary),
+              title: const Text('Appearance'),
+              subtitle: const Text('Equip your profile banners, frames, titles, and name colours.'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push('/settings/appearance'),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
               key: const ValueKey('settings_interests'),
               leading: const Icon(Icons.interests_rounded, color: AppColors.primary),
               title: const Text('Travel interests'),

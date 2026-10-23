@@ -7,6 +7,10 @@ class VoucherModel {
   final String location;
   final String description;
   final bool isActive;
+  final String availability;
+  final bool redeemable;
+  final String? partnerLabel;
+  final String? iconKey;
 
   VoucherModel({
     required this.id,
@@ -17,18 +21,26 @@ class VoucherModel {
     required this.location,
     required this.description,
     required this.isActive,
+    this.availability = 'live',
+    this.redeemable = true,
+    this.partnerLabel,
+    this.iconKey,
   });
 
   factory VoucherModel.fromJson(Map<String, dynamic> json) {
     return VoucherModel(
       id: json['id'] ?? '',
-      merchantName: json['merchant_name'] ?? json['merchantName'] ?? 'Partner Merchant',
-      offerTitle: json['offer_title'] ?? json['offerTitle'] ?? 'Voucher Offer',
-      costPoints: (json['cost_points'] ?? json['costPoints'] ?? 50) as int,
+      merchantName: json['partnerLabel'] ?? json['partner_label'] ?? json['merchant_name'] ?? json['merchantName'] ?? 'Partner Merchant',
+      offerTitle: json['title'] ?? json['offer_title'] ?? json['offerTitle'] ?? 'Voucher Offer',
+      costPoints: ((json['cost_points'] ?? json['costPoints'] ?? 50) as num).toInt(),
       category: json['category'] ?? 'REWARDS',
       location: json['location'] ?? 'Location unavailable',
       description: json['description'] ?? '',
       isActive: json['is_active'] ?? json['isActive'] ?? true,
+      availability: json['availability'] ?? 'live',
+      redeemable: json['redeemable'] ?? (json['availability'] != 'preview'),
+      partnerLabel: json['partnerLabel'] ?? json['partner_label'],
+      iconKey: json['iconKey'] ?? json['icon_key'],
     );
   }
 }
