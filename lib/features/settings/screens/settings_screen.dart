@@ -16,31 +16,14 @@ import '../../app_update/providers/app_update_provider.dart';
 import '../../app_update/widgets/update_dialog.dart';
 import '../../../core/services/push_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../cosmetics/widgets/cosmetic_avatar.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  Widget _buildAvatarWidget(String? avatarUrl) {
-    final isValidUrl = avatarUrl != null &&
-        avatarUrl.isNotEmpty &&
-        !avatarUrl.endsWith('.svg') &&
-        (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
-
-    if (isValidUrl) {
-      return CircleAvatar(
-        radius: 28,
-        backgroundColor: AppColors.surfaceContainer,
-        backgroundImage: NetworkImage(avatarUrl),
-        onBackgroundImageError: (_, __) {},
-      );
-    }
-
-    return const CircleAvatar(
-      radius: 28,
-      backgroundColor: AppColors.sunGold,
-      child: Icon(Icons.person_rounded, size: 32, color: AppColors.woodBrown),
-    );
-  }
+  Widget _buildAvatarWidget(String? avatarUrl, String name, Map<String, dynamic>? cosmetics) =>
+      CosmeticAvatar(name: name, imageUrl: avatarUrl, size: 56,
+        frame: cosmetics?['frame']?['asset'] as Map<String, dynamic>?);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -85,7 +68,7 @@ class SettingsScreen extends ConsumerWidget {
                       shape: BoxShape.circle,
                       color: AppColors.sunGold,
                     ),
-                    child: _buildAvatarWidget(user?.avatarUrl),
+                    child: _buildAvatarWidget(user?.avatarUrl, user?.displayName ?? 'Traveler', user?.cosmetics),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(

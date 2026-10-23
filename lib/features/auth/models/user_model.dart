@@ -10,6 +10,7 @@ class UserModel {
   final int mjdqBalance;
   final int jdqGovernanceBalance;
   final int scoutReputation;
+  final Map<String, dynamic>? cosmetics;
 
   UserModel({
     required this.id,
@@ -23,6 +24,7 @@ class UserModel {
     this.mjdqBalance = 0,
     this.jdqGovernanceBalance = 0,
     this.scoutReputation = 0,
+    this.cosmetics,
   });
 
   int get points => demoPoints;
@@ -54,6 +56,7 @@ class UserModel {
       jdqGovernanceBalance:
           (json['jdq_governance_balance'] as num?)?.toInt() ?? 0,
       scoutReputation: (json['scout_reputation'] as num?)?.toInt() ?? 0,
+      cosmetics: json['cosmetics'] is Map<String, dynamic> ? Map<String, dynamic>.from(json['cosmetics']) : null,
     );
   }
 
@@ -69,6 +72,7 @@ class UserModel {
         'mjdq_balance': mjdqBalance,
         'jdq_governance_balance': jdqGovernanceBalance,
         'scout_reputation': scoutReputation,
+        'cosmetics': cosmetics,
       };
 
   UserModel copyWith({
@@ -77,6 +81,7 @@ class UserModel {
     int? mjdqBalance,
     int? jdqGovernanceBalance,
     int? scoutReputation,
+    Map<String, dynamic>? cosmeticsData,
   }) {
     return UserModel(
       id: id,
@@ -90,6 +95,7 @@ class UserModel {
       mjdqBalance: mjdqBalance ?? this.mjdqBalance,
       jdqGovernanceBalance: jdqGovernanceBalance ?? this.jdqGovernanceBalance,
       scoutReputation: scoutReputation ?? this.scoutReputation,
+      cosmetics: cosmeticsData ?? cosmetics,
     );
   }
 }
