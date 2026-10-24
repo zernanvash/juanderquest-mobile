@@ -11,11 +11,12 @@ class CosmeticItem {
       this.description = '',
       this.pricePoints,
       this.priceTjdq,
+      this.seed,
       this.unlock,
       this.lockedReason});
   final String id, kind, name, rarity, description;
   final Map<String, dynamic> asset;
-  final int? pricePoints, priceTjdq;
+  final int? pricePoints, priceTjdq, seed;
   final bool owned, equipped, buyable;
   final Map<String, dynamic>? unlock;
   final String? lockedReason;
@@ -28,6 +29,7 @@ class CosmeticItem {
       asset: Map<String, dynamic>.from(j['asset'] ?? {}),
       pricePoints: (j['pricePoints'] as num?)?.toInt(),
       priceTjdq: (j['priceTjdq'] as num?)?.toInt(),
+      seed: (j['seed'] as num?)?.toInt(),
       owned: j['owned'] == true,
       equipped: j['equipped'] == true,
       buyable: j['buyable'] == true,

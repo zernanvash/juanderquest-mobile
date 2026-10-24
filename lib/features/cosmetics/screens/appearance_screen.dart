@@ -42,6 +42,8 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
               borderRadius: AppSpacing.roundedLg,
               child: ProfileBanner(
                   asset: banner?.asset,
+                  seed: banner?.seed,
+                  animate: true,
                   height: 150,
                   child: Align(
                       alignment: Alignment.bottomLeft,
@@ -88,6 +90,7 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
         padding: const EdgeInsets.only(bottom: AppSpacing.md),
         child: DropdownButtonFormField<String>(
             value: current,
+            isExpanded: true,
             decoration: InputDecoration(
                 labelText: label, border: const OutlineInputBorder()),
             items: [

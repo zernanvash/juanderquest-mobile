@@ -50,7 +50,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           final isRedeeming = ref.watch(voucherProvider).isRedeeming;
 
           return Dialog(
-            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            shape: const RoundedRectangleBorder(
+                borderRadius: AppSpacing.roundedLg),
             backgroundColor: AppColors.surfaceContainerLowest,
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.xl),
@@ -64,7 +65,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                       color: AppColors.crowdQuietBg,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.confirmation_number_rounded, color: AppColors.primary, size: 28),
+                    child: const Icon(Icons.confirmation_number_rounded,
+                        color: AppColors.primary, size: 28),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
@@ -79,7 +81,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   Text(
                     'You are about to redeem "${voucher.offerTitle}" from ${voucher.merchantName}.',
                     textAlign: TextAlign.center,
-                    style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                    style: AppTypography.bodyMedium
+                        .copyWith(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   Container(
@@ -109,7 +112,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                       Expanded(
                         child: SecondaryButton(
                           label: 'Cancel',
-                          onPressed: isRedeeming ? null : () => Navigator.of(dialogCtx).pop(),
+                          onPressed: isRedeeming
+                              ? null
+                              : () => Navigator.of(dialogCtx).pop(),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.md),
@@ -129,12 +134,17 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                                   }
 
                                   if (context.mounted) {
-                                    if (result.success && result.redeemed != null) {
-                                      _showRedeemedVoucherModal(context, result.redeemed!);
+                                    if (result.success &&
+                                        result.redeemed != null) {
+                                      _showRedeemedVoucherModal(
+                                          context, result.redeemed!);
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         SnackBar(
-                                          content: Text(result.error ?? ref.read(voucherProvider).error ?? 'Redemption failed.'),
+                                          content: Text(result.error ??
+                                              ref.read(voucherProvider).error ??
+                                              'Redemption failed.'),
                                           backgroundColor: AppColors.danger,
                                         ),
                                       );
@@ -154,7 +164,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     );
   }
 
-  void _showRedeemedVoucherModal(BuildContext context, RedeemedVoucherModel redeemed) {
+  void _showRedeemedVoucherModal(
+      BuildContext context, RedeemedVoucherModel redeemed) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -184,7 +195,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   color: AppColors.crowdQuietBg,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 36),
+                child: const Icon(Icons.check_circle_rounded,
+                    color: AppColors.primary, size: 36),
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -198,18 +210,21 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               Text(
                 redeemed.offerTitle,
                 textAlign: TextAlign.center,
-                style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600, fontSize: 15),
+                style: AppTypography.labelLarge
+                    .copyWith(fontWeight: FontWeight.w600, fontSize: 15),
               ),
               Text(
                 redeemed.merchantName,
-                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.bodySmall
+                    .copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: AppSpacing.lg),
 
               // Code Box
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerLow,
                   borderRadius: AppSpacing.roundedLg,
@@ -242,17 +257,23 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: redeemed.code));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Voucher code copied to clipboard!'), duration: Duration(seconds: 1)),
+                          const SnackBar(
+                              content:
+                                  Text('Voucher code copied to clipboard!'),
+                              duration: Duration(seconds: 1)),
                         );
                       },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.copy_rounded, size: 14, color: AppColors.primary),
+                          const Icon(Icons.copy_rounded,
+                              size: 14, color: AppColors.primary),
                           const SizedBox(width: 4),
                           Text(
                             'Copy Code',
-                            style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+                            style: AppTypography.labelSmall.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -270,12 +291,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   figmaLayer: '#Voucher_QR_Redemption_Box',
                   dimensions: 'Width: 100%, Height: ~80dp, Padding: 12dp',
                   dataBinding: 'redeemedVoucher.code / expirationTimestamp',
-                  stateNotes: 'Displays 1D barcode stripes & QR scan box for retail cashier terminal',
-                  uxNotes: 'Ensure screen backlight brightness is sufficient for optical scanners.',
+                  stateNotes:
+                      'Displays 1D barcode stripes & QR scan box for retail cashier terminal',
+                  uxNotes:
+                      'Ensure screen backlight brightness is sufficient for optical scanners.',
                   deferred: true,
                 ),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: AppSpacing.roundedMd,
@@ -288,7 +312,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                         children: List.generate(
                           24,
                           (index) => Container(
-                            width: index % 3 == 0 ? 3 : (index % 2 == 0 ? 2 : 1),
+                            width:
+                                index % 3 == 0 ? 3 : (index % 2 == 0 ? 2 : 1),
                             height: 38,
                             margin: const EdgeInsets.symmetric(horizontal: 1.5),
                             color: Colors.black87,
@@ -298,7 +323,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Present this barcode/code to the store cashier',
-                        style: AppTypography.bodySmall.copyWith(fontSize: 10, color: AppColors.textMuted),
+                        style: AppTypography.bodySmall
+                            .copyWith(fontSize: 10, color: AppColors.textMuted),
                       ),
                     ],
                   ),
@@ -344,7 +370,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               figmaLayer: '#Shop_Points_Balance_Card',
               dimensions: 'Full width, Height: ~80dp, Padding: 16dp',
               dataBinding: 'authProvider.user.points (or demoPoints fallback)',
-              stateNotes: 'Dynamic points balance -> Updates instantly on voucher redemption',
+              stateNotes:
+                  'Dynamic points balance -> Updates instantly on voucher redemption',
               uxNotes: 'Sun Gold icon with wood brown typography.',
             ),
             child: MetricTile(
@@ -360,14 +387,23 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
           // Tab Selector
           Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final entry in const [(0,'Cosmetics'),(1,'Vouchers'),(2,'Coming soon'),(3,'My items')])
-              ChoiceChip(label: Text(entry.$2), selected: _selectedTab == entry.$1, onSelected: (_) => setState(() => _selectedTab = entry.$1)),
+            for (final entry in const [
+              (0, 'Cosmetics'),
+              (1, 'Vouchers'),
+              (2, 'Coming soon'),
+              (3, 'My items')
+            ])
+              ChoiceChip(
+                  label: Text(entry.$2),
+                  selected: _selectedTab == entry.$1,
+                  onSelected: (_) => setState(() => _selectedTab = entry.$1)),
           ]),
 
           const SizedBox(height: AppSpacing.lg),
 
           if (_selectedTab == 0) ...[
-            _buildCosmeticsSection(cosmeticsState, points, user?.displayName ?? 'Traveler', user?.avatarUrl),
+            _buildCosmeticsSection(cosmeticsState, points,
+                user?.displayName ?? 'Traveler', user?.avatarUrl),
           ] else if (_selectedTab == 1) ...[
             // Partner Merchants List
             AsyncStateView(
@@ -391,7 +427,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ] else if (_selectedTab == 2) ...[
             _buildTeasers(cosmeticsState),
           ] else ...[
-            _buildOwnedCosmetics(cosmeticsState, user?.displayName ?? 'Traveler', user?.avatarUrl),
+            _buildOwnedCosmetics(cosmeticsState,
+                user?.displayName ?? 'Traveler', user?.avatarUrl),
             const SizedBox(height: AppSpacing.lg),
             // My Redeemed Vouchers Wallet
             if (voucherState.redeemedVouchers.isEmpty) ...[
@@ -405,17 +442,20 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.confirmation_number_outlined, size: 48, color: AppColors.textMuted),
+                    const Icon(Icons.confirmation_number_outlined,
+                        size: 48, color: AppColors.textMuted),
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       'No Redeemed Vouchers Yet',
-                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                      style: AppTypography.labelLarge
+                          .copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Complete quests to earn points and explore rewards from participating local merchants.',
                       textAlign: TextAlign.center,
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                      style: AppTypography.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     SecondaryButton(
@@ -440,13 +480,28 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     );
   }
 
-  Widget _buildCosmeticsSection(CosmeticsState state, int points, String name, String? avatar) {
-    if (state.isLoading && state.items.isEmpty) return const Center(child: CircularProgressIndicator());
-    if (state.error != null && state.items.isEmpty) return AsyncStateView(isLoading:false,errorMessage:state.error,isEmpty:false,emptyMessage:'',content:const SizedBox.shrink(),onRetry:()=>ref.read(cosmeticsProvider.notifier).load());
-    if (state.items.isEmpty) return const Center(child: Text('No cosmetics are available yet.'));
-    return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Text('Choose a look · $points points',style:AppTypography.labelLarge.copyWith(fontWeight:FontWeight.bold,color:AppColors.woodBrown)),
-      const SizedBox(height:AppSpacing.md),
+  Widget _buildCosmeticsSection(
+      CosmeticsState state, int points, String name, String? avatar) {
+    if (state.isLoading && state.items.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (state.error != null && state.items.isEmpty) {
+      return AsyncStateView(
+          isLoading: false,
+          errorMessage: state.error,
+          isEmpty: false,
+          emptyMessage: '',
+          content: const SizedBox.shrink(),
+          onRetry: () => ref.read(cosmeticsProvider.notifier).load());
+    }
+    if (state.items.isEmpty) {
+      return const Center(child: Text('No cosmetics are available yet.'));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Choose a look · $points points',
+          style: AppTypography.labelLarge.copyWith(
+              fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
+      const SizedBox(height: AppSpacing.md),
       ...state.items.map((item) {
         return Card(
           color: AppColors.surfaceContainerLowest,
@@ -458,12 +513,25 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               child: Row(children: [
                 _cosmeticSwatch(item),
                 const SizedBox(width: AppSpacing.md),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(item.name, style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold)),
-                  Text('${item.kind.replaceAll('_', ' ')} · ${item.rarity}', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
-                  Text(_cosmeticPrice(item), style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold, color: item.owned ? AppColors.primary : AppColors.woodBrown)),
-                ])),
-                if (item.equipped) const Icon(Icons.check_circle, color: AppColors.primary),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(item.name,
+                          style: AppTypography.labelLarge
+                              .copyWith(fontWeight: FontWeight.bold)),
+                      Text('${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.textSecondary)),
+                      Text(_cosmeticPrice(item),
+                          style: AppTypography.bodySmall.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: item.owned
+                                  ? AppColors.primary
+                                  : AppColors.woodBrown)),
+                    ])),
+                if (item.equipped)
+                  const Icon(Icons.check_circle, color: AppColors.primary),
               ]),
             ),
           ),
@@ -472,29 +540,234 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     ]);
   }
 
-  Widget _cosmeticSwatch(CosmeticItem item){
-    if(item.kind=='banner')return SizedBox(width:58,height:46,child:ClipRRect(borderRadius:BorderRadius.circular(9),child:ProfileBanner(asset:item.asset,height:46)));
-    if(item.kind=='frame')return CosmeticAvatar(name:'A',frame:item.asset,size:34);
-    if(item.kind=='name_color'){final c=_assetColor(item.asset['color']);return Container(width:44,height:44,alignment:Alignment.center,decoration:BoxDecoration(color:Colors.white,border:Border.all(color:AppColors.borderLowContrast),borderRadius:BorderRadius.circular(9)),child:Text('Aa',style:TextStyle(color:c,fontWeight:FontWeight.w900)));}
-    return Container(width:54,height:44,alignment:Alignment.center,decoration:BoxDecoration(color:AppColors.surfaceContainerLow,borderRadius:BorderRadius.circular(9)),child:Text(item.asset['text']?.toString()??'Title',maxLines:2,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:const TextStyle(fontSize:10,fontWeight:FontWeight.bold)));
+  Widget _cosmeticSwatch(CosmeticItem item) {
+    if (item.kind == 'banner') {
+      return SizedBox(
+          width: 58,
+          height: 46,
+          child: ClipRRect(
+              borderRadius: BorderRadius.circular(9),
+              child: ProfileBanner(
+                  asset: item.asset,
+                  seed: item.seed,
+                  height: 46,
+                  animate: false)));
+    }
+    if (item.kind == 'frame') {
+      return CosmeticAvatar(name: 'A', frame: item.asset, size: 34);
+    }
+    if (item.kind == 'name_color') {
+      final c = _assetColor(item.asset['color']);
+      return Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: AppColors.borderLowContrast),
+              borderRadius: BorderRadius.circular(9)),
+          child: Text('Aa',
+              style: TextStyle(color: c, fontWeight: FontWeight.w900)));
+    }
+    return Container(
+        width: 54,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(9)),
+        child: Text(item.asset['text']?.toString() ?? 'Title',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)));
   }
-  String _cosmeticPrice(CosmeticItem item){if(item.owned)return item.equipped?'Equipped':'Owned';if(item.pricePoints!=null)return '${item.pricePoints} points';if(item.priceTjdq!=null)return 'tJDQ · Coming soon';if(item.unlock!=null)return 'Unlock: ${item.unlock!['title']??item.unlock!['achievementId']}';return item.lockedReason??'Not for sale';}
-  Color? _assetColor(dynamic v){try{return Color(int.parse(v.toString().replaceFirst('#','0xff')));}catch(_){return null;}}
 
-  void _showCosmeticPreview(CosmeticItem item,int points,String name,String? avatar){
-    showModalBottomSheet<void>(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,builder:(sheetContext)=>SafeArea(child:Container(padding:const EdgeInsets.all(AppSpacing.lg),decoration:const BoxDecoration(color:AppColors.surfaceContainerLowest,borderRadius:BorderRadius.vertical(top:Radius.circular(24))),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-      ClipRRect(borderRadius:BorderRadius.circular(16),child:ProfileBanner(asset:item.kind=='banner'?item.asset:null,height:135,child:Align(alignment:Alignment.bottomLeft,child:Padding(padding:const EdgeInsets.all(14),child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[CosmeticAvatar(name:name,imageUrl:avatar,frame:item.kind=='frame'?item.asset:null,size:54),const SizedBox(width:10),Expanded(child:DisplayName(name:name,title:item.kind=='title'?item.asset['text']?.toString():null,color:item.kind=='name_color'?_assetColor(item.asset['color']):Colors.white))]))))),
-      const SizedBox(height:AppSpacing.md),Text(item.name,style:AppTypography.headlineSmall.copyWith(fontWeight:FontWeight.bold,color:AppColors.woodBrown)),const SizedBox(height:4),Text('${item.kind.replaceAll('_',' ')} · ${item.rarity}',style:AppTypography.bodySmall.copyWith(color:AppColors.textSecondary)),const SizedBox(height:AppSpacing.md),
-      if(item.buyable&&item.pricePoints!=null)PrimaryButton(label:points<item.pricePoints!?'Need ${item.pricePoints!-points} more points':'Buy for ${item.pricePoints} points',onPressed:points<item.pricePoints!?null:()async{final error=await ref.read(cosmeticsProvider.notifier).purchase(item);if(sheetContext.mounted)Navigator.of(sheetContext).pop();if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(error??'${item.name} purchased.')));}),
-      if(item.owned)PrimaryButton(label:item.equipped?'Unequip':'Equip now',onPressed:()async{final error=await ref.read(cosmeticsProvider.notifier).equip(item,clear:item.equipped);if(sheetContext.mounted)Navigator.of(sheetContext).pop();if(mounted&&error!=null)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(error)));}),
-      if(!item.owned&&!item.buyable)Padding(padding:const EdgeInsets.symmetric(vertical:8),child:Text(_cosmeticPrice(item),style:AppTypography.bodyMedium.copyWith(color:AppColors.textSecondary))),
-      const SizedBox(height:AppSpacing.sm),SecondaryButton(label:'Close preview',onPressed:()=>Navigator.of(sheetContext).pop()),
-    ]))));
+  String _cosmeticPrice(CosmeticItem item) {
+    if (item.owned) {
+      return item.equipped ? 'Equipped' : 'Owned';
+    }
+    if (item.pricePoints != null) {
+      return '${item.pricePoints} points';
+    }
+    if (item.priceTjdq != null) {
+      return 'tJDQ · Coming soon';
+    }
+    if (item.unlock != null) {
+      return 'Unlock: ${item.unlock!['title'] ?? item.unlock!['achievementId']}';
+    }
+    return item.lockedReason ?? 'Not for sale';
   }
-  Widget _buildTeasers(CosmeticsState state){if(state.isLoading&&state.teasers.isEmpty)return const Center(child:CircularProgressIndicator());if(state.teasers.isEmpty)return const Center(child:Text('More shop features are coming soon.'));return Column(children:state.teasers.map((t)=>Card(color:AppColors.surfaceContainerLowest,child:ListTile(leading:const Icon(Icons.auto_awesome,color:AppColors.sunGold),title:Text(t.title,style:const TextStyle(fontWeight:FontWeight.bold)),subtitle:Text(t.description),trailing:Text(t.etaText??'Coming soon',style:const TextStyle(fontSize:10,fontWeight:FontWeight.bold,color:AppColors.primary))))).toList());}
-  Widget _buildOwnedCosmetics(CosmeticsState state,String name,String? avatar){return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[if(state.owned.isEmpty)const Text('No cosmetics owned yet. Browse the shop to get started.'),...state.owned.map((owned)=>Card(color:AppColors.surfaceContainerLowest,child:ListTile(leading:_cosmeticSwatch(owned.item),title:Text(owned.item.name),subtitle:Text(owned.source=='achievement'?'Achievement unlock':owned.source=='grant'?'Admin grant':'Purchased'),trailing:TextButton(onPressed:()=>_showCosmeticPreview(owned.item,0,name,avatar),child:Text(owned.item.equipped?'Equipped':'Equip')))))]);}
 
-  Widget _buildRedeemedCard(BuildContext context, RedeemedVoucherModel redeemed) {
+  Color? _assetColor(dynamic v) {
+    try {
+      return Color(int.parse(v.toString().replaceFirst('#', '0xff')));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _showCosmeticPreview(
+      CosmeticItem item, int points, String name, String? avatar) {
+    showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) => SafeArea(
+            child: Container(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: const BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24))),
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: ProfileBanner(
+                              asset: item.kind == 'banner' ? item.asset : null,
+                              seed: item.kind == 'banner' ? item.seed : null,
+                              animate: item.kind == 'banner',
+                              height: 135,
+                              child: Align(
+                                  alignment: Alignment.bottomLeft,
+                                  child: Padding(
+                                      padding: const EdgeInsets.all(14),
+                                      child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            CosmeticAvatar(
+                                                name: name,
+                                                imageUrl: avatar,
+                                                frame: item.kind == 'frame'
+                                                    ? item.asset
+                                                    : null,
+                                                size: 54),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                                child: DisplayName(
+                                                    name: name,
+                                                    title: item.kind == 'title'
+                                                        ? item.asset['text']
+                                                            ?.toString()
+                                                        : null,
+                                                    color: item.kind ==
+                                                            'name_color'
+                                                        ? _assetColor(
+                                                            item.asset['color'])
+                                                        : Colors.white))
+                                          ]))))),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(item.name,
+                          style: AppTypography.headlineSmall.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.woodBrown)),
+                      const SizedBox(height: 4),
+                      Text('${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.textSecondary)),
+                      const SizedBox(height: AppSpacing.md),
+                      if (item.buyable && item.pricePoints != null)
+                        PrimaryButton(
+                            label: points < item.pricePoints!
+                                ? 'Need ${item.pricePoints! - points} more points'
+                                : 'Buy for ${item.pricePoints} points',
+                            onPressed: points < item.pricePoints!
+                                ? null
+                                : () async {
+                                    final error = await ref
+                                        .read(cosmeticsProvider.notifier)
+                                        .purchase(item);
+                                    if (sheetContext.mounted) {
+                                      Navigator.of(sheetContext).pop();
+                                    }
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                              content: Text(error ??
+                                                  '${item.name} purchased.')));
+                                    }
+                                  }),
+                      if (item.owned)
+                        PrimaryButton(
+                            label: item.equipped ? 'Unequip' : 'Equip now',
+                            onPressed: () async {
+                              final error = await ref
+                                  .read(cosmeticsProvider.notifier)
+                                  .equip(item, clear: item.equipped);
+                              if (sheetContext.mounted) {
+                                Navigator.of(sheetContext).pop();
+                              }
+                              if (mounted && error != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(error)));
+                              }
+                            }),
+                      if (!item.owned && !item.buyable)
+                        Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(_cosmeticPrice(item),
+                                style: AppTypography.bodyMedium
+                                    .copyWith(color: AppColors.textSecondary))),
+                      const SizedBox(height: AppSpacing.sm),
+                      SecondaryButton(
+                          label: 'Close preview',
+                          onPressed: () => Navigator.of(sheetContext).pop()),
+                    ]))));
+  }
+
+  Widget _buildTeasers(CosmeticsState state) {
+    if (state.isLoading && state.teasers.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (state.teasers.isEmpty) {
+      return const Center(child: Text('More shop features are coming soon.'));
+    }
+    return Column(
+        children: state.teasers
+            .map((t) => Card(
+                color: AppColors.surfaceContainerLowest,
+                child: ListTile(
+                    leading: const Icon(Icons.auto_awesome,
+                        color: AppColors.sunGold),
+                    title: Text(t.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(t.description),
+                    trailing: Text(t.etaText ?? 'Coming soon',
+                        style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary)))))
+            .toList());
+  }
+
+  Widget _buildOwnedCosmetics(
+      CosmeticsState state, String name, String? avatar) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (state.owned.isEmpty)
+        const Text('No cosmetics owned yet. Browse the shop to get started.'),
+      ...state.owned.map((owned) => Card(
+          color: AppColors.surfaceContainerLowest,
+          child: ListTile(
+              leading: _cosmeticSwatch(owned.item),
+              title: Text(owned.item.name),
+              subtitle: Text(owned.source == 'achievement'
+                  ? 'Achievement unlock'
+                  : owned.source == 'grant'
+                      ? 'Admin grant'
+                      : 'Purchased'),
+              trailing: TextButton(
+                  onPressed: () =>
+                      _showCosmeticPreview(owned.item, 0, name, avatar),
+                  child: Text(owned.item.equipped ? 'Equipped' : 'Equip')))))
+    ]);
+  }
+
+  Widget _buildRedeemedCard(
+      BuildContext context, RedeemedVoucherModel redeemed) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -530,7 +803,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               ),
               Text(
                 'Expires in 30 days',
-                style: AppTypography.bodySmall.copyWith(fontSize: 11, color: AppColors.textMuted),
+                style: AppTypography.bodySmall
+                    .copyWith(fontSize: 11, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -545,7 +819,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ),
           Text(
             redeemed.merchantName,
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodySmall
+                .copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.md),
           Wrap(
@@ -555,7 +830,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             runSpacing: 8,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerLow,
                   borderRadius: AppSpacing.roundedMd,
@@ -603,8 +879,20 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (voucher.availability == 'preview') ...[
-            Container(width:double.infinity,padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:AppColors.sunGold.withOpacity(.18),borderRadius:AppSpacing.roundedMd),child:const Text('Sample offer · partner coming soon',textAlign:TextAlign.center,style:TextStyle(fontSize:11,fontWeight:FontWeight.bold,color:AppColors.woodBrown))),
-            const SizedBox(height:AppSpacing.sm),
+            Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                    color: AppColors.sunGold.withOpacity(.18),
+                    borderRadius: AppSpacing.roundedMd),
+                child: const Text('Sample offer · partner coming soon',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.woodBrown))),
+            const SizedBox(height: AppSpacing.sm),
           ],
           Wrap(
             alignment: WrapAlignment.spaceBetween,
@@ -630,20 +918,25 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: canAfford ? AppColors.sunGold.withOpacity(0.2) : AppColors.surfaceContainerLow,
+                  color: canAfford
+                      ? AppColors.sunGold.withOpacity(0.2)
+                      : AppColors.surfaceContainerLow,
                   borderRadius: AppSpacing.roundedPill,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 14),
+                    const Icon(Icons.stars_rounded,
+                        color: AppColors.sunGold, size: 14),
                     const SizedBox(width: 4),
                     Text(
                       '${voucher.costPoints} PTS',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: canAfford ? AppColors.woodBrown : AppColors.textMuted,
+                        color: canAfford
+                            ? AppColors.woodBrown
+                            : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -663,14 +956,16 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.storefront_rounded, size: 14, color: AppColors.textMuted),
+              const Icon(Icons.storefront_rounded,
+                  size: 14, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   voucher.merchantName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                  style: AppTypography.bodySmall
+                      .copyWith(color: AppColors.textSecondary),
                 ),
               ),
             ],
@@ -678,14 +973,16 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           const SizedBox(height: 2),
           Row(
             children: [
-              const Icon(Icons.location_on_rounded, size: 14, color: AppColors.textMuted),
+              const Icon(Icons.location_on_rounded,
+                  size: 14, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   voucher.location,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted, fontSize: 11),
+                  style: AppTypography.bodySmall
+                      .copyWith(color: AppColors.textMuted, fontSize: 11),
                 ),
               ),
             ],
@@ -694,25 +991,33 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             const SizedBox(height: AppSpacing.sm),
             Text(
               voucher.description,
-              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+              style: AppTypography.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
             ),
           ],
           const SizedBox(height: AppSpacing.md),
           if (!voucher.redeemable) ...[
-            Text('Planned offer · ${voucher.costPoints} points · not redeemable yet',style:AppTypography.bodySmall.copyWith(color:AppColors.textSecondary,fontWeight:FontWeight.bold)),
-          ] else SizedBox(
-            width: double.infinity,
-            child: PrimaryButton(
-              label: canAfford ? 'Redeem Voucher' : 'Insufficient Points (${voucher.costPoints - userPoints} needed)',
-              onPressed: canAfford && voucher.redeemable
-                  ? () => _showVoucherConfirmationDialog(
-                        context: context,
-                        voucher: voucher,
-                        userPoints: userPoints,
-                      )
-                  : null,
+            Text(
+                'Planned offer · ${voucher.costPoints} points · not redeemable yet',
+                style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.bold)),
+          ] else
+            SizedBox(
+              width: double.infinity,
+              child: PrimaryButton(
+                label: canAfford
+                    ? 'Redeem Voucher'
+                    : 'Insufficient Points (${voucher.costPoints - userPoints} needed)',
+                onPressed: canAfford && voucher.redeemable
+                    ? () => _showVoucherConfirmationDialog(
+                          context: context,
+                          voucher: voucher,
+                          userPoints: userPoints,
+                        )
+                    : null,
+              ),
             ),
-          ),
         ],
       ),
     );
