@@ -1,16 +1,18 @@
+import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 
 void main() {
-  test('resolves API-relative catalog image paths to absolute HTTPS URLs', () {
+  test('resolves API-relative catalog image paths against the active API origin', () {
     final spot = SpotModel.fromJson({
       'slug': 'hundred-islands-national-park',
       'image_url': '/api/v1/uploads/spot-photos/catalog-hundred-islands.jpg',
     });
 
+    final origin = Uri.parse(ApiClient.apiBaseUrl).origin;
     expect(
       spot.imageUrl,
-      'https://api.juanderquest.app/api/v1/uploads/spot-photos/catalog-hundred-islands.jpg',
+      '$origin/api/v1/uploads/spot-photos/catalog-hundred-islands.jpg',
     );
   });
 

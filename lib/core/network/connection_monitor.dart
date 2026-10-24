@@ -230,10 +230,7 @@ Future<ServerProbeResult> defaultServerProbe() async {
   }
 }
 
-const String _rawProbeBaseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'https://api.juanderquest.app/api/v1',
-);
+final String _rawProbeBaseUrl = defaultApiBaseUrl();
 
 final connectionMonitorProvider =
     StateNotifierProvider<ConnectionMonitor, ConnectionStatus>((ref) {
