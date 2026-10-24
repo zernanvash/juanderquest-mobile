@@ -41,10 +41,7 @@ abstract class ApiObserver {
 }
 
 class ApiClient {
-  static const String _rawApiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://api.juanderquest.app/api/v1',
-  );
+  static final String _rawApiBaseUrl = defaultApiBaseUrl();
 
   /// Normalizes API base URL, ensuring trailing slashes are removed
   /// and the canonical /api/v1 prefix is preserved whether pointing to
