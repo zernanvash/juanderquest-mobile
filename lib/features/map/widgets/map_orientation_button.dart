@@ -11,8 +11,7 @@ bool mapNeedsOrientationReset(double bearing, double tilt) {
       tilt.abs() > _orientationToleranceDegrees;
 }
 
-/// Explicit north-and-level control that remains available if the native
-/// renderer's transient compass control is hidden or obscured.
+/// Explicit north-and-level control for correcting a rotated or tilted map.
 class MapOrientationButton extends StatelessWidget {
   const MapOrientationButton({
     super.key,
