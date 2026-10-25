@@ -33,29 +33,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isFollowing = false;
 
   Color? _cosmeticColor(dynamic value) {
-    if (value is! String || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) return null;
+    if (value is! String || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) {
+      return null;
+    }
     return Color(int.parse(value.substring(1), radix: 16) | 0xff000000);
   }
-  Map<String, dynamic>? _cosmeticAsset(Map<String, dynamic>? cosmetics, String slot) {
+
+  Map<String, dynamic>? _cosmeticAsset(
+      Map<String, dynamic>? cosmetics, String slot) {
     final item = cosmetics?[slot];
     if (item is! Map || item['asset'] is! Map) return null;
     return Map<String, dynamic>.from(item['asset'] as Map);
   }
 
-  Widget _buildAvatarWidget(String? avatarUrl, String displayName, Map<String, dynamic>? cosmetics) {
+  int? _cosmeticSeed(Map<String, dynamic>? cosmetics, String slot) {
+    final item = cosmetics?[slot];
+    if (item is! Map) return null;
+    return (item['seed'] as num?)?.toInt();
+  }
+
+  Widget _buildAvatarWidget(
+      String? avatarUrl, String displayName, Map<String, dynamic>? cosmetics) {
     final isValidUrl = avatarUrl != null &&
         avatarUrl.isNotEmpty &&
         !avatarUrl.endsWith('.svg') &&
         (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
 
     if (isValidUrl) {
-      return CosmeticAvatar(name: displayName, imageUrl: avatarUrl, size: 84,
-        frame: _cosmeticAsset(cosmetics, 'frame'));
+      return CosmeticAvatar(
+          name: displayName,
+          imageUrl: avatarUrl,
+          size: 84,
+          frame: _cosmeticAsset(cosmetics, 'frame'));
     }
 
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'J';
-    return CosmeticAvatar(name: initial, size: 84,
-      frame: _cosmeticAsset(cosmetics, 'frame'));
+    return CosmeticAvatar(
+        name: initial, size: 84, frame: _cosmeticAsset(cosmetics, 'frame'));
   }
 
   @override
@@ -134,6 +148,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: ProfileBanner(
                         height: 72,
                         asset: _cosmeticAsset(cosmetics, 'banner'),
+                        seed: _cosmeticSeed(cosmetics, 'banner'),
+                        animate: true,
                       ),
                     ),
                   if (isMine) const SizedBox(height: AppSpacing.md),
@@ -154,7 +170,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     name: displayName,
                     title: titleAsset?['text']?.toString(),
                     color: _cosmeticColor(nameColorAsset?['color']),
-                    style: AppTypography.displayMedium.copyWith(fontWeight: FontWeight.bold),
+                    style: AppTypography.displayMedium
+                        .copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
                   Text(

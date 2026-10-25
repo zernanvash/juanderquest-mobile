@@ -63,6 +63,7 @@ import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.da
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/cosmetics/screens/appearance_screen.dart';
 import 'package:juanderquest_app/features/shop/providers/cosmetics_provider.dart';
+import 'package:juanderquest_app/features/shop/models/cosmetic_item.dart';
 
 // Inert Subclasses to prevent Dio/network calls and pending timers
 class InertAuthNotifier extends AuthNotifier {
@@ -75,7 +76,30 @@ class InertAuthNotifier extends AuthNotifier {
 }
 
 class InertCosmeticsNotifier extends CosmeticsNotifier {
-  InertCosmeticsNotifier(super.ref);
+  InertCosmeticsNotifier(super.ref) {
+    const banner = CosmeticItem(
+      id: 'banner-lingayen-sunset',
+      kind: 'banner',
+      name: 'Lingayen Sunset',
+      rarity: 'common',
+      asset: {
+        'style': 'procedural',
+        'generator': 'sunset',
+        'palette': 'golden',
+        'colors': ['#2b2a5c', '#c8577a', '#f6a85a', '#ffe2a0'],
+      },
+      seed: 2503267308,
+      owned: true,
+      equipped: true,
+      buyable: false,
+    );
+    state = const CosmeticsState(
+      items: [banner],
+      owned: [OwnedCosmetic(item: banner, source: 'purchase')],
+      loadout: {'banner_id': 'banner-lingayen-sunset'},
+    );
+  }
+
   @override
   Future<void> load() async {}
 }
@@ -364,10 +388,21 @@ void main() {
           handler.resolve(Response(
             requestOptions: options,
             statusCode: 200,
-            data: {'success': true, 'data': [
-              {'id': 'dagupan', 'level': 'city', 'name': 'Dagupan', 'display_name': 'Dagupan City',
-               'label_lat': 16.04, 'label_lng': 120.34, 'has_boundary': true, 'published_spot_count': 3},
-            ]},
+            data: {
+              'success': true,
+              'data': [
+                {
+                  'id': 'dagupan',
+                  'level': 'city',
+                  'name': 'Dagupan',
+                  'display_name': 'Dagupan City',
+                  'label_lat': 16.04,
+                  'label_lng': 120.34,
+                  'has_boundary': true,
+                  'published_spot_count': 3
+                },
+              ]
+            },
           ));
           return;
         }
@@ -375,7 +410,13 @@ void main() {
           handler.resolve(Response(
             requestOptions: options,
             statusCode: 200,
-            data: {'success': true, 'data': {'categories': ['nature_outdoors'], 'onboarding_state': 'pending'}},
+            data: {
+              'success': true,
+              'data': {
+                'categories': ['nature_outdoors'],
+                'onboarding_state': 'pending'
+              }
+            },
           ));
           return;
         }
@@ -383,7 +424,10 @@ void main() {
           handler.resolve(Response(
             requestOptions: options,
             statusCode: 200,
-            data: {'success': true, 'data': {'has_completed': false, 'active_attempt': null}},
+            data: {
+              'success': true,
+              'data': {'has_completed': false, 'active_attempt': null}
+            },
           ));
           return;
         }
@@ -475,8 +519,10 @@ void main() {
                     InertUpdateRepository(),
                     const StartupGateState(phase: GatePhase.ready),
                   )),
-          pushServiceProvider.overrideWith((ref) => InertPushService(ref.watch(apiClientProvider))),
-          plazaFeedProvider.overrideWith((ref) => InertPlazaFeedNotifier(ref.watch(apiClientProvider))),
+          pushServiceProvider.overrideWith(
+              (ref) => InertPushService(ref.watch(apiClientProvider))),
+          plazaFeedProvider.overrideWith(
+              (ref) => InertPlazaFeedNotifier(ref.watch(apiClientProvider))),
           plazaStandingsProvider.overrideWith((ref, key) async => {
                 'entries': [
                   {
@@ -652,6 +698,12 @@ void main() {
           tester, const ShopScreen(), const Size(320, 568), 2.0);
     });
 
+    testWidgets('ShopScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ShopScreen(), const Size(568, 320), 2.0);
+    });
+
     testWidgets('AppearanceScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
@@ -773,14 +825,18 @@ void main() {
       testWidgets(
           'ArDiagnosticsScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
-        await testScreenOverflow(tester, const ArDiagnosticsScreen(), size, 2.0);
+        await testScreenOverflow(
+            tester, const ArDiagnosticsScreen(), size, 2.0);
       });
 
       testWidgets(
           'ForgotPasswordScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
         await testScreenOverflow(
-            tester, const ForgotPasswordScreen(initialEmail: 'juan@example.com'), size, 2.0);
+            tester,
+            const ForgotPasswordScreen(initialEmail: 'juan@example.com'),
+            size,
+            2.0);
       });
 
       testWidgets(
