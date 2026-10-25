@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
-import 'package:juanderquest_app/features/auth/screens/demo_login_screen.dart';
+import 'package:juanderquest_app/features/auth/screens/login_screen.dart';
 
 class _SignedOut extends AuthNotifier {
   _SignedOut() : super(ApiClient(), AuthRefreshNotifier()) {
@@ -29,18 +29,19 @@ void main() {
         overrides: [authProvider.overrideWith((ref) => _SignedOut())],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
-          home: const DemoLoginScreen(),
+          home: const LoginScreen(),
         ),
       ));
       await tester.pump();
       expect(tester.takeException(), isNull);
+      expect(find.textContaining('Simulated'), findsNothing);
+      expect(find.text('LGU Admin'), findsNothing);
+      expect(find.textContaining('SELECT DEMO'), findsNothing);
       await tester.scrollUntilVisible(
-        find.text('Sign In with Email & Password'),
+        find.text('Sign in with email'),
         180,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.text('Sign In with Email & Password'));
-      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.ensureVisible(find.byType(TextField).first);
       await tester.tap(find.byType(TextField).first);
@@ -50,4 +51,27 @@ void main() {
       tester.view.resetViewInsets();
     });
   }
+
+  testWidgets(
+      'traveler can switch to email signup and sees verification requirements',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(ProviderScope(
+      overrides: [authProvider.overrideWith((ref) => _SignedOut())],
+      child: MaterialApp(theme: AppTheme.lightTheme, home: const LoginScreen()),
+    ));
+    await tester.pump();
+    await tester.tap(find.text('Create account'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('auth_display_name')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth_age_eligibility')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth_terms')), findsOneWidget);
+    expect(find.text('Create traveler account'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
