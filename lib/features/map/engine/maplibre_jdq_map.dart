@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as gl;
 import '../utils/admin_areas.dart';
+import 'building_layer_style.dart';
 import 'jdq_map.dart';
 import 'style_loader.dart';
 
@@ -48,6 +49,21 @@ class MapLibreJdqMap extends JdqMap {
           await _controller!.animateCamera(update,
               duration: const Duration(milliseconds: 700));
         }
+      });
+
+  @override
+  Future<void> resetOrientation() => _safe(() async {
+        final position = _controller!.cameraPosition;
+        if (position == null) return;
+        await _controller!.animateCamera(
+          gl.CameraUpdate.newCameraPosition(gl.CameraPosition(
+            target: position.target,
+            zoom: position.zoom,
+            bearing: 0,
+            tilt: 0,
+          )),
+          duration: const Duration(milliseconds: 350),
+        );
       });
   @override
   Future<void> fitBounds(
@@ -171,19 +187,7 @@ class MapLibreJdqMap extends JdqMap {
       await c.addFillExtrusionLayer(
           'openmaptiles',
           'jdq-buildings',
-          const gl.FillExtrusionLayerProperties(
-              fillExtrusionColor: '#C6C2B9',
-              fillExtrusionHeight: [
-                'coalesce',
-                ['get', 'render_height'],
-                3
-              ],
-              fillExtrusionBase: [
-                'coalesce',
-                ['get', 'render_min_height'],
-                0
-              ],
-              fillExtrusionOpacity: 0.0),
+          buildingLayerProperties(opacity: 0),
           sourceLayer: 'building',
           minzoom: 13);
       _ready = true;
@@ -208,6 +212,8 @@ class MapLibreJdqMap extends JdqMap {
       camera = JdqCamera(
           center: LatLng(position.target.latitude, position.target.longitude),
           zoom: position.zoom,
+          bearing: position.bearing,
+          tilt: position.tilt,
           southWest:
               LatLng(bounds.southwest.latitude, bounds.southwest.longitude),
           northEast:
@@ -215,8 +221,7 @@ class MapLibreJdqMap extends JdqMap {
           size: camera.size);
       await c.setLayerProperties(
           'jdq-buildings',
-          gl.FillExtrusionLayerProperties(
-              fillExtrusionOpacity: position.tilt > 30 ? 0.85 : 0.0));
+          buildingLayerProperties(opacity: position.tilt > 30 ? 0.85 : 0.0));
       onCameraIdle?.call();
     } catch (_) {/* A disposed native surface may finish a pending callback. */}
   }

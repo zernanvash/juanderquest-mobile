@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
 import 'package:juanderquest_app/features/map/engine/jdq_map_canvas.dart';
+import 'package:juanderquest_app/features/map/widgets/map_orientation_button.dart';
 import 'package:juanderquest_app/features/map/engine/style_loader.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:juanderquest_app/features/map/widgets/map_origin_card.dart';
@@ -92,6 +93,34 @@ void main() {
         'https://juanderquest.app/map/fonts/{fontstack}/{range}.pbf');
     expect(result['sprite'], 'https://juanderquest.app/map/sprite');
     expect(raw['glyphs'], '/map/fonts/{fontstack}/{range}.pbf');
+  });
+  testWidgets('map orientation button exposes a reliable north-and-level action',
+      (tester) async {
+    var resets = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: MapOrientationButton(onPressed: () => resets++))));
+    expect(find.byTooltip('Reset map north and tilt'), findsOneWidget);
+    await tester.tap(find.byTooltip('Reset map north and tilt'));
+    expect(resets, 1);
+  });
+  test('fake map north reset clears bearing and pitch without moving camera',
+      () async {
+    final fake = FakeJdqMap();
+    fake.camera = const JdqCamera(
+        center: LatLng(16, 120),
+        zoom: 14,
+        bearing: 82,
+        tilt: 48,
+        southWest: LatLng(15, 119),
+        northEast: LatLng(17, 121));
+
+    await fake.resetOrientation();
+
+    expect(fake.camera.bearing, 0);
+    expect(fake.camera.tilt, 0);
+    expect(fake.camera.center, const LatLng(16, 120));
+    expect(fake.camera.zoom, 14);
   });
   test('rejects credentials, query, paths and unsupported origin schemes', () {
     for (final origin in [

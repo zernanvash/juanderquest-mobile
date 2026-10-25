@@ -8,9 +8,13 @@ class JdqCamera {
       required this.zoom,
       required this.southWest,
       required this.northEast,
+      this.bearing = 0,
+      this.tilt = 0,
       this.size = Size.zero});
   final LatLng center, southWest, northEast;
   final double zoom;
+  final double bearing;
+  final double tilt;
   final Size size;
 }
 
@@ -33,6 +37,7 @@ abstract class JdqMap {
   VoidCallback? onCameraIdle;
   Future<void> setStyle(String style);
   Future<void> easeTo(LatLng point, double zoom, {bool reducedMotion = false});
+  Future<void> resetOrientation();
   Future<void> fitBounds(
       LatLng southWest, LatLng northEast, EdgeInsets padding);
   Future<void> setPins(List<JdqPin> pins);
@@ -63,6 +68,19 @@ class FakeJdqMap extends JdqMap {
     camera = JdqCamera(
         center: point,
         zoom: zoom,
+        bearing: camera.bearing,
+        tilt: camera.tilt,
+        southWest: camera.southWest,
+        northEast: camera.northEast,
+        size: camera.size);
+    onCameraIdle?.call();
+  }
+
+  @override
+  Future<void> resetOrientation() async {
+    camera = JdqCamera(
+        center: camera.center,
+        zoom: camera.zoom,
         southWest: camera.southWest,
         northEast: camera.northEast,
         size: camera.size);

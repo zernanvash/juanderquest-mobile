@@ -34,6 +34,7 @@ import '../utils/map_focus.dart';
 import '../utils/map_cluster.dart';
 import '../utils/map_list.dart';
 import '../widgets/map_cluster_list_sheet.dart';
+import '../widgets/map_orientation_button.dart';
 import '../widgets/trail_preview_card.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
@@ -1066,6 +1067,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             right: 12,
             child: Column(
               children: [
+                if (_native) ...[
+                  MapOrientationButton(
+                    onPressed: () => unawaited(_nativeMap.resetOrientation()),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 // Pin a New Destination (map-first posting entry)
                 FloatingActionButton.small(
                   heroTag: 'pin_destination_map',
