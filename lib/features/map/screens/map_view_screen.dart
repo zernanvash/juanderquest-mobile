@@ -1067,8 +1067,14 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             right: 12,
             child: Column(
               children: [
-                if (_native) ...[
+                if (_native &&
+                    mapNeedsOrientationReset(
+                      _nativeMap.camera.bearing,
+                      _nativeMap.camera.tilt,
+                    )) ...[
                   MapOrientationButton(
+                    bearing: _nativeMap.camera.bearing,
+                    tilt: _nativeMap.camera.tilt,
                     onPressed: () => unawaited(_nativeMap.resetOrientation()),
                   ),
                   const SizedBox(height: 8),

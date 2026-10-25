@@ -270,9 +270,7 @@ class MapLibreJdqMap extends JdqMap {
                   northeast: const gl.LatLng(21.5, 127))),
               rotateGesturesEnabled: true,
               tiltGesturesEnabled: true,
-              compassEnabled: true,
-              compassViewPosition: gl.CompassViewPosition.topRight,
-              compassViewMargins: const math.Point(64, 12),
+              compassEnabled: false,
               attributionButtonPosition:
                   gl.AttributionButtonPosition.bottomLeft,
               trackCameraPosition: true,

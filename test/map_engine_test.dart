@@ -94,13 +94,36 @@ void main() {
     expect(result['sprite'], 'https://juanderquest.app/map/sprite');
     expect(raw['glyphs'], '/map/fonts/{fontstack}/{range}.pbf');
   });
-  testWidgets('map orientation button exposes a reliable north-and-level action',
+  testWidgets('map orientation reset button is hidden while north-up and level',
       (tester) async {
     var resets = 0;
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-            body: MapOrientationButton(onPressed: () => resets++))));
+            body: MapOrientationButton(
+                bearing: 0, tilt: 0, onPressed: () => resets++))));
+    expect(find.byTooltip('Reset map north and tilt'), findsNothing);
+    expect(resets, 0);
+  });
+  testWidgets('map orientation reset button appears for rotation or tilt',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(
+            body: MapOrientationButton(
+                bearing: 15, tilt: 0, onPressed: _noop))));
     expect(find.byTooltip('Reset map north and tilt'), findsOneWidget);
+    await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(
+            body: MapOrientationButton(
+                bearing: 0, tilt: 12, onPressed: _noop))));
+    expect(find.byTooltip('Reset map north and tilt'), findsOneWidget);
+  });
+  testWidgets('map orientation reset button invokes resetOrientation callback',
+      (tester) async {
+    var resets = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: MapOrientationButton(
+                bearing: 15, tilt: 0, onPressed: () => resets++))));
     await tester.tap(find.byTooltip('Reset map north and tilt'));
     expect(resets, 1);
   });
@@ -198,3 +221,5 @@ void main() {
     expect(find.byKey(const ValueKey('fake-jdq-map')), findsNothing);
   });
 }
+
+void _noop() {}
