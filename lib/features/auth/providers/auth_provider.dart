@@ -91,7 +91,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _refreshNotifier.notify();
         return;
       }
-
       _apiClient.setAuthToken(stored.token);
       state = AuthState(user: user, token: stored.token);
       _refreshNotifier.notify();
@@ -105,7 +104,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> _completeLogin(String token, UserModel user) async {
+  Future<bool> _completeLogin(String token, UserModel user) async {
     _sessionGeneration++;
     _apiClient.setAuthToken(token);
     try {
@@ -118,6 +117,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     state = AuthState(user: user, token: token);
     _refreshNotifier.notify();
+    return true;
   }
 
   Future<bool> loginWithEmail(
@@ -138,8 +138,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        await _completeLogin(token, user);
-        return true;
+        return _completeLogin(token, user);
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Invalid email or password.';
@@ -216,8 +215,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        await _completeLogin(token, user);
-        return true;
+        return _completeLogin(token, user);
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Invalid verification code.';
@@ -227,80 +225,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on DioException catch (e) {
       final msg = e.response?.data['error']?['message'] ??
           'Verification failed (${e.message}).';
-      state = AuthState(error: msg);
-      return false;
-    } catch (e) {
-      state = AuthState(error: 'An unexpected error occurred.');
-      return false;
-    }
-  }
-
-  Future<bool> loginWithSeed(String seedId) async {
-    state = AuthState(isLoading: true);
-    try {
-      final response = await _apiClient.dio.post(
-        '/auth/demo-login',
-        data: {'seed_id': seedId},
-      );
-
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final token = response.data['data']['token'] as String;
-        final userJson = response.data['data']['user'];
-        final user = UserModel.fromJson(userJson);
-
-        await _completeLogin(token, user);
-        return true;
-      } else {
-        final msg =
-            response.data['error']?['message'] ?? 'Authentication failed.';
-        state = AuthState(error: msg);
-        return false;
-      }
-    } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ??
-          'Network connection error (${e.message}).';
-      state = AuthState(error: msg);
-      return false;
-    } catch (e) {
-      state = AuthState(error: 'An unexpected error occurred.');
-      return false;
-    }
-  }
-
-  Future<bool> loginWithSimulatedWallet(
-      {required String username, required String password}) async {
-    state = AuthState(isLoading: true);
-    try {
-      final response = await _apiClient.dio.post(
-        '/auth/simulated-wallet-login',
-        data: {
-          'username': username.trim(),
-          'password': password.trim(),
-        },
-      );
-
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final token = response.data['data']['token'] as String;
-        final userJson = response.data['data']['user'];
-        final user = UserModel.fromJson(userJson);
-
-        await _completeLogin(token, user);
-        return true;
-      } else {
-        final error = response.data['error'];
-        final code = error is Map ? error['code'] : null;
-        final msg = code == 'SIMULATED_LOGIN_DISABLED' || code == 'SIMULATED_LOGIN_RESERVED'
-            ? 'Simulated login is unavailable on this server. Connect a wallet instead.'
-            : (error is Map ? error['message'] : null) ?? 'Simulated wallet login failed.';
-        state = AuthState(error: msg);
-        return false;
-      }
-    } on DioException catch (e) {
-      final error = e.response?.data is Map ? e.response?.data['error'] : null;
-      final code = error is Map ? error['code'] : null;
-      final msg = code == 'SIMULATED_LOGIN_DISABLED' || code == 'SIMULATED_LOGIN_RESERVED'
-          ? 'Simulated login is unavailable on this server. Connect a wallet instead.'
-          : (error is Map ? error['message'] : null) ?? 'Network connection error (${e.message}).';
       state = AuthState(error: msg);
       return false;
     } catch (e) {
@@ -342,8 +266,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        await _completeLogin(token, user);
-        return true;
+        return _completeLogin(token, user);
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Wallet sign-in failed.';
