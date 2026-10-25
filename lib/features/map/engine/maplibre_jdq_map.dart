@@ -252,12 +252,7 @@ class MapLibreJdqMap extends JdqMap {
       {required VoidCallback onReady, required VoidCallback onFailure}) {
     _failed = onFailure;
     return LayoutBuilder(builder: (context, constraints) {
-      camera = JdqCamera(
-          center: camera.center,
-          zoom: camera.zoom,
-          southWest: camera.southWest,
-          northEast: camera.northEast,
-          size: constraints.biggest);
+      camera = camera.copyWith(size: constraints.biggest);
       return ValueListenableBuilder<bool>(
           valueListenable: _location,
           builder: (_, enabled, __) => gl.MapLibreMap(

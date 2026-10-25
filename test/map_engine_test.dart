@@ -145,6 +145,20 @@ void main() {
     expect(fake.camera.center, const LatLng(16, 120));
     expect(fake.camera.zoom, 14);
   });
+  test('camera copies keep bearing and tilt', () {
+    const camera = JdqCamera(
+        center: LatLng(16, 120),
+        zoom: 14,
+        bearing: 30,
+        tilt: 45,
+        southWest: LatLng(15, 119),
+        northEast: LatLng(17, 121));
+    final resized = camera.copyWith(size: const Size(400, 800));
+    expect(resized.bearing, 30);
+    expect(resized.tilt, 45);
+    expect(resized.size, const Size(400, 800));
+    expect(mapNeedsOrientationReset(resized.bearing, resized.tilt), isTrue);
+  });
   test('rejects credentials, query, paths and unsupported origin schemes', () {
     for (final origin in [
       'file:///tmp',

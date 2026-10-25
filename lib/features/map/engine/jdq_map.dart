@@ -16,6 +16,24 @@ class JdqCamera {
   final double bearing;
   final double tilt;
   final Size size;
+
+  /// Copies keep bearing and tilt unless a caller replaces them explicitly.
+  JdqCamera copyWith(
+          {LatLng? center,
+          double? zoom,
+          LatLng? southWest,
+          LatLng? northEast,
+          double? bearing,
+          double? tilt,
+          Size? size}) =>
+      JdqCamera(
+          center: center ?? this.center,
+          zoom: zoom ?? this.zoom,
+          southWest: southWest ?? this.southWest,
+          northEast: northEast ?? this.northEast,
+          bearing: bearing ?? this.bearing,
+          tilt: tilt ?? this.tilt,
+          size: size ?? this.size);
 }
 
 class JdqPin {
@@ -90,13 +108,11 @@ class FakeJdqMap extends JdqMap {
   @override
   Future<void> fitBounds(
       LatLng southWest, LatLng northEast, EdgeInsets padding) async {
-    camera = JdqCamera(
+    camera = camera.copyWith(
         center: LatLng((southWest.latitude + northEast.latitude) / 2,
             (southWest.longitude + northEast.longitude) / 2),
-        zoom: camera.zoom,
         southWest: southWest,
-        northEast: northEast,
-        size: camera.size);
+        northEast: northEast);
     onCameraIdle?.call();
   }
 
