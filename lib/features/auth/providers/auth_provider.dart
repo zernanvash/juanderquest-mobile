@@ -138,7 +138,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        return _completeLogin(token, user);
+        return await _completeLogin(token, user);
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Invalid email or password.';
@@ -215,7 +215,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        return _completeLogin(token, user);
+        return await _completeLogin(token, user);
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Invalid verification code.';
@@ -266,7 +266,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final userJson = response.data['data']['user'];
         final user = UserModel.fromJson(userJson);
 
-        return _completeLogin(token, user);
+        return await _completeLogin(token, user);
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Wallet sign-in failed.';
