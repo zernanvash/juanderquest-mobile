@@ -16,9 +16,10 @@ import '../models/cosmetic_item.dart';
 import '../providers/cosmetics_provider.dart';
 import '../../cosmetics/widgets/profile_banner.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
-import '../../cosmetics/widgets/display_name.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../wallet/screens/wallet_connect_screen.dart';
+import '../../cosmetics/widgets/passport_preview.dart';
+import 'package:go_router/go_router.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
@@ -29,6 +30,7 @@ class ShopScreen extends ConsumerStatefulWidget {
 
 class _ShopScreenState extends ConsumerState<ShopScreen> {
   int _selectedTab = 0; // Cosmetics, Vouchers, Coming soon, My items
+  bool? _liveGrid; // null: follow the system animation setting (Plan 69)
 
   @override
   void initState() {
@@ -504,50 +506,94 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     if (state.items.isEmpty) {
       return const Center(child: Text('No cosmetics are available yet.'));
     }
+    // Plan 69: banners animate in the list. Off by default only when the system asks to
+    // remove animations; the switch is the traveler's explicit choice.
+    final live = _liveGrid ?? !MediaQuery.of(context).disableAnimations;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Choose a look · $points points',
-          style: AppTypography.labelLarge.copyWith(
-              fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
+      Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            Text('Choose a look · $points points',
+                style: AppTypography.labelLarge.copyWith(
+                    fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
+            FilterChip(
+                key: const ValueKey('shop_live_animations'),
+                avatar: const Icon(Icons.auto_awesome, size: 16),
+                label:
+                    Text(live ? 'Live animations: On' : 'Live animations: Off'),
+                selected: live,
+                onSelected: (on) => setState(() => _liveGrid = on)),
+          ]),
       const SizedBox(height: AppSpacing.md),
       ...state.items.map((item) {
+        final banner = item.kind == 'banner';
+        final details = Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(children: [
+            if (!banner) ...[
+              _cosmeticSwatch(item, name, avatar),
+              const SizedBox(width: AppSpacing.md),
+            ],
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(item.name,
+                      style: AppTypography.labelLarge
+                          .copyWith(fontWeight: FontWeight.bold)),
+                  Text('${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
+                      style: AppTypography.bodySmall
+                          .copyWith(color: AppColors.textSecondary)),
+                  Text(_cosmeticPrice(item),
+                      style: AppTypography.bodySmall.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: item.owned
+                              ? AppColors.primary
+                              : AppColors.woodBrown)),
+                ])),
+            if (item.equipped)
+              const Icon(Icons.check_circle, color: AppColors.primary),
+          ]),
+        );
         return Card(
+          clipBehavior: Clip.antiAlias,
           color: AppColors.surfaceContainerLowest,
           child: InkWell(
             onTap: () => _showCosmeticPreview(item, points, name, avatar),
-            borderRadius: AppSpacing.roundedLg,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(children: [
-                _cosmeticSwatch(item),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text(item.name,
-                          style: AppTypography.labelLarge
-                              .copyWith(fontWeight: FontWeight.bold)),
-                      Text('${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
-                          style: AppTypography.bodySmall
-                              .copyWith(color: AppColors.textSecondary)),
-                      Text(_cosmeticPrice(item),
-                          style: AppTypography.bodySmall.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: item.owned
-                                  ? AppColors.primary
-                                  : AppColors.woodBrown)),
-                    ])),
-                if (item.equipped)
-                  const Icon(Icons.check_circle, color: AppColors.primary),
-              ]),
-            ),
+            child: banner
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                        ProfileBanner(
+                            asset: item.asset,
+                            seed: item.seed,
+                            height: 112,
+                            animate: live,
+                            forceMotion: _liveGrid == true,
+                            child: item.asset['style'] == 'procedural'
+                                ? const Align(
+                                    alignment: Alignment.bottomLeft,
+                                    child: Padding(
+                                        padding: EdgeInsets.all(8),
+                                        child: Text('Procedural · animated',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700))))
+                                : null),
+                        details,
+                      ])
+                : details,
           ),
         );
       })
     ]);
   }
 
-  Widget _cosmeticSwatch(CosmeticItem item) {
+  /// Small swatch for list rows; frames, titles and name colours use the traveler's own look.
+  Widget _cosmeticSwatch(CosmeticItem item, String name, String? avatar) {
     if (item.kind == 'banner') {
       return SizedBox(
           width: 58,
@@ -561,33 +607,31 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   animate: false)));
     }
     if (item.kind == 'frame') {
-      return CosmeticAvatar(name: 'A', frame: item.asset, size: 34);
-    }
-    if (item.kind == 'name_color') {
-      final c = _assetColor(item.asset['color']);
-      return Container(
-          width: 44,
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.borderLowContrast),
-              borderRadius: BorderRadius.circular(9)),
-          child: Text('Aa',
-              style: TextStyle(color: c, fontWeight: FontWeight.w900)));
+      return CosmeticAvatar(
+          name: name, imageUrl: avatar, frame: item.asset, size: 40);
     }
     return Container(
-        width: 54,
-        height: 44,
+        width: 96,
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: const EdgeInsets.all(6),
         alignment: Alignment.center,
         decoration: BoxDecoration(
             color: AppColors.surfaceContainerLow,
+            border: Border.all(color: AppColors.borderLowContrast),
             borderRadius: BorderRadius.circular(9)),
-        child: Text(item.asset['text']?.toString() ?? 'Title',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)));
+        child: item.kind == 'name_color'
+            ? Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: _assetColor(item.asset['color']),
+                    fontWeight: FontWeight.w900))
+            : Text(item.asset['text']?.toString() ?? 'Title',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.bold)));
   }
 
   String _cosmeticPrice(CosmeticItem item) {
@@ -616,67 +660,29 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
   void _showCosmeticPreview(
       CosmeticItem item, int points, String name, String? avatar) {
+    final cosmetics = ref.read(cosmeticsProvider);
+    final equipped = equippedLoadout(cosmetics.loadout,
+        [...cosmetics.items, ...cosmetics.owned.map((o) => o.item)]);
     showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (sheetContext) => SafeArea(
             child: Container(
+                constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(sheetContext).size.height * .92),
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: const BoxDecoration(
                     color: AppColors.surfaceContainerLowest,
                     borderRadius:
                         BorderRadius.vertical(top: Radius.circular(24))),
-                child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: ProfileBanner(
-                              asset: item.kind == 'banner' ? item.asset : null,
-                              seed: item.kind == 'banner' ? item.seed : null,
-                              animate: item.kind == 'banner',
-                              height: 135,
-                              child: Align(
-                                  alignment: Alignment.bottomLeft,
-                                  child: Padding(
-                                      padding: const EdgeInsets.all(14),
-                                      child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            CosmeticAvatar(
-                                                name: name,
-                                                imageUrl: avatar,
-                                                frame: item.kind == 'frame'
-                                                    ? item.asset
-                                                    : null,
-                                                size: 54),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                                child: DisplayName(
-                                                    name: name,
-                                                    title: item.kind == 'title'
-                                                        ? item.asset['text']
-                                                            ?.toString()
-                                                        : null,
-                                                    color: item.kind ==
-                                                            'name_color'
-                                                        ? _assetColor(
-                                                            item.asset['color'])
-                                                        : Colors.white))
-                                          ]))))),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(item.name,
-                          style: AppTypography.headlineSmall.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.woodBrown)),
-                      const SizedBox(height: 4),
-                      Text('${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
-                          style: AppTypography.bodySmall
-                              .copyWith(color: AppColors.textSecondary)),
-                      const SizedBox(height: AppSpacing.md),
+                child: SingleChildScrollView(
+                    child: PassportPreview(
+                        selected: item,
+                        equipped: equipped,
+                        name: name,
+                        avatarUrl: avatar,
+                        actions: [
                       if (item.buyable && item.pricePoints != null)
                         PrimaryButton(
                             label: points < item.pricePoints!
@@ -720,11 +726,19 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                             child: Text(_cosmeticPrice(item),
                                 style: AppTypography.bodyMedium
                                     .copyWith(color: AppColors.textSecondary))),
+                      if (item.owned)
+                        TextButton(
+                            key: const ValueKey('passport_view_profile'),
+                            onPressed: () {
+                              Navigator.of(sheetContext).pop();
+                              context.go('/profile');
+                            },
+                            child: const Text('View on my profile →')),
                       const SizedBox(height: AppSpacing.sm),
                       SecondaryButton(
                           label: 'Close preview',
                           onPressed: () => Navigator.of(sheetContext).pop()),
-                    ]))));
+                    ])))));
   }
 
   Widget _buildTeasers(CosmeticsState state) {
@@ -760,7 +774,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       ...state.owned.map((owned) => Card(
           color: AppColors.surfaceContainerLowest,
           child: ListTile(
-              leading: _cosmeticSwatch(owned.item),
+              leading: _cosmeticSwatch(
+                  owned.item,
+                  ref.read(authProvider).user?.displayName ?? 'Traveler',
+                  ref.read(authProvider).user?.avatarUrl),
               title: Text(owned.item.name),
               subtitle: Text(owned.source == 'achievement'
                   ? 'Achievement unlock'

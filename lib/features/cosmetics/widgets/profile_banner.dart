@@ -11,6 +11,7 @@ class ProfileBanner extends StatefulWidget {
     required this.asset,
     this.seed,
     this.animate = false,
+    this.forceMotion = false,
     this.height = 112,
     this.child,
   });
@@ -18,6 +19,10 @@ class ProfileBanner extends StatefulWidget {
   final Map<String, dynamic>? asset;
   final int? seed;
   final bool animate;
+
+  /// Plan 69: motion the traveler asked for (a preview, or "Live animations" on) plays even
+  /// when the system asks to remove animations. Everything else follows the system setting.
+  final bool forceMotion;
   final double height;
   final Widget? child;
 
@@ -48,7 +53,8 @@ class _ProfileBannerState extends State<ProfileBanner>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.seed != widget.seed ||
         !identical(oldWidget.asset, widget.asset) ||
-        oldWidget.animate != widget.animate) {
+        oldWidget.animate != widget.animate ||
+        oldWidget.forceMotion != widget.forceMotion) {
       _painter?.disposeCache();
       _painter = null;
       _time.value = 6;
@@ -58,10 +64,10 @@ class _ProfileBannerState extends State<ProfileBanner>
   }
 
   void _syncTicker() {
+    // Procedural banners redraw from the clock; gradient banners drift slowly with it.
     final shouldAnimate = widget.animate &&
-        !_reduceMotion &&
-        _isProcedural &&
-        widget.seed != null;
+        (widget.forceMotion || !_reduceMotion) &&
+        (!_isProcedural || widget.seed != null);
     if (shouldAnimate) {
       _ticker ??= createTicker(_onTick);
       if (!_ticker!.isActive) _ticker!.start();
@@ -93,13 +99,20 @@ class _ProfileBannerState extends State<ProfileBanner>
         .map((e) => _color(e.toString()))
         .toList();
     final angle = ((asset?['angle'] as num?) ?? 135).toDouble();
-    final gradient = LinearGradient(
-      colors: colors,
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      transform: GradientRotation(angle * 3.14159 / 180),
-    );
     final procedural = _isProcedural && widget.seed != null;
+    LinearGradient gradientAt(double t) {
+      // 8 s drift loop; still frames (t = 6) keep the original diagonal.
+      final shift = procedural || t == 6
+          ? 0.0
+          : .45 * math.sin((t - 6) * 2 * math.pi / 8);
+      return LinearGradient(
+        colors: colors,
+        begin: Alignment(-1 + shift, -1),
+        end: Alignment(1 + shift, 1),
+        transform: GradientRotation(angle * math.pi / 180),
+      );
+    }
+
     if (procedural && _painter == null) {
       _painter = ProceduralBannerPainter(
         asset: asset!,
@@ -111,8 +124,12 @@ class _ProfileBannerState extends State<ProfileBanner>
     return SizedBox(
       height: widget.height,
       width: double.infinity,
-      child: DecoratedBox(
-        decoration: BoxDecoration(gradient: gradient),
+      child: ValueListenableBuilder<double>(
+        valueListenable: _time,
+        builder: (context, t, child) => DecoratedBox(
+          decoration: BoxDecoration(gradient: gradientAt(t)),
+          child: child,
+        ),
         child: Stack(
           fit: StackFit.expand,
           children: [
