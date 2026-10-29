@@ -122,8 +122,8 @@ void main() {
 
   group('location cascade', () {
     const draft = SpotPostingDraft(name: 'Saved cove');
-    final saved = SavedSpotDraft(
-        pin: const StudioPin(16.1, 120.3, 16),
+    const saved = SavedSpotDraft(
+        pin: StudioPin(16.1, 120.3, 16),
         source: SpotLocationSource.mapCrosshair,
         draft: draft);
 
