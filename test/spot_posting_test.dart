@@ -14,13 +14,14 @@ void main() {
       expect(validatePostingPin(14.5, 127.1), contains('inside the Philippines'));
     });
 
-    test('formats pin labels truthfully', () {
-      expect(formatPinLabel(null, null), 'No pin selected');
-      expect(formatPinLabel(15.90834, 119.78923), '15.90834, 119.78923');
+    test('labels the place without raw coordinates', () {
+      expect(formatRecognizedPlaceLabel(const SpotPostingDraft(lat: 15.90834, lng: 119.78923)), 'Selected spot on map');
+      expect(formatRecognizedPlaceLabel(const SpotPostingDraft(municipality: 'Bolinao', barangay: 'Brgy. Patar')), 'Brgy. Patar, Bolinao');
+      expect(formatRecognizedPlaceLabel(const SpotPostingDraft(municipality: 'Bolinao')), 'Bolinao');
     });
   });
 
-  group('spot posting step validation', () {
+  group('one-page draft validation', () {
     const valid = SpotPostingDraft(
       name: 'Tambobong White Beach',
       description: 'A quiet stretch of white sand with calm water for swimming and picnics.',
@@ -30,34 +31,91 @@ void main() {
       lng: 119.7892,
     );
 
-    test('requires basics before leaving the first step', () {
-      final errors = validatePostingStep('basics', const SpotPostingDraft());
-      expect(errors['name'], isNotNull);
-      expect(errors.containsKey('subcategory'), isFalse);
+    test('requires name, description, locality and a pin', () {
+      final errors = validatePostingDraft(const SpotPostingDraft());
+      expect(errors.keys, containsAll(['name', 'description', 'municipality', 'address', 'pin']));
+      expect(validatePostingDraft(valid), isEmpty);
     });
 
-    test('requires a meaningful description and locality', () {
-      expect(
-        validatePostingStep('story', valid.copyWith(description: 'Too short'))['description'],
-        contains('at least 20'),
-      );
-      expect(validatePostingStep('story', valid).isEmpty, isTrue);
-      final placeErrors = validatePostingStep('place', valid.copyWith(municipality: '', address: ''));
-      expect(placeErrors['municipality'], isNotNull);
-      expect(placeErrors['address'], isNotNull);
+    test('only accepts the API visitor-fit vocabularies', () {
+      expect(validatePostingDraft(valid.copyWith(goodFor: ['families', 'groups'], bestTime: ['sunset'])), isEmpty);
+      expect(validatePostingDraft(valid.copyWith(goodFor: ['friends']))['goodFor'], isNotNull);
+      expect(validatePostingDraft(valid.copyWith(bestTime: ['morning']))['bestTime'], isNotNull);
     });
 
-    test('reports first invalid step in wizard order and accepts the full draft', () {
-      expect(firstInvalidPostingStep(const SpotPostingDraft()), 'basics');
-      expect(firstInvalidPostingStep(valid.copyWith(description: '')), 'story');
-      expect(firstInvalidPostingStep(valid.copyWith(address: '')), 'place');
-      expect(firstInvalidPostingStep(valid.copyWith(priceLevel: 9)), 'details');
-      expect(firstInvalidPostingStep(valid), isNull);
-      expect(validatePostingStep('review', valid).isEmpty, isTrue);
+    test('gives one clear readiness prompt', () {
+      expect(postingReadiness(valid), isNull);
+      expect(postingReadiness(valid.copyWith(name: '')), 'Add a name for this place');
+      expect(postingReadiness(valid.copyWith(description: '')), 'Tap a story starter or add a short description');
+      expect(postingReadiness(valid.copyWith(lat: null)), 'Place the pin on the map');
     });
   });
 
-  group('spot posting payload and media helpers', () {
+  group('recognition (Plan 66)', () {
+    final rec = SpotRecognitionResult.fromJson({
+      'recognized': true,
+      'place_name': 'Patar White Beach',
+      'name_suggestions': ['Patar White Beach', 'Patar Beach'],
+      'formatted_address': 'Patar Road, Brgy. Patar, Bolinao, Pangasinan',
+      'municipality': 'Bolinao',
+      'barangay': 'Brgy. Patar',
+      'outside_pangasinan': false,
+      'suggested_category': 'nature_outdoors',
+      'suggested_subcategory': 'beach',
+      'suggested_details': {
+        'good_for': ['families', 'groups', 'friends'],
+        'best_time': ['early_morning', 'morning'],
+        'amenities': ['parking', 'photo_spots'],
+        'daily_hours': '06:00 AM - 06:00 PM',
+      },
+      'story_starters': ['Patar White Beach in Brgy. Patar, Bolinao with relaxing views and fresh air.'],
+      'nearby_duplicates': [
+        {'id': 'spot-patar', 'name': 'Patar Rock Formation', 'distance_meters': 42},
+      ],
+    });
+
+    test('parses the API payload and names unnamed places by area', () {
+      expect(rec.title, 'Patar White Beach');
+      expect(rec.nearbyDuplicates.single.distanceMeters, 42);
+      expect(const SpotRecognitionResult(barangay: 'Brgy. Patar', municipality: 'Bolinao').title, 'New spot in Brgy. Patar, Bolinao');
+      expect(const SpotRecognitionResult().title, 'New spot here');
+    });
+
+    test('fills an empty draft and drops values the API would reject', () {
+      final draft = applyRecognition(const SpotPostingDraft(lat: 16.3, lng: 119.8), rec);
+      expect(draft.name, 'Patar White Beach');
+      expect(draft.municipality, 'Bolinao');
+      expect(draft.barangay, 'Brgy. Patar');
+      expect(draft.address, 'Patar Road, Brgy. Patar, Bolinao, Pangasinan');
+      expect(draft.category, 'nature_outdoors');
+      expect(draft.subcategory, 'beach');
+      expect(draft.goodFor, ['families', 'groups']);
+      expect(draft.bestTime, ['early_morning']);
+      expect(draft.amenities, ['parking']);
+      expect(draft.dailyHours, '06:00 AM - 06:00 PM');
+    });
+
+    test('never overwrites what the traveler touched', () {
+      const typed = SpotPostingDraft(name: 'Hidden Cove', municipality: 'Anda', address: 'Near the school', goodFor: ['couples']);
+      final draft = applyRecognition(typed, rec,
+          touched: const SpotPostingTouched(name: true, location: true, details: true));
+      expect(draft.name, 'Hidden Cove');
+      expect(draft.municipality, 'Anda');
+      expect(draft.goodFor, ['couples']);
+    });
+
+    test('appends story starters once and offline starters are long enough', () {
+      const line = 'Patar White Beach in Brgy. Patar, Bolinao with relaxing views and fresh air.';
+      expect(appendStoryStarter('', line), line);
+      expect(appendStoryStarter('Nice.', line), 'Nice. $line');
+      expect(appendStoryStarter(line, line), line);
+      for (final starter in SpotRecognitionResult.offline().storyStarters) {
+        expect(starter.length, greaterThanOrEqualTo(45));
+      }
+    });
+  });
+
+  group('payload and media helpers', () {
     const draft = SpotPostingDraft(
       name: 'Tambobong White Beach',
       category: 'nature_outdoors',
@@ -68,21 +126,22 @@ void main() {
       lat: 15.9083,
       lng: 119.7892,
       dailyHours: '06:00 AM - 06:00 PM',
-      priceLevel: 1,
+      goodFor: ['families'],
+      bestTime: ['sunset'],
       tags: ['community'],
       amenities: ['parking'],
     );
 
-    test('maps the draft onto the API contract with server-compatible defaults', () {
+    test('maps the draft onto the API contract (good_for/best_time, no price level)', () {
       final payload = buildSpotPayload(draft, assetId: 'asset-1', imageUrl: 'https://cdn.example/photo.jpg');
       expect(payload['name'], 'Tambobong White Beach');
       expect(payload['gps_lat'], 15.9083);
       expect(payload['gps_lng'], 119.7892);
       expect(payload['hours'], {'daily': '06:00 AM - 06:00 PM'});
-      expect(payload['tags'], ['community']);
+      expect(payload['good_for'], ['families']);
+      expect(payload['best_time'], ['sunset']);
+      expect(payload.containsKey('price_level'), isFalse);
       expect(payload['amenities'], ['parking']);
-      expect(payload['image_url'], 'https://cdn.example/photo.jpg');
-      expect(payload['asset_id'], 'asset-1');
       expect(payload['asset_ids'], ['asset-1']);
     });
 
@@ -91,7 +150,6 @@ void main() {
       expect(payload['hours'], isEmpty);
       expect(payload['image_url'], '');
       expect(payload.containsKey('asset_id'), isFalse);
-      expect(payload.containsKey('asset_ids'), isFalse);
     });
 
     test('enforces media size limits per media type', () {

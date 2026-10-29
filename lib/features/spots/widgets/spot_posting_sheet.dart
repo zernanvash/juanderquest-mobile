@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,34 +8,36 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
+import '../providers/spot_recognition_provider.dart';
 import '../utils/spot_posting.dart';
 
 class SpotPostingSheetResult {
   final SpotPostingDraft draft;
-  final int resumeStep;
   final bool movePinRequested;
   final SpotModel? publishedSpot;
 
   const SpotPostingSheetResult({
     required this.draft,
-    required this.resumeStep,
     this.movePinRequested = false,
     this.publishedSpot,
   });
 }
 
+/// Plan 66 stage 2: one pre-filled "Smart Draft" page (replaces the 6-step wizard).
 class SpotPostingSheet extends ConsumerStatefulWidget {
   final double initialLat;
   final double initialLng;
   final SpotPostingDraft? initialDraft;
-  final int initialStep;
+
+  /// Recognition already fetched by the map's aim card for this pin (skips a second lookup).
+  final SpotRecognitionResult? initialRecognition;
 
   const SpotPostingSheet({
     super.key,
     required this.initialLat,
     required this.initialLng,
     this.initialDraft,
-    this.initialStep = 0,
+    this.initialRecognition,
   });
 
   @override
@@ -46,7 +46,11 @@ class SpotPostingSheet extends ConsumerStatefulWidget {
 
 class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
   late SpotPostingDraft _draft;
-  late int _stepIndex;
+  SpotRecognitionResult? _recognition;
+  bool _recognizing = false;
+  SpotPostingTouched _touched = const SpotPostingTouched();
+  final Set<String> _usedStarters = {};
+  bool _editAddress = false;
   Map<String, String> _fieldErrors = {};
   bool _submitting = false;
   String? _submitError;
@@ -60,24 +64,25 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
   final _picker = ImagePicker();
 
   XFile? _mediaFile;
+  bool _mediaIsVideo = false;
   bool _mediaUploading = false;
   String? _mediaAssetId;
   String? _mediaUrl;
   String? _mediaError;
 
-  String get _stepId => spotPostingSteps[_stepIndex];
-
   @override
   void initState() {
     super.initState();
-    final base = widget.initialDraft ?? const SpotPostingDraft();
-    _draft = base.copyWith(lat: widget.initialLat, lng: widget.initialLng);
-    _stepIndex = widget.initialDraft == null ? 0 : widget.initialStep.clamp(0, spotPostingSteps.length - 1);
-    _nameController.text = _draft.name;
-    _descriptionController.text = _draft.description;
-    _municipalityController.text = _draft.municipality;
-    _addressController.text = _draft.address;
-    _hoursController.text = _draft.dailyHours;
+    final base = (widget.initialDraft ?? const SpotPostingDraft()).copyWith(lat: widget.initialLat, lng: widget.initialLng);
+    // A resumed draft (after Adjust pin) keeps everything the traveler already chose.
+    if (widget.initialDraft != null) {
+      _touched = const SpotPostingTouched(name: true, category: true, details: true);
+    }
+    final rec = widget.initialRecognition;
+    _draft = rec == null ? base : applyRecognition(base, rec, touched: _touched);
+    _recognition = rec;
+    _syncControllers();
+    if (rec == null) _recognize();
   }
 
   @override
@@ -90,7 +95,30 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     super.dispose();
   }
 
-  void _syncTextFields() {
+  void _syncControllers() {
+    _nameController.text = _draft.name;
+    _descriptionController.text = _draft.description;
+    _municipalityController.text = _draft.municipality;
+    _addressController.text = _draft.address;
+    _hoursController.text = _draft.dailyHours;
+  }
+
+  Future<void> _recognize() async {
+    setState(() => _recognizing = true);
+    final rec = await ref
+        .read(spotRecognitionApiProvider)
+        .recognizeLocation(lat: widget.initialLat, lng: widget.initialLng);
+    if (!mounted) return;
+    _readTextFields();
+    setState(() {
+      _recognizing = false;
+      _recognition = rec;
+      _draft = applyRecognition(_draft, rec, touched: _touched);
+      _syncControllers();
+    });
+  }
+
+  void _readTextFields() {
     _draft = _draft.copyWith(
       name: _nameController.text,
       description: _descriptionController.text,
@@ -100,71 +128,39 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     );
   }
 
-  void _clearFieldError(String field) {
-    if (!_fieldErrors.containsKey(field)) return;
+  void _update(SpotPostingDraft next) {
     setState(() {
-      final next = Map<String, String>.from(_fieldErrors);
-      next.remove(field);
-      _fieldErrors = next;
-    });
-  }
-
-  void _handleNext() {
-    _syncTextFields();
-    final errors = validatePostingStep(_stepId, _draft);
-    if (errors.isNotEmpty) {
-      setState(() => _fieldErrors = errors);
-      return;
-    }
-    setState(() {
+      _draft = next;
       _fieldErrors = {};
-      _stepIndex = (_stepIndex + 1).clamp(0, spotPostingSteps.length - 1);
-    });
-  }
-
-  void _handleBack() {
-    _syncTextFields();
-    setState(() {
-      _fieldErrors = {};
-      _stepIndex = (_stepIndex - 1).clamp(0, spotPostingSteps.length - 1);
     });
   }
 
   void _requestMovePin() {
-    _syncTextFields();
-    Navigator.of(context).pop(
-      SpotPostingSheetResult(
-        draft: _draft,
-        resumeStep: spotPostingSteps.indexOf('place'),
-        movePinRequested: true,
-      ),
-    );
+    _readTextFields();
+    Navigator.of(context).pop(SpotPostingSheetResult(draft: _draft, movePinRequested: true));
   }
 
-  Future<void> _pickMedia(ImageSource source) async {
+  Future<void> _pickMedia({required ImageSource source, bool video = false}) async {
     try {
-      final picked = await _picker.pickImage(
-        source: source,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 85,
-      );
+      final picked = video
+          ? await _picker.pickVideo(source: source, maxDuration: const Duration(seconds: 30))
+          : await _picker.pickImage(source: source, maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
       if (picked == null) return;
-      final length = await picked.length();
-      final sizeError = validatePostingMediaSize(length, isVideo: false);
+      final sizeError = validatePostingMediaSize(await picked.length(), isVideo: video);
       if (sizeError != null) {
         setState(() => _mediaError = sizeError);
         return;
       }
       setState(() {
         _mediaFile = picked;
+        _mediaIsVideo = video;
         _mediaAssetId = null;
         _mediaUrl = null;
         _mediaError = null;
       });
-      await _uploadMedia();
-    } catch (e) {
-      setState(() => _mediaError = 'Failed to select photo: $e');
+      await _uploadMedia(); // starts right away so publishing never waits on the upload
+    } catch (_) {
+      setState(() => _mediaError = video ? 'Could not open the video.' : 'Could not open the photo.');
     }
   }
 
@@ -177,10 +173,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     });
     try {
       final client = ref.read(apiClientProvider);
-      final bytes = await file.readAsBytes();
-      final formData = FormData.fromMap({
-        'media': MultipartFile.fromBytes(bytes, filename: file.name),
-      });
+      final formData = FormData.fromMap({'media': MultipartFile.fromBytes(await file.readAsBytes(), filename: file.name)});
       final response = await client.dio.post('/spot-media', data: formData);
       if (response.statusCode == 201 && response.data['success'] == true) {
         setState(() {
@@ -191,40 +184,41 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
         setState(() => _mediaError = response.data['error']?['message'] ?? 'Upload failed.');
       }
     } on DioException catch (e) {
-      setState(() => _mediaError = e.response?.data?['error']?['message'] ?? 'Network error uploading photo.');
-    } catch (e) {
-      setState(() => _mediaError = 'Unexpected upload error: $e');
+      setState(() => _mediaError = e.response?.data?['error']?['message'] ?? 'Network error uploading media.');
+    } catch (_) {
+      setState(() => _mediaError = 'Upload failed. Please try again.');
     } finally {
       if (mounted) setState(() => _mediaUploading = false);
     }
   }
 
+  void _removeMedia() {
+    setState(() {
+      _mediaFile = null;
+      _mediaAssetId = null;
+      _mediaUrl = null;
+      _mediaError = null;
+    });
+  }
+
   Future<void> _publish() async {
-    if (_submitting || _publishedSpot != null) return;
-    _syncTextFields();
-    final errors = validatePostingStep('review', _draft);
+    if (_submitting || _publishedSpot != null || _mediaUploading) return;
+    _readTextFields();
+    final errors = validatePostingDraft(_draft);
     if (errors.isNotEmpty) {
-      setState(() => _fieldErrors = errors);
-      final firstInvalid = firstInvalidPostingStep(_draft);
-      if (firstInvalid != null) {
-        final targetIndex = spotPostingSteps.indexOf(firstInvalid);
-        if (targetIndex >= 0) setState(() => _stepIndex = targetIndex);
-      }
+      setState(() {
+        _fieldErrors = errors;
+        if (errors.containsKey('municipality') || errors.containsKey('address')) _editAddress = true;
+      });
       return;
     }
-    if (_mediaUploading) return;
-
     setState(() {
       _submitting = true;
       _submitError = null;
     });
-
     try {
       final client = ref.read(apiClientProvider);
-      final response = await client.dio.post(
-        '/spots',
-        data: buildSpotPayload(_draft, assetId: _mediaAssetId, imageUrl: _mediaUrl),
-      );
+      final response = await client.dio.post('/spots', data: buildSpotPayload(_draft, assetId: _mediaAssetId, imageUrl: _mediaUrl));
       if (response.statusCode == 201 && response.data['success'] == true) {
         final spot = SpotModel.fromJson(Map<String, dynamic>.from(response.data['data'] as Map));
         setState(() => _publishedSpot = spot);
@@ -233,23 +227,11 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
       }
     } on DioException catch (e) {
       setState(() => _submitError = e.response?.data?['error']?['message'] ?? 'Failed to connect to server.');
-    } catch (e) {
-      setState(() => _submitError = 'Submission failed: $e');
+    } catch (_) {
+      setState(() => _submitError = 'Publishing failed. Your answers are kept — try again.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
-  }
-
-  void _finishPublished() {
-    final spot = _publishedSpot;
-    if (spot == null) return;
-    Navigator.of(context).pop(
-      SpotPostingSheetResult(
-        draft: _draft,
-        resumeStep: _stepIndex,
-        publishedSpot: spot,
-      ),
-    );
   }
 
   @override
@@ -265,7 +247,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
             color: Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             clipBehavior: Clip.antiAlias,
-            child: _publishedSpot != null ? _buildSuccessView() : _buildWizardView(),
+            child: _publishedSpot != null ? _buildSuccessView() : _buildComposer(),
           ),
         ),
       ),
@@ -274,7 +256,8 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
 
   Widget _buildSuccessView() {
     final spot = _publishedSpot!;
-    return Padding(
+    void done() => Navigator.of(context).pop(SpotPostingSheetResult(draft: _draft, publishedSpot: spot));
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -282,104 +265,88 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
           Container(
             width: 56,
             height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.12),
-              borderRadius: AppSpacing.roundedXl,
-            ),
+            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), borderRadius: AppSpacing.roundedXl),
             child: const Icon(Icons.celebration_rounded, color: AppColors.primary, size: 28),
           ),
           const SizedBox(height: 12),
           Text(
             'Destination published',
-            style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w900,
-              color: AppColors.woodBrown,
-            ),
+            style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.woodBrown),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
-            '${spot.name} is now visible on the map and community feed.',
+            '${spot.name} is now visible on the map. Plan a trail through it or get directions.',
             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pop(
-                      SpotPostingSheetResult(
-                        draft: _draft,
-                        resumeStep: _stepIndex,
-                        publishedSpot: spot,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.check_rounded, size: 16),
-                  label: const Text('Back to map'),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: _finishPublished,
-            child: const Text('View destination on map', style: TextStyle(fontSize: 12)),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: done,
+              icon: const Icon(Icons.place_rounded, size: 16),
+              label: const Text('Show it on the map'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildWizardView() {
+  Widget _section(String title, Widget child, {Widget? trailing}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.woodBrown)),
+              ),
+              if (trailing != null) Flexible(child: trailing),
+            ],
+          ),
+          const SizedBox(height: 6),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _error(String key) {
+    final message = _fieldErrors[key];
+    if (message == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(message, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.red)),
+    );
+  }
+
+  Widget _buildComposer() {
+    final readiness = postingReadiness(_draft.copyWith(
+      name: _nameController.text,
+      description: _descriptionController.text,
+      municipality: _municipalityController.text,
+      address: _addressController.text,
+    ));
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
           child: Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
-                  borderRadius: AppSpacing.roundedLg,
-                ),
-                child: const Icon(Icons.add_location_alt_rounded, color: AppColors.primary, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Pin a destination',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.woodBrown),
-                    ),
-                    Text(
-                      'Step ${_stepIndex + 1} of ${spotPostingSteps.length} · ${spotPostingStepLabels[_stepId]}',
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: (_stepIndex + 1) / spotPostingSteps.length,
-                        minHeight: 5,
-                        backgroundColor: AppColors.surfaceContainerLow,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                      ),
-                    ),
-                  ],
-                ),
+              const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Add this place', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.woodBrown)),
               ),
               IconButton(
                 onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                tooltip: 'Close posting wizard',
+                tooltip: 'Close',
                 icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textMuted),
               ),
             ],
@@ -389,58 +356,55 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
         Flexible(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: _buildStepBody(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildLocationCard(),
+                const SizedBox(height: 16),
+                _buildMediaBar(),
+                const SizedBox(height: 16),
+                _buildName(),
+                _buildCategory(),
+                _buildStory(),
+                _buildDetails(),
+                if (_submitError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(_submitError!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red)),
+                  ),
+              ],
+            ),
           ),
         ),
         const Divider(height: 1),
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
           child: Row(
             children: [
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: OutlinedButton.icon(
-                    onPressed: _stepIndex == 0 || _submitting ? null : _handleBack,
-                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                    label: const Text('Back'),
+              Expanded(
+                child: Text(
+                  _mediaUploading ? 'Finishing your upload…' : readiness ?? '✓ Ready to publish',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: readiness == null ? AppColors.primary : const Color(0xFFB45309),
                   ),
                 ),
               ),
-              const Spacer(),
-              if (_stepId == 'review')
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: FilledButton.icon(
-                      onPressed: _submitting || _mediaUploading ? null : _publish,
-                      icon: _submitting
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.auto_awesome_rounded, size: 16),
-                      label: Text(_submitting ? 'Publishing…' : 'Publish destination'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.sunGold,
-                        foregroundColor: AppColors.woodBrown,
-                      ),
-                    ),
-                  ),
-                )
-              else
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: FilledButton.icon(
-                      onPressed: _handleNext,
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                      label: const Text('Next'),
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                    ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: FilledButton.icon(
+                    onPressed: _submitting || _mediaUploading ? null : _publish,
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.sunGold, foregroundColor: AppColors.woodBrown),
+                    icon: _submitting
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.auto_awesome_rounded, size: 16),
+                    label: Text(_submitting ? 'Publishing…' : 'Publish spot'),
                   ),
                 ),
+              ),
             ],
           ),
         ),
@@ -448,398 +412,411 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     );
   }
 
-  Widget _buildStepBody() {
-    switch (_stepId) {
-      case 'basics':
-        return _buildBasicsStep();
-      case 'story':
-        return _buildStoryStep();
-      case 'place':
-        return _buildPlaceStep();
-      case 'details':
-        return _buildDetailsStep();
-      case 'media':
-        return _buildMediaStep();
-      default:
-        return _buildReviewStep();
-    }
-  }
-
-  Widget _buildFieldError(String field) {
-    final message = _fieldErrors[field];
-    if (message == null) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Text(
-        message,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
+  Widget _buildLocationCard() {
+    final place = _recognizing ? 'Recognizing this place…' : formatRecognizedPlaceLabel(_draft);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.07),
+        borderRadius: AppSpacing.roundedLg,
+        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(Icons.place_rounded, size: 16, color: AppColors.primary),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(place, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.primary)),
+                    if (_draft.address.isNotEmpty)
+                      Text(_draft.address, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_recognition?.outsidePangasinan == true)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text('This pin is outside Pangasinan. Double-check the location.',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF92400E))),
+            ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _requestMovePin,
+                icon: const Icon(Icons.open_with_rounded, size: 14),
+                label: const Text('Adjust pin'),
+              ),
+              TextButton.icon(
+                onPressed: () => setState(() => _editAddress = !_editAddress),
+                icon: const Icon(Icons.edit_rounded, size: 14),
+                label: Text(_editAddress ? 'Hide address fields' : 'Edit address manually'),
+              ),
+            ],
+          ),
+          if (_editAddress) ...[
+            const SizedBox(height: 6),
+            TextField(
+              controller: _municipalityController,
+              maxLength: 100,
+              decoration: const InputDecoration(labelText: 'Municipality / city', counterText: ''),
+              onChanged: (_) => setState(() => _touched = _touched.copyWith(location: true)),
+            ),
+            _error('municipality'),
+            TextField(
+              controller: _addressController,
+              maxLength: 300,
+              decoration: const InputDecoration(labelText: 'Address / landmark', counterText: ''),
+              onChanged: (_) => setState(() => _touched = _touched.copyWith(location: true)),
+            ),
+            _error('address'),
+          ],
+          _error('pin'),
+        ],
       ),
     );
   }
 
-  InputDecoration _inputDecoration(String label, {String? hint}) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      isDense: true,
-      border: const OutlineInputBorder(borderRadius: AppSpacing.roundedLg),
-    );
-  }
-
-  Widget _buildBasicsStep() {
-    final subcategories = subcategoriesForCategory(_draft.category);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          controller: _nameController,
-          autofocus: true,
-          maxLength: 200,
-          onChanged: (_) => _clearFieldError('name'),
-          decoration: _inputDecoration('Destination name *', hint: 'e.g. Tambobong White Beach'),
-        ),
-        _buildFieldError('name'),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          value: _draft.category,
-          isExpanded: true,
-          decoration: _inputDecoration('Category *'),
-          items: spotPostingCategories
-              .map((category) => DropdownMenuItem<String>(
-                    value: category['id'] as String,
-                    child: Text(
-                      category['label'] as String,
-                      style: const TextStyle(fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ))
-              .toList(),
-          onChanged: (value) {
-            if (value == null) return;
-            final options = subcategoriesForCategory(value);
-            setState(() {
-              _draft = _draft.copyWith(
-                category: value,
-                subcategory: options.isEmpty ? _draft.subcategory : options.first,
-              );
-            });
-          },
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          value: subcategories.contains(_draft.subcategory) ? _draft.subcategory : null,
-          isExpanded: true,
-          decoration: _inputDecoration('Subcategory *'),
-          items: subcategories
-              .map((subcategory) => DropdownMenuItem<String>(
-                    value: subcategory,
-                    child: Text(
-                      subcategory.replaceAll('_', ' '),
-                      style: const TextStyle(fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ))
-              .toList(),
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() => _draft = _draft.copyWith(subcategory: value));
-          },
-        ),
-        _buildFieldError('subcategory'),
-      ],
-    );
-  }
-
-  Widget _buildStoryStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          controller: _descriptionController,
-          autofocus: true,
-          maxLines: 5,
-          maxLength: 2000,
-          onChanged: (_) => _clearFieldError('description'),
-          decoration: _inputDecoration(
-            'What makes it worth visiting? *',
-            hint: 'Describe the place, what travelers can do, and any honest tips.',
-          ),
-        ),
-        _buildFieldError('description'),
-      ],
-    );
-  }
-
-  Widget _buildPlaceStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.08),
-            borderRadius: AppSpacing.roundedLg,
-            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.place_rounded, size: 16, color: AppColors.primary),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  formatPinLabel(_draft.lat, _draft.lng),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+  Widget _buildMediaBar() {
+    final file = _mediaFile;
+    if (file != null) {
+      return Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(border: Border.all(color: AppColors.borderLowContrast), borderRadius: AppSpacing.roundedLg),
+        child: Row(
+          children: [
+            Icon(_mediaIsVideo ? Icons.movie_rounded : Icons.photo_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _mediaUploading
+                    ? 'Uploading…'
+                    : _mediaAssetId != null
+                        ? '✓ Uploaded · cover ${_mediaIsVideo ? 'video' : 'photo'}'
+                        : _mediaError ?? 'Upload failed',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _mediaAssetId != null || _mediaUploading ? AppColors.primary : Colors.red,
                 ),
               ),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: TextButton(
-                    onPressed: _requestMovePin,
-                    child: const Text('Move pin', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+            if (!_mediaUploading && _mediaAssetId == null)
+              TextButton(onPressed: _uploadMedia, child: const Text('Retry')),
+            IconButton(onPressed: _removeMedia, tooltip: 'Remove media', icon: const Icon(Icons.delete_outline_rounded, size: 18)),
+          ],
         ),
-        _buildFieldError('pin'),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _municipalityController,
-          maxLength: 100,
-          onChanged: (_) => _clearFieldError('municipality'),
-          decoration: _inputDecoration('Municipality / city *', hint: 'e.g. Dasol'),
-        ),
-        _buildFieldError('municipality'),
-        const SizedBox(height: 4),
-        TextField(
-          controller: _addressController,
-          maxLength: 300,
-          onChanged: (_) => _clearFieldError('address'),
-          decoration: _inputDecoration('Address / landmark *', hint: 'e.g. Brgy. Tambobong, Dasol'),
-        ),
-        _buildFieldError('address'),
-      ],
-    );
-  }
-
-  Widget _buildDetailsStep() {
+      );
+    }
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _hoursController,
-          maxLength: 80,
-          decoration: _inputDecoration('Operating hours (optional)', hint: 'e.g. 06:00 AM - 06:00 PM'),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Price level',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-        ),
-        const SizedBox(height: 6),
         Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: List.generate(spotPostingPriceLabels.length, (level) {
-            final selected = _draft.priceLevel == level;
-            return ChoiceChip(
-              label: Text(spotPostingPriceLabels[level], style: const TextStyle(fontSize: 11)),
-              selected: selected,
-              onSelected: (_) => setState(() => _draft = _draft.copyWith(priceLevel: level)),
-            );
-          }),
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.icon(
+              onPressed: () => _pickMedia(source: ImageSource.camera),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              icon: const Icon(Icons.photo_camera_rounded, size: 16),
+              label: const Text('Take photo'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _pickMedia(source: ImageSource.gallery),
+              icon: const Icon(Icons.photo_library_rounded, size: 16),
+              label: const Text('Gallery'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _pickMedia(source: ImageSource.gallery, video: true),
+              icon: const Icon(Icons.videocam_rounded, size: 16),
+              label: const Text('30s video'),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        const Text(
-          'Amenities (optional)',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: spotPostingAmenities.map((amenity) {
-            final selected = _draft.amenities.contains(amenity);
-            return FilterChip(
-              label: Text(amenity.replaceAll('_', ' '), style: const TextStyle(fontSize: 11)),
-              selected: selected,
-              onSelected: (value) {
-                setState(() {
-                  final next = List<String>.from(_draft.amenities);
-                  if (value) {
-                    next.add(amenity);
-                  } else {
-                    next.remove(amenity);
-                  }
-                  _draft = _draft.copyWith(amenities: next);
-                });
-              },
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMediaStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'A real photo helps travelers trust this destination. You can publish without one.',
-          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 10),
-        if (_mediaFile == null)
-          OutlinedButton.icon(
-            onPressed: () => _pickMedia(ImageSource.gallery),
-            icon: const Icon(Icons.upload_rounded, size: 16),
-            label: const Text('Choose a photo'),
-          )
-        else
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: AppSpacing.roundedLg,
-                child: Image.file(
-                  File(_mediaFile!.path),
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 80,
-                    alignment: Alignment.center,
-                    color: AppColors.surfaceContainerLow,
-                    child: const Text('Photo selected', style: TextStyle(fontSize: 11)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  if (_mediaUploading)
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else if (_mediaAssetId != null)
-                    const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.success)
-                  else
-                    const Icon(Icons.error_rounded, size: 16, color: Colors.red),
-                  const SizedBox(width: 6),
-                  Text(
-                    _mediaUploading ? 'Uploading…' : (_mediaAssetId != null ? 'Uploaded' : 'Upload failed'),
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  if (!_mediaUploading && _mediaAssetId == null)
-                    TextButton(onPressed: _uploadMedia, child: const Text('Retry', style: TextStyle(fontSize: 11))),
-                  TextButton(
-                    onPressed: () => setState(() {
-                      _mediaFile = null;
-                      _mediaAssetId = null;
-                      _mediaUrl = null;
-                      _mediaError = null;
-                    }),
-                    child: const Text('Remove', style: TextStyle(fontSize: 11, color: Colors.red)),
-                  ),
-                ],
-              ),
-            ],
-          ),
         if (_mediaError != null)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              _mediaError!,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
-            ),
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(_mediaError!, style: const TextStyle(fontSize: 11, color: Colors.red)),
           ),
       ],
     );
   }
 
-  Widget _buildReviewStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLow,
-            borderRadius: AppSpacing.roundedLg,
-            border: Border.all(color: AppColors.borderLowContrast),
+  Widget _buildName() {
+    final rec = _recognition;
+    final autoFilled = rec?.placeName != null && !_touched.name && _nameController.text == rec!.placeName;
+    final suggestions = (rec?.nameSuggestions ?? const <String>[]).where((n) => n != _nameController.text).take(3).toList();
+    final duplicate = rec?.nearbyDuplicates.isNotEmpty == true ? rec!.nearbyDuplicates.first : null;
+    return _section(
+      'Destination name *',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _nameController,
+            maxLength: 200,
+            decoration: InputDecoration(
+              hintText: 'e.g. Tambobong White Beach',
+              counterText: '',
+              suffixIcon: _nameController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear name',
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      onPressed: () => setState(() {
+                        _nameController.clear();
+                        _touched = _touched.copyWith(name: true);
+                      }),
+                    ),
+            ),
+            onChanged: (_) => setState(() => _touched = _touched.copyWith(name: true)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _draft.name.trim().isEmpty ? 'Untitled destination' : _draft.name.trim(),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.woodBrown),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _draft.description.trim(),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${_draft.category} · ${_draft.subcategory.replaceAll('_', ' ')}',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-              Text(
-                '${_draft.municipality} — ${_draft.address}',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-              Text(
-                formatPinLabel(_draft.lat, _draft.lng),
-                style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _mediaAssetId != null ? 'Photo attached' : (_mediaFile != null ? 'Photo pending upload' : 'No photo (optional)'),
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: _requestMovePin,
-          icon: const Icon(Icons.place_rounded, size: 14),
-          label: const Text('Adjust pin on map', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-        ),
-        const Text(
-          'Posting publishes this destination immediately. Future reports or moderation can update it.',
-          style: TextStyle(fontSize: 10, color: AppColors.textMuted),
-        ),
-        if (_submitError != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.08),
-                borderRadius: AppSpacing.roundedLg,
-                border: Border.all(color: Colors.red.withOpacity(0.4)),
-              ),
+          if (suggestions.isNotEmpty)
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final name in suggestions)
+                  ActionChip(
+                    label: Text(name),
+                    onPressed: () => setState(() {
+                      _nameController.text = name;
+                      _touched = _touched.copyWith(name: true);
+                    }),
+                  ),
+              ],
+            ),
+          if (duplicate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
               child: Text(
-                _submitError!,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
+                'Looks close to ${duplicate.name} (${duplicate.distanceMeters} m away). Continue only if it is a different place.',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF92400E)),
               ),
             ),
+          _error('name'),
+        ],
+      ),
+      trailing: autoFilled
+          ? const Text('✨ Auto-recognized from map',
+              textAlign: TextAlign.end, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary))
+          : null,
+    );
+  }
+
+  Widget _buildCategory() {
+    return _section(
+      'Category',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final category in spotPostingCategories)
+                ChoiceChip(
+                  label: Text(category['label'] as String),
+                  selected: _draft.category == category['id'],
+                  onSelected: (_) {
+                    _readTextFields();
+                    _touched = _touched.copyWith(category: true);
+                    final id = category['id'] as String;
+                    _update(_draft.copyWith(category: id, subcategory: subcategoriesForCategory(id).first));
+                  },
+                ),
+            ],
           ),
-      ],
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final sub in subcategoriesForCategory(_draft.category))
+                ChoiceChip(
+                  label: Text(sub.replaceAll('_', ' ')),
+                  selected: _draft.subcategory == sub,
+                  onSelected: (_) {
+                    _readTextFields();
+                    _touched = _touched.copyWith(category: true);
+                    _update(_draft.copyWith(subcategory: sub));
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStory() {
+    final starters = _recognition?.storyStarters ?? const <String>[];
+    final length = _descriptionController.text.trim().length;
+    return _section(
+      'What makes it worth visiting? *',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (starters.isNotEmpty) ...[
+            const Text('✨ Tap to build your description:',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
+            const SizedBox(height: 4),
+            for (final starter in starters)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    alignment: Alignment.centerLeft,
+                    backgroundColor: _usedStarters.contains(starter) ? AppColors.primary.withOpacity(0.08) : null,
+                  ),
+                  onPressed: _usedStarters.contains(starter)
+                      ? null
+                      : () => setState(() {
+                            _descriptionController.text = appendStoryStarter(_descriptionController.text, starter);
+                            _usedStarters.add(starter);
+                            _fieldErrors = {};
+                          }),
+                  child: Text('${_usedStarters.contains(starter) ? '✓' : '+'} $starter', style: const TextStyle(fontSize: 12)),
+                ),
+              ),
+          ],
+          TextField(
+            controller: _descriptionController,
+            minLines: 3,
+            maxLines: 6,
+            maxLength: 2000,
+            decoration: const InputDecoration(
+              labelText: 'Description',
+              hintText: 'Describe the place, what travelers can do, and any honest tips.',
+              counterText: '',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            length >= 20 ? '✓ Description looks good' : 'At least 20 characters.',
+            style: TextStyle(fontSize: 11, color: length >= 20 ? AppColors.primary : AppColors.textMuted),
+          ),
+          _error('description'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetails() {
+    final summary = [
+      _draft.goodFor.map((id) => spotGoodForOptions[id] ?? id).join(' & '),
+      _draft.bestTime.map((id) => spotBestTimeOptions[id] ?? id).join('/'),
+      _draft.dailyHours,
+    ].where((part) => part.isNotEmpty).join(' · ');
+    void touchDetails(SpotPostingDraft next) {
+      _readTextFields();
+      _touched = _touched.copyWith(details: true);
+      _update(next);
+    }
+
+    return Material(
+      color: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppSpacing.roundedLg,
+        side: BorderSide(color: AppColors.borderLowContrast),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          title: const Text('✨ Visitor details', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.woodBrown)),
+          subtitle: summary.isEmpty ? null : Text(summary, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Good for (max 5)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final entry in spotGoodForOptions.entries)
+                  FilterChip(
+                    label: Text(entry.value),
+                    selected: _draft.goodFor.contains(entry.key),
+                    onSelected: (on) {
+                      final list = [..._draft.goodFor];
+                      if (!on) {
+                        list.remove(entry.key);
+                      } else if (list.length < 5) {
+                        list.add(entry.key);
+                      }
+                      touchDetails(_draft.copyWith(goodFor: list));
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text('Best time (max 4)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final entry in spotBestTimeOptions.entries)
+                  FilterChip(
+                    label: Text(entry.value),
+                    selected: _draft.bestTime.contains(entry.key),
+                    onSelected: (on) {
+                      final list = [..._draft.bestTime];
+                      if (!on) {
+                        list.remove(entry.key);
+                      } else if (list.length < 4) {
+                        list.add(entry.key);
+                      }
+                      touchDetails(_draft.copyWith(bestTime: list));
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _hoursController,
+              maxLength: 80,
+              decoration: const InputDecoration(labelText: 'Operating hours', hintText: 'e.g. 06:00 AM - 06:00 PM', counterText: ''),
+              onChanged: (value) {
+                _touched = _touched.copyWith(details: true);
+                _draft = _draft.copyWith(dailyHours: value);
+              },
+            ),
+            const SizedBox(height: 8),
+            const Text('Amenities', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final amenity in spotPostingAmenities)
+                  FilterChip(
+                    label: Text(amenity.replaceAll('_', ' ')),
+                    selected: _draft.amenities.contains(amenity),
+                    onSelected: (on) {
+                      final list = [..._draft.amenities];
+                      if (on) {
+                        list.add(amenity);
+                      } else {
+                        list.remove(amenity);
+                      }
+                      touchDetails(_draft.copyWith(amenities: list));
+                    },
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

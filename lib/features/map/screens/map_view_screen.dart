@@ -22,6 +22,7 @@ import '../../quests/providers/quest_provider.dart';
 import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/utils/spot_posting.dart';
+import '../../spots/widgets/pin_aim_card.dart';
 import '../../spots/widgets/spot_posting_sheet.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
@@ -68,6 +69,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     };
     _nativeMap.onCameraIdle = () {
       _scheduleAreaRefresh();
+      _updateAimCenter();
       if (mounted) setState(() => _clusterZoom = _nativeMap.camera.zoom);
     };
     _initSelection();
@@ -104,7 +106,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   LatLng? _userLocation;
   bool _pinPlacementActive = false;
   SpotPostingDraft? _pendingDraft;
-  int _pendingResumeStep = 0;
+  // Plan 66: the crosshair aims at the camera center while placing a pin.
+  LatLng? _aimCenter;
   Timer? _clusterRefreshTimer;
   DateTime _lastClusterRefresh = DateTime.fromMillisecondsSinceEpoch(0);
   double? _pendingClusterZoom;
@@ -128,6 +131,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     _nativeMap.dispose();
     _clusterRefreshTimer?.cancel();
     _areaRefreshTimer?.cancel();
+    _aimTimer?.cancel();
     super.dispose();
   }
 
@@ -239,6 +243,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
   void _scheduleClusterRefresh(MapCamera camera, bool hasGesture) {
     _scheduleAreaRefresh();
+    if (_pinPlacementActive) {
+      _aimTimer ??= Timer(const Duration(milliseconds: 120), () {
+        _aimTimer = null;
+        _updateAimCenter();
+      });
+    }
     _pendingClusterZoom = camera.zoom;
     final now = DateTime.now();
     final remaining = const Duration(milliseconds: 150) - now.difference(_lastClusterRefresh);
@@ -312,10 +322,25 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     }
   }
 
+  Timer? _aimTimer;
+
+  void _updateAimCenter() {
+    if (!_pinPlacementActive || !mounted) return;
+    final center = _camera.center;
+    if (_aimCenter == center) return;
+    setState(() => _aimCenter = center);
+  }
+
   void _initSelection() {
     // Auto-select initial quest if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshAreas();
+      // Plan 66: /spots/new redirects here with ?post=1 to start map-first posting.
+      try {
+        if (GoRouterState.of(context).uri.queryParameters['post'] == '1') _startPinPlacement();
+      } catch (_) {
+        // Not under a GoRouter (tests); nothing to resume.
+      }
       final quests = ref.read(questProvider).quests;
       if (quests.isNotEmpty && _selectedQuest == null && _selectedSpot == null) {
         setState(() {
@@ -378,6 +403,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       _selectedQuest = null;
       _selectedSpot = null;
     });
+    final draft = _pendingDraft;
+    if (draft?.lat != null && draft?.lng != null) {
+      _move(LatLng(draft!.lat!, draft.lng!), math.max(_camera.zoom, 16));
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateAimCenter());
   }
 
   void _cancelPinPlacement() {
@@ -402,13 +432,17 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       }
       return;
     }
-    setState(() => _pinPlacementActive = false);
-    await _openPostingSheet(point.latitude, point.longitude);
+    // Plan 66: a tap eases the crosshair (camera center) to that point; the aim card commits it.
+    _move(point, math.max(_camera.zoom, 16));
   }
 
-  Future<void> _openPostingSheet(double lat, double lng) async {
+  Future<void> _continueWithPlace(double lat, double lng, SpotRecognitionResult? recognition) async {
+    setState(() => _pinPlacementActive = false);
+    await _openPostingSheet(lat, lng, recognition: recognition);
+  }
+
+  Future<void> _openPostingSheet(double lat, double lng, {SpotRecognitionResult? recognition}) async {
     final draft = _pendingDraft;
-    final resumeStep = _pendingResumeStep;
     final result = await showModalBottomSheet<SpotPostingSheetResult>(
       context: context,
       isScrollControlled: true,
@@ -417,30 +451,23 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
         initialLat: lat,
         initialLng: lng,
         initialDraft: draft,
-        initialStep: resumeStep,
+        initialRecognition: recognition,
       ),
     );
     if (!mounted) return;
     if (result == null) {
-      setState(() {
-        _pendingDraft = null;
-        _pendingResumeStep = 0;
-      });
+      setState(() => _pendingDraft = null);
       return;
     }
     if (result.movePinRequested) {
-      setState(() {
-        _pendingDraft = result.draft;
-        _pendingResumeStep = result.resumeStep;
-        _pinPlacementActive = true;
-      });
+      setState(() => _pendingDraft = result.draft);
+      _startPinPlacement();
       return;
     }
     final published = result.publishedSpot;
     if (published != null) {
       setState(() {
         _pendingDraft = null;
-        _pendingResumeStep = 0;
         _selectedSpot = published;
         _selectedQuest = null;
       });
@@ -489,7 +516,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       setState(() => _userLocation = location);
       final camera = _camera;
       if (_native) _nativeMap.setMyLocation(true);
-      _move(location, camera.zoom < 14 ? 14.0 : camera.zoom);
+      _move(location, _pinPlacementActive ? math.max(camera.zoom, 17) : (camera.zoom < 14 ? 14.0 : camera.zoom));
       if (position.accuracy > 2000) {
         messenger.showSnackBar(
           SnackBar(content: Text('Approximate location shown (±${position.accuracy.round()} m). Move to an open area for a better fix.')),
@@ -816,28 +843,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       ));
     }
 
-    final pendingDraft = _pendingDraft;
-    if (_pinPlacementActive && pendingDraft?.lat != null && pendingDraft?.lng != null) {
-      markers.add(Marker(
-        point: LatLng(pendingDraft!.lat!, pendingDraft.lng!),
-        width: 40,
-        height: 40,
-        alignment: Alignment.center,
-        child: Semantics(
-          label: 'Draft destination pin',
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.sunGold.withOpacity(0.25),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.sunGold, width: 3),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: const Icon(Icons.place_rounded, color: AppColors.woodBrown, size: 22),
-          ),
-        ),
-      ));
-    }
-
     if (_native) {
       final pins = <JdqPin>[
         for (final q in visibleQuests) JdqPin('quest:${q.id}', LatLng(q.gpsLat, q.gpsLng), q.title, quest: true),
@@ -1140,44 +1145,20 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             ),
           ),
 
-          // 4. Armed pin placement banner
+          // 4. Plan 66: crosshair + live recognized-place card while placing a pin.
+          if (_pinPlacementActive) const Positioned.fill(child: PinReticle()),
           if (_pinPlacementActive)
             Positioned(
-              top: 110,
               left: 12,
               right: 64,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.sunGold.withOpacity(0.95),
-                  borderRadius: AppSpacing.roundedLg,
-                  boxShadow: AppSpacing.cardShadow,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.place_rounded, size: 16, color: AppColors.woodBrown),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        _pendingDraft != null
-                            ? 'Tap the map to move the destination pin.'
-                            : 'Tap the map to place your destination pin.',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.woodBrown,
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: _cancelPinPlacement,
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ],
-                ),
+              bottom: 16,
+              child: PinAimCard(
+                lat: _aimCenter?.latitude,
+                lng: _aimCenter?.longitude,
+                locating: _locating,
+                onUseMyLocation: _useMyLocation,
+                onCancel: _cancelPinPlacement,
+                onContinue: _continueWithPlace,
               ),
             ),
 
