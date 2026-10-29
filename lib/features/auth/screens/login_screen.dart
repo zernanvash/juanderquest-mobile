@@ -13,7 +13,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../providers/auth_provider.dart';
 import '../services/wallet_signature_service.dart';
 
-enum _AuthStep { signIn, signUp, verifyEmail }
+enum _AuthStep { signIn, signUp, verifyEmail, completeWallet }
 
 /// Traveler authentication. Admin accounts are managed in the web dashboard.
 class LoginScreen extends ConsumerStatefulWidget {
@@ -35,6 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _error;
   String? _notice;
   bool _busy = false;
+  WalletLoginNeedsAccount? _pendingWallet;
 
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
@@ -139,6 +140,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
+  /// Plan 67: a wallet without an email + password account finishes it here,
+  /// on sign-up and sign-in alike, before any session exists.
+  void _askForAccountDetails(WalletLoginNeedsAccount pending) {
+    setState(() {
+      _pendingWallet = pending;
+      if (_name.text.trim().isEmpty && pending.existingDisplayName != null) {
+        _name.text = pending.existingDisplayName!;
+      }
+      _password.clear();
+      _step = _AuthStep.completeWallet;
+      _error = null;
+      _notice = null;
+    });
+  }
+
+  Future<void> _completeWallet() async {
+    final pending = _pendingWallet;
+    if (pending == null) return;
+    final email = _email.text.trim();
+    if (_name.text.trim().length < 2) {
+      setState(() => _error = 'Enter your name (at least 2 characters).');
+      return;
+    }
+    if (!_emailPattern.hasMatch(email)) {
+      setState(() => _error = 'Enter a valid email address.');
+      return;
+    }
+    if (_password.text.length < 8) {
+      setState(() => _error = 'Use a password with at least 8 characters.');
+      return;
+    }
+    if (!_ageEligible || !_termsAccepted) {
+      setState(() =>
+          _error = 'Confirm age eligibility and accept the terms to continue.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final ok = await ref.read(authProvider.notifier).completeWalletRegistration(
+          grant: pending.grant,
+          walletAddress: pending.walletAddress,
+          email: email,
+          password: _password.text,
+          displayName: _name.text.trim(),
+        );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (!ok) {
+        _error = ref.read(authProvider).error ??
+            'We could not finish your account. Please try again.';
+      }
+    });
+  }
+
   Future<void> _startWalletSignIn() async {
     ReownAppKitModal modal;
     try {
@@ -212,18 +270,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           final signature =
                               await WalletSignatureService.signChallenge(
                                   modal, challenge);
-                          final ok = await ref
+                          final result = await ref
                               .read(authProvider.notifier)
                               .loginWithWallet(
                                   address: address, signature: signature);
-                          if (ok && dialogContext.mounted) {
-                            Navigator.of(dialogContext).pop();
-                          } else if (dialogContext.mounted) {
-                            setDialogState(() {
-                              signing = false;
-                              walletError = ref.read(authProvider).error ??
-                                  'Wallet sign-in failed.';
-                            });
+                          if (result is WalletLoginFailed) {
+                            if (dialogContext.mounted) {
+                              setDialogState(() {
+                                signing = false;
+                                walletError = result.message;
+                              });
+                            }
+                          } else {
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                            if (result is WalletLoginNeedsAccount && mounted) {
+                              _askForAccountDetails(result);
+                            }
                           }
                         } catch (error) {
                           if (dialogContext.mounted) {
@@ -250,6 +314,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await modal.dispose();
     }
   }
+
+  static String _shortAddress(String address) => address.length > 14
+      ? '${address.substring(0, 6)}…${address.substring(address.length - 4)}'
+      : address;
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
@@ -286,7 +354,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             switch (_step) {
               _AuthStep.signIn => 'Welcome back',
               _AuthStep.signUp => 'Create your traveler account',
-              _AuthStep.verifyEmail => 'Verify your email'
+              _AuthStep.verifyEmail => 'Verify your email',
+              _AuthStep.completeWallet => 'Complete your account'
             },
             textAlign: TextAlign.center,
             style: AppTypography.headlineSmall.copyWith(
@@ -299,14 +368,108 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               _AuthStep.signUp =>
                 'A few details, then you’re ready to explore.',
               _AuthStep.verifyEmail =>
-                'Enter the code we sent to ${_email.text.trim()}.'
+                'Enter the code we sent to ${_email.text.trim()}.',
+              _AuthStep.completeWallet =>
+                'Add an email and password so you can always get back in, even without your wallet.'
             },
             textAlign: TextAlign.center,
             style: AppTypography.bodySmall
                 .copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.lg),
-          if (_step != _AuthStep.verifyEmail) ...[
+          if (_step == _AuthStep.completeWallet && _pendingWallet != null) ...[
+            Center(
+              child: Chip(
+                key: const ValueKey('auth_wallet_verified'),
+                avatar: const Icon(Icons.verified_rounded,
+                    color: AppColors.primary, size: 18),
+                label: Text(
+                    'Wallet ${_shortAddress(_pendingWallet!.walletAddress)} verified'),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              key: const ValueKey('auth_wallet_name'),
+              controller: _name,
+              textCapitalization: TextCapitalization.words,
+              autofillHints: const [AutofillHints.name],
+              decoration: const InputDecoration(
+                  labelText: 'Name',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                  border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              key: const ValueKey('auth_wallet_email'),
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              decoration: const InputDecoration(
+                  labelText: 'Email address',
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              key: const ValueKey('auth_wallet_password'),
+              controller: _password,
+              obscureText: !_passwordVisible,
+              autofillHints: const [AutofillHints.newPassword],
+              decoration: InputDecoration(
+                labelText: 'Password (8+ characters)',
+                helperText: 'Already registered? Use that account\'s password to link this wallet.',
+                helperMaxLines: 3,
+                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  tooltip: _passwordVisible ? 'Hide password' : 'Show password',
+                  onPressed: () =>
+                      setState(() => _passwordVisible = !_passwordVisible),
+                  icon: Icon(_passwordVisible
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            CheckboxListTile(
+              key: const ValueKey('auth_wallet_age'),
+              contentPadding: EdgeInsets.zero,
+              value: _ageEligible,
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() => _ageEligible = value ?? false),
+              title: const Text('I meet the age eligibility requirement.',
+                  style: TextStyle(fontSize: 13)),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            CheckboxListTile(
+              key: const ValueKey('auth_wallet_terms'),
+              contentPadding: EdgeInsets.zero,
+              value: _termsAccepted,
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() => _termsAccepted = value ?? false),
+              title: const Text(
+                  'I agree to the terms of service and privacy notice.',
+                  style: TextStyle(fontSize: 13)),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            PrimaryButton(
+              key: const ValueKey('auth_complete_wallet'),
+              label: 'Finish and continue',
+              isLoading: _busy,
+              onPressed: _busy ? null : _completeWallet,
+            ),
+            TextButton(
+                onPressed: _busy
+                    ? null
+                    : () {
+                        _pendingWallet = null;
+                        _setStep(_AuthStep.signIn);
+                      },
+                child: const Text('Cancel')),
+          ] else if (_step != _AuthStep.verifyEmail) ...[
             SegmentedButton<_AuthStep>(
               segments: const [
                 ButtonSegment(value: _AuthStep.signIn, label: Text('Sign in')),

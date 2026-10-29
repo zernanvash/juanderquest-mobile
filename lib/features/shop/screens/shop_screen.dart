@@ -18,6 +18,7 @@ import '../../cosmetics/widgets/profile_banner.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../cosmetics/widgets/display_name.dart';
 import '../../../core/widgets/designer_guide.dart';
+import '../../wallet/screens/wallet_connect_screen.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
@@ -36,6 +37,12 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       ref.read(voucherProvider.notifier).fetchVouchers();
       ref.read(cosmeticsProvider.notifier).load();
     });
+  }
+
+  /// Plan 67: browsing is open to everyone; buying needs a linked wallet.
+  Future<bool> _walletReady(String itemTitle) async {
+    if (ref.read(authProvider).user?.hasBoundWallet == true) return true;
+    return showConnectWalletPromptDialog(context, itemTitle: itemTitle);
   }
 
   void _showVoucherConfirmationDialog({
@@ -678,6 +685,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                             onPressed: points < item.pricePoints!
                                 ? null
                                 : () async {
+                                    if (!await _walletReady(item.name)) return;
                                     final error = await ref
                                         .read(cosmeticsProvider.notifier)
                                         .purchase(item);
@@ -1010,11 +1018,17 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     ? 'Redeem Voucher'
                     : 'Insufficient Points (${voucher.costPoints - userPoints} needed)',
                 onPressed: canAfford && voucher.redeemable
-                    ? () => _showVoucherConfirmationDialog(
+                    ? () async {
+                        if (!await _walletReady(voucher.offerTitle) ||
+                            !context.mounted) {
+                          return;
+                        }
+                        _showVoucherConfirmationDialog(
                           context: context,
                           voucher: voucher,
                           userPoints: userPoints,
-                        )
+                        );
+                      }
                     : null,
               ),
             ),

@@ -27,6 +27,7 @@ import 'package:juanderquest_app/features/quests/screens/campaign_detail_screen.
 import 'package:juanderquest_app/features/quests/models/campaign_model.dart';
 import 'package:juanderquest_app/features/quests/providers/campaign_provider.dart';
 import 'package:juanderquest_app/features/shop/screens/shop_screen.dart';
+import 'package:juanderquest_app/features/wallet/screens/wallet_connect_screen.dart';
 import 'package:juanderquest_app/features/profile/screens/profile_screen.dart';
 import 'package:juanderquest_app/features/vote/screens/vote_screen.dart';
 import 'package:juanderquest_app/features/map/screens/map_view_screen.dart';
@@ -706,6 +707,18 @@ void main() {
         (tester) async {
       await testScreenOverflow(
           tester, const ShopScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('WalletConnectScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const WalletConnectScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('WalletConnectScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const WalletConnectScreen(), const Size(568, 320), 2.0);
     });
 
     testWidgets('AppearanceScreen does not overflow in small portrait',

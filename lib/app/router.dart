@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/login_screen.dart';
+import '../features/wallet/screens/wallet_connect_screen.dart';
 import '../features/quests/models/quest_model.dart';
 import '../features/quests/screens/quest_detail_screen.dart';
 import '../features/quests/screens/quest_funding_screen.dart';
@@ -249,6 +250,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/shop', builder: (context, state) => const ShopScreen()),
+      // Plan 67: link a wallet when a purchase needs one.
+      GoRoute(
+          path: '/wallet/connect',
+          builder: (context, state) => const WalletConnectScreen()),
       GoRoute(
         path: '/notifications',
         pageBuilder: (context, state) => buildDirectionalSlidePage(

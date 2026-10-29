@@ -56,6 +56,34 @@ class AuthState {
   bool get isAuthenticated => user != null && token != null;
 }
 
+/// Plan 67: a wallet signs straight in only when its account already has an
+/// email and password. Otherwise the traveler finishes the account first.
+sealed class WalletLoginResult {
+  const WalletLoginResult();
+}
+
+class WalletLoginAuthenticated extends WalletLoginResult {
+  const WalletLoginAuthenticated();
+}
+
+class WalletLoginNeedsAccount extends WalletLoginResult {
+  const WalletLoginNeedsAccount({
+    required this.walletAddress,
+    required this.grant,
+    this.existingDisplayName,
+  });
+
+  final String walletAddress;
+  final String grant;
+  final String? existingDisplayName;
+}
+
+class WalletLoginFailed extends WalletLoginResult {
+  const WalletLoginFailed(this.message);
+
+  final String message;
+}
+
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiClient _apiClient;
   final AuthRefreshNotifier _refreshNotifier;
@@ -248,7 +276,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return null;
   }
 
-  Future<bool> loginWithWallet(
+  Future<WalletLoginResult> loginWithWallet(
       {required String address, required String signature}) async {
     state = AuthState(isLoading: true);
     try {
@@ -262,25 +290,109 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
-        final token = response.data['data']['token'] as String;
-        final userJson = response.data['data']['user'];
-        final user = UserModel.fromJson(userJson);
-
-        return await _completeLogin(token, user);
+        final data = response.data['data'] as Map<String, dynamic>;
+        if (data['account_completion_required'] == true) {
+          state = AuthState();
+          return WalletLoginNeedsAccount(
+            walletAddress: data['wallet_address'] as String,
+            grant: data['wallet_onboarding_grant'] as String,
+            existingDisplayName: data['existing_display_name'] as String?,
+          );
+        }
+        await _completeLogin(
+            data['token'] as String, UserModel.fromJson(data['user']));
+        return const WalletLoginAuthenticated();
       } else {
         final msg =
             response.data['error']?['message'] ?? 'Wallet sign-in failed.';
         state = AuthState(error: msg);
-        return false;
+        return WalletLoginFailed(msg);
       }
     } on DioException catch (e) {
       final msg = e.response?.data['error']?['message'] ??
           'Network connection error (${e.message}).';
       state = AuthState(error: msg);
+      return WalletLoginFailed(msg);
+    } catch (e) {
+      const msg = 'An unexpected error occurred during wallet sign-in.';
+      state = AuthState(error: msg);
+      return const WalletLoginFailed(msg);
+    }
+  }
+
+  /// Plan 67: finish a wallet sign-up/sign-in with an email and password.
+  Future<bool> completeWalletRegistration({
+    required String grant,
+    required String walletAddress,
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/wallet/complete-registration',
+        data: {
+          'wallet_onboarding_grant': grant,
+          'wallet_address': walletAddress,
+          'email': email.trim().toLowerCase(),
+          'password': password,
+          if (displayName.trim().isNotEmpty) 'display_name': displayName.trim(),
+          'age_eligibility_declared': true,
+          'terms_accepted': true,
+          'remember_me': true,
+        },
+      );
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final data = response.data['data'];
+        return await _completeLogin(
+            data['token'] as String, UserModel.fromJson(data['user']));
+      }
+      state = AuthState(
+          error: response.data['error']?['message'] ??
+              'We could not finish your account.');
+      return false;
+    } on DioException catch (e) {
+      state = AuthState(
+          error: e.response?.data['error']?['message'] ??
+              'Network connection error (${e.message}).');
       return false;
     } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred.');
+      return false;
+    }
+  }
+
+  /// Plan 67: exchange a Google ID token for a session. A first sign-in creates
+  /// the account, so [acceptTerms] carries the two sign-up declarations.
+  Future<bool> loginWithGoogle(
+      {required String credential, bool acceptTerms = false}) async {
+    state = AuthState(isLoading: true);
+    try {
+      final response = await _apiClient.dio.post(
+        '/auth/google',
+        data: {
+          'credential': credential,
+          'remember_me': true,
+          if (acceptTerms) 'terms_accepted': true,
+          if (acceptTerms) 'age_eligibility_declared': true,
+        },
+      );
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        return await _completeLogin(
+            data['token'] as String, UserModel.fromJson(data['user']));
+      }
       state = AuthState(
-          error: 'An unexpected error occurred during wallet sign-in.');
+          error: response.data['error']?['message'] ?? 'Google sign-in failed.');
+      return false;
+    } on DioException catch (e) {
+      state = AuthState(
+          error: e.response?.data['error']?['message'] ??
+              'Network connection error (${e.message}).');
+      return false;
+    } catch (e) {
+      state = AuthState(error: 'An unexpected error occurred.');
       return false;
     }
   }
