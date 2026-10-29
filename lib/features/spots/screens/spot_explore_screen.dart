@@ -347,8 +347,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
             // 3. Post Creation Prompt Box
             GestureDetector(
               onTap: () async {
-                final added = await context.push<bool>('/spots/new');
-                if (added == true) _load(refresh: true);
+                final added = await context.push<Object?>('/map/add-spot');
+                if (added != null) _load(refresh: true);
               },
               child: Container(
                 padding:

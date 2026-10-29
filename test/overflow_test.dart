@@ -60,6 +60,8 @@ import 'package:juanderquest_app/features/app_update/providers/startup_update_co
 import 'package:juanderquest_app/features/app_update/widgets/startup_update_gate.dart';
 import 'package:juanderquest_app/features/app_update/widgets/update_dialog.dart';
 import 'package:juanderquest_app/features/spots/widgets/spot_posting_sheet.dart';
+import 'package:juanderquest_app/features/spots/screens/spot_discovery_studio_screen.dart';
+import 'package:juanderquest_app/features/spots/utils/spot_location_handoff.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
@@ -597,6 +599,11 @@ void main() {
     if (child is QuestDetailScreen || child is InterestsScreen || child is SpotPostingSheet) {
       await tester.pumpAndSettle();
     }
+    if (child is SpotDiscoveryStudioScreen) {
+      // Recognition (stubbed) and the 300 ms draft save finish.
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 600));
+    }
     if (child is MapViewScreen) {
       // Let the area-label request (stubbed) and its debounce finish.
       await tester.pump(const Duration(milliseconds: 600));
@@ -790,6 +797,26 @@ void main() {
         (tester) async {
       await testScreenOverflow(
           tester, const MapViewScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('SpotDiscoveryStudioScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        const SpotDiscoveryStudioScreen(routePin: StudioPin(16.0294, 120.2289, 15)),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('SpotDiscoveryStudioScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        const SpotDiscoveryStudioScreen(routePin: StudioPin(16.0294, 120.2289, 15)),
+        const Size(568, 320),
+        2.0,
+      );
     });
 
     testWidgets('SpotPostingSheet does not overflow in small portrait',

@@ -23,7 +23,7 @@ import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/utils/spot_posting.dart';
 import '../../spots/widgets/pin_aim_card.dart';
-import '../../spots/widgets/spot_posting_sheet.dart';
+import '../../spots/utils/spot_location_handoff.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -70,6 +70,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     _nativeMap.onCameraIdle = () {
       _scheduleAreaRefresh();
       _updateAimCenter();
+      _rememberCenter();
       if (mounted) setState(() => _clusterZoom = _nativeMap.camera.zoom);
     };
     _initSelection();
@@ -105,7 +106,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   bool _locating = false;
   LatLng? _userLocation;
   bool _pinPlacementActive = false;
-  SpotPostingDraft? _pendingDraft;
+  Timer? _centerTimer;
   // Plan 66: the crosshair aims at the camera center while placing a pin.
   LatLng? _aimCenter;
   Timer? _clusterRefreshTimer;
@@ -132,6 +133,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     _clusterRefreshTimer?.cancel();
     _areaRefreshTimer?.cancel();
     _aimTimer?.cancel();
+    _centerTimer?.cancel();
     super.dispose();
   }
 
@@ -241,8 +243,20 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   bool _inFocusedArea(double lat, double lng) =>
       _focusedShape?.contains(lat, lng) ?? true;
 
+  /// Plan 70: the studio falls back to where the traveler was last looking.
+  void _rememberCenter() {
+    _centerTimer?.cancel();
+    _centerTimer = Timer(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      final camera = _camera;
+      ref.read(lastMapCenterProvider.notifier).state =
+          StudioPin(camera.center.latitude, camera.center.longitude, camera.zoom);
+    });
+  }
+
   void _scheduleClusterRefresh(MapCamera camera, bool hasGesture) {
     _scheduleAreaRefresh();
+    _rememberCenter();
     if (_pinPlacementActive) {
       _aimTimer ??= Timer(const Duration(milliseconds: 120), () {
         _aimTimer = null;
@@ -403,10 +417,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       _selectedQuest = null;
       _selectedSpot = null;
     });
-    final draft = _pendingDraft;
-    if (draft?.lat != null && draft?.lng != null) {
-      _move(LatLng(draft!.lat!, draft.lng!), math.max(_camera.zoom, 16));
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateAimCenter());
   }
 
@@ -436,50 +446,23 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     _move(point, math.max(_camera.zoom, 16));
   }
 
+  /// Plan 70: hand the aimed pin (and what the aim card recognized) to the Spot Discovery
+  /// Studio; focus the new spot when it comes back published.
   Future<void> _continueWithPlace(double lat, double lng, SpotRecognitionResult? recognition) async {
     setState(() => _pinPlacementActive = false);
-    await _openPostingSheet(lat, lng, recognition: recognition);
-  }
-
-  Future<void> _openPostingSheet(double lat, double lng, {SpotRecognitionResult? recognition}) async {
-    final draft = _pendingDraft;
-    final result = await showModalBottomSheet<SpotPostingSheetResult>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => SpotPostingSheet(
-        initialLat: lat,
-        initialLng: lng,
-        initialDraft: draft,
-        initialRecognition: recognition,
-      ),
+    final zoom = math.max(_camera.zoom, 15).round();
+    ref.read(lastMapCenterProvider.notifier).state = StudioPin(lat, lng, zoom.toDouble());
+    final result = await context.push<Object?>(
+      '/map/add-spot?lat=${lat.toStringAsFixed(6)}&lng=${lng.toStringAsFixed(6)}&zoom=$zoom',
+      extra: recognition,
     );
-    if (!mounted) return;
-    if (result == null) {
-      setState(() => _pendingDraft = null);
-      return;
-    }
-    if (result.movePinRequested) {
-      setState(() => _pendingDraft = result.draft);
-      _startPinPlacement();
-      return;
-    }
-    final published = result.publishedSpot;
-    if (published != null) {
-      setState(() {
-        _pendingDraft = null;
-        _selectedSpot = published;
-        _selectedQuest = null;
-      });
-      ref.invalidate(spotDiscoveryProvider);
-      _focusPlace(published.gpsLat, published.gpsLng, 14.0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${published.name} published.'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    }
+    if (!mounted || result is! SpotModel) return;
+    setState(() {
+      _selectedSpot = result;
+      _selectedQuest = null;
+    });
+    ref.invalidate(spotDiscoveryProvider);
+    _focusPlace(result.gpsLat, result.gpsLng, 14.0);
   }
 
   /// Explicit locate flow: no request before the traveler asks, honest fallbacks.

@@ -338,7 +338,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         child: SecondaryButton(
                           label: 'Add Photo',
                           icon: Icons.add_a_photo_rounded,
-                          onPressed: () => context.push('/spots/new'),
+                          onPressed: () => context.push('/map/add-spot'),
                         ),
                       ),
                     ],

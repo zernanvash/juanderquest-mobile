@@ -154,6 +154,45 @@ class SpotPostingDraft {
       amenities: amenities ?? this.amenities,
     );
   }
+
+  /// Plan 70: saved drafts survive the app being closed mid-composition.
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'category': category,
+        'subcategory': subcategory,
+        'description': description,
+        'municipality': municipality,
+        'barangay': barangay,
+        'address': address,
+        'lat': lat,
+        'lng': lng,
+        'dailyHours': dailyHours,
+        'goodFor': goodFor,
+        'bestTime': bestTime,
+        'tags': tags,
+        'amenities': amenities,
+      };
+
+  factory SpotPostingDraft.fromJson(Map<String, dynamic> json) {
+    List<String> list(String key) => (json[key] as List?)?.map((e) => e.toString()).toList() ?? const [];
+    String text(String key, String fallback) => json[key]?.toString() ?? fallback;
+    return SpotPostingDraft(
+      name: text('name', ''),
+      category: text('category', 'nature_outdoors'),
+      subcategory: text('subcategory', 'beach'),
+      description: text('description', ''),
+      municipality: text('municipality', ''),
+      barangay: text('barangay', ''),
+      address: text('address', ''),
+      lat: (json['lat'] as num?)?.toDouble(),
+      lng: (json['lng'] as num?)?.toDouble(),
+      dailyHours: text('dailyHours', ''),
+      goodFor: list('goodFor'),
+      bestTime: list('bestTime'),
+      tags: list('tags'),
+      amenities: list('amenities'),
+    );
+  }
 }
 
 /// A nearby published spot (within 80 m) returned by `GET /spots/recognize`.

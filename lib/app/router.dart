@@ -26,7 +26,9 @@ import '../features/shop/screens/shop_screen.dart';
 import '../features/spots/screens/spot_explore_screen.dart';
 import '../features/spots/screens/spot_search_screen.dart';
 import '../features/spots/screens/spot_detail_screen.dart';
-import '../features/spots/screens/add_spot_screen.dart';
+import '../features/spots/screens/spot_discovery_studio_screen.dart';
+import '../features/spots/utils/spot_location_handoff.dart';
+import '../features/spots/utils/spot_posting.dart';
 import '../features/spots/screens/saved_spots_screen.dart';
 import '../features/quests/screens/quest_list_screen.dart';
 import '../features/quests/screens/campaign_detail_screen.dart';
@@ -137,9 +139,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                 ],
               ),
+              // Plan 70: posting lives in the Spot Discovery Studio (query kept).
               GoRoute(
                 path: '/spots/new',
-                builder: (context, state) => const AddSpotScreen(),
+                redirect: (context, state) => Uri(
+                        path: '/map/add-spot',
+                        queryParameters: state.uri.queryParameters.isEmpty
+                            ? null
+                            : state.uri.queryParameters)
+                    .toString(),
               ),
             ],
           ),
@@ -333,6 +341,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           state: state,
           child: const AboutScreen(),
         ),
+      ),
+      // Plan 70: full-screen Spot Discovery Studio; returns the published SpotModel.
+      GoRoute(
+        path: '/map/add-spot',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final query = state.uri.queryParameters;
+          return SpotDiscoveryStudioScreen(
+            routePin: StudioPin.tryParse(query['lat'], query['lng'], query['zoom']),
+            routeRecognition: state.extra is SpotRecognitionResult
+                ? state.extra as SpotRecognitionResult
+                : null,
+          );
+        },
       ),
       GoRoute(
         path: '/navigate',
