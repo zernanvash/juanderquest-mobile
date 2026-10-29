@@ -386,6 +386,41 @@ void main() {
           ));
           return;
         }
+        // Plan 66: a fully pre-filled recognition is the widest posting sheet.
+        if (options.path == '/spots/recognize') {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {
+                'recognized': true,
+                'place_name': 'Minor Basilica of Our Lady of the Rosary of Manaoag Pilgrim Center',
+                'name_suggestions': ['Manaoag Pilgrim Center', 'Brgy. Poblacion Church', 'Manaoag Church'],
+                'formatted_address': 'Milo Street, Brgy. Poblacion, Manaoag, Pangasinan',
+                'municipality': 'Manaoag',
+                'barangay': 'Brgy. Poblacion',
+                'outside_pangasinan': true,
+                'suggested_category': 'culture_heritage',
+                'suggested_subcategory': 'church',
+                'suggested_details': {
+                  'good_for': ['families', 'seniors_access', 'solo'],
+                  'best_time': ['early_morning', 'daytime'],
+                  'amenities': ['parking', 'restrooms'],
+                  'daily_hours': '06:00 AM - 07:00 PM',
+                },
+                'story_starters': [
+                  'A meaningful church in Brgy. Poblacion, Manaoag with a story worth learning about.',
+                  'Please dress modestly and keep voices low, especially during masses and events.',
+                ],
+                'nearby_duplicates': [
+                  {'id': 'spot-manaoag', 'name': 'Minor Basilica of Manaoag', 'distance_meters': 35},
+                ],
+              },
+            },
+          ));
+          return;
+        }
         if (options.path == '/areas') {
           handler.resolve(Response(
             requestOptions: options,
@@ -558,7 +593,7 @@ void main() {
     );
 
     await tester.pump();
-    if (child is QuestDetailScreen || child is InterestsScreen) {
+    if (child is QuestDetailScreen || child is InterestsScreen || child is SpotPostingSheet) {
       await tester.pumpAndSettle();
     }
     if (child is MapViewScreen) {
