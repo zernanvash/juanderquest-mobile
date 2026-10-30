@@ -8,6 +8,19 @@ class MapConfig {
 
   static const String userAgentPackageName = 'dev.zernanvash.juanderquest';
 
+  /// Esri World Imagery through an ArcGIS Location Platform key (owner 2026-10-30), passed with
+  /// `--dart-define=ARCGIS_KEY=...` and never committed. No key → the Satellite switch is hidden.
+  /// Tiles load straight from Esri (their terms do not allow proxying or caching them).
+  static const String satelliteKey = String.fromEnvironment('ARCGIS_KEY');
+  static const String satelliteAttribution =
+      'Powered by Esri | Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+
+  static bool satelliteAvailable([String key = satelliteKey]) => key.trim().isNotEmpty;
+
+  static String satelliteTileUrl([String key = satelliteKey]) =>
+      'https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      '?token=${Uri.encodeQueryComponent(key.trim())}';
+
   static const int maxNativeZoom = 18;
   static const double maxZoom = 19;
   static const double minZoom = 5;

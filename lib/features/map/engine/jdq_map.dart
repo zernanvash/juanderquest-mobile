@@ -62,6 +62,8 @@ abstract class JdqMap {
   Future<void> setPlaces(List<AdminArea> places);
   Future<void> setFocusArea(AreaShape shape);
   Future<void> clearFocus();
+  /// Draws satellite imagery under the labels and pins (no-op without an imagery key).
+  Future<void> setSatellite(bool on);
   void setMyLocation(bool enabled);
   Widget build(
       {required VoidCallback onReady, required VoidCallback onFailure});
@@ -75,6 +77,7 @@ class FakeJdqMap extends JdqMap {
   List<AdminArea> places = [];
   AreaShape? focus;
   bool locationEnabled = false;
+  bool satellite = false;
   @override
   Future<void> setStyle(String style) async {
     this.style = style;
@@ -134,6 +137,11 @@ class FakeJdqMap extends JdqMap {
   @override
   Future<void> clearFocus() async {
     focus = null;
+  }
+
+  @override
+  Future<void> setSatellite(bool on) async {
+    satellite = on;
   }
 
   @override

@@ -282,7 +282,10 @@ class _SpotDiscoveryStudioScreenState
               onTap: (_, point) =>
                   _mapController.move(point, _mapController.camera.zoom),
             ),
-            children: [buildBaseTileLayer()],
+            children: [
+              buildBaseTileLayer(satellite: satelliteOn(ref)),
+              if (satelliteOn(ref)) const SatelliteAttribution(),
+            ],
           ),
           // The pin stays in the centre; the map moves under it.
           const IgnorePointer(
@@ -296,6 +299,7 @@ class _SpotDiscoveryStudioScreenState
               ),
             ),
           ),
+          const Positioned(top: 8, left: 8, child: SatelliteToggleButton()),
           Positioned(
             top: 8,
             right: 8,

@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as gl;
+import '../../../core/config/map_config.dart';
 import '../utils/admin_areas.dart';
 import 'building_layer_style.dart';
 import 'jdq_map.dart';
@@ -22,6 +24,7 @@ class MapLibreJdqMap extends JdqMap {
   List<AdminArea> _places = [];
   List<JdqPin> _pins = [];
   AreaShape? _focus;
+  bool _satellite = false, _hasSatellite = false;
   VoidCallback? _failed;
   gl.LatLng _ll(LatLng point) => gl.LatLng(point.latitude, point.longitude);
   Future<void> _safe(Future<void> Function() action) async {
@@ -146,6 +149,45 @@ class MapLibreJdqMap extends JdqMap {
             ]));
       });
   @override
+  Future<void> setSatellite(bool on) async {
+    _satellite = on;
+    if (!_hasSatellite) return;
+    await _safe(() => _controller!.setLayerVisibility('jdq-satellite', on));
+  }
+
+  /// Imagery goes under the first label layer so streets and places stay readable.
+  static String? firstSymbolLayerId(String style) {
+    try {
+      final layers = (jsonDecode(style) as Map<String, dynamic>)['layers'];
+      if (layers is! List) return null;
+      for (final layer in layers) {
+        if (layer is Map && layer['type'] == 'symbol' && layer['id'] is String) {
+          return layer['id'] as String;
+        }
+      }
+    } catch (_) {/* A style URL or malformed JSON: put imagery under our own layers. */}
+    return null;
+  }
+
+  Future<void> _addSatellite(gl.MapLibreMapController c) async {
+    if (!MapConfig.satelliteAvailable()) return;
+    try {
+      await c.addSource(
+          'jdq-satellite',
+          gl.RasterSourceProperties(
+              tiles: [MapConfig.satelliteTileUrl()],
+              tileSize: 256,
+              maxzoom: MapConfig.maxNativeZoom.toDouble(),
+              attribution: MapConfig.satelliteAttribution));
+      await c.addRasterLayer('jdq-satellite', 'jdq-satellite',
+          const gl.RasterLayerProperties(),
+          belowLayerId: firstSymbolLayerId(_style) ?? 'jdq-focus-fill');
+      await c.setLayerVisibility('jdq-satellite', _satellite);
+      _hasSatellite = true;
+    } catch (_) {/* Imagery is optional; the vector map stays usable. */}
+  }
+
+  @override
   void setMyLocation(bool enabled) {
     if (!_disposed) _location.value = enabled;
   }
@@ -190,6 +232,7 @@ class MapLibreJdqMap extends JdqMap {
           buildingLayerProperties(opacity: 0),
           sourceLayer: 'building',
           minzoom: 13);
+      await _addSatellite(c);
       _ready = true;
       await setPlaces(_places);
       await setPins(_pins);

@@ -61,6 +61,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     _basicMap = _nativeMap is MapLibreJdqMap &&
         (kIsWeb || ![TargetPlatform.android, TargetPlatform.iOS].contains(defaultTargetPlatform));
     _style = _native ? ref.read(mapStyleProvider.future) : Future.value('');
+    unawaited(_nativeMap.setSatellite(
+        MapConfig.satelliteAvailable() && ref.read(satelliteModeProvider)));
     _nativeMap.onTapEmpty = _handleMapTap;
     _nativeMap.onTapPlace = (id) {
       for (final area in _areas) {
@@ -640,6 +642,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final satellite = satelliteOn(ref);
+    ref.listen<bool>(satelliteModeProvider,
+        (_, on) => unawaited(_nativeMap.setSatellite(on && MapConfig.satelliteAvailable())));
     final questState = ref.watch(questProvider);
     final spotState = ref.watch(spotDiscoveryProvider);
     final spotlight = ref.watch(choiceSpotlightProvider).valueOrNull;
@@ -905,7 +910,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               ),
             ),
             children: [
-              buildBaseTileLayer(),
+              buildBaseTileLayer(satellite: satellite),
 
               if (_focusedShape != null)
                 PolygonLayer(polygons: [
@@ -939,6 +944,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 showFlutterMapAttribution: false,
                 alignment: AttributionAlignment.bottomRight,
                 attributions: [
+                  if (satellite) const TextSourceAttribution(MapConfig.satelliteAttribution),
                   TextSourceAttribution(
                     'OpenStreetMap contributors',
                     onTap: () async {
@@ -1065,6 +1071,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     tilt: _nativeMap.camera.tilt,
                     onPressed: () => unawaited(_nativeMap.resetOrientation()),
                   ),
+                  const SizedBox(height: 8),
+                ],
+                if (MapConfig.satelliteAvailable()) ...[
+                  const SatelliteToggleButton(compact: true),
                   const SizedBox(height: 8),
                 ],
                 // Pin a New Destination (map-first posting entry)
