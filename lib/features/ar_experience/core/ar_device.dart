@@ -21,6 +21,12 @@ class ArDevice {
 
   ArDevice({HeadingFusion? fusion}) : _fusion = fusion ?? HeadingFusion();
 
+  /// Freezes compass corrections while an object is placed (see
+  /// [HeadingFusion.lockHeading]); [unlockHeading] resumes them.
+  void lockHeading() => _fusion.lockHeading();
+
+  void unlockHeading() => _fusion.unlockHeading();
+
   /// True when the platform has no orientation stream (tests, desktop, web).
   bool get failed => _failed;
 

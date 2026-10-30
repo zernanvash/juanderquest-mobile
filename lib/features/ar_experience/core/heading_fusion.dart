@@ -47,6 +47,11 @@ class ArPose {
 /// compass is unreliable, so a passing car or metal railing can't yank the
 /// scene around. Without a gyroscope the rotation vector (or accel+mag) is
 /// used directly with light smoothing.
+///
+/// [lockHeading] freezes the yaw offset once an object has been placed: its
+/// bearing was fixed in this frame, so any later compass correction would only
+/// slide it across the scene (owner 2026-10-31: "the object is drifting").
+/// The gyro-based game vector alone drifts far less than a compass wanders.
 class HeadingFusion {
   final double settleSeconds;
 
@@ -60,6 +65,14 @@ class HeadingFusion {
   double? _headingAcc;
   int? _magStatus;
   PoseSource _source = PoseSource.none;
+  bool _headingLocked = false;
+
+  bool get headingLocked => _headingLocked;
+
+  /// Stops compass corrections until [unlockHeading]; the gyro keeps tracking.
+  void lockHeading() => _headingLocked = true;
+
+  void unlockHeading() => _headingLocked = false;
 
   ArPose get pose {
     final q = _current();
@@ -81,6 +94,7 @@ class HeadingFusion {
     _headingAcc = null;
     _magStatus = null;
     _source = PoseSource.none;
+    _headingLocked = false;
   }
 
   /// Feeds one event from the native `ar_pose` channel.
@@ -130,6 +144,7 @@ class HeadingFusion {
         ? 0.02
         : ((tMs - _lastRotT!) / 1000).clamp(0.0, 0.5).toDouble();
     _lastRotT = tMs;
+    if (_headingLocked) return;
     final magLow = _magStatus != null && _magStatus! <= 1;
     final accLow = _headingAcc != null && _headingAcc! > 35;
     if (magLow || accLow) return;

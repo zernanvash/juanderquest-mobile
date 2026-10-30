@@ -264,6 +264,16 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
 
   void _onHunt() {
     if (!mounted) return;
+    // While the object exists, only the gyro moves the scene, so it stays put.
+    switch (_hunt?.phase) {
+      case ArHuntPhase.searching:
+      case ArHuntPhase.aligned:
+      case ArHuntPhase.submitting:
+      case ArHuntPhase.verified:
+        _device.lockHeading();
+      default:
+        _device.unlockHeading();
+    }
     setState(() {});
     if (_hunt?.phase == ArHuntPhase.aligned) {
       HapticFeedback.selectionClick();
