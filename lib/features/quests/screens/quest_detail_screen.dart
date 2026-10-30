@@ -714,6 +714,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     final user = ref.read(authProvider).user;
     if (user == null) return false;
     return user.role == 'admin' ||
+        user.role == 'qa' ||
         (widget.quest.authorId != null && widget.quest.authorId == user.id);
   }
 
