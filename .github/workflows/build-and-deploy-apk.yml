@@ -113,6 +113,8 @@ jobs:
           JDQ_RELEASE_KEY_ALIAS: ${{ secrets.JDQ_RELEASE_KEY_ALIAS }}
           JDQ_RELEASE_KEY_PASSWORD: ${{ secrets.JDQ_RELEASE_KEY_PASSWORD }}
           REOWN_PROJECT_ID: ${{ vars.REOWN_PROJECT_ID }}
+          # Esri satellite imagery (owner 2026-10-30). Empty secret = no Satellite switch.
+          ARCGIS_KEY: ${{ secrets.ARCGIS_KEY }}
         run: >-
           flutter build apk --release
           --build-name="${{ steps.release.outputs.version_name }}"
@@ -120,6 +122,7 @@ jobs:
           --dart-define=UPDATE_MANIFEST_URL=https://api.juanderquest.app/api/v1/app/version
           --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.juanderquest.app/api/v1' }}
           --dart-define=REOWN_PROJECT_ID=$REOWN_PROJECT_ID
+          --dart-define=ARCGIS_KEY=$ARCGIS_KEY
       - name: Create release assets and manifest
         env:
           CHANGELOG_INPUT: ${{ inputs.changelog }}
