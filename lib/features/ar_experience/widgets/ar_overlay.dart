@@ -227,34 +227,133 @@ class _EdgeHint extends StatelessWidget {
   }
 }
 
-/// Centre ring; turns green when the object is centred and collectable.
-class ArReticle extends StatelessWidget {
+/// Viewfinder: corner brackets around the centre, a lock-on ring that fills
+/// while the object is held in view ([progress], 0..1), and a centre dot.
+/// Turns green when the object is centred and collectable.
+class ArReticle extends StatefulWidget {
   final bool active;
   final double size;
 
-  const ArReticle({super.key, required this.active, this.size = 120});
+  /// Read every frame while it is set, e.g. `ArHuntController.alignmentProgress`.
+  final ValueGetter<double>? progress;
+
+  const ArReticle(
+      {super.key, required this.active, this.size = 120, this.progress});
+
+  @override
+  State<ArReticle> createState() => _ArReticleState();
+}
+
+class _ArReticleState extends State<ArReticle>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return IgnorePointer(
       child: Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: active
-                  ? const Color(0xFF52B788)
-                  : Colors.white.withValues(alpha: 0.7),
-              width: active ? 4 : 2,
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, _) => CustomPaint(
+            key: const ValueKey('ar_reticle'),
+            size: Size.square(widget.size),
+            painter: _ReticlePainter(
+              active: widget.active,
+              progress: (widget.progress?.call() ?? (widget.active ? 1.0 : 0.0))
+                  .clamp(0.0, 1.0),
+              pulse: reduceMotion ? 0 : _pulse.value,
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _ReticlePainter extends CustomPainter {
+  final bool active;
+  final double progress;
+  final double pulse;
+
+  const _ReticlePainter(
+      {required this.active, required this.progress, required this.pulse});
+
+  static const _green = Color(0xFF52B788);
+  static const _gold = Color(0xFFFFB703);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.width / 2;
+    final tone = active ? _green : Colors.white;
+
+    // Corner brackets.
+    final bracket = Paint()
+      ..color = tone.withValues(alpha: active ? 1 : 0.85)
+      ..strokeWidth = active ? 4 : 3
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final arm = r * 0.34;
+    for (final sx in const [-1.0, 1.0]) {
+      for (final sy in const [-1.0, 1.0]) {
+        final corner = c + Offset(sx * r, sy * r);
+        canvas.drawLine(corner, corner - Offset(sx * arm, 0), bracket);
+        canvas.drawLine(corner, corner - Offset(0, sy * arm), bracket);
+      }
+    }
+
+    // Soft pulse while searching.
+    if (!active && pulse > 0) {
+      canvas.drawCircle(
+          c,
+          r * (0.45 + 0.25 * pulse),
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.28 * (1 - pulse))
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
+    }
+
+    // Lock-on ring.
+    final ringRect = Rect.fromCircle(center: c, radius: r * 0.62);
+    canvas.drawCircle(
+        c,
+        r * 0.62,
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.25)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5);
+    if (progress > 0) {
+      canvas.drawArc(
+          ringRect,
+          -math.pi / 2,
+          2 * math.pi * progress,
+          false,
+          Paint()
+            ..color = active ? _green : _gold
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = 5);
+    }
+
+    // Centre dot.
+    canvas.drawCircle(
+        c, active ? 6 : 4, Paint()..color = active ? _green : Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(_ReticlePainter old) =>
+      old.active != active || old.progress != progress || old.pulse != pulse;
 }
 
 /// Outside the fence: an arrow pointing at the fence centre plus distance.

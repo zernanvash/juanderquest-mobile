@@ -23,7 +23,8 @@ class ArPose {
     this.magneticStatus,
   });
 
-  static const unknown = ArPose(orientation: Quat.identity, source: PoseSource.none);
+  static const unknown =
+      ArPose(orientation: Quat.identity, source: PoseSource.none);
 
   bool get hasData => source != PoseSource.none;
 

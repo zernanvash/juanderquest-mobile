@@ -373,7 +373,10 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     }
     return [
       if (unlocked) ...[
-        ArReticle(active: phase == ArHuntPhase.aligned),
+        ArReticle(
+          active: phase == ArHuntPhase.aligned,
+          progress: () => hunt.alignmentProgress,
+        ),
         ArObjectLayer(
           object: _objectSource(hunt),
           mesh: ShapesFactory.createShape(task.shape, themeColor: task.color),
@@ -402,6 +405,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
             phase: phase,
             error: hunt.error,
             searchingHint: searchingHint,
+            objectLabel: task.objectLabel,
             onCollect: hunt.collect,
             onDone: () => _close(completed: true),
             onRetry: () =>
@@ -413,9 +417,15 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   }
 
   Widget _buildTopBar(ArTaskSpec? task) {
+    final mode = switch (_tier) {
+      ArTier.world => 'World AR',
+      ArTier.compass => 'Compass AR',
+      null => null,
+    };
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconButton.filledTonal(
             key: const ValueKey('ar_close'),
@@ -427,18 +437,70 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
           if (task != null)
             Expanded(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.black.withValues(alpha: 0.62),
+                  borderRadius: BorderRadius.circular(14),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.12)),
                 ),
-                child: Text(
-                  task.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                          color: task.color, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            task.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800),
+                          ),
+                          Text(
+                            'Step ${task.stepOrder} · Find the ${task.objectLabel}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (mode != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        key: const ValueKey('ar_mode_chip'),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFFFFB703).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                              color: const Color(0xFFFFB703)
+                                  .withValues(alpha: 0.6)),
+                        ),
+                        child: Text(
+                          mode,
+                          style: const TextStyle(
+                              color: Color(0xFFFFB703),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -482,7 +544,8 @@ class _WorldArView extends StatelessWidget {
   }
 }
 
-/// Bottom card: what to do now, plus the one relevant action.
+/// Bottom card: a four-stage progress strip (locate, reach, find, collect),
+/// what to do now, and the one relevant action.
 class ArStatusCard extends StatelessWidget {
   final ArHuntPhase phase;
   final String? error;
@@ -490,6 +553,9 @@ class ArStatusCard extends StatelessWidget {
   /// Replaces the default "look around" text while searching (World AR uses
   /// it to guide ground scanning).
   final String? searchingHint;
+
+  /// What the traveler is looking for, e.g. "3D Gem".
+  final String objectLabel;
   final VoidCallback onCollect;
   final VoidCallback onDone;
   final VoidCallback onRetry;
@@ -499,58 +565,99 @@ class ArStatusCard extends StatelessWidget {
     required this.phase,
     required this.error,
     this.searchingHint,
+    this.objectLabel = 'AR object',
     required this.onCollect,
     required this.onDone,
     required this.onRetry,
   });
 
+  static const _green = Color(0xFF2D6A4F);
+  static const _gold = Color(0xFFFFB703);
+  static const stages = ['Locate', 'Reach', 'Find', 'Collect'];
+
+  /// Index into [stages] for [phase]; `stages.length` when done, -1 on failure.
+  static int stageOf(ArHuntPhase phase) => switch (phase) {
+        ArHuntPhase.locating => 0,
+        ArHuntPhase.outside || ArHuntPhase.unlocking => 1,
+        ArHuntPhase.searching => 2,
+        ArHuntPhase.aligned || ArHuntPhase.submitting => 3,
+        ArHuntPhase.verified => 4,
+        ArHuntPhase.failed => -1,
+      };
+
   @override
   Widget build(BuildContext context) {
-    final String text;
+    final String title;
+    final String detail;
+    final IconData icon;
+    Color accent = _gold;
     Widget? action;
     switch (phase) {
       case ArHuntPhase.locating:
-        text = 'Finding your location…';
+        title = 'Finding your location';
+        detail = 'Hold still for a moment while GPS locks on.';
+        icon = Icons.gps_not_fixed_rounded;
         break;
       case ArHuntPhase.outside:
-        text = 'Walk into the AR area to reveal the object.';
+        title = 'Walk to the AR area';
+        detail = 'Follow the arrow. The $objectLabel appears when you arrive.';
+        icon = Icons.directions_walk_rounded;
         break;
       case ArHuntPhase.unlocking:
-        text = 'You are here! Unlocking the AR object…';
+        title = 'You have arrived';
+        detail = 'Unlocking the $objectLabel…';
+        icon = Icons.lock_open_rounded;
         break;
       case ArHuntPhase.searching:
-        text = searchingHint ?? 'Look around. Centre the object in the ring.';
+        title = 'Find the $objectLabel';
+        detail = searchingHint ?? 'Look around and hold it inside the frame.';
+        icon = Icons.travel_explore_rounded;
         break;
       case ArHuntPhase.aligned:
-        text = 'Got it in sight. Tap to collect!';
+        title = 'Locked on';
+        detail = 'Tap Collect to claim the $objectLabel.';
+        icon = Icons.center_focus_strong_rounded;
+        accent = const Color(0xFF52B788);
         action = FilledButton.icon(
           key: const ValueKey('ar_collect'),
           onPressed: onCollect,
           icon: const Icon(Icons.back_hand_rounded),
           label: const Text('Collect'),
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF2D6A4F),
+            backgroundColor: _green,
             minimumSize: const Size.fromHeight(52),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         );
         break;
       case ArHuntPhase.submitting:
-        text = 'Verifying…';
+        title = 'Verifying';
+        detail = 'Checking your collection with the server…';
+        icon = Icons.cloud_sync_rounded;
         break;
       case ArHuntPhase.verified:
-        text = 'AR task complete!';
+        title = 'AR task complete!';
+        detail = 'The $objectLabel is yours. Head back to continue your quest.';
+        icon = Icons.verified_rounded;
+        accent = const Color(0xFF52B788);
         action = FilledButton(
           key: const ValueKey('ar_done'),
           onPressed: onDone,
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF2D6A4F),
+            backgroundColor: _green,
             minimumSize: const Size.fromHeight(52),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: const Text('Back to quest'),
         );
         break;
       case ArHuntPhase.failed:
-        text = error ?? 'Something went wrong.';
+        title = 'Not verified';
+        detail = error ?? 'Something went wrong.';
+        icon = Icons.error_outline_rounded;
+        accent = const Color(0xFFE76F51);
         action = OutlinedButton(
           key: const ValueKey('ar_retry'),
           onPressed: onRetry,
@@ -558,35 +665,146 @@ class ArStatusCard extends StatelessWidget {
             foregroundColor: Colors.white,
             side: const BorderSide(color: Colors.white70),
             minimumSize: const Size.fromHeight(48),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: const Text('Try again'),
         );
         break;
     }
+    final stage = stageOf(phase);
     // Never cover more than half the screen, even at large text sizes.
     final maxHeight = MediaQuery.sizeOf(context).height * 0.5;
     return Container(
       key: const ValueKey('ar_status_card'),
       constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF0F1F17).withValues(alpha: 0.86),
+            Colors.black.withValues(alpha: 0.86),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        boxShadow: const [
+          BoxShadow(color: Colors.black45, blurRadius: 18, offset: Offset(0, 6))
+        ],
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600),
+            if (stage >= 0) _StageStrip(current: stage, accent: accent),
+            if (stage >= 0) const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TweenAnimationBuilder<double>(
+                  key: ValueKey(phase),
+                  tween: Tween(begin: 0.6, end: 1),
+                  duration: const Duration(milliseconds: 380),
+                  curve: Curves.easeOutBack,
+                  builder: (context, t, child) =>
+                      Transform.scale(scale: t, child: child),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: accent.withValues(alpha: 0.7)),
+                    ),
+                    child: Icon(icon, color: accent, size: 22),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        detail,
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.78),
+                            fontSize: 13,
+                            height: 1.3),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            if (action != null) ...[const SizedBox(height: 10), action],
+            if (action != null) ...[const SizedBox(height: 12), action],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Locate · Reach · Find · Collect, with the current stage highlighted.
+class _StageStrip extends StatelessWidget {
+  final int current;
+  final Color accent;
+
+  const _StageStrip({required this.current, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: current >= ArStatusCard.stages.length
+          ? 'All AR stages done'
+          : 'AR stage ${current + 1} of ${ArStatusCard.stages.length}: ${ArStatusCard.stages[current]}',
+      child: ExcludeSemantics(
+        child: Row(
+          children: [
+            for (var i = 0; i < ArStatusCard.stages.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: i < current
+                            ? const Color(0xFF52B788)
+                            : i == current
+                                ? accent
+                                : Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      ArStatusCard.stages[i],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: i <= current ? Colors.white : Colors.white54,
+                        fontSize: 10,
+                        fontWeight:
+                            i == current ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

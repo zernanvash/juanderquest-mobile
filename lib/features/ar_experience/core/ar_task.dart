@@ -36,9 +36,7 @@ class ArTaskSpec {
     final cfg = step.verification ?? const <String, dynamic>{};
     final fenceMap = cfg['fence'];
     ArFence fence;
-    if (fenceMap is Map &&
-        fenceMap['lat'] is num &&
-        fenceMap['lng'] is num) {
+    if (fenceMap is Map && fenceMap['lat'] is num && fenceMap['lng'] is num) {
       fence = ArFence(
         lat: (fenceMap['lat'] as num).toDouble(),
         lng: (fenceMap['lng'] as num).toDouble(),
@@ -76,6 +74,7 @@ class ArTaskSpec {
         ShapeType.beacon => '3D Beacon',
         ShapeType.crate => 'Relic Box',
         ShapeType.token => 'Quest Token',
+        _ => 'AR Object',
       };
 
   /// Plan 43 `ArCfg.object`: token | gem | beacon | box.

@@ -18,7 +18,8 @@ enum ShapeType {
 
 class ShapesFactory {
   /// Generates a procedural 3D mesh based on [type] and primary [themeColor].
-  static Mesh3D createShape(ShapeType type, {Color themeColor = const Color(0xFFFFB703)}) {
+  static Mesh3D createShape(ShapeType type,
+      {Color themeColor = const Color(0xFFFFB703)}) {
     switch (type) {
       case ShapeType.token:
         return createToken(color: themeColor);
@@ -87,7 +88,8 @@ class ShapesFactory {
       // Top Cap Triangle
       faces.add(PolygonFace(
         vertexIndices: [topCenterIdx, topCurr, topNext],
-        baseColor: (i % 2 == 0) ? topColor : Color.lerp(topColor, Colors.white, 0.2)!,
+        baseColor:
+            (i % 2 == 0) ? topColor : Color.lerp(topColor, Colors.white, 0.2)!,
       ));
 
       // Bottom Cap Triangle
@@ -172,9 +174,13 @@ class ShapesFactory {
       // Bottom (Y-)
       PolygonFace(vertexIndices: [0, 1, 5, 4], baseColor: bottomColor),
       // Right (X+)
-      PolygonFace(vertexIndices: [5, 1, 2, 6], baseColor: Color.lerp(sideColor, Colors.white, 0.15)!),
+      PolygonFace(
+          vertexIndices: [5, 1, 2, 6],
+          baseColor: Color.lerp(sideColor, Colors.white, 0.15)!),
       // Left (X-)
-      PolygonFace(vertexIndices: [0, 4, 7, 3], baseColor: Color.lerp(sideColor, Colors.black, 0.25)!),
+      PolygonFace(
+          vertexIndices: [0, 4, 7, 3],
+          baseColor: Color.lerp(sideColor, Colors.black, 0.25)!),
     ];
 
     return Mesh3D(name: 'Artifact Crate', vertices: vertices, faces: faces);
@@ -246,10 +252,26 @@ class ShapesFactory {
     ];
 
     final indices = [
-      [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
-      [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-      [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
-      [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+      [0, 11, 5],
+      [0, 5, 1],
+      [0, 1, 7],
+      [0, 7, 10],
+      [0, 10, 11],
+      [1, 5, 9],
+      [5, 11, 4],
+      [11, 10, 2],
+      [10, 7, 6],
+      [7, 1, 8],
+      [3, 9, 4],
+      [3, 4, 2],
+      [3, 2, 6],
+      [3, 6, 8],
+      [3, 8, 9],
+      [4, 9, 5],
+      [2, 4, 11],
+      [6, 2, 10],
+      [8, 6, 7],
+      [9, 8, 1],
     ];
 
     final faces = <PolygonFace>[];
@@ -282,15 +304,23 @@ class ShapesFactory {
 
     final faces = [
       // Front Face
-      PolygonFace(vertexIndices: [0, 1, 2], baseColor: Color.lerp(color, Colors.white, 0.2)!),
+      PolygonFace(
+          vertexIndices: [0, 1, 2],
+          baseColor: Color.lerp(color, Colors.white, 0.2)!),
       // Right Face
       PolygonFace(vertexIndices: [0, 2, 3], baseColor: color),
       // Back Face
-      PolygonFace(vertexIndices: [0, 3, 4], baseColor: Color.lerp(color, Colors.black, 0.3)!),
+      PolygonFace(
+          vertexIndices: [0, 3, 4],
+          baseColor: Color.lerp(color, Colors.black, 0.3)!),
       // Left Face
-      PolygonFace(vertexIndices: [0, 4, 1], baseColor: Color.lerp(color, Colors.black, 0.15)!),
+      PolygonFace(
+          vertexIndices: [0, 4, 1],
+          baseColor: Color.lerp(color, Colors.black, 0.15)!),
       // Base
-      PolygonFace(vertexIndices: [1, 4, 3, 2], baseColor: Color.lerp(color, Colors.black, 0.4)!),
+      PolygonFace(
+          vertexIndices: [1, 4, 3, 2],
+          baseColor: Color.lerp(color, Colors.black, 0.4)!),
     ];
 
     return Mesh3D(name: 'Heritage Pyramid', vertices: vertices, faces: faces);

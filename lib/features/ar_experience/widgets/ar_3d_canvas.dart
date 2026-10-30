@@ -149,7 +149,9 @@ class _Ar3dPainter extends CustomPainter {
       final normal = face.computeNormal(transformed);
 
       // Back-face Culling (unless double-sided)
-      if (!face.isDoubleSided && normal.z < -0.05 && renderStyle != RenderStyle.wireframe) {
+      if (!face.isDoubleSided &&
+          normal.z < -0.05 &&
+          renderStyle != RenderStyle.wireframe) {
         continue;
       }
 
@@ -164,7 +166,8 @@ class _Ar3dPainter extends CustomPainter {
       path.close();
 
       // Render Solid Fill with Blinn-Phong Specular Diffuse Lighting
-      if (renderStyle == RenderStyle.solid || renderStyle == RenderStyle.hybrid) {
+      if (renderStyle == RenderStyle.solid ||
+          renderStyle == RenderStyle.hybrid) {
         fillPaint.color = Mesh3D.calculateShading(
           baseColor: face.baseColor,
           normal: normal,
@@ -178,7 +181,8 @@ class _Ar3dPainter extends CustomPainter {
       }
 
       // Render Wireframe Outline / Specular Edges
-      if (renderStyle == RenderStyle.wireframe || renderStyle == RenderStyle.hybrid) {
+      if (renderStyle == RenderStyle.wireframe ||
+          renderStyle == RenderStyle.hybrid) {
         if (renderStyle == RenderStyle.hybrid) {
           wirePaint.color = Colors.white.withOpacity(0.35);
           wirePaint.strokeWidth = 1.0;

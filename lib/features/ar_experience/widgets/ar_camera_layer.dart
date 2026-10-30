@@ -53,8 +53,8 @@ class _ArCameraLayerState extends State<ArCameraLayer>
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
-      final controller = CameraController(back, ResolutionPreset.high,
-          enableAudio: false);
+      final controller =
+          CameraController(back, ResolutionPreset.high, enableAudio: false);
       await controller.initialize();
       if (!mounted) {
         await controller.dispose();

@@ -55,7 +55,8 @@ class ArDevice {
 
   static Future<CameraOptics> cameraOptics() async {
     try {
-      final map = await _methods.invokeMapMethod<dynamic, dynamic>('cameraIntrinsics');
+      final map =
+          await _methods.invokeMapMethod<dynamic, dynamic>('cameraIntrinsics');
       return CameraOptics.fromMap(map) ?? CameraOptics.fallback;
     } catch (_) {
       return CameraOptics.fallback;
@@ -64,7 +65,8 @@ class ArDevice {
 
   static Future<Map<String, bool>> capabilities() async {
     try {
-      final map = await _methods.invokeMapMethod<String, dynamic>('capabilities');
+      final map =
+          await _methods.invokeMapMethod<String, dynamic>('capabilities');
       return {
         for (final e in (map ?? const <String, dynamic>{}).entries)
           e.key: e.value == true,

@@ -106,8 +106,9 @@ class WorldArFrame {
 
   bool get tracking => state == 'tracking' && view != null && proj != null;
 
-  static List<double>? _matrix(Object? v) =>
-      v is List && v.length == 16 ? [for (final e in v) (e as num).toDouble()] : null;
+  static List<double>? _matrix(Object? v) => v is List && v.length == 16
+      ? [for (final e in v) (e as num).toDouble()]
+      : null;
 
   factory WorldArFrame.fromMap(Map<dynamic, dynamic> m) => WorldArFrame(
         state: '${m['state'] ?? 'stopped'}',

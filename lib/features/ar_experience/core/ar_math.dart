@@ -124,8 +124,8 @@ class ArGeo {
   static Vec3 directionFor(double bearingDeg, {double elevationDeg = 0}) {
     final b = bearingDeg * math.pi / 180;
     final e = elevationDeg * math.pi / 180;
-    return Vec3(math.sin(b) * math.cos(e), math.cos(b) * math.cos(e),
-        math.sin(e));
+    return Vec3(
+        math.sin(b) * math.cos(e), math.cos(b) * math.cos(e), math.sin(e));
   }
 
   static double distanceMeters(
@@ -164,8 +164,7 @@ class CameraPose {
   double get bearing => ArGeo.bearingOf(forward);
 
   /// Degrees above (+) or below (-) the horizon.
-  double get elevation =>
-      math.asin(forward.z.clamp(-1.0, 1.0)) * 180 / math.pi;
+  double get elevation => math.asin(forward.z.clamp(-1.0, 1.0)) * 180 / math.pi;
 
   /// World vector in the device frame.
   Vec3 toDevice(Vec3 world) => orientation.conjugate.rotate(world);

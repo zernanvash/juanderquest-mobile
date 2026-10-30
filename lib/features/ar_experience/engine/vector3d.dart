@@ -10,10 +10,14 @@ class Vector3D {
 
   static const Vector3D zero = Vector3D(0, 0, 0);
 
-  Vector3D operator +(Vector3D other) => Vector3D(x + other.x, y + other.y, z + other.z);
-  Vector3D operator -(Vector3D other) => Vector3D(x - other.x, y - other.y, z - other.z);
-  Vector3D operator *(double scalar) => Vector3D(x * scalar, y * scalar, z * scalar);
-  Vector3D operator /(double scalar) => Vector3D(x / scalar, y / scalar, z / scalar);
+  Vector3D operator +(Vector3D other) =>
+      Vector3D(x + other.x, y + other.y, z + other.z);
+  Vector3D operator -(Vector3D other) =>
+      Vector3D(x - other.x, y - other.y, z - other.z);
+  Vector3D operator *(double scalar) =>
+      Vector3D(x * scalar, y * scalar, z * scalar);
+  Vector3D operator /(double scalar) =>
+      Vector3D(x / scalar, y / scalar, z / scalar);
 
   double dot(Vector3D other) => x * other.x + y * other.y + z * other.z;
 
@@ -84,7 +88,8 @@ class Vector3D {
     }
     final factor = fov / distance;
     final px = x * factor + screenWidth / 2;
-    final py = -y * factor + screenHeight / 2; // Invert Y for screen coordinates
+    final py =
+        -y * factor + screenHeight / 2; // Invert Y for screen coordinates
     return math.Point(px, py);
   }
 

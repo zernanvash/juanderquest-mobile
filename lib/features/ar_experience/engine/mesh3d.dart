@@ -91,11 +91,15 @@ class Mesh3D {
     }
 
     final totalLight = (ambient + diffuse * diffuseIntensity).clamp(0.0, 1.0);
-    final specularAdd = (specular * specIntensity * 255.0).round().clamp(0, 255);
+    final specularAdd =
+        (specular * specIntensity * 255.0).round().clamp(0, 255);
 
-    final r = ((baseColor.red * totalLight).round() + specularAdd).clamp(0, 255);
-    final g = ((baseColor.green * totalLight).round() + specularAdd).clamp(0, 255);
-    final b = ((baseColor.blue * totalLight).round() + specularAdd).clamp(0, 255);
+    final r =
+        ((baseColor.red * totalLight).round() + specularAdd).clamp(0, 255);
+    final g =
+        ((baseColor.green * totalLight).round() + specularAdd).clamp(0, 255);
+    final b =
+        ((baseColor.blue * totalLight).round() + specularAdd).clamp(0, 255);
 
     return Color.fromARGB(baseColor.alpha, r, g, b);
   }
