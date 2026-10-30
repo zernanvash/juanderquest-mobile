@@ -14,6 +14,7 @@ import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'qr_scan_screen.dart';
+import 'quest_pass_host.dart';
 import '../models/quest_model.dart';
 import '../../../core/widgets/designer_guide.dart';
 
@@ -173,7 +174,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         if (rawAttempt is Map<String, dynamic>) {
           _attempt = QuestAttemptModel.fromJson(rawAttempt);
         } else if (rawAttempt is Map) {
-          _attempt = QuestAttemptModel.fromJson(Map<String, dynamic>.from(rawAttempt));
+          _attempt =
+              QuestAttemptModel.fromJson(Map<String, dynamic>.from(rawAttempt));
         } else {
           _attempt = null;
         }
@@ -212,7 +214,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     } on DioException catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = _messageFromDio(error, 'Could not accept this quest. Please retry.');
+        _error = _messageFromDio(
+            error, 'Could not accept this quest. Please retry.');
       });
     } catch (_) {
       if (!mounted) return;
@@ -277,13 +280,15 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(_messageFromDio(dioErr, 'Location verification failed.'))),
+              content: Text(
+                  _messageFromDio(dioErr, 'Location verification failed.'))),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not verify location. Please retry.')),
+          const SnackBar(
+              content: Text('Could not verify location. Please retry.')),
         );
       }
     } finally {
@@ -306,60 +311,53 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             Future<void> verify(StateSetter setModalState) async {
-                              final code = textController.text.trim();
-                              if (code.isEmpty) {
-                                setModalState(() =>
-                                    modalError = 'Please enter a marker code.');
-                                return;
-                              }
-                              setModalState(() {
-                                modalLoading = true;
-                                modalError = null;
-                              });
-                              try {
-                                final pos = await _safeGetPosition();
-                                if (pos == null) {
-                                  setModalState(() => modalError = _noGpsMessage);
-                                  return;
-                                }
-                                final res = await ref
-                                    .read(apiClientProvider)
-                                    .dio
-                                    .post(
-                                  '/quests/${widget.quest.id}/steps/${step.order}/evidence',
-                                  data: {
-                                    'idempotency_key': const Uuid().v4(),
-                                    'checkpoint_type': 'qr',
-                                    'qr_code': code,
-                                    'captured_lat': pos.latitude,
-                                    'captured_lng': pos.longitude,
-                                    'captured_accuracy': pos.accuracy,
-                                  },
-                                );
-                                if (res.data['success'] == true) {
-                                  if (ctx.mounted) Navigator.pop(ctx);
-                                  await _loadProgress();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'QR code verified successfully!')),
-                                    );
-                                  }
-                                } else {
-                                  setModalState(() =>
-                                      modalError = 'QR verification failed.');
-                                }
-                              } on DioException catch (dioErr) {
-                                setModalState(() => modalError =
-                                    _messageFromDio(dioErr,
-                                        'Invalid QR code or out of radius.'));
-                              } catch (_) {
-                                setModalState(() => modalError =
-                                    'Verification failed. Try again.');
-                              } finally {
-                                setModalState(() => modalLoading = false);
-                              }
+              final code = textController.text.trim();
+              if (code.isEmpty) {
+                setModalState(() => modalError = 'Please enter a marker code.');
+                return;
+              }
+              setModalState(() {
+                modalLoading = true;
+                modalError = null;
+              });
+              try {
+                final pos = await _safeGetPosition();
+                if (pos == null) {
+                  setModalState(() => modalError = _noGpsMessage);
+                  return;
+                }
+                final res = await ref.read(apiClientProvider).dio.post(
+                  '/quests/${widget.quest.id}/steps/${step.order}/evidence',
+                  data: {
+                    'idempotency_key': const Uuid().v4(),
+                    'checkpoint_type': 'qr',
+                    'qr_code': code,
+                    'captured_lat': pos.latitude,
+                    'captured_lng': pos.longitude,
+                    'captured_accuracy': pos.accuracy,
+                  },
+                );
+                if (res.data['success'] == true) {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  await _loadProgress();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('QR code verified successfully!')),
+                    );
+                  }
+                } else {
+                  setModalState(() => modalError = 'QR verification failed.');
+                }
+              } on DioException catch (dioErr) {
+                setModalState(() => modalError = _messageFromDio(
+                    dioErr, 'Invalid QR code or out of radius.'));
+              } catch (_) {
+                setModalState(
+                    () => modalError = 'Verification failed. Try again.');
+              } finally {
+                setModalState(() => modalLoading = false);
+              }
             }
 
             return Padding(
@@ -587,7 +585,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     ],
                     const SizedBox(height: AppSpacing.md),
                     PrimaryButton(
-                      label: modalLoading ? 'Uploading Proof...' : 'Submit Photo Proof',
+                      label: modalLoading
+                          ? 'Uploading Proof...'
+                          : 'Submit Photo Proof',
                       icon: Icons.upload_rounded,
                       onPressed: (pickedFile == null || modalLoading)
                           ? null
@@ -611,13 +611,11 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                                   'photo': MultipartFile.fromBytes(bytes,
                                       filename: pickedFile!.name),
                                 });
-                                final res = await ref
-                                    .read(apiClientProvider)
-                                    .dio
-                                    .post(
-                                  '/quests/${widget.quest.id}/steps/${step.order}/evidence',
-                                  data: formData,
-                                );
+                                final res =
+                                    await ref.read(apiClientProvider).dio.post(
+                                          '/quests/${widget.quest.id}/steps/${step.order}/evidence',
+                                          data: formData,
+                                        );
                                 if (res.data['success'] == true) {
                                   if (ctx.mounted) Navigator.pop(ctx);
                                   await _loadProgress();
@@ -634,7 +632,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                                 }
                               } on DioException catch (dioErr) {
                                 setModalState(() => modalError =
-                                    _messageFromDio(dioErr, 'Photo upload failed.'));
+                                    _messageFromDio(
+                                        dioErr, 'Photo upload failed.'));
                               } catch (_) {
                                 setModalState(() => modalError =
                                     'Photo upload failed. Try again.');
@@ -653,41 +652,118 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     );
   }
 
-  Future<void> _submitForReview() async {
+  /// Finishes the quest: official quests whose tasks were all checked by the server pay at once;
+  /// everything else goes to review (the server decides).
+  Future<void> _finishQuest() async {
     setState(() => _loading = true);
     try {
       final res = await ref
           .read(apiClientProvider)
           .dio
-          .post('/quests/${widget.quest.id}/submit-for-review');
+          .post('/quests/${widget.quest.id}/complete');
       if (res.data['success'] == true) {
+        final data = res.data['data'];
+        final awarded = data is Map && data['reward_awarded'] == true;
+        final points = data is Map && data['awarded_points'] is num
+            ? (data['awarded_points'] as num).toInt()
+            : 0;
         await _loadProgress();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Quest submitted for review! Rewards will be granted once approved.')),
-          );
+          await showQuestFinishedDialog(context,
+              rewardAwarded: awarded, awardedPoints: points);
         }
       }
     } on DioException catch (dioErr) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(_messageFromDio(
-                  dioErr, 'Could not submit quest for review.'))),
+              content: Text(
+                  _messageFromDio(dioErr, 'Could not finish this quest.'))),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Could not submit quest for review. Please retry.')),
+              content: Text('Could not finish this quest. Please retry.')),
         );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Host-scan QR task: show the traveler's one-use pass until the host verifies it.
+  Future<void> _showQuestPass(QuestStepModel step) async {
+    final verified = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => QuestPassSheet(questId: widget.quest.id, step: step),
+    );
+    if (!mounted) return;
+    await _loadProgress();
+    if (verified == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('The host verified your pass!')),
+      );
+    }
+  }
+
+  bool get _isQuestHost {
+    final user = ref.read(authProvider).user;
+    if (user == null) return false;
+    return user.role == 'admin' ||
+        (widget.quest.authorId != null && widget.quest.authorId == user.id);
+  }
+
+  /// For the quest's host (author) or an admin: scan travelers' passes for host-scan tasks.
+  Widget _buildHostScanSection() {
+    final hostSteps = widget.quest.steps.where(isHostScanStep).toList();
+    if (hostSteps.isEmpty || !_isQuestHost) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.infoBg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            const Icon(Icons.qr_code_scanner_rounded, color: AppColors.info),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+                child: Text('You host this quest',
+                    style: AppTypography.labelLarge)),
+          ]),
+          const SizedBox(height: 4),
+          Text(
+              "Scan each traveler's quest pass on site to verify their check-in.",
+              style: AppTypography.bodySmall
+                  .copyWith(color: AppColors.textSecondary)),
+          const SizedBox(height: AppSpacing.sm),
+          for (final step in hostSteps)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: OutlinedButton.icon(
+                onPressed: () => hostScanTravelerPass(
+                  context: context,
+                  ref: ref,
+                  quest: widget.quest,
+                  step: step,
+                  getPosition: _safeGetPosition,
+                ),
+                icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                label: Text('Scan traveler pass · Step ${step.order}',
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   static const _noGpsMessage =
@@ -717,7 +793,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         '/quests/${widget.quest.id}/steps/${step.order}/evidence',
         data: {
           'idempotency_key': const Uuid().v4(),
-          if (task is Map && task['kind'] is String) 'action_name': task['kind'],
+          if (task is Map && task['kind'] is String)
+            'action_name': task['kind'],
         },
       );
       if (res.data['success'] == true) {
@@ -745,7 +822,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not check this task. Please retry.')),
+          const SnackBar(
+              content: Text('Could not check this task. Please retry.')),
         );
       }
     } finally {
@@ -782,8 +860,10 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                 figmaLayer: '#Quest_Detail_Hero_Image',
                 dimensions: 'Full width hero image, Height: 240dp',
                 dataBinding: 'quest.markerImageUrl / quest.category',
-                stateNotes: 'Displays curated destination photography with category badge overlay',
-                uxNotes: 'Hero visual provides strong sense of place and local Pangasinan heritage.',
+                stateNotes:
+                    'Displays curated destination photography with category badge overlay',
+                uxNotes:
+                    'Hero visual provides strong sense of place and local Pangasinan heritage.',
               ),
               child: Stack(
                 children: [
@@ -1000,7 +1080,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(AppSpacing.sm),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.07),
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.07),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Column(
@@ -1017,31 +1098,37 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                                     const SizedBox(height: 4),
                                     Text(
                                       'Supported by ${quest.funding!.sponsors.map((sponsor) => sponsor['name']?.toString()).whereType<String>().join(', ')}',
-                                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                                      style: AppTypography.bodySmall.copyWith(
+                                          color: AppColors.textSecondary),
                                     ),
                                   ],
                                   if (quest.funding!.perk case final perk?) ...[
                                     const SizedBox(height: 4),
                                     Text(
                                       'Sponsor perk: ${perk['title'] ?? 'available'} · ${perk['remaining'] ?? 0} available',
-                                      style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
+                                      style: AppTypography.bodySmall
+                                          .copyWith(color: AppColors.primary),
                                     ),
                                   ],
                                   const SizedBox(height: 4),
                                   Text(
                                     'Simulated points only; no cash or blockchain value.',
-                                    style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+                                    style: AppTypography.bodySmall
+                                        .copyWith(color: AppColors.textMuted),
                                   ),
                                 ],
                               ),
                             ),
                           ],
                           if (quest.authorId != null &&
-                              ref.watch(authProvider).user?.id == quest.authorId) ...[
+                              ref.watch(authProvider).user?.id ==
+                                  quest.authorId) ...[
                             const SizedBox(height: AppSpacing.sm),
                             OutlinedButton.icon(
-                              onPressed: () => context.push('/quests/${quest.id}/funding'),
-                              icon: const Icon(Icons.account_balance_wallet_outlined),
+                              onPressed: () =>
+                                  context.push('/quests/${quest.id}/funding'),
+                              icon: const Icon(
+                                  Icons.account_balance_wallet_outlined),
                               label: const Text('Manage funding'),
                             ),
                           ],
@@ -1093,7 +1180,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                   // Objective Steps
                   const JdqSectionHeader(
                     title: 'Quest Objectives',
-                    subtitle: 'Requirements set by the destination quest author.',
+                    subtitle:
+                        'Requirements set by the destination quest author.',
                   ),
 
                   if (displaySteps.isEmpty)
@@ -1101,7 +1189,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                       step: const QuestStepModel(
                         order: 1,
                         title: 'Destination check-in',
-                        description: 'Submit location proof for independent review.',
+                        description:
+                            'Submit location proof for independent review.',
                         checkpointType: 'location',
                         required: true,
                         status: 'ready',
@@ -1120,10 +1209,14 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     spec: const UiSpec(
                       title: 'Start Quest Experience CTA',
                       figmaLayer: '#Quest_Start_Action_Button',
-                      dimensions: 'Full width button, Height: 52dp, Radius: 12dp',
-                      dataBinding: 'POST /quests/:id/attempts and GET /quests/:id/progress',
-                      stateNotes: 'Shows the server-confirmed enrollment or completion state',
-                      uxNotes: 'Prominent primary CTA to begin interactive verification with in-app navigation shortcut.',
+                      dimensions:
+                          'Full width button, Height: 52dp, Radius: 12dp',
+                      dataBinding:
+                          'POST /quests/:id/attempts and GET /quests/:id/progress',
+                      stateNotes:
+                          'Shows the server-confirmed enrollment or completion state',
+                      uxNotes:
+                          'Prominent primary CTA to begin interactive verification with in-app navigation shortcut.',
                       deferred: false,
                     ),
                     child: Column(
@@ -1346,20 +1439,25 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
   }
 
   Widget _buildStepActionButton(QuestStepModel step) {
-    final label = switch (step.checkpointType) {
-      'location' => 'Verify Location (GPS)',
-      'qr' => 'Scan QR Code',
-      'photo' => 'Submit Photo Proof',
-      'ar' => 'Open AR',
-      _ => 'Check task',
-    };
-    final icon = switch (step.checkpointType) {
-      'location' => Icons.my_location_rounded,
-      'qr' => Icons.qr_code_scanner_rounded,
-      'photo' => Icons.camera_alt_rounded,
-      'ar' => Icons.view_in_ar_rounded,
-      _ => Icons.check_circle_outline_rounded,
-    };
+    final hostScan = isHostScanStep(step);
+    final label = hostScan
+        ? 'Show my pass'
+        : switch (step.checkpointType) {
+            'location' => 'Verify Location (GPS)',
+            'qr' => 'Scan QR Code',
+            'photo' => 'Submit Photo Proof',
+            'ar' => 'Open AR',
+            _ => 'Check task',
+          };
+    final icon = hostScan
+        ? Icons.badge_rounded
+        : switch (step.checkpointType) {
+            'location' => Icons.my_location_rounded,
+            'qr' => Icons.qr_code_scanner_rounded,
+            'photo' => Icons.camera_alt_rounded,
+            'ar' => Icons.view_in_ar_rounded,
+            _ => Icons.check_circle_outline_rounded,
+          };
 
     return SizedBox(
       height: 36,
@@ -1372,7 +1470,11 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     _verifyLocation(step);
                     break;
                   case 'qr':
-                    _showQrVerificationModal(step);
+                    if (hostScan) {
+                      _showQuestPass(step);
+                    } else {
+                      _showQrVerificationModal(step);
+                    }
                     break;
                   case 'photo':
                     _showPhotoVerificationModal(step);
@@ -1416,6 +1518,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildHostScanSection(),
         if (_completed)
           const Text(
               'Quest completed and reviewed. Your reward is recorded in your account.')
@@ -1424,7 +1527,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
               'Proof submitted. Your quest is waiting for independent review; no reward has been granted yet.')
         else if (hasAttempt)
           Text(
-              'Quest accepted. ${_attempt!.verifiedSteps} of ${_attempt!.requiredSteps} required steps verified. Submit required proof for review.')
+              'Quest accepted. ${_attempt!.verifiedSteps} of ${_attempt!.requiredSteps} required tasks done. Finish them all, then tap Finish quest.')
         else if (signedIn && !_loading && _error == null)
           const Text('Accept this quest to register your attempt.'),
         if (_error != null) ...[
@@ -1453,9 +1556,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           )
         else if (canSubmitReview)
           PrimaryButton(
-            label: 'Submit Quest for Review',
-            icon: Icons.send_rounded,
-            onPressed: _submitForReview,
+            label: 'Finish quest',
+            icon: Icons.flag_rounded,
+            onPressed: _finishQuest,
           ),
       ],
     );

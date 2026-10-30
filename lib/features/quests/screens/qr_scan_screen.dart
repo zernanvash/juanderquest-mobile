@@ -17,11 +17,19 @@ String? extractMarkerCode(String? raw) {
   return text.length <= 200 ? text : null;
 }
 
-/// Full-screen QR scanner. Pops with the marker code, or null on cancel.
+/// Full-screen QR scanner. Pops with the accepted code, or null on cancel.
+/// [extract] decides what is accepted (checkpoint marker codes by default).
 class QrScanScreen extends StatefulWidget {
   final String title;
+  final String? Function(String? raw) extract;
+  final String rejectedMessage;
 
-  const QrScanScreen({super.key, this.title = 'Scan the checkpoint QR'});
+  const QrScanScreen({
+    super.key,
+    this.title = 'Scan the checkpoint QR',
+    this.extract = extractMarkerCode,
+    this.rejectedMessage = 'That QR code is not a JuanDerQuest checkpoint.',
+  });
 
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
@@ -44,14 +52,14 @@ class _QrScanScreenState extends State<QrScanScreen> {
   void _onDetect(BarcodeCapture capture) {
     if (_done) return;
     for (final b in capture.barcodes) {
-      final code = extractMarkerCode(b.rawValue);
+      final code = widget.extract(b.rawValue);
       if (code != null) {
         _done = true;
         Navigator.of(context).pop(code);
         return;
       }
     }
-    setState(() => _rejected = 'That QR code is not a JuanDerQuest checkpoint.');
+    setState(() => _rejected = widget.rejectedMessage);
   }
 
   @override
