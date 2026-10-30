@@ -176,6 +176,21 @@ class ArHuntController extends ChangeNotifier {
 
   bool get canCollect => _phase == ArHuntPhase.aligned;
 
+  /// Progress (0.0..1.0) towards locking onto the AR target inside the reticle.
+  double get alignmentProgress {
+    if (_phase == ArHuntPhase.aligned ||
+        _phase == ArHuntPhase.submitting ||
+        _phase == ArHuntPhase.verified) {
+      return 1.0;
+    }
+    if (_phase != ArHuntPhase.searching || _alignedSince == null) {
+      return 0.0;
+    }
+    final elapsedMs = _now().difference(_alignedSince!).inMilliseconds;
+    return (elapsedMs / ArHuntRules.holdToCollect.inMilliseconds)
+        .clamp(0.0, 1.0);
+  }
+
   /// New GPS fix from the location stream.
   Future<void> onFix(ArFix fix, {required double cameraBearing}) async {
     _fix = fix;

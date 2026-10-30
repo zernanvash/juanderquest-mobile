@@ -11,16 +11,20 @@ class ArTaskSpec {
   final String questId;
   final int stepOrder;
   final String title;
+  final String description;
   final ArFence fence;
   final ShapeType shape;
+  final String objectLabel;
   final Color color;
 
   const ArTaskSpec({
     required this.questId,
     required this.stepOrder,
     required this.title,
+    this.description = '',
     required this.fence,
     required this.shape,
+    this.objectLabel = 'Token',
     required this.color,
   });
 
@@ -54,15 +58,25 @@ class ArTaskSpec {
         radiusMeters: defaultRadiusMeters,
       );
     }
+    final shape = shapeFor(cfg['object']);
     return ArTaskSpec(
       questId: quest.id,
       stepOrder: step.order,
       title: step.title.isNotEmpty ? step.title : quest.title,
+      description: step.description,
       fence: fence,
-      shape: shapeFor(cfg['object']),
+      shape: shape,
+      objectLabel: labelForShape(shape),
       color: colorFor(cfg['color']),
     );
   }
+
+  static String labelForShape(ShapeType shape) => switch (shape) {
+        ShapeType.gem => '3D Gem',
+        ShapeType.beacon => '3D Beacon',
+        ShapeType.crate => 'Relic Box',
+        ShapeType.token => 'Quest Token',
+      };
 
   /// Plan 43 `ArCfg.object`: token | gem | beacon | box.
   static ShapeType shapeFor(Object? object) => switch (object) {
