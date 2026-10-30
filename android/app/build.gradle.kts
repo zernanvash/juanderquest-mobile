@@ -59,6 +59,11 @@ android {
     }
 
     buildTypes {
+        // Builds installed straight from the PC are "jdq-dev" with their own ID, so they sit beside the
+        // released "JuanDerQuest" app instead of replacing it (owner 2026-10-30).
+        debug {
+            applicationIdSuffix = ".dev"
+        }
         release {
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("protectedRelease") else signingConfigs.getByName("debug")
         }
