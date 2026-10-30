@@ -10,11 +10,14 @@ class JdqMapCanvas extends StatefulWidget {
       required this.style,
       required this.fallback,
       required this.onFallback,
+      this.extraAttribution,
       this.timeout = const Duration(seconds: 10)});
   final JdqMap map;
   final Future<String> style;
   final Widget fallback;
   final VoidCallback onFallback;
+  /// Credit for an extra layer drawn on the map (e.g. satellite imagery).
+  final String? extraAttribution;
   final Duration timeout;
   @override
   State<JdqMapCanvas> createState() => _JdqMapCanvasState();
@@ -75,16 +78,25 @@ class _JdqMapCanvasState extends State<JdqMapCanvas> {
                           padding: EdgeInsets.all(6),
                           child: Text('Basic map'))))),
         if (!_basic)
-          const Positioned(
+          Positioned(
               left: 8,
+              right: 8,
               bottom: 4,
               child: IgnorePointer(
-                  child: ColoredBox(
-                      color: Color(0xddffffff),
-                      child: Padding(
-                          padding: EdgeInsets.all(3),
-                          child: Text(
-                              '© OpenStreetMap contributors · © OpenMapTiles',
-                              style: TextStyle(fontSize: 10)))))),
+                  child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: ColoredBox(
+                          color: const Color(0xddffffff),
+                          child: Padding(
+                              padding: const EdgeInsets.all(3),
+                              child: Text(
+                                  [
+                                    if (widget.extraAttribution != null) widget.extraAttribution!,
+                                    '© OpenStreetMap contributors · © OpenMapTiles',
+                                  ].join('\n'),
+                                  key: const ValueKey('jdq_map_attribution'),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 10))))))),
       ]);
 }

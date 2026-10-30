@@ -94,9 +94,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     else { _mapController.fitCamera(CameraFit.bounds(bounds: bounds,
       padding: padding, maxZoom: maxZoom ?? double.infinity)); }
   }
-  Widget _canvas(Widget raster) {
+  Widget _canvas(Widget raster, {bool satellite = false}) {
     if (_basicMap && !_fellBack) return raster;
     return JdqMapCanvas(map: _nativeMap, style: _style, fallback: raster,
+      extraAttribution: satellite ? MapConfig.satelliteAttribution : null,
       onFallback: () {
         if (mounted) setState(() { _basicMap = true; _fellBack = true; });
       });
@@ -961,7 +962,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 ],
               ),
             ],
-          )),
+          ), satellite: satellite),
 
           // 2. Top-Left Floating Header & Filter Panel (Web Parity)
           Positioned(

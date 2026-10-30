@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/config/map_config.dart';
 import 'package:juanderquest_app/core/widgets/base_tile_layer.dart';
+import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
+import 'package:juanderquest_app/features/map/engine/jdq_map_canvas.dart';
 import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
 
 void main() {
@@ -46,4 +48,24 @@ void main() {
       expect(container.read(satelliteModeProvider), isFalse);
     });
   }
+
+  testWidgets('the native map footer credits Esri while satellite imagery is on', (tester) async {
+    Widget canvas(String? extra) => MaterialApp(
+        home: Scaffold(
+            body: JdqMapCanvas(
+                map: FakeJdqMap(),
+                style: Future.value('{}'),
+                fallback: const SizedBox(),
+                onFallback: () {},
+                extraAttribution: extra)));
+    await tester.pumpWidget(canvas(MapConfig.satelliteAttribution));
+    await tester.pump();
+    await tester.pump();
+    expect(find.textContaining('Powered by Esri'), findsOneWidget);
+    expect(find.textContaining('OpenStreetMap contributors'), findsOneWidget);
+    await tester.pumpWidget(canvas(null));
+    await tester.pump();
+    await tester.pump();
+    expect(find.textContaining('Powered by Esri'), findsNothing);
+  });
 }
