@@ -269,4 +269,34 @@ void main() {
     expect(posted.single, containsPair('gps_lat', 16.3268));
     expect(store.cleared, isTrue);
   });
+
+  testWidgets('Publish stays above the Android navigation bar (edge-to-edge)',
+      (tester) async {
+    tester.view.physicalSize = const Size(412, 860);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(bottom: 48);
+    tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+    addTearDown(tester.view.reset);
+    final api = ApiClient();
+    api.dio.interceptors.insert(0,
+        InterceptorsWrapper(onRequest: (options, handler) {
+      handler.resolve(Response(
+          requestOptions: options, statusCode: 404, data: {'success': false}));
+    }));
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        spotDraftStoreProvider.overrideWithValue(_MemoryDraftStore()),
+        apiClientProvider.overrideWithValue(api)
+      ],
+      child: MaterialApp(
+        home: SpotDiscoveryStudioScreen(
+            routePin: const StudioPin(16.3268, 119.7842, 17)),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final publish = tester.getRect(find.text('Publish spot'));
+    expect(publish.bottom, lessThanOrEqualTo(860 - 48));
+  });
 }

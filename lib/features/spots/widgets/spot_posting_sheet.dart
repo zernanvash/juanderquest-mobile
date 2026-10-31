@@ -318,7 +318,8 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.embedded) return _buildComposer();
+    // Full-screen studio: keep the Publish bar above the Android navigation bar (edge-to-edge).
+    if (widget.embedded) return SafeArea(top: false, child: _buildComposer());
     final mediaQuery = MediaQuery.of(context);
     return Padding(
       padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
