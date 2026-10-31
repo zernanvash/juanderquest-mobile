@@ -289,9 +289,9 @@ void main() {
         spotDraftStoreProvider.overrideWithValue(_MemoryDraftStore()),
         apiClientProvider.overrideWithValue(api)
       ],
-      child: MaterialApp(
+      child: const MaterialApp(
         home: SpotDiscoveryStudioScreen(
-            routePin: const StudioPin(16.3268, 119.7842, 17)),
+            routePin: StudioPin(16.3268, 119.7842, 17)),
       ),
     ));
     await tester.pump();
