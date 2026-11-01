@@ -79,8 +79,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
   bool _canCreateQuest(WidgetRef ref, SpotModel spot) {
     final user = ref.watch(authProvider).user;
+    // Only the spot's author: the backend refuses everyone else, admins included.
     if (user == null) return false;
-    if (user.role == 'admin') return true;
     return spot.createdBy != null && spot.createdBy == user.id;
   }
 

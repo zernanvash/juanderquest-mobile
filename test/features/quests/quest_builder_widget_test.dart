@@ -30,6 +30,7 @@ class _FakeQuestBuilderRepository extends QuestBuilderRepository {
   String? lastPatchedId;
   Map<String, dynamic>? lastPatchedPayload;
   Map<String, dynamic>? mockRawEditQuest;
+  int? nextPatchVersion;
 
   @override
   Future<String> createQuest({
@@ -73,12 +74,13 @@ class _FakeQuestBuilderRepository extends QuestBuilderRepository {
   }
 
   @override
-  Future<void> patchQuest({
+  Future<int?> patchQuest({
     required String questId,
     required Map<String, dynamic> payload,
   }) async {
     lastPatchedId = questId;
     lastPatchedPayload = payload;
+    return nextPatchVersion;
   }
 }
 
@@ -358,6 +360,45 @@ void main() {
       expect(fakeRepo.lastPatchedId, 'quest-edit-1');
       expect(fakeRepo.lastPatchedPayload, isNotNull);
       expect(fakeRepo.lastPatchedPayload!['expected_version'], 3);
+    });
+
+    testWidgets('Second save sends the version the server returned (no 409)', (tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final fakeRepo = _FakeQuestBuilderRepository(ApiClient(enableRetries: false))
+        ..nextPatchVersion = 4;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authProvider.overrideWith((ref) => _InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyAuthor)),
+            questBuilderRepositoryProvider.overrideWithValue(fakeRepo),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const QuestBuilderScreen(questId: 'quest-edit-1'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final draftBtn = find.byKey(const Key('builder_save_draft_btn'));
+      await tester.tap(draftBtn);
+      await tester.pumpAndSettle();
+      expect(fakeRepo.lastPatchedPayload!['expected_version'], 3);
+
+      // The "Draft saved!" snackbar sits over the bottom bar; dismiss it first.
+      ScaffoldMessenger.of(tester.element(draftBtn)).hideCurrentSnackBar();
+      await tester.pumpAndSettle();
+      await tester.tap(draftBtn);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(fakeRepo.lastPatchedPayload!['expected_version'], 4);
     });
   });
 }

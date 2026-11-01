@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/network/api_failure.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../spots/models/spot_model.dart';
@@ -227,7 +228,12 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
           targetStatus: targetStatus,
           expectedVersion: _state.version,
         );
-        await repo.patchQuest(questId: widget.questId!, payload: payload);
+        final newVersion = await repo.patchQuest(questId: widget.questId!, payload: payload);
+        if (mounted) {
+          setState(() {
+            _state = _state.copyWith(status: targetStatus, version: newVersion);
+          });
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -263,15 +269,16 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
         }
       }
     } catch (e) {
+      // Map by the server's error code; never show raw exception text.
+      final failure = ApiFailure.from(e, fallback: 'Could not save the quest. Please try again.');
+      if (!mounted) return;
       setState(() {
-        final msg = e.toString().contains('403')
-            ? 'Only the scout who posted this place can add quests.'
-            : e.toString().contains('422') && e.toString().contains('TASK_TOO_FAR')
-                ? 'One or more tasks are located too far from the destination.'
-                : e.toString().contains('409')
-                    ? 'This quest was modified by another session. Please reload.'
-                    : 'Failed to save quest: $e';
-        _serverError = msg;
+        _serverError = switch (failure.code) {
+          'FORBIDDEN_NOT_DESTINATION_AUTHOR' => 'Only the scout who posted this place can add quests.',
+          'TASK_TOO_FAR' => 'One or more tasks are too far from the destination: ${failure.message}',
+          'VERSION_CONFLICT' => 'This quest was changed somewhere else. Reload it and try again.',
+          _ => failure.message,
+        };
       });
     } finally {
       if (mounted) {

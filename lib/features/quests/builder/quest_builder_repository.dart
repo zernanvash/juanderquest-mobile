@@ -93,15 +93,20 @@ class QuestBuilderRepository {
     throw Exception('Failed to parse created quest ID');
   }
 
-  /// Save author quest edit: PATCH /quests/:id
-  Future<void> patchQuest({
+  /// Save author quest edit: PATCH /quests/:id. Returns the server's new
+  /// version (editing a published quest bumps it) so the next save is not a 409.
+  Future<int?> patchQuest({
     required String questId,
     required Map<String, dynamic> payload,
   }) async {
-    await _client.dio.patch(
+    final res = await _client.dio.patch(
       '/quests/$questId',
       data: payload,
     );
+    final data = res.data;
+    final inner = data is Map ? data['data'] : null;
+    final version = inner is Map ? inner['version'] : null;
+    return version is num ? version.toInt() : null;
   }
 
   /// Update quest status: PATCH /quests/:id/status
