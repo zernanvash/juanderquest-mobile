@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_discovery_studio_screen.dart';
 import 'package:juanderquest_app/features/spots/utils/exif_gps.dart';
@@ -289,14 +290,19 @@ void main() {
         spotDraftStoreProvider.overrideWithValue(_MemoryDraftStore()),
         apiClientProvider.overrideWithValue(api)
       ],
-      child: const MaterialApp(
-        home: SpotDiscoveryStudioScreen(
+      // The real app theme: its full-width button minimum size once made Publish fail to lay out.
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const SpotDiscoveryStudioScreen(
             routePin: StudioPin(16.3268, 119.7842, 17)),
       ),
     ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.takeException(), isNull);
     final publish = tester.getRect(find.text('Publish spot'));
     expect(publish.bottom, lessThanOrEqualTo(860 - 48));
+    expect(publish.width, greaterThan(40));
+    expect(publish.right, lessThanOrEqualTo(412));
   });
 }

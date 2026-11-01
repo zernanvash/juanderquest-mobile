@@ -529,6 +529,8 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
                   child: FilledButton.icon(
                     onPressed: _submitting || _mediaUploading ? null : _publish,
                     style: FilledButton.styleFrom(
+                        // The theme's full-width minimum is infinite inside FittedBox: the button vanished.
+                        minimumSize: const Size(0, 48),
                         backgroundColor: AppColors.sunGold,
                         foregroundColor: AppColors.woodBrown),
                     icon: _submitting

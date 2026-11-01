@@ -305,6 +305,8 @@ class _SpotDiscoveryStudioScreenState
             right: 8,
             child: FilledButton.tonalIcon(
               key: const ValueKey('studio_use_gps'),
+              // The theme's full-width minimum is infinite inside Positioned: the button vanished.
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
               onPressed: _locating ? null : () => _useGps(),
               icon: _locating
                   ? const SizedBox(
