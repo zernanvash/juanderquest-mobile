@@ -558,7 +558,7 @@ class _Celebration extends ConsumerWidget {
             minimumSize: const Size(0, 48),
           ),
           onPressed: () => context.push(
-            '/spots/${spot.slug.isNotEmpty ? spot.slug : spot.id}/quests/new',
+            '/explore/${spot.slug.isNotEmpty ? spot.slug : spot.id}/quests/new',
             extra: spot,
           ),
           icon: const Icon(Icons.explore_rounded),

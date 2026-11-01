@@ -13,6 +13,10 @@ class TaskItemCard extends StatelessWidget {
   final VoidCallback onDelete;
   final ValueChanged<BuilderTask> onChanged;
   final Widget? settingsPanel;
+  /// The destination's location and id: a task whose type changes starts here
+  /// (a 0,0 fence fails the server's Philippines bounds check).
+  final GeoFence destinationDefaultFence;
+  final String destinationSpotId;
 
   const TaskItemCard({
     super.key,
@@ -25,6 +29,8 @@ class TaskItemCard extends StatelessWidget {
     required this.onMoveDown,
     required this.onDelete,
     required this.onChanged,
+    required this.destinationDefaultFence,
+    required this.destinationSpotId,
     this.settingsPanel,
   });
 
@@ -262,8 +268,8 @@ class TaskItemCard extends StatelessWidget {
                                   TaskVerification newVer;
                                   switch (val) {
                                     case 'qr':
-                                      newVer = const QrVerification(
-                                        fence: GeoFence(lat: 0, lng: 0, radiusMeters: 80),
+                                      newVer = QrVerification(
+                                        fence: destinationDefaultFence.copyWith(radiusMeters: 80),
                                         scanMode: 'traveler_scans',
                                       );
                                       break;
@@ -274,19 +280,19 @@ class TaskItemCard extends StatelessWidget {
                                       );
                                       break;
                                     case 'ar':
-                                      newVer = const ArVerification(
-                                        fence: GeoFence(lat: 0, lng: 0, radiusMeters: 50),
+                                      newVer = ArVerification(
+                                        fence: destinationDefaultFence.copyWith(radiusMeters: 50),
                                       );
                                       break;
                                     case 'action':
-                                      newVer = const ActionVerification(
-                                        task: {'kind': 'save_spot'},
+                                      newVer = ActionVerification(
+                                        task: {'kind': 'save_spot', 'spot_id': destinationSpotId},
                                       );
                                       break;
                                     case 'location':
                                     default:
-                                      newVer = const LocationVerification(
-                                        fence: GeoFence(lat: 0, lng: 0, radiusMeters: 100),
+                                      newVer = LocationVerification(
+                                        fence: destinationDefaultFence.copyWith(radiusMeters: 100),
                                       );
                                       break;
                                   }

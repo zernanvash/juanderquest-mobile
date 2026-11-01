@@ -608,6 +608,8 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
                       onMoveDown: () => _handleMoveDown(index),
                       onDelete: () => _handleDeleteTask(index),
                       onChanged: (updated) => _handleUpdateTask(index, updated),
+                      destinationDefaultFence: defaultFence,
+                      destinationSpotId: spotId,
                       settingsPanel: TaskSettingsPanel(
                         task: task,
                         destinationDefaultFence: defaultFence,

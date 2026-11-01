@@ -319,6 +319,11 @@ void main() {
       expect(tasks[0]['verification']['type'], 'ar');
       expect(tasks[1]['verification']['type'], 'qr');
       expect(tasks[2]['verification']['type'], 'photo');
+      // Changing a task's type keeps it at the destination: a 0,0 fence fails
+      // the server's Philippines bounds check (found on the phone, 2026-11-01).
+      expect(tasks[0]['verification']['fence'], {'lat': 16.2044, 'lng': 120.0406, 'radius_meters': 50});
+      expect(tasks[1]['verification']['fence'], {'lat': 16.2044, 'lng': 120.0406, 'radius_meters': 80});
+      expect(tasks[1]['verification']['scan_mode'], 'host_scans_traveler');
     });
 
     testWidgets('Edit quest loads GET /quests/:id/edit and sends PATCH with expected_version', (tester) async {
