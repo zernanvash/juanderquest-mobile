@@ -1125,7 +1125,40 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                               ref.watch(authProvider).user?.id ==
                                   quest.authorId) ...[
                             const SizedBox(height: AppSpacing.sm),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    key: const ValueKey('quest_edit_btn'),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(0, 48),
+                                      foregroundColor: AppColors.woodBrown,
+                                    ),
+                                    onPressed: () => context.push('/quests/${quest.id}/edit'),
+                                    icon: const Icon(Icons.edit_rounded, size: 16),
+                                    label: const Text('Edit quest'),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    key: const ValueKey('quest_qr_sheet_btn'),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(0, 48),
+                                      foregroundColor: AppColors.woodBrown,
+                                    ),
+                                    onPressed: () => context.push('/quests/${quest.id}/qr-sheet'),
+                                    icon: const Icon(Icons.qr_code_2_rounded, size: 16),
+                                    label: const Text('QR sheet'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
                             OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 48),
+                              ),
                               onPressed: () =>
                                   context.push('/quests/${quest.id}/funding'),
                               icon: const Icon(

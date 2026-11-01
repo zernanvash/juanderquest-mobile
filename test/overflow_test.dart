@@ -69,8 +69,34 @@ import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dar
 import 'package:juanderquest_app/features/cosmetics/screens/appearance_screen.dart';
 import 'package:juanderquest_app/features/shop/providers/cosmetics_provider.dart';
 import 'package:juanderquest_app/features/shop/models/cosmetic_item.dart';
+import 'package:juanderquest_app/features/quests/screens/quest_builder_screen.dart';
+import 'package:juanderquest_app/features/quests/screens/qr_sheet_screen.dart';
+import 'package:juanderquest_app/features/quests/builder/quest_builder_repository.dart';
 
 // Inert Subclasses to prevent Dio/network calls and pending timers
+class _MockQuestBuilderRepo extends QuestBuilderRepository {
+  _MockQuestBuilderRepo(super.client);
+
+  @override
+  Future<QrSheetData> getQrSheet(String questId) async {
+    return const QrSheetData(
+      questId: 'test-quest-1',
+      questTitle: 'Hundred Islands Discovery',
+      locationName: 'Hundred Islands National Park',
+      qrTasks: [
+        QrSheetTask(
+          taskKey: 'task_1',
+          stepOrder: 1,
+          title: 'Governor Island Checkpoint',
+          markerCode: 'JDQ-GOV-101',
+          qrPayload: 'https://juanderquest.app/verify/101',
+          scanMode: 'traveler_scans',
+        ),
+      ],
+    );
+  }
+}
+
 class InertAuthNotifier extends AuthNotifier {
   InertAuthNotifier(super.apiClient, super.refreshNotifier, UserModel user) {
     state = AuthState(user: user, token: 'inert_token');
@@ -588,6 +614,9 @@ void main() {
                   'delta': 1,
                 },
               }),
+          questBuilderRepositoryProvider.overrideWithValue(
+            _MockQuestBuilderRepo(ApiClient(enableRetries: false)),
+          ),
         ],
         child: MaterialApp(
           home: child,
@@ -950,6 +979,28 @@ void main() {
           'QrScanScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
         await testScreenOverflow(tester, const QrScanScreen(), size, 2.0);
+      });
+
+      testWidgets(
+          'QuestBuilderScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const QuestBuilderScreen(initialSpot: dummySpot),
+          size,
+          2.0,
+        );
+      });
+
+      testWidgets(
+          'QrSheetScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const QrSheetScreen(questId: 'test-quest-1'),
+          size,
+          2.0,
+        );
       });
     }
 

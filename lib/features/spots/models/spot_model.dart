@@ -22,6 +22,7 @@ class SpotModel {
   final double? distanceKm;
   final String? questId;
   final String? imageUrl;
+  final String? createdBy;
   final bool saved;
   final List<String> tags, reasons;
 
@@ -45,6 +46,7 @@ class SpotModel {
       this.distanceKm,
       this.questId,
       this.imageUrl,
+      this.createdBy,
       this.saved = false});
 
   List<SpotPhoto> get photos => imageUrl != null && imageUrl!.isNotEmpty
@@ -101,6 +103,7 @@ class SpotModel {
       questId: j['quest_id'],
       saved: j['saved'] == true,
       imageUrl: finalImg,
+      createdBy: j['created_by']?.toString(),
       tags: List<String>.from(j['tags'] ?? []),
       reasons: List<String>.from(j['recommendation_reasons'] ?? []),
     );
@@ -142,6 +145,7 @@ class SpotModel {
       distanceKm: distanceKm,
       questId: questId,
       imageUrl: imageUrl,
+      createdBy: createdBy,
       saved: saved ?? this.saved);
 
   Map<String, dynamic> toJson() => {
@@ -162,6 +166,7 @@ class SpotModel {
         'distance_km': distanceKm,
         'quest_id': questId,
         'image_url': imageUrl,
+        'created_by': createdBy,
         'saved': saved,
         'tags': tags,
         'recommendation_reasons': reasons,

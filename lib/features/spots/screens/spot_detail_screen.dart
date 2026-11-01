@@ -77,6 +77,13 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   }
 
 
+  bool _canCreateQuest(WidgetRef ref, SpotModel spot) {
+    final user = ref.watch(authProvider).user;
+    if (user == null) return false;
+    if (user.role == 'admin') return true;
+    return spot.createdBy != null && spot.createdBy == user.id;
+  }
+
   @override
   Widget build(BuildContext context) {
     final spot = widget.spot;
@@ -343,6 +350,22 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                       ),
                     ],
                   ),
+                  if (_canCreateQuest(ref, spot)) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    FilledButton.icon(
+                      key: const ValueKey('spot_create_quest_btn'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        minimumSize: const Size(0, 48),
+                      ),
+                      onPressed: () => context.push(
+                        '/spots/${spot.slug.isNotEmpty ? spot.slug : spot.id}/quests/new',
+                        extra: spot,
+                      ),
+                      icon: const Icon(Icons.add_task_rounded),
+                      label: const Text('Create a quest here'),
+                    ),
+                  ],
 
                   const SizedBox(height: AppSpacing.sectionGap),
 

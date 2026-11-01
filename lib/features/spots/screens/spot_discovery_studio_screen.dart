@@ -551,6 +551,20 @@ class _Celebration extends ConsumerWidget {
           label: const Text('View pin on map'),
         ),
         const SizedBox(height: 8),
+        FilledButton.icon(
+          key: const ValueKey('studio_create_quest'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            minimumSize: const Size(0, 48),
+          ),
+          onPressed: () => context.push(
+            '/spots/${spot.slug.isNotEmpty ? spot.slug : spot.id}/quests/new',
+            extra: spot,
+          ),
+          icon: const Icon(Icons.explore_rounded),
+          label: const Text('Create a quest here'),
+        ),
+        const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () => context.push(
               '/navigate?name=${Uri.encodeQueryComponent(spot.name)}&lat=$lat&lng=$lng'),

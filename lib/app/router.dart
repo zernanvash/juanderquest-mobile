@@ -34,6 +34,8 @@ import '../features/quests/screens/quest_list_screen.dart';
 import '../features/quests/screens/campaign_detail_screen.dart';
 import '../features/quests/models/campaign_model.dart';
 import '../features/spots/models/spot_model.dart';
+import '../features/quests/screens/quest_builder_screen.dart';
+import '../features/quests/screens/qr_sheet_screen.dart';
 import '../features/plaza/plaza_screen.dart';
 import '../features/about/screens/about_screen.dart';
 import '../features/trail/trail_coming_soon_screen.dart';
@@ -136,6 +138,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                           ? state.extra as SpotModel
                           : null,
                     ),
+                    routes: [
+                      GoRoute(
+                        path: 'quests/new',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => QuestBuilderScreen(
+                          spotSlug: state.pathParameters['slug'],
+                          initialSpot: state.extra is SpotModel
+                              ? state.extra as SpotModel
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -197,6 +211,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                           quest: state.extra is QuestModel
                               ? state.extra as QuestModel
                               : null,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'edit',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => QuestBuilderScreen(
+                          questId: state.pathParameters['id'] ?? '',
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'qr-sheet',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => QrSheetScreen(
+                          questId: state.pathParameters['id'] ?? '',
                         ),
                       ),
                     ],
