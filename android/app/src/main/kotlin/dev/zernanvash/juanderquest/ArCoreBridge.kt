@@ -129,11 +129,14 @@ private class ArCoreView(
                 }
                 // Anchor on the ground at world (x, z): a ray straight down onto a detected
                 // floor plane; without one, at the lowest floor seen (or 1.4 m below the camera).
+                // strict: only on floor the camera has actually seen (inside a plane's
+                // polygon), never estimated, so the object can't land behind a wall.
                 "placeAnchorAt" -> {
                     val x = (call.argument<Number>("x") ?: 0).toFloat()
                     val z = (call.argument<Number>("z") ?: 0).toFloat()
+                    val strict = if (call.argument<Boolean>("strict") == true) 1f else 0f
                     placeAtRequest?.second?.success(null)
-                    placeAtRequest = Pair(floatArrayOf(x, z), result)
+                    placeAtRequest = Pair(floatArrayOf(x, z, strict), result)
                 }
                 "setNativeObject" -> {
                     nativeObject = call.argument<Boolean>("visible") == true
@@ -264,7 +267,7 @@ private class ArCoreView(
 
         placeAtRequest?.let { (xz, request) ->
             placeAtRequest = null
-            val placed = if (tracking) placeAt(s, frame, xz[0], xz[1]) else null
+            val placed = if (tracking) placeAt(s, frame, xz[0], xz[1], xz[2] > 0f) else null
             main.post { request.success(placed) }
         }
 
@@ -294,20 +297,25 @@ private class ArCoreView(
         main.post { sink?.success(payload) }
     }
 
-    private fun placeAt(s: Session, frame: Frame, x: Float, z: Float): Map<String, Any>? {
+    private fun placeAt(s: Session, frame: Frame, x: Float, z: Float, strict: Boolean): Map<String, Any>? {
         val camY = frame.camera.pose.ty()
         var y: Float? = null
         var onPlane = false
         try {
             for (hit in frame.hitTest(floatArrayOf(x, camY + 0.3f, z), 0, floatArrayOf(0f, -1f, 0f), 0)) {
                 val t = hit.trackable
-                if (t is Plane && t.type == Plane.Type.HORIZONTAL_UPWARD_FACING && t.trackingState == TrackingState.TRACKING) {
+                if (t is Plane && t.type == Plane.Type.HORIZONTAL_UPWARD_FACING && t.trackingState == TrackingState.TRACKING &&
+                    (!strict || t.isPoseInPolygon(hit.hitPose))
+                ) {
                     y = hit.hitPose.ty()
                     onPlane = true
                     break
                 }
             }
         } catch (_: Exception) {
+        }
+        if (y == null && strict) {
+            return mapOf("placed" to false)
         }
         if (y == null) {
             y = s.getAllTrackables(Plane::class.java)
@@ -316,7 +324,7 @@ private class ArCoreView(
         }
         anchor?.detach()
         anchor = s.createAnchor(Pose.makeTranslation(x, y, z))
-        return mapOf("x" to x.toDouble(), "y" to y.toDouble(), "z" to z.toDouble(), "onPlane" to onPlane)
+        return mapOf("placed" to true, "x" to x.toDouble(), "y" to y.toDouble(), "z" to z.toDouble(), "onPlane" to onPlane)
     }
 
     private fun tryPlace(frame: Frame): Boolean {
