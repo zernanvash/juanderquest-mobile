@@ -136,7 +136,7 @@ void main() {
           const SpotCommunitySection(
               spotId: 's1', spotName: 'Hundred Islands'));
       expect(find.text('Go at low tide.'), findsOneWidget);
-      expect(find.text('Helpful (3)'), findsOneWidget);
+      expect(find.text('HELPFUL (3)'), findsOneWidget);
 
       await tester.enterText(
           find.byKey(const ValueKey('spot_comment_input')), 'Bring cash.');
@@ -147,14 +147,14 @@ void main() {
           (r) => r.method == 'POST' && r.path == '/spots/s1/comments');
       expect(posted.data, {'content': 'Bring cash.', 'tag': 'general'});
 
-      await tester.tap(find.text('Helpful (3)'));
+      await tester.tap(find.text('HELPFUL (3)'));
       await tester.pumpAndSettle();
-      expect(find.text('Helpful (4)'), findsOneWidget);
+      expect(find.text('HELPFUL (4)'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('spot_like')));
       await tester.pumpAndSettle();
       expect(fake.calls, contains('PUT /spots/s1/like'));
-      expect(find.text('Liked'), findsOneWidget);
+      expect(find.textContaining('LIKED'), findsOneWidget);
     });
 
     testWidgets('reports a problem with a reason', (tester) async {

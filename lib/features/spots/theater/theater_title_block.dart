@@ -155,7 +155,7 @@ class _TopControls extends StatelessWidget {
               key: const Key('theater_gallery_btn'),
               onTap: () => TheaterGalleryDialog.show(context, media: spot.media),
               child: Container(
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                constraints: const BoxConstraints(minWidth: 48, maxWidth: 96, minHeight: 48),
                 alignment: Alignment.center,
                 child: PixelPanel(
                   style: PixelBoxStyle.inkDialogue.copyWith(
@@ -173,7 +173,7 @@ class _TopControls extends StatelessWidget {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        '📷 $photoCount',
+                        '$photoCount PHOTOS',
                         style: PixelType.small(context, color: PixelPalette.paper),
                       ),
                     ),

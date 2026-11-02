@@ -566,7 +566,7 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                           vertical: grid.px(1),
                         ),
                         child: Text(
-                          '👍 HELPFUL (${c.helpfulCount})',
+                          'HELPFUL (${c.helpfulCount})',
                           style: PixelType.small(
                             context,
                             color: voted ? PixelPalette.ink : PixelPalette.paper,

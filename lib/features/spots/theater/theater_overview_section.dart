@@ -84,16 +84,17 @@ class TheaterOverviewSection extends StatelessWidget {
             SizedBox(height: grid.px(2)),
           ],
 
-          // Author / Creator
-          if (spot.createdBy != null && spot.createdBy!.isNotEmpty) ...[
+          // Author / Creator / Source
+          if (spot.sourceName.isNotEmpty || isAuthor) ...[
             Wrap(
               spacing: grid.px(1),
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(
-                  'SHARED BY ${spot.createdBy!.toUpperCase()}',
-                  style: PixelType.small(context, color: PixelPalette.mist),
-                ),
+                if (spot.sourceName.isNotEmpty)
+                  Text(
+                    'SHARED BY ${spot.sourceName.toUpperCase()}',
+                    style: PixelType.small(context, color: PixelPalette.mist),
+                  ),
                 if (isAuthor)
                   const FittedBox(
                     fit: BoxFit.scaleDown,
