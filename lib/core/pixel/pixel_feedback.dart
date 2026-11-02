@@ -111,12 +111,14 @@ class PixelDialogue extends StatefulWidget {
     required this.lines,
     this.portrait,
     this.interval = const Duration(milliseconds: 30),
+    this.animate = true,
   });
 
   final String speaker;
   final List<String> lines;
   final PixelArt? portrait;
   final Duration interval;
+  final bool animate;
 
   @override
   State<PixelDialogue> createState() => _PixelDialogueState();
@@ -140,6 +142,10 @@ class _PixelDialogueState extends State<PixelDialogue> {
   void _start() {
     _timer?.cancel();
     _chars = 0;
+    if (!widget.animate) {
+      _chars = _current.length;
+      return;
+    }
     _timer = Timer.periodic(widget.interval, (timer) {
       if (!mounted) {
         timer.cancel();
@@ -174,7 +180,8 @@ class _PixelDialogueState extends State<PixelDialogue> {
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     final done = _chars >= _current.length;
-    final visible = _current.substring(0, _chars);
+    final visible =
+        _current.substring(0, _chars.clamp(0, _current.length).toInt());
     return Semantics(
       button: true,
       label: '${widget.speaker}: $_current',

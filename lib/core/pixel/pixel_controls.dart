@@ -60,6 +60,8 @@ class PixelButton extends StatefulWidget {
     this.expand = false,
     this.loading = false,
     this.iconScale = 3,
+    this.style,
+    this.textColor,
   });
 
   final String label;
@@ -69,6 +71,8 @@ class PixelButton extends StatefulWidget {
   final bool expand;
   final bool loading;
   final int iconScale;
+  final PixelBoxStyle? style;
+  final Color? textColor;
 
   @override
   State<PixelButton> createState() => _PixelButtonState();
@@ -82,10 +86,11 @@ class _PixelButtonState extends State<PixelButton> {
     final grid = PixelGrid.of(context);
     final enabled = widget.onPressed != null && !widget.loading;
     final style = enabled
-        ? _buttonStyle(widget.variant).copyWith(shadowPx: 1)
+        ? (widget.style ?? _buttonStyle(widget.variant)).copyWith(shadowPx: 1)
         : _disabledStyle;
-    final textColor =
-        enabled ? _buttonText(widget.variant) : PixelPalette.slate;
+    final textColor = enabled
+        ? (widget.textColor ?? _buttonText(widget.variant))
+        : PixelPalette.slate;
     final content = Row(
       mainAxisSize: widget.expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -152,6 +157,7 @@ class PixelIconButton extends StatefulWidget {
     this.onPressed,
     this.style = PixelBoxStyle.parchment,
     this.iconScale = 3,
+    this.iconHeight,
   });
 
   final PixelArt icon;
@@ -159,6 +165,7 @@ class PixelIconButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final PixelBoxStyle style;
   final int iconScale;
+  final double? iconHeight;
 
   @override
   State<PixelIconButton> createState() => _PixelIconButtonState();
@@ -170,6 +177,14 @@ class _PixelIconButtonState extends State<PixelIconButton> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
+    final scale = widget.iconHeight == null
+        ? widget.iconScale
+        : (widget.iconHeight! *
+                MediaQuery.devicePixelRatioOf(context) /
+                widget.icon.height)
+            .round()
+            .clamp(1, 64)
+            .toInt();
     return Semantics(
       button: true,
       enabled: enabled,
@@ -194,7 +209,7 @@ class _PixelIconButtonState extends State<PixelIconButton> {
               child: Center(
                 widthFactor: 1,
                 heightFactor: 1,
-                child: PixelSprite(widget.icon, scale: widget.iconScale),
+                child: PixelSprite(widget.icon, scale: scale),
               ),
             ),
           ),

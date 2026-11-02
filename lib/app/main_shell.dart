@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../core/pixel/generated/designer_art.g.dart';
+import '../core/pixel/generated/pixel_palette.g.dart';
+import '../core/pixel/pixel_nav.dart';
+import '../core/pixel/placeholder_art.dart';
 import '../features/companion/widgets/companion_card.dart';
-import '../features/spots/providers/spot_discovery_provider.dart';
-import '../features/quests/providers/quest_provider.dart';
-import '../features/quests/providers/campaign_provider.dart';
+import '../features/dashboard/home_tips.dart';
 import '../features/juanchoice/providers/juanchoice_provider.dart';
+import '../features/quests/providers/campaign_provider.dart';
+import '../features/quests/providers/quest_provider.dart';
+import '../features/spots/providers/spot_discovery_provider.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -19,7 +25,6 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   DateTime? _lastBackPress;
-  int _previousIndex = 0;
 
   @override
   void initState() {
@@ -34,23 +39,21 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   @override
-  void didUpdateWidget(MainShell oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.navigationShell.currentIndex !=
-        widget.navigationShell.currentIndex) {
-      _previousIndex = oldWidget.navigationShell.currentIndex;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final currentIndex = widget.navigationShell.currentIndex;
-    final isForward = currentIndex >= _previousIndex;
+    final tips = ref.watch(homeTipsControllerProvider);
+    final tipsKeys = ref.watch(homeTipsKeysProvider);
+    final showTips = tips.showing && currentIndex == 0;
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+
+        if (showTips) {
+          ref.read(homeTipsControllerProvider.notifier).skip();
+          return;
+        }
 
         if (currentIndex != 0) {
           widget.navigationShell.goBranch(0);
@@ -71,85 +74,63 @@ class _MainShellState extends ConsumerState<MainShell> {
           );
         }
       },
-      child: Scaffold(
-        body: Column(children: [
-          Expanded(
-              child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            switchInCurve: Curves.easeInOutCubic,
-            switchOutCurve: Curves.easeInOutCubic,
-            transitionBuilder: (child, animation) {
-              final slideInOffset =
-                  isForward ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
-              final slideOutOffset =
-                  isForward ? const Offset(-0.3, 0.0) : const Offset(0.3, 0.0);
-
-              if (child.key == ValueKey<int>(currentIndex)) {
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: slideInOffset,
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
-                );
-              } else {
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: Offset.zero,
-                    end: slideOutOffset,
-                  ).animate(animation),
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
-                );
-              }
-            },
-            child: KeyedSubtree(
-              key: ValueKey<int>(currentIndex),
-              child: widget.navigationShell,
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: Column(
+              children: [
+                Expanded(child: widget.navigationShell),
+                CompanionCard(tabIndex: currentIndex),
+              ],
             ),
-          )),
-          CompanionCard(tabIndex: currentIndex),
-        ]),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(
-                top: BorderSide(
-                    color: const Color(0xFFD5C4AC).withValues(alpha: 0.4))),
+            bottomNavigationBar: PixelHotbar(
+              key: tipsKeys.hotbar,
+              index: currentIndex,
+              onTap: (index) {
+                if (index == currentIndex) {
+                  widget.navigationShell.goBranch(index, initialLocation: true);
+                } else {
+                  widget.navigationShell.goBranch(index);
+                }
+              },
+              items: const [
+                PixelHotbarItem(
+                  label: 'HOME',
+                  icon: PlaceholderArt.home,
+                ),
+                PixelHotbarItem(
+                  label: 'MAP',
+                  icon: DesignerArt.navExplore,
+                ),
+                PixelHotbarItem(
+                  label: 'QUESTS',
+                  icon: DesignerArt.questMarker,
+                ),
+                PixelHotbarItem(
+                  label: 'CHOICE',
+                  icon: DesignerArt.juanChoice,
+                  pressedIcon: DesignerArt.juanChoiceHover,
+                ),
+                PixelHotbarItem(
+                  label: 'PROFILE',
+                  icon: PlaceholderArt.profile,
+                ),
+              ],
+            ),
           ),
-          child: BottomNavigationBar(
-            backgroundColor: Colors.white,
-            selectedItemColor: const Color(0xFF3F6653),
-            unselectedItemColor: const Color(0xFF837560),
-            currentIndex: currentIndex,
-            type: BottomNavigationBarType.fixed,
-            elevation: 0,
-            onTap: (index) {
-              if (index == currentIndex) {
-                widget.navigationShell.goBranch(index, initialLocation: true);
-              } else {
-                widget.navigationShell.goBranch(index);
-              }
-            },
-            items: const [
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.home_rounded), label: 'Home'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.map_rounded), label: 'Map'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.flag_rounded), label: 'Quests'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.how_to_vote_rounded), label: 'JuanChoice'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.person_rounded), label: 'Profile'),
-            ],
-          ),
-        ),
+          if (showTips)
+            Positioned.fill(
+              child: PixelHomeTipsOverlay(
+                keys: tipsKeys,
+                step: tips.step,
+                onSkip: () =>
+                    ref.read(homeTipsControllerProvider.notifier).skip(),
+                onNext: () =>
+                    ref.read(homeTipsControllerProvider.notifier).next(),
+              ),
+            ),
+        ],
       ),
     );
   }

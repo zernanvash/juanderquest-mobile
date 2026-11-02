@@ -66,6 +66,10 @@ import 'package:juanderquest_app/features/settings/screens/settings_screen.dart'
 import 'package:juanderquest_app/features/settings/screens/settings_updates_screen.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_developer_screen.dart';
 import 'package:juanderquest_app/features/pixel_lab/pixel_lab_screen.dart';
+import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
+import 'package:juanderquest_app/core/pixel/pixel_nav.dart';
+import 'package:juanderquest_app/core/pixel/placeholder_art.dart';
+import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
@@ -279,6 +283,72 @@ class InertPlazaFeedNotifier extends PlazaFeedNotifier {
 
   @override
   Future<void> loadFeed({bool reset = false}) async {}
+}
+
+class _PixelWave1ShellPreview extends StatelessWidget {
+  const _PixelWave1ShellPreview({required this.showTips});
+
+  final bool showTips;
+
+  @override
+  Widget build(BuildContext context) {
+    final keys = HomeTipsKeys();
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(disableAnimations: true),
+      child: ProviderScope(
+        overrides: [homeTipsKeysProvider.overrideWithValue(keys)],
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Column(
+                children: [
+                  const Expanded(child: DashboardScreen()),
+                  PixelHotbar(
+                    key: keys.hotbar,
+                    index: 0,
+                    onTap: (_) {},
+                    items: const [
+                      PixelHotbarItem(
+                        label: 'HOME',
+                        icon: PlaceholderArt.home,
+                      ),
+                      PixelHotbarItem(
+                        label: 'MAP',
+                        icon: DesignerArt.navExplore,
+                      ),
+                      PixelHotbarItem(
+                        label: 'QUESTS',
+                        icon: DesignerArt.questMarker,
+                        badge: '12',
+                      ),
+                      PixelHotbarItem(
+                        label: 'CHOICE',
+                        icon: DesignerArt.juanChoice,
+                        pressedIcon: DesignerArt.juanChoiceHover,
+                      ),
+                      PixelHotbarItem(
+                        label: 'PROFILE',
+                        icon: PlaceholderArt.profile,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (showTips)
+              Positioned.fill(
+                child: PixelHomeTipsOverlay(
+                  keys: keys,
+                  step: 0,
+                  onSkip: () {},
+                  onNext: () {},
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 void main() {
@@ -1079,6 +1149,42 @@ void main() {
         const Size(320, 568),
         2.0,
       );
+    });
+
+    testWidgets('Pixel wave 1 shell does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester,
+          const _PixelWave1ShellPreview(showTips: false),
+          const Size(320, 568),
+          2.0);
+    });
+
+    testWidgets('Pixel wave 1 shell does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester,
+          const _PixelWave1ShellPreview(showTips: false),
+          const Size(568, 320),
+          2.0);
+    });
+
+    testWidgets('Pixel wave 1 tips overlay fits small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester,
+          const _PixelWave1ShellPreview(showTips: true),
+          const Size(320, 568),
+          2.0);
+    });
+
+    testWidgets('Pixel wave 1 tips overlay fits small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester,
+          const _PixelWave1ShellPreview(showTips: true),
+          const Size(568, 320),
+          2.0);
     });
 
     testWidgets('PixelLabScreen does not overflow in small portrait',

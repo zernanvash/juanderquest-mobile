@@ -2,20 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
+import '../../quests/models/quest_model.dart';
 import '../../quests/providers/quest_provider.dart';
 import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
+import '../../spots/screens/interests_screen.dart';
 import '../../spots/widgets/hidden_gem_card.dart';
 import '../../submissions/models/submission_model.dart';
 import '../../submissions/providers/submission_provider.dart';
-import '../../spots/screens/interests_screen.dart';
+import '../home_tips.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -25,6 +35,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _tipsRequested = false;
+
   @override
   void initState() {
     super.initState();
@@ -34,9 +46,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(submissionProvider.notifier).fetchSubmissions();
       ref.read(spotDiscoveryProvider.notifier).load();
       ref.read(questProvider.notifier).fetchQuests();
-      // First sign-in: ask for travel interests once (Plan 47 B5).
       InterestsPrompt.maybeShow(context, ref);
     });
+  }
+
+  Future<void> _refresh() async {
+    await Future.wait([
+      ref.refresh(choiceEngagementProvider.future),
+      ref.refresh(choiceOverviewProvider.future),
+      ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
+      ref.read(spotDiscoveryProvider.notifier).load(refresh: true),
+      ref.read(questProvider.notifier).fetchQuests(),
+    ]);
   }
 
   @override
@@ -47,170 +68,626 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final spots = ref.watch(spotDiscoveryProvider);
     final quests = ref.watch(questProvider);
     final submissions = ref.watch(submissionProvider);
+    final tipsKeys = ref.watch(homeTipsKeysProvider);
     final firstName =
         (user?.displayName.trim().split(RegExp(r'\s+')).first ?? 'Traveler');
     final level = ((user?.points ?? 0) ~/ 50) + 1;
     final levelProgress = ((user?.points ?? 0) % 50) / 50;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Your journey'),
-        actions: [
-          IconButton(
-            tooltip: 'Explore destinations',
-            onPressed: () => context.go('/explore'),
-            icon: const Icon(Icons.search_rounded),
+    if (!_tipsRequested && user != null) {
+      _tipsRequested = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(homeTipsControllerProvider.notifier).maybeStart();
+      });
+    }
+
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Your journey',
+                    actions: [
+                      Tooltip(
+                        message: 'Search destinations',
+                        child: PixelIconButton(
+                          icon: DesignerArt.search,
+                          semanticLabel: 'Search destinations',
+                          iconHeight: 36,
+                          onPressed: () => context.go('/explore'),
+                        ),
+                      ),
+                      Tooltip(
+                        message: 'Notifications',
+                        child: PixelIconButton(
+                          icon: DesignerArt.notifBell,
+                          semanticLabel: 'Notifications',
+                          iconHeight: 36,
+                          onPressed: () => context.go('/notifications'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: PixelPalette.green,
+                      backgroundColor: PixelPalette.parchment,
+                      onRefresh: _refresh,
+                      child: ListView(
+                        padding: EdgeInsets.fromLTRB(
+                          grid.px(4),
+                          grid.px(3),
+                          grid.px(4),
+                          grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                        ),
+                        children: [
+                          KeyedSubtree(
+                            key: tipsKeys.hero,
+                            child: UiSpecContainer(
+                              spec: const UiSpec(
+                                title: 'Traveler dashboard',
+                                figmaLayer: 'Mobile / Dashboard / Home',
+                                dimensions:
+                                    'Responsive, vertically scrollable mobile dashboard',
+                                dataBinding:
+                                    'Authenticated profile, engagement, destinations, quests, submissions, and JuanChoice APIs',
+                                stateNotes:
+                                    'API failures are shown as unavailable; no synthetic activity or ranking data',
+                                uxNotes:
+                                    'One-tap shortcuts keep Explore, map, quests, and JuanChoice close at hand',
+                              ),
+                              child: _HeroCard(
+                                firstName: firstName,
+                                points: user?.points ?? 0,
+                                level: level,
+                                progress: levelProgress,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: grid.px(4)),
+                          _ImpactSection(
+                            engagement: engagement,
+                            onProfile: () => context.go('/profile'),
+                            onRetry: () =>
+                                ref.invalidate(choiceEngagementProvider),
+                          ),
+                          SizedBox(height: grid.px(4)),
+                          KeyedSubtree(
+                            key: tipsKeys.nextStop,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _SectionHeader(
+                                  title: 'Pick your next stop',
+                                  action: 'Explore all',
+                                  onTap: () => context.go('/explore'),
+                                ),
+                                SizedBox(height: grid.px(2)),
+                                _QuickActions(
+                                  onExplore: () => context.go('/explore'),
+                                  onMap: () => context.go('/map'),
+                                  onQuests: () => context.go('/quests'),
+                                ),
+                                SizedBox(height: grid.px(2)),
+                                if (spots.isInitialLoading &&
+                                    spots.spots.isEmpty)
+                                  const _PixelLoadingPanel()
+                                else if (spots.failure != null &&
+                                    spots.spots.isEmpty)
+                                  _PixelUnavailablePanel(
+                                    message:
+                                        'Destinations could not be loaded.',
+                                    onRetry: () => ref
+                                        .read(spotDiscoveryProvider.notifier)
+                                        .load(refresh: true),
+                                  )
+                                else if (spots.spots.isNotEmpty)
+                                  _FeaturedSpot(
+                                    spot: _recommendedSpot(spots.spots),
+                                    onTap: () => context.push(
+                                      '/explore/${Uri.encodeComponent(_recommendedSpot(spots.spots).id)}',
+                                    ),
+                                  )
+                                else
+                                  const _PixelEmptyPanel(
+                                    message:
+                                        'No destinations are available yet. Try again later.',
+                                  ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: grid.px(4)),
+                          const HiddenGemCard(),
+                          SizedBox(height: grid.px(4)),
+                          _SectionHeader(
+                            title: 'JuanChoice',
+                            action: 'Open',
+                            onTap: () => context.go('/choice'),
+                          ),
+                          SizedBox(height: grid.px(2)),
+                          overview.when(
+                            loading: () => const _PixelLoadingPanel(),
+                            error: (_, __) => _PixelUnavailablePanel(
+                              message: 'JuanChoice status is unavailable.',
+                              onRetry: () =>
+                                  ref.invalidate(choiceOverviewProvider),
+                            ),
+                            data: (data) => _JuanChoiceCard(
+                              overview: data,
+                              onTap: () => context.go('/choice'),
+                            ),
+                          ),
+                          SizedBox(height: grid.px(4)),
+                          _SectionHeader(
+                            title: 'Your quests',
+                            action: 'See all',
+                            onTap: () => context.go('/quests'),
+                          ),
+                          SizedBox(height: grid.px(2)),
+                          if (quests.isLoading)
+                            const _PixelLoadingPanel()
+                          else if (quests.error != null)
+                            _PixelUnavailablePanel(
+                              message: 'Quest list is unavailable.',
+                              onRetry: () => ref
+                                  .read(questProvider.notifier)
+                                  .fetchQuests(),
+                            )
+                          else
+                            _QuestsSection(quests: quests.quests),
+                          SizedBox(height: grid.px(4)),
+                          _SectionHeader(
+                            title: 'Recent activity',
+                            action: 'History',
+                            onTap: () => context.push('/history'),
+                          ),
+                          SizedBox(height: grid.px(2)),
+                          if (submissions.isLoading &&
+                              submissions.submissions.isEmpty)
+                            const _PixelLoadingPanel()
+                          else if (submissions.error != null &&
+                              submissions.submissions.isEmpty)
+                            _PixelUnavailablePanel(
+                              message: 'Recent activity is unavailable.',
+                              onRetry: () => ref
+                                  .read(submissionProvider.notifier)
+                                  .fetchSubmissions(force: true),
+                            )
+                          else if (submissions.submissions.isEmpty)
+                            const _PixelEmptyPanel(
+                              message:
+                                  'Your quest submissions will appear here.',
+                            )
+                          else
+                            ...submissions.submissions
+                                .take(3)
+                                .map((item) => _ActivityRow(submission: item)),
+                          SizedBox(height: grid.px(4)),
+                          _PixelInfoRow(
+                            key: const ValueKey('dashboard_cultural_quizzes'),
+                            icon: DesignerArt.search,
+                            title: 'Cultural quizzes',
+                            subtitle:
+                                'Discover quizzes near participating heritage and cultural destinations.',
+                            action: 'Explore',
+                            onTap: () => context.go('/explore'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  SpotModel _recommendedSpot(List<SpotModel> items) {
+    return items.firstWhere(
+      (spot) => spot.reasons.isNotEmpty,
+      orElse: () => items.first,
+    );
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.firstName,
+    required this.points,
+    required this.level,
+    required this.progress,
+  });
+
+  final String firstName;
+  final int points, level;
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final juanScale = (44 * dpr / DesignerArt.juanIdle.frames.first.height)
+        .round()
+        .clamp(1, 8)
+        .toInt();
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PixelPanel(
+            style: PixelBoxStyle.slot,
+            sunken: true,
+            padding: 2,
+            child: PixelAnimation(DesignerArt.juanIdle, scale: juanScale),
           ),
-          IconButton(
-            tooltip: 'Profile',
-            onPressed: () => context.go('/profile'),
-            icon: const Icon(Icons.account_circle_outlined),
+          SizedBox(width: grid.px(3)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShadowText(
+                  'Welcome back, $firstName',
+                  style: PixelType.body(context, color: PixelPalette.paper)
+                      .copyWith(fontWeight: FontWeight.w700),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  'Level $level · $points Explorer XP',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(context, color: PixelPalette.sun),
+                ),
+                SizedBox(height: grid.px(2)),
+                PixelProgressBar(
+                  value: progress,
+                  segments: 10,
+                  color: PixelPalette.greenBright,
+                ),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  '${(progress * 50).round()} / 50 XP to next level',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.paperDim,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await Future.wait([
-              ref.refresh(choiceEngagementProvider.future),
-              ref.refresh(choiceOverviewProvider.future),
-              ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
-              ref.read(spotDiscoveryProvider.notifier).load(refresh: true),
-              ref.read(questProvider.notifier).fetchQuests(),
-            ]);
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
+    );
+  }
+}
+
+class _ImpactSection extends StatelessWidget {
+  const _ImpactSection({
+    required this.engagement,
+    required this.onProfile,
+    required this.onRetry,
+  });
+
+  final AsyncValue<ChoiceEngagementSummary> engagement;
+  final VoidCallback onProfile;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          title: 'Your impact',
+          action: 'View profile',
+          onTap: onProfile,
+        ),
+        SizedBox(height: grid.px(2)),
+        engagement.when(
+          loading: () => const _PixelLoadingPanel(),
+          error: (_, __) => _PixelUnavailablePanel(
+            message: 'Your travel stats are temporarily unavailable.',
+            onRetry: onRetry,
+          ),
+          data: (summary) => _ImpactTiles(summary: summary),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImpactTiles extends StatelessWidget {
+  const _ImpactTiles({required this.summary});
+
+  final ChoiceEngagementSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final stats = <(String, String)>[
+      ('Visit streak', '${summary.currentStreak} days'),
+      ('Verified visits', '${summary.verifiedVisits}'),
+      ('Destinations', '${summary.uniqueDestinations}'),
+      ('Municipalities', '${summary.municipalities}'),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = grid.px(2);
+        final width =
+            ((constraints.maxWidth - gap * 2) / 3).clamp(1.0, 400.0).toDouble();
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final stat in stats)
+              SizedBox(
+                width: width,
+                child: PixelPanel(
+                  style: PixelBoxStyle.slot,
+                  sunken: true,
+                  padding: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        height: grid.px(18),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            stat.$2,
+                            style: PixelType.title(context),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        stat.$1,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    required this.onExplore,
+    required this.onMap,
+    required this.onQuests,
+  });
+
+  final VoidCallback onExplore, onMap, onQuests;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: PixelButton(
+              key: const ValueKey('dashboard_quick_explore'),
+              label: 'Explore',
+              icon: DesignerArt.navExplore,
+              iconScale: 2,
+              expand: true,
+              onPressed: onExplore,
+            ),
+          ),
+          SizedBox(width: grid.px(2)),
+          Expanded(
+            child: PixelButton(
+              key: const ValueKey('dashboard_quick_map'),
+              label: 'Map',
+              icon: DesignerArt.navExplore,
+              iconScale: 2,
+              expand: true,
+              style: PixelBoxStyle.wood,
+              textColor: PixelPalette.white,
+              onPressed: onMap,
+            ),
+          ),
+          SizedBox(width: grid.px(2)),
+          Expanded(
+            child: PixelButton(
+              key: const ValueKey('dashboard_quick_quests'),
+              label: 'Quests',
+              icon: DesignerArt.questMarker,
+              iconScale: 2,
+              expand: true,
+              style: PixelBoxStyle.wood,
+              textColor: PixelPalette.white,
+              onPressed: onQuests,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.action,
+    required this.onTap,
+  });
+
+  final String title, action;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: grid.px(2),
+      runSpacing: grid.px(1),
+      children: [
+        Text(
+          title,
+          style: PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
+        ),
+        Semantics(
+          button: true,
+          label: action,
+          child: ExcludeSemantics(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: 1,
+                  child: Text(
+                    '$action >',
+                    style: PixelType.small(
+                      context,
+                      color: PixelPalette.blueBright,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeaturedSpot extends ConsumerWidget {
+  const _FeaturedSpot({required this.spot, required this.onTap});
+
+  final SpotModel spot;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final grid = PixelGrid.of(context);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final iconScale =
+        (24 * dpr / DesignerArt.heartLiked.height).round().clamp(1, 8).toInt();
+    final crowd = switch (spot.crowdStatus) {
+      'quiet' => ('Quiet', PixelBoxStyle.green, PixelPalette.white),
+      'busy' || 'crowded' => ('Busy', PixelBoxStyle.red, PixelPalette.white),
+      'moderate' => ('Moderate', PixelBoxStyle.gold, PixelPalette.ink),
+      _ => null,
+    };
+    final distance = spot.distanceKm == null
+        ? ''
+        : ' · ${spot.distanceKm!.toStringAsFixed(1)} km';
+    return Semantics(
+      container: true,
+      button: true,
+      label: 'Open ${spot.name}',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: PixelPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              UiSpecContainer(
-                spec: const UiSpec(
-                  title: 'Traveler dashboard',
-                  figmaLayer: 'Mobile / Dashboard / Home',
-                  dimensions:
-                      'Responsive, vertically scrollable mobile dashboard',
-                  dataBinding:
-                      'Authenticated profile, engagement, destinations, quests, submissions, and JuanChoice APIs',
-                  stateNotes:
-                      'API failures are shown as unavailable; no synthetic activity or ranking data',
-                  uxNotes:
-                      'One-tap shortcuts keep Explore, map, quests, and JuanChoice close at hand',
-                ),
-                child: _HeroCard(
-                  firstName: firstName,
-                  points: user?.points ?? 0,
-                  level: level,
-                  progress: levelProgress,
+              PixelPanel(
+                style: PixelBoxStyle.slot,
+                sunken: true,
+                padding: 1,
+                child: ClipRect(
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: spot.imageUrl != null
+                        ? Image.network(
+                            spot.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const _PixelImageFallback(),
+                          )
+                        : const _PixelImageFallback(),
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              _SectionHeading(
-                  title: 'Your impact',
-                  action: 'View profile',
-                  onTap: () => context.go('/profile')),
-              const SizedBox(height: AppSpacing.sm),
-              engagement.when(
-                loading: () => const _LoadingPanel(height: 96),
-                error: (_, __) => _UnavailablePanel(
-                  message: 'Your travel stats are temporarily unavailable.',
-                  onRetry: () => ref.invalidate(choiceEngagementProvider),
-                ),
-                data: (summary) => _ImpactGrid(summary: summary),
+              SizedBox(height: grid.px(2)),
+              Text(
+                spot.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.body(context)
+                    .copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              _SectionHeading(
-                  title: 'Pick your next stop',
-                  action: 'Explore all',
-                  onTap: () => context.go('/explore')),
-              const SizedBox(height: AppSpacing.sm),
-              _QuickActions(
-                  onExplore: () => context.go('/explore'),
-                  onMap: () => context.go('/map'),
-                  onQuests: () => context.go('/quests')),
-              const SizedBox(height: AppSpacing.md),
-              if (spots.isInitialLoading && spots.spots.isEmpty)
-                const _LoadingPanel(height: 150)
-              else if (spots.failure != null && spots.spots.isEmpty)
-                _UnavailablePanel(
-                    message: 'Destinations could not be loaded.',
-                    onRetry: () => ref
-                        .read(spotDiscoveryProvider.notifier)
-                        .load(refresh: true))
-              else if (spots.spots.isNotEmpty)
-                _FeaturedSpot(
-                    spot: _recommendedSpot(spots.spots),
-                    onTap: () => context.push(
-                        '/explore/${Uri.encodeComponent(_recommendedSpot(spots.spots).id)}'))
-              else
-                const _EmptyPanel(
-                    message:
-                        'No destinations are available yet. Try again later.'),
-              const SizedBox(height: AppSpacing.lg),
-              const HiddenGemCard(),
-              _SectionHeading(
-                  title: 'JuanChoice',
-                  action: 'Open',
-                  onTap: () => context.go('/choice')),
-              const SizedBox(height: AppSpacing.sm),
-              overview.when(
-                loading: () => const _LoadingPanel(height: 76),
-                error: (_, __) => _UnavailablePanel(
-                    message: 'JuanChoice status is unavailable.',
-                    onRetry: () => ref.invalidate(choiceOverviewProvider)),
-                data: (data) => _JuanChoiceCard(
-                    overview: data, onTap: () => context.go('/choice')),
+              SizedBox(height: grid.px(1)),
+              Text(
+                '${spot.municipality}$distance',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.small(context, color: PixelPalette.slate),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              _SectionHeading(
-                  title: 'Your quests',
-                  action: 'See all',
-                  onTap: () => context.go('/quests')),
-              const SizedBox(height: AppSpacing.sm),
-              if (quests.isLoading)
-                const _LoadingPanel(height: 70)
-              else if (quests.error != null)
-                _UnavailablePanel(
-                    message: 'Quest list is unavailable.',
-                    onRetry: () =>
-                        ref.read(questProvider.notifier).fetchQuests())
-              else
-                _InfoRow(
-                  icon: Icons.flag_rounded,
-                  title: '${quests.quests.length} quests available',
-                  subtitle: 'Visit destinations and complete their activities.',
-                  onTap: () => context.go('/quests'),
+              if (spot.reasons.isNotEmpty) ...[
+                SizedBox(height: grid.px(1)),
+                Text(
+                  spot.reasons.first,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      PixelType.small(context, color: PixelPalette.greenBright),
                 ),
-              const SizedBox(height: AppSpacing.lg),
-              _SectionHeading(
-                  title: 'Recent activity',
-                  action: 'History',
-                  onTap: () => context.push('/history')),
-              const SizedBox(height: AppSpacing.sm),
-              if (submissions.isLoading && submissions.submissions.isEmpty)
-                const _LoadingPanel(height: 70)
-              else if (submissions.error != null &&
-                  submissions.submissions.isEmpty)
-                _UnavailablePanel(
-                    message: 'Recent activity is unavailable.',
-                    onRetry: () => ref
-                        .read(submissionProvider.notifier)
-                        .fetchSubmissions(force: true))
-              else if (submissions.submissions.isEmpty)
-                const _EmptyPanel(
-                    message: 'Your quest submissions will appear here.')
-              else
-                ...submissions.submissions
-                    .take(3)
-                    .map((item) => _ActivityRow(submission: item)),
-              const SizedBox(height: AppSpacing.sm),
-              _InfoRow(
-                icon: Icons.quiz_outlined,
-                title: 'Cultural quizzes',
-                subtitle:
-                    'Discover quizzes near participating heritage and cultural destinations.',
-                onTap: () => context.go('/explore'),
+              ],
+              SizedBox(height: grid.px(2)),
+              Row(
+                children: [
+                  if (crowd != null)
+                    PixelChip(
+                      crowd.$1,
+                      style: crowd.$2,
+                      textColor: crowd.$3,
+                    ),
+                  const Spacer(),
+                  _SavedHeart(
+                    saved: spot.saved,
+                    scale: iconScale,
+                    onToggle: () async {
+                      final failure = await ref
+                          .read(spotDiscoveryProvider.notifier)
+                          .toggleSaved(spot);
+                      if (failure != null && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(failure.message)),
+                        );
+                      }
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -218,340 +695,453 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
+}
 
-  SpotModel _recommendedSpot(List<SpotModel> items) {
-    return items.firstWhere((spot) => spot.reasons.isNotEmpty,
-        orElse: () => items.first);
+class _SavedHeart extends StatefulWidget {
+  const _SavedHeart({
+    required this.saved,
+    required this.scale,
+    required this.onToggle,
+  });
+
+  final bool saved;
+  final int scale;
+  final Future<void> Function() onToggle;
+
+  @override
+  State<_SavedHeart> createState() => _SavedHeartState();
+}
+
+class _SavedHeartState extends State<_SavedHeart> {
+  bool _playing = false;
+  bool _target = false;
+
+  Future<void> _toggle() async {
+    setState(() {
+      _target = !widget.saved;
+      _playing = true;
+    });
+    await widget.onToggle();
+    if (mounted) setState(() => _playing = false);
+  }
+
+  void _done() {
+    if (mounted) setState(() => _playing = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = _playing
+        ? null
+        : widget.saved
+            ? DesignerArt.heartLiked
+            : DesignerArt.heartUnliked;
+    return Semantics(
+      button: true,
+      toggled: widget.saved,
+      label: widget.saved ? 'Remove saved destination' : 'Save destination',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggle,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            child: Center(
+              widthFactor: 1,
+              heightFactor: 1,
+              child: _playing
+                  ? PixelAnimation(
+                      _target
+                          ? DesignerArt.heartLikeAnim
+                          : DesignerArt.heartUnlikeAnim,
+                      scale: widget.scale,
+                      loop: false,
+                      onDone: _done,
+                    )
+                  : PixelSprite(icon!, scale: widget.scale),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
-class _HeroCard extends StatelessWidget {
-  const _HeroCard(
-      {required this.firstName,
-      required this.points,
-      required this.level,
-      required this.progress});
-  final String firstName;
-  final int points, level;
-  final double progress;
+class _PixelImageFallback extends StatelessWidget {
+  const _PixelImageFallback();
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: const BoxDecoration(
-          borderRadius: AppSpacing.roundedXl,
-          gradient: LinearGradient(
-              colors: [AppColors.primaryDark, AppColors.primary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Welcome back, $firstName',
-              style: AppTypography.headlineSmall.copyWith(color: Colors.white)),
-          const SizedBox(height: 6),
-          Text('Keep discovering places and stories near you.',
-              style: AppTypography.bodyMedium
-                  .copyWith(color: Colors.white.withValues(alpha: .88))),
-          const SizedBox(height: AppSpacing.lg),
-          Text('$points Explorer XP · Level $level',
-              maxLines: 2,
-              softWrap: true,
-              style: AppTypography.labelLarge
-                  .copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 9),
-          ClipRRect(
-              borderRadius: AppSpacing.roundedPill,
-              child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 7,
-                  color: AppColors.sunGold,
-                  backgroundColor: Colors.white.withValues(alpha: .22))),
-          const SizedBox(height: 5),
-          Text('${(progress * 50).round()} / 50 XP to next level',
-              style: AppTypography.labelSmall
-                  .copyWith(color: Colors.white.withValues(alpha: .85))),
-        ]),
-      );
-}
-
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading(
-      {required this.title, required this.action, required this.onTap});
-  final String title, action;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text(title,
-              style: AppTypography.headlineSmall.copyWith(
-                  color: AppColors.woodBrown, fontWeight: FontWeight.bold)),
-          TextButton(
-            onPressed: onTap,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(action),
+  Widget build(BuildContext context) => ColoredBox(
+        color: PixelPalette.paperDim,
+        child: Center(
+          child: Text(
+            'No photo',
+            style: PixelType.small(context, color: PixelPalette.stone),
           ),
-        ],
-      );
-}
-
-class _ImpactGrid extends StatelessWidget {
-  const _ImpactGrid({required this.summary});
-  final ChoiceEngagementSummary summary;
-  @override
-  Widget build(BuildContext context) =>
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        _StatTile(
-            label: 'Visit streak',
-            value: '${summary.currentStreak} days',
-            icon: Icons.local_fire_department_outlined),
-        _StatTile(
-            label: 'Verified visits',
-            value: '${summary.verifiedVisits}',
-            icon: Icons.verified_outlined),
-        _StatTile(
-            label: 'Destinations',
-            value: '${summary.uniqueDestinations}',
-            icon: Icons.place_outlined),
-        _StatTile(
-            label: 'Municipalities',
-            value: '${summary.municipalities}',
-            icon: Icons.location_city_outlined),
-      ]);
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile(
-      {required this.label, required this.value, required this.icon});
-  final String label, value;
-  final IconData icon;
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        width: (MediaQuery.sizeOf(context).width - 48) / 2,
-        child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: AppSpacing.roundedLg,
-                border: Border.all(color: AppColors.borderLowContrast)),
-            child: Row(children: [
-              Icon(icon, size: 20, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text(value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.labelLarge
-                            .copyWith(fontWeight: FontWeight.bold)),
-                    Text(label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.labelSmall
-                            .copyWith(color: AppColors.textMuted))
-                  ])),
-            ])),
-      );
-}
-
-class _QuickActions extends StatelessWidget {
-  const _QuickActions(
-      {required this.onExplore, required this.onMap, required this.onQuests});
-  final VoidCallback onExplore, onMap, onQuests;
-  @override
-  Widget build(BuildContext context) => Row(children: [
-        Expanded(
-            child: _ActionButton(
-                icon: Icons.explore_outlined,
-                label: 'Explore',
-                onTap: onExplore)),
-        const SizedBox(width: 8),
-        Expanded(
-            child: _ActionButton(
-                icon: Icons.map_outlined, label: 'Map', onTap: onMap)),
-        const SizedBox(width: 8),
-        Expanded(
-            child: _ActionButton(
-                icon: Icons.flag_outlined, label: 'Quests', onTap: onQuests)),
-      ]);
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton(
-      {required this.icon, required this.label, required this.onTap});
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8)));
-}
-
-class _FeaturedSpot extends StatelessWidget {
-  const _FeaturedSpot({required this.spot, required this.onTap});
-  final SpotModel spot;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Card(
-        clipBehavior: Clip.antiAlias,
-        color: AppColors.surfaceContainerLowest,
-        child: InkWell(
-            onTap: onTap,
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (spot.imageUrl != null)
-                Image.network(spot.imageUrl!,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const _ImagePlaceholder())
-              else
-                const _ImagePlaceholder(),
-              Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(spot.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.labelLarge
-                                .copyWith(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text(spot.municipality,
-                            style: AppTypography.bodySmall
-                                .copyWith(color: AppColors.textSecondary)),
-                        if (spot.reasons.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(spot.reasons.first,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.bodySmall
-                                  .copyWith(color: AppColors.primary))
-                        ],
-                      ])),
-            ])),
+        ),
       );
 }
 
 class _JuanChoiceCard extends StatelessWidget {
   const _JuanChoiceCard({required this.overview, required this.onTap});
+
   final ChoiceOverview overview;
   final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
     final current = overview.current;
     final label = current != null
         ? 'Current round: ${current.theme}'
         : overview.previous != null
             ? 'Previous result: ${overview.previous!.periodLabel}'
             : 'Community destination voting';
-    return _InfoRow(
-        icon: Icons.how_to_vote_outlined,
-        title: label,
-        subtitle:
-            overview.notice ?? 'See the current round and previous results.',
-        onTap: onTap);
+    return Semantics(
+      container: true,
+      button: true,
+      label: 'Open JuanChoice',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: PixelPanel(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PixelSprite(DesignerArt.juanChoice, scale: 2),
+              SizedBox(width: grid.px(3)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.body(context)
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: grid.px(1)),
+                    Text(
+                      overview.notice ??
+                          'See the current round and previous results.',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.slate,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuestsSection extends StatelessWidget {
+  const _QuestsSection({required this.quests});
+
+  final List<QuestModel> quests;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    if (quests.isEmpty) {
+      return _PixelInfoRow(
+        icon: DesignerArt.questMarker,
+        title: '0 quests available',
+        subtitle: 'Visit destinations and complete their activities.',
+        action: 'Browse',
+        onTap: () => context.go('/quests'),
+      );
+    }
+    final shown = quests.take(2).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < shown.length; i++) ...[
+          if (i > 0) SizedBox(height: grid.px(2)),
+          _QuestCard(
+            quest: shown[i],
+            onContinue: () => context.go('/quests'),
+          ),
+        ],
+        if (quests.length > shown.length) ...[
+          SizedBox(height: grid.px(1)),
+          Text(
+            '${quests.length} quests available',
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _QuestCard extends StatelessWidget {
+  const _QuestCard({required this.quest, required this.onContinue});
+
+  final QuestModel quest;
+  final VoidCallback onContinue;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final total = quest.steps.length;
+    final done = quest.steps.where((step) => step.isVerified).length;
+    final segments = total == 0 ? 1 : total.clamp(1, 20).toInt();
+    final value = total == 0 ? 0.0 : done / total;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final scale =
+        (24 * dpr / DesignerArt.questMarker.height).round().clamp(1, 8).toInt();
+    return Semantics(
+      container: true,
+      label: quest.title,
+      child: PixelPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PixelSprite(DesignerArt.questMarker, scale: scale),
+                SizedBox(width: grid.px(2)),
+                Expanded(
+                  child: Text(
+                    quest.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: PixelType.body(context)
+                        .copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(
+              '${quest.categoryDisplay} · $total tasks · +${quest.rewardPoints} mJDQ',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(2)),
+            PixelProgressBar(
+              value: value,
+              segments: segments,
+              color: PixelPalette.sun,
+            ),
+            SizedBox(height: grid.px(1)),
+            Text(
+              '$done / $total tasks done',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(2)),
+            PixelButton(
+              label: 'Continue',
+              expand: true,
+              onPressed: onContinue,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
 class _ActivityRow extends StatelessWidget {
   const _ActivityRow({required this.submission});
+
   final SubmissionModel submission;
+
   @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: _InfoRow(
-        icon: submission.status == 'approved'
-            ? Icons.check_circle_outline
-            : submission.status == 'rejected'
-                ? Icons.cancel_outlined
-                : Icons.hourglass_top_rounded,
-        title: submission.questTitle,
-        subtitle:
-            '${submission.status[0].toUpperCase()}${submission.status.substring(1)} · ${submission.createdAt.split('T').first}',
-        onTap: () => context.push('/history'),
-      ));
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final status = submission.status.isEmpty
+        ? 'Pending'
+        : '${submission.status[0].toUpperCase()}${submission.status.substring(1)}';
+    final style = switch (submission.status) {
+      'approved' => PixelBoxStyle.green,
+      'rejected' => PixelBoxStyle.red,
+      _ => PixelBoxStyle.gold,
+    };
+    final textColor = switch (submission.status) {
+      'approved' || 'rejected' => PixelPalette.white,
+      _ => PixelPalette.ink,
+    };
+    return Padding(
+      padding: EdgeInsets.only(bottom: grid.px(2)),
+      child: Semantics(
+        button: true,
+        label: '${submission.questTitle}, $status',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.push('/history'),
+          child: PixelPanel(
+            padding: 2,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PixelChip(status, style: style, textColor: textColor),
+                SizedBox(width: grid.px(2)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        submission.questTitle,
+                        style: PixelType.body(context),
+                      ),
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        submission.createdAt.split('T').first,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow(
-      {required this.icon,
-      required this.title,
-      required this.subtitle,
-      required this.onTap});
-  final IconData icon;
-  final String title, subtitle;
+class _PixelInfoRow extends StatelessWidget {
+  const _PixelInfoRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.action,
+    required this.onTap,
+  });
+
+  final PixelArt icon;
+  final String title, subtitle, action;
   final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => Card(
-      color: AppColors.surfaceContainerLowest,
-      child: ListTile(
-          onTap: onTap,
-          leading: Icon(icon, color: AppColors.primary),
-          title: Text(title),
-          subtitle: Text(subtitle),
-          trailing: const Icon(Icons.chevron_right_rounded)));
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final scale = (32 * dpr / icon.height).round().clamp(1, 8).toInt();
+    return Semantics(
+      container: true,
+      button: true,
+      label: '$title. $action',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: PixelPanel(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PixelSprite(icon, scale: scale),
+              SizedBox(width: grid.px(3)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: PixelType.body(context)
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: grid.px(1)),
+                    Text(
+                      subtitle,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.slate,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: grid.px(2)),
+              PixelChip(action, style: PixelBoxStyle.slot),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _UnavailablePanel extends StatelessWidget {
-  const _UnavailablePanel({required this.message, required this.onRetry});
+class _PixelLoadingPanel extends StatelessWidget {
+  const _PixelLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return SizedBox(
+      height: grid.px(20),
+      child: const Center(child: PixelLoader()),
+    );
+  }
+}
+
+class _PixelUnavailablePanel extends StatelessWidget {
+  const _PixelUnavailablePanel({
+    required this.message,
+    required this.onRetry,
+  });
+
   final String message;
   final VoidCallback onRetry;
+
   @override
-  Widget build(BuildContext context) => Card(
-      color: AppColors.surfaceContainerLowest,
-      child: ListTile(
-          leading:
-              const Icon(Icons.cloud_off_outlined, color: AppColors.textMuted),
-          title: Text(message),
-          trailing: IconButton(
-              tooltip: 'Retry',
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded))));
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return PixelPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            label: 'Retry',
+            onPressed: onRetry,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _EmptyPanel extends StatelessWidget {
-  const _EmptyPanel({required this.message});
+class _PixelEmptyPanel extends StatelessWidget {
+  const _PixelEmptyPanel({required this.message});
+
   final String message;
+
   @override
-  Widget build(BuildContext context) => Card(
-      color: AppColors.surfaceContainerLowest,
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
       child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(message,
-              style: AppTypography.bodyMedium
-                  .copyWith(color: AppColors.textSecondary))));
-}
-
-class _LoadingPanel extends StatelessWidget {
-  const _LoadingPanel({required this.height});
-  final double height;
-  @override
-  Widget build(BuildContext context) => SizedBox(
-      height: height,
-      child: const Center(child: CircularProgressIndicator.adaptive()));
-}
-
-class _ImagePlaceholder extends StatelessWidget {
-  const _ImagePlaceholder();
-  @override
-  Widget build(BuildContext context) => const SizedBox(
-      height: 150,
-      child: ColoredBox(
-          color: AppColors.surfaceContainerHigh,
-          child: Center(
-              child: Icon(Icons.landscape_outlined,
-                  size: 42, color: AppColors.textMuted))));
+        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: PixelType.body(context, color: PixelPalette.slate),
+        ),
+      ),
+    );
+  }
 }
