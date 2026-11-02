@@ -1,7 +1,7 @@
 name: juanderquest_app
 description: "JuanDerQuest: community-powered tourism discovery and quests, beginning with a Pangasinan pilot"
 publish_to: 'none'
-version: 0.1.199+1
+version: 0.2.1+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
