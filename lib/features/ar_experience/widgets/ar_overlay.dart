@@ -97,6 +97,11 @@ class ArObjectLayer extends StatefulWidget {
   final bool collectable;
   final VoidCallback onTap;
 
+  /// False when the object is drawn natively in the camera frame (World AR):
+  /// this layer then keeps only the tap target, the collect glow and the
+  /// off-screen edge hint.
+  final bool drawObject;
+
   /// Real-world size of the object in metres.
   static const double objectSizeM = 0.55;
 
@@ -107,6 +112,7 @@ class ArObjectLayer extends StatefulWidget {
     required this.color,
     required this.collectable,
     required this.onTap,
+    this.drawObject = true,
   });
 
   @override
@@ -151,39 +157,41 @@ class _ArObjectLayerState extends State<ArObjectLayer>
                 builder: (context, _) {
                   final t = _spin.value * 2 * math.pi;
                   return Stack(alignment: Alignment.center, children: [
-                    Container(
-                      width: size * 1.1,
-                      height: size * 1.1,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: (widget.collectable
-                                    ? const Color(0xFF52B788)
-                                    : widget.color)
-                                .withValues(alpha: 0.45),
-                            blurRadius: size * 0.35,
-                            spreadRadius: size * 0.05,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Transform.translate(
-                      offset: Offset(0, math.sin(t) * size * 0.05),
-                      child: SizedBox(
-                        width: size,
-                        height: size,
-                        child: Ar3dCanvas(
-                          mesh: widget.mesh,
-                          rotX: 0.35,
-                          rotY: t,
-                          rotZ: 0.08,
-                          scale: size * 0.42,
-                          renderStyle: RenderStyle.hybrid,
-                          showShadow: false,
+                    if (widget.drawObject || widget.collectable)
+                      Container(
+                        width: size * 1.1,
+                        height: size * 1.1,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (widget.collectable
+                                      ? const Color(0xFF52B788)
+                                      : widget.color)
+                                  .withValues(alpha: 0.45),
+                              blurRadius: size * 0.35,
+                              spreadRadius: size * 0.05,
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                    if (widget.drawObject)
+                      Transform.translate(
+                        offset: Offset(0, math.sin(t) * size * 0.05),
+                        child: SizedBox(
+                          width: size,
+                          height: size,
+                          child: Ar3dCanvas(
+                            mesh: widget.mesh,
+                            rotX: 0.35,
+                            rotY: t,
+                            rotZ: 0.08,
+                            scale: size * 0.42,
+                            renderStyle: RenderStyle.hybrid,
+                            showShadow: false,
+                          ),
+                        ),
+                      ),
                   ]);
                 },
               ),
