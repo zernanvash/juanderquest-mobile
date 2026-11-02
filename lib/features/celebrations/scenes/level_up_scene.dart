@@ -53,18 +53,15 @@ class LevelUpGame extends FlameGame {
     double size,
     Color color, {
     FontWeight fontWeight = FontWeight.w700,
-  }) =>
-      TextPaint(
-        style: TextStyle(
-          fontFamily: font,
-          fontSize: (size * fontScale).roundToDouble().clamp(10, 48),
-          fontWeight: fontWeight,
-          color: color,
-          shadows: [
-            Shadow(color: PixelPalette.ink, offset: Offset(unit, unit)),
-          ],
-        ),
-      );
+  }) => TextPaint(
+    style: TextStyle(
+      fontFamily: font,
+      fontSize: (size * fontScale).roundToDouble().clamp(10, 48),
+      fontWeight: fontWeight,
+      color: color,
+      shadows: [Shadow(color: PixelPalette.ink, offset: Offset(unit, unit))],
+    ),
+  );
 
   @override
   Future<void> onLoad() async {
@@ -149,7 +146,7 @@ class LevelUpGame extends FlameGame {
 
 class _SunRaysComponent extends PositionComponent {
   _SunRaysComponent(this.unit, {this.reducedMotion = false})
-      : super(anchor: Anchor.center);
+    : super(anchor: Anchor.center);
 
   final double unit;
   final bool reducedMotion;
@@ -181,7 +178,9 @@ class _SunRaysComponent extends PositionComponent {
 
       // Clip wedges into a circular medallion so dark ink sky and stars show around it
       canvas.save();
-      canvas.clipPath(Path()..addOval(Rect.fromCircle(center: Offset.zero, radius: radius)));
+      canvas.clipPath(
+        Path()..addOval(Rect.fromCircle(center: Offset.zero, radius: radius)),
+      );
 
       for (var i = 0; i < wedgeCount; i++) {
         final a1 = baseRot + i * wedgeAngle;
@@ -273,9 +272,7 @@ class _LevelNumeralComponent extends PositionComponent {
         fontSize: (10 * fontScale).roundToDouble().clamp(8, 18),
         fontWeight: FontWeight.w700,
         color: PixelPalette.sun,
-        shadows: [
-          Shadow(color: PixelPalette.ink, offset: Offset(unit, unit)),
-        ],
+        shadows: [Shadow(color: PixelPalette.ink, offset: Offset(unit, unit))],
       ),
     );
 
@@ -286,7 +283,10 @@ class _LevelNumeralComponent extends PositionComponent {
         fontWeight: FontWeight.w700,
         color: PixelPalette.white,
         shadows: [
-          Shadow(color: PixelPalette.ink, offset: Offset(unit * 1.5, unit * 1.5)),
+          Shadow(
+            color: PixelPalette.ink,
+            offset: Offset(unit * 1.5, unit * 1.5),
+          ),
         ],
       ),
     );
@@ -320,21 +320,22 @@ class _LevelNumeralComponent extends PositionComponent {
     }
   }
 
+  // Made once: render runs every frame (Plan 75c §3, no allocations in render).
+  final Paint _plateFill = Paint()
+    ..color = PixelPalette.ink
+    ..isAntiAlias = false;
+  final Paint _plateEdge = Paint()
+    ..color = PixelPalette.woodLight
+    ..isAntiAlias = false;
+
   @override
   void render(Canvas canvas) {
-    final plateRect = Rect.fromLTWH(0, 0, size.x, size.y);
-    final rrect = RRect.fromRectAndRadius(plateRect, Radius.circular(unit * 2));
-
-    // Dark ink badge background
-    final bgPaint = Paint()..color = PixelPalette.ink;
-    canvas.drawRRect(rrect, bgPaint);
-
-    // Border
-    final borderPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = unit * 1.5
-      ..color = PixelPalette.woodLight;
-    canvas.drawRRect(rrect, borderPaint);
+    // Square pixel badge: a 1-art-px woodLight frame around an ink plate, with
+    // the corner pixels left out (stepped corners, no anti-aliasing).
+    final w = size.x, h = size.y, u = unit;
+    canvas.drawRect(Rect.fromLTWH(u, 0, w - 2 * u, h), _plateEdge);
+    canvas.drawRect(Rect.fromLTWH(0, u, w, h - 2 * u), _plateEdge);
+    canvas.drawRect(Rect.fromLTWH(u, u, w - 2 * u, h - 2 * u), _plateFill);
 
     // "LVL" tag at upper part
     _lvlLabelPaint.render(
