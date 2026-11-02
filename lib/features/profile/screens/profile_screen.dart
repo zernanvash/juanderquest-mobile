@@ -317,67 +317,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
 
             const SizedBox(height: AppSpacing.sectionGap),
-
-            // History & Submissions Action Card
-            const JdqSectionHeader(
-              title: 'Activity & History',
-              subtitle:
-                  'Track GPS-verified proof submissions and review statuses.',
-            ),
-
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: AppSpacing.roundedLg,
-                border: Border.all(color: AppColors.borderLowContrast),
-                boxShadow: AppSpacing.cardShadow,
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => context.push('/history'),
-                  borderRadius: AppSpacing.roundedLg,
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: AppSpacing.roundedMd,
-                          ),
-                          child: const Icon(Icons.history_rounded,
-                              color: AppColors.primary, size: 24),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Submission History',
-                                style: AppTypography.labelLarge
-                                    .copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                'View status of your quest & spot submissions',
-                                style: AppTypography.bodySmall
-                                    .copyWith(color: AppColors.textSecondary),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right_rounded,
-                            color: AppColors.textMuted),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
           ],
 
           // Community & Project Links
@@ -442,34 +381,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const Divider(height: 1, color: AppColors.borderLowContrast),
                   ListTile(
-                    onTap: () => context.push('/vote'),
-                    leading: const Icon(Icons.how_to_vote_rounded,
-                        color: AppColors.primary),
-                    title: Text('Governance Prototype',
-                        style: AppTypography.labelLarge
-                            .copyWith(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Separate from JuanChoice community voting',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.textSecondary)),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted),
-                  ),
-                  const Divider(height: 1, color: AppColors.borderLowContrast),
-                  ListTile(
-                    onTap: () => context.push('/affiliate'),
-                    leading: const Icon(Icons.store_mall_directory_outlined,
-                        color: AppColors.primary),
-                    title: Text('Merchant Affiliate',
-                        style: AppTypography.labelLarge
-                            .copyWith(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Apply to participate in tourism promotions',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.textSecondary)),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted),
-                  ),
-                  const Divider(height: 1, color: AppColors.borderLowContrast),
-                  ListTile(
                     onTap: () => context.push('/plaza'),
                     leading: Container(
                       padding: const EdgeInsets.all(8),
@@ -487,31 +398,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     subtitle: Text(
                       'View top explorers, rankings, and sprint leaderboards.',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted),
-                  ),
-                  const Divider(height: 1, color: AppColors.borderLowContrast),
-                  ListTile(
-                    onTap: () => context.push('/about'),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.12),
-                        borderRadius: AppSpacing.roundedMd,
-                      ),
-                      child: const Icon(Icons.school_rounded,
-                          color: AppColors.primary, size: 22),
-                    ),
-                    title: Text(
-                      'About JuanDerQuest & Team',
-                      style: AppTypography.labelLarge
-                          .copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      'Universidad de Dagupan capstone research authors & flywheel pillars.',
                       style: AppTypography.bodySmall
                           .copyWith(color: AppColors.textSecondary),
                     ),

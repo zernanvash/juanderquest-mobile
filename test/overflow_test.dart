@@ -63,6 +63,8 @@ import 'package:juanderquest_app/features/spots/widgets/spot_posting_sheet.dart'
 import 'package:juanderquest_app/features/spots/screens/spot_discovery_studio_screen.dart';
 import 'package:juanderquest_app/features/spots/utils/spot_location_handoff.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
+import 'package:juanderquest_app/features/settings/screens/settings_updates_screen.dart';
+import 'package:juanderquest_app/features/settings/screens/settings_developer_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
@@ -1036,6 +1038,30 @@ void main() {
         (tester) async {
       await testScreenOverflow(
           tester, const SettingsScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('SettingsUpdatesScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SettingsUpdatesScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('SettingsUpdatesScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SettingsUpdatesScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('SettingsDeveloperScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SettingsDeveloperScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('SettingsDeveloperScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const SettingsDeveloperScreen(), const Size(568, 320), 2.0);
     });
 
     testWidgets('UpdateDialog does not overflow in small portrait',

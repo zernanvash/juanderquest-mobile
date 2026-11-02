@@ -23,6 +23,8 @@ class LocationFenceMapPicker extends StatefulWidget {
 
 class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
   late final MapController _mapController;
+  // Locked by default so a page scroll that crosses the map never moves the pin.
+  bool _editing = false;
 
   @override
   void initState() {
@@ -46,42 +48,48 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
           child: Container(
             height: 180,
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFE7E5E4)),
+              border: Border.all(
+                color: _editing ? AppColors.primary : const Color(0xFFE7E5E4),
+                width: _editing ? 2 : 1,
+              ),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Stack(
               children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: LatLng(widget.fence.lat, widget.fence.lng),
-                    initialZoom: 16,
-                    minZoom: 8,
-                    maxZoom: 19,
-                    onPositionChanged: (pos, hasGesture) {
-                      if (hasGesture) {
-                        widget.onChanged(widget.fence.copyWith(
-                          lat: pos.center.latitude,
-                          lng: pos.center.longitude,
-                        ));
-                      }
-                    },
-                  ),
-                  children: [
-                    buildBaseTileLayer(satellite: false),
-                    CircleLayer(
-                      circles: [
-                        CircleMarker(
-                          point: LatLng(widget.fence.lat, widget.fence.lng),
-                          radius: widget.fence.radiusMeters.toDouble(),
-                          useRadiusInMeter: true,
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderColor: AppColors.primary,
-                          borderStrokeWidth: 2,
-                        ),
-                      ],
+                IgnorePointer(
+                  ignoring: !_editing,
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: LatLng(widget.fence.lat, widget.fence.lng),
+                      initialZoom: 16,
+                      minZoom: 8,
+                      maxZoom: 19,
+                      onPositionChanged: (pos, hasGesture) {
+                        if (hasGesture) {
+                          widget.onChanged(widget.fence.copyWith(
+                            lat: pos.center.latitude,
+                            lng: pos.center.longitude,
+                          ));
+                        }
+                      },
                     ),
-                  ],
+                    children: [
+                      buildBaseTileLayer(satellite: false),
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: LatLng(widget.fence.lat, widget.fence.lng),
+                            radius: widget.fence.radiusMeters.toDouble(),
+                            useRadiusInMeter: true,
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            borderColor: AppColors.primary,
+                            borderStrokeWidth: 2,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 // Center pin
                 IgnorePointer(
@@ -92,7 +100,8 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(4),
@@ -121,6 +130,25 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                         ],
                       ),
                     ),
+                  ),
+                ),
+                Positioned(
+                  right: 8,
+                  bottom: 8,
+                  child: FilledButton.tonalIcon(
+                    key: const ValueKey('fence_map_move_pin'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () => setState(() => _editing = !_editing),
+                    icon: Icon(
+                        _editing
+                            ? Icons.check_rounded
+                            : Icons.open_with_rounded,
+                        size: 18),
+                    label: Text(_editing ? 'Done' : 'Move pin'),
                   ),
                 ),
               ],
@@ -166,15 +194,22 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                 activeColor: AppColors.primary,
                 inactiveColor: const Color(0xFFD6D3D1),
                 onChanged: (val) {
-                  widget.onChanged(widget.fence.copyWith(radiusMeters: val.round()));
+                  widget.onChanged(
+                      widget.fence.copyWith(radiusMeters: val.round()));
                 },
               ),
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('30 m', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                  Text('100 m (recommended)', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                  Text('500 m', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  Text('30 m',
+                      style:
+                          TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  Text('100 m (recommended)',
+                      style:
+                          TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  Text('500 m',
+                      style:
+                          TextStyle(fontSize: 10, color: AppColors.textMuted)),
                 ],
               ),
             ],

@@ -17,6 +17,8 @@ import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/affiliate_application_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
+import '../features/settings/screens/settings_updates_screen.dart';
+import '../features/settings/screens/settings_developer_screen.dart';
 import '../features/cosmetics/screens/appearance_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
@@ -163,6 +165,37 @@ final routerProvider = Provider<GoRouter>((ref) {
                             : state.uri.queryParameters)
                     .toString(),
               ),
+              // Full-screen pages that open spots or quests live in this branch: go_router 14
+              // asserts (duplicate page key) when a root-navigator page pushes a shell route.
+              GoRoute(
+                path: '/search',
+                pageBuilder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return buildDirectionalSlidePage(
+                    context: context,
+                    state: state,
+                    child: SpotSearchScreen(
+                      initialQuery:
+                          state.uri.queryParameters['q'] ?? extra?['q']?.toString(),
+                      initialCategory: state.uri.queryParameters['category'] ??
+                          extra?['category']?.toString(),
+                      initialCrowd: state.uri.queryParameters['crowd'] ??
+                          extra?['crowd']?.toString(),
+                    ),
+                  );
+                },
+              ),
+              GoRoute(
+                path: '/notifications',
+                pageBuilder: (context, state) => buildDirectionalSlidePage(
+                  context: context,
+                  state: state,
+                  child: const NotificationsScreen(),
+                ),
+              ),
+              GoRoute(
+                  path: '/saved',
+                  builder: (context, state) => const SavedSpotsScreen()),
             ],
           ),
           StatefulShellBranch(
@@ -291,17 +324,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/wallet/connect',
           builder: (context, state) => const WalletConnectScreen()),
       GoRoute(
-        path: '/notifications',
-        pageBuilder: (context, state) => buildDirectionalSlidePage(
-          context: context,
-          state: state,
-          child: const NotificationsScreen(),
-        ),
-      ),
-      GoRoute(
-          path: '/saved',
-          builder: (context, state) => const SavedSpotsScreen()),
-      GoRoute(
           path: '/affiliate',
           builder: (context, state) => const AffiliateApplicationScreen()),
       GoRoute(
@@ -311,25 +333,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           state: state,
           child: const SettingsScreen(),
         ),
-        routes: [GoRoute(path:'appearance',builder:(context,state)=>const AppearanceScreen())],
-      ),
-      GoRoute(
-        path: '/search',
-        pageBuilder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>?;
-          return buildDirectionalSlidePage(
-            context: context,
-            state: state,
-            child: SpotSearchScreen(
-              initialQuery:
-                  state.uri.queryParameters['q'] ?? extra?['q']?.toString(),
-              initialCategory: state.uri.queryParameters['category'] ??
-                  extra?['category']?.toString(),
-              initialCrowd: state.uri.queryParameters['crowd'] ??
-                  extra?['crowd']?.toString(),
-            ),
-          );
-        },
+        routes: [
+          GoRoute(path:'appearance',builder:(context,state)=>const AppearanceScreen()),
+          GoRoute(path: 'updates', builder: (context, state) => const SettingsUpdatesScreen()),
+          GoRoute(path: 'developer', builder: (context, state) => const SettingsDeveloperScreen()),
+        ],
       ),
       GoRoute(
         path: '/history',

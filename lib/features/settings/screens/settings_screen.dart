@@ -1,25 +1,20 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/network/api_client.dart';
-import '../../../core/network/server_override.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../app_update/providers/app_update_provider.dart';
-import '../../app_update/widgets/update_dialog.dart';
 import '../../../core/services/push_service.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../map/widgets/map_origin_card.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 
+/// Settings home: short categories that open their own pages, so a new
+/// setting adds a row here instead of growing one long screen.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -31,8 +26,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final updateState = ref.watch(appUpdateProvider);
-    final isChecking = updateState.status == UpdateStatus.checking;
-    final isGuideEnabled = ref.watch(designerGuideProvider);
+    final version = 'v${updateState.installedVersionName} (${updateState.installedVersionCode})';
 
     return JdqScaffold(
       scrollable: true,
@@ -111,274 +105,78 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(height: AppSpacing.sectionGap),
-
-          // App System & Updates
-          const JdqSectionHeader(
-            title: 'App System & Updates',
-            subtitle: 'Over-the-air APK releases and build version management.',
-          ),
-
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: isChecking
-                    ? null
-                    : () async {
-                        final hasUpdate = await ref
-                            .read(appUpdateProvider.notifier)
-                            .checkForUpdates(silent: false);
-                        if (context.mounted) {
-                          final current = ref.read(appUpdateProvider);
-                          if (hasUpdate && current.latestVersion != null) {
-                            UpdateDialog.show(context, current.latestVersion!);
-                          } else if (current.status == UpdateStatus.upToDate) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'App is up to date (v${current.installedVersionName} · Build ${current.installedVersionCode}).',
-                                ),
-                                backgroundColor: AppColors.primary,
-                              ),
-                            );
-                          } else if (current.status == UpdateStatus.readyToInstall && current.latestVersion != null) {
-                            UpdateDialog.show(context, current.latestVersion!);
-                          } else if (current.status == UpdateStatus.error) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  current.errorMessage ?? 'Unable to check for updates. Please try again.',
-                                ),
-                                backgroundColor: AppColors.danger,
-                                action: SnackBarAction(
-                                  label: 'Retry',
-                                  textColor: Colors.white,
-                                  onPressed: () {
-                                    ref.read(appUpdateProvider.notifier).checkForUpdates(silent: false);
-                                  },
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                borderRadius: AppSpacing.roundedLg,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.sunGold.withOpacity(0.15),
-                          borderRadius: AppSpacing.roundedMd,
-                        ),
-                        child: const Icon(
-                          Icons.system_update_rounded,
-                          color: AppColors.woodBrown,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: [
-                                Text(
-                                  'Check for updates',
-                                  style: AppTypography.labelLarge.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.surfaceContainerHigh,
-                                    borderRadius: AppSpacing.roundedPill,
-                                  ),
-                                  child: Text(
-                                    'v${updateState.installedVersionName} (${updateState.installedVersionCode})',
-                                    style: AppTypography.bodySmall.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              isChecking
-                                  ? 'Checking server for updates...'
-                                  : updateState.hasUpdate
-                                      ? 'New version available (v${updateState.latestVersion?.versionName})'
-                                      : updateState.status == UpdateStatus.error
-                                          ? (updateState.errorMessage ?? 'Update check failed. Tap to retry.')
-                                          : updateState.lastCheckedAt != null
-                                              ? 'Up to date · Checked today'
-                                              : 'Tap to check for latest updates',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: updateState.hasUpdate
-                                    ? AppColors.primary
-                                    : updateState.status == UpdateStatus.error
-                                        ? AppColors.danger
-                                        : AppColors.textSecondary,
-                                fontWeight: updateState.hasUpdate
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isChecking)
-                        const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      else if (updateState.hasUpdate)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: AppSpacing.roundedPill,
-                          ),
-                          child: Text(
-                            'UPDATE',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.onPrimary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        )
-                      else
-                        const Icon(Icons.refresh_rounded, color: AppColors.textMuted),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.sectionGap),
-
-          Card(
-            margin: EdgeInsets.zero,
-            child: ListTile(
+          _SettingsGroup(title: 'Account', tiles: [
+            _SettingsTile(
               key: const ValueKey('settings_appearance'),
-              leading: const Icon(Icons.palette_outlined, color: AppColors.primary),
-              title: const Text('Appearance'),
-              subtitle: const Text('Equip your profile banners, frames, titles, and name colours.'),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              icon: Icons.palette_outlined,
+              title: 'Appearance',
+              subtitle: 'Profile banners, frames, titles and name colours',
               onTap: () => context.push('/settings/appearance'),
             ),
-          ),
-
-          const SizedBox(height: AppSpacing.md),
-
-          Card(
-            margin: EdgeInsets.zero,
-            child: ListTile(
+            _SettingsTile(
               key: const ValueKey('settings_interests'),
-              leading: const Icon(Icons.interests_rounded, color: AppColors.primary),
-              title: const Text('Travel interests'),
-              subtitle: const Text('Tune which destinations we recommend.'),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              icon: Icons.interests_rounded,
+              title: 'Travel interests',
+              subtitle: 'Tune which destinations we recommend',
               onTap: () => context.push('/onboarding/interests'),
             ),
-          ),
+          ]),
+
+          _SettingsGroup(title: 'Activity', tiles: [
+            _SettingsTile(
+              key: const ValueKey('settings_submissions'),
+              icon: Icons.history_rounded,
+              title: 'My submissions',
+              subtitle: 'Status of your quest and spot submissions',
+              onTap: () => context.push('/history'),
+            ),
+            _SettingsTile(
+              key: const ValueKey('settings_affiliate'),
+              icon: Icons.store_mall_directory_outlined,
+              title: 'Merchant affiliate',
+              subtitle: 'Apply to take part in tourism promotions',
+              onTap: () => context.push('/affiliate'),
+            ),
+          ]),
+
+          _SettingsGroup(title: 'App', tiles: [
+            _SettingsTile(
+              key: const ValueKey('settings_updates'),
+              icon: Icons.system_update_rounded,
+              title: 'App updates',
+              subtitle: updateState.hasUpdate ? '$version · update available' : version,
+              highlight: updateState.hasUpdate,
+              onTap: () => context.push('/settings/updates'),
+            ),
+            _SettingsTile(
+              key: const ValueKey('settings_developer'),
+              icon: Icons.design_services_rounded,
+              title: 'Developer tools',
+              subtitle: ref.watch(designerGuideProvider)
+                  ? 'Designer guide is on'
+                  : 'Designer guide and diagnostics',
+              onTap: () => context.push('/settings/developer'),
+            ),
+          ]),
+
+          _SettingsGroup(title: 'About', tiles: [
+            _SettingsTile(
+              key: const ValueKey('settings_about'),
+              icon: Icons.school_rounded,
+              title: 'About JuanDerQuest & team',
+              subtitle: 'Universidad de Dagupan capstone authors',
+              onTap: () => context.push('/about'),
+            ),
+            _SettingsTile(
+              key: const ValueKey('settings_governance'),
+              icon: Icons.how_to_vote_rounded,
+              title: 'Governance prototype',
+              subtitle: 'Separate from JuanChoice community voting',
+              onTap: () => context.push('/vote'),
+            ),
+          ]),
 
           const SizedBox(height: AppSpacing.sectionGap),
-
-          // Developer & UI Designer Tools
-          const JdqSectionHeader(
-            title: 'Developer & UI Designer Mode',
-            subtitle: 'Inspect Figma component boundaries and semantic spec overlays.',
-          ),
-
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(
-                color: isGuideEnabled ? const Color(0xFF0096C7) : AppColors.borderLowContrast,
-              ),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: SwitchListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
-                secondary: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: isGuideEnabled
-                        ? const Color(0xFF0096C7).withOpacity(0.15)
-                        : AppColors.surfaceContainerHigh,
-                    borderRadius: AppSpacing.roundedMd,
-                  ),
-                  child: Icon(
-                    Icons.design_services_rounded,
-                    color: isGuideEnabled ? const Color(0xFF0096C7) : AppColors.woodBrown,
-                    size: 24,
-                  ),
-                ),
-                title: Text(
-                  'Designer Guide Mode',
-                  style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  isGuideEnabled
-                      ? 'Blueprint outlines and Figma component tags are ACTIVE.'
-                      : 'Show UI wireframe boundaries and Figma element specs.',
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                ),
-                value: isGuideEnabled,
-                activeColor: const Color(0xFF0096C7),
-                onChanged: (val) {
-                  ref.read(designerGuideProvider.notifier).state = val;
-                },
-              ),
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.sectionGap),
-
-          // Debug-only API server override (compiled out of release builds).
-          if (ServerOverrideStore.isAvailable) ...[
-            const JdqSectionHeader(
-              title: 'Developer — API server',
-              subtitle: 'Debug and profile builds only. Point this device at another backend.',
-            ),
-            const _ApiServerOverrideCard(),
-            if (kDebugMode) const MapOriginCard(),
-            const SizedBox(height: AppSpacing.sm),
-            Card(
-              margin: EdgeInsets.zero,
-              child: ListTile(
-                key: const ValueKey('settings_ar_diagnostics'),
-                leading: const Icon(Icons.view_in_ar_rounded, color: AppColors.woodBrown),
-                title: const Text('AR diagnostics'),
-                subtitle: const Text('Live sensor readout and a test object.'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.push('/ar-diagnostics'),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-          ],
 
           // Session Sign Out
           DestructiveButton(
@@ -400,148 +198,82 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _ApiServerOverrideCard extends StatefulWidget {
-  const _ApiServerOverrideCard();
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({required this.title, required this.tiles});
 
-  @override
-  State<_ApiServerOverrideCard> createState() => _ApiServerOverrideCardState();
-}
-
-class _ApiServerOverrideCardState extends State<_ApiServerOverrideCard> {
-  final _controller = TextEditingController();
-  String _statusLine = '';
-  bool _busy = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCurrent();
-  }
-
-  Future<void> _loadCurrent() async {
-    final stored = await ServerOverrideStore.read();
-    if (!mounted) return;
-    setState(() {
-      _controller.text = stored ?? '';
-      _statusLine = stored == null
-          ? 'Using the built-in server: ${ApiClient.apiBaseUrl}'
-          : 'Override active (applies now): ${ApiClient.apiBaseUrl}';
-    });
-  }
-
-  String _candidateUrl() {
-    final raw = _controller.text.trim();
-    if (raw.isEmpty) return ApiClient.normalizeBaseUrl(ApiClient.apiBaseUrl);
-    return ApiClient.normalizeBaseUrl(raw);
-  }
-
-  Future<void> _testConnection() async {
-    setState(() {
-      _busy = true;
-      _statusLine = 'Testing ${_candidateUrl()}/health/ready …';
-    });
-    final dio = Dio(BaseOptions(
-      baseUrl: _candidateUrl(),
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 5),
-      headers: {'Accept': 'application/json'},
-    ));
-    try {
-      final response = await dio.get<dynamic>('/health/ready');
-      final data = response.data;
-      final dependencies = data is Map ? data['dependencies'] : null;
-      final summary = dependencies is Map
-          ? dependencies.entries.map((entry) {
-              final value = entry.value;
-              final state = value is Map ? value['status'] ?? value['state'] : value;
-              return '${entry.key}: $state';
-            }).join(' · ')
-          : 'no dependency detail';
-      setState(() => _statusLine = 'OK (${response.statusCode}) — $summary');
-    } on DioException catch (error) {
-      final status = error.response?.statusCode;
-      setState(() => _statusLine = status == null
-          ? 'Unreachable: ${error.type.name}'
-          : 'HTTP $status from the candidate server');
-    } catch (error) {
-      setState(() => _statusLine = 'Test failed: $error');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _save() async {
-    final raw = _controller.text.trim();
-    await ServerOverrideStore.write(raw);
-    await ApiClient.applyStoredServerOverride();
-    if (!mounted) return;
-    setState(() => _statusLine = 'Saved. Requests now use ${ApiClient.apiBaseUrl} — restart if anything looks stale.');
-  }
-
-  Future<void> _reset() async {
-    await ServerOverrideStore.clear();
-    if (!mounted) return;
-    setState(() {
-      _controller.clear();
-      _statusLine = 'Override cleared. Default server: ${ApiClient.normalizeBaseUrl(ApiClient.apiBaseUrl)}';
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  final String title;
+  final List<Widget> tiles;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.borderLowContrast),
-        boxShadow: AppSpacing.cardShadow,
-      ),
+    final children = <Widget>[];
+    for (var i = 0; i < tiles.length; i++) {
+      if (i > 0) children.add(const Divider(height: 1, color: AppColors.borderLowContrast));
+      children.add(tiles[i]);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.lg),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _controller,
-            keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              labelText: 'API base URL',
-              hintText: 'http://192.168.1.20:4100',
-              isDense: true,
-              border: OutlineInputBorder(),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
+            child: Text(
+              title.toUpperCase(),
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _statusLine,
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton(
-                onPressed: _busy ? null : _testConnection,
-                child: const Text('Test connection'),
-              ),
-              FilledButton(
-                onPressed: _busy ? null : _save,
-                child: const Text('Save override'),
-              ),
-              TextButton(
-                onPressed: _busy ? null : _reset,
-                child: const Text('Reset'),
-              ),
-            ],
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: AppSpacing.roundedLg,
+              border: Border.all(color: AppColors.borderLowContrast),
+              boxShadow: AppSpacing.cardShadow,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: Column(children: children),
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.highlight = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: AppColors.primary),
+      title: Text(title,
+          style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold)),
+      subtitle: Text(subtitle,
+          style: AppTypography.bodySmall.copyWith(
+            color: highlight ? AppColors.primary : AppColors.textSecondary,
+            fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+          )),
+      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
     );
   }
 }
