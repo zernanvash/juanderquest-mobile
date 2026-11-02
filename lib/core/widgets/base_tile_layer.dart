@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +23,17 @@ TileLayer buildBaseTileLayer({bool satellite = false}) => satellite
         maxNativeZoom: MapConfig.maxNativeZoom,
         maxZoom: MapConfig.maxZoom,
       );
+
+/// Shader-wrapped tile layer for the pixel map mode.
+Widget buildPixelBaseTileLayer({
+  required ui.FragmentShader shader,
+  bool satellite = false,
+}) {
+  return ImageFiltered(
+    imageFilter: ui.ImageFilter.shader(shader),
+    child: buildBaseTileLayer(satellite: satellite),
+  );
+}
 
 /// Map / Satellite choice, shared by every map for this app session.
 final satelliteModeProvider = StateProvider<bool>((ref) => false);

@@ -4,6 +4,14 @@ import 'package:juanderquest_app/features/map/widgets/map_cluster_list_sheet.dar
 
 void main() {
   testWidgets('cluster list stays scrollable without overflow at small size and large text', (tester) async {
+    FlutterError.onError = (details) {
+      print('ERR: ${details.exceptionAsString()}');
+      print('SUMMARY: ${details.summary}');
+      for (final p in details.informationCollector!()) {
+        print('INFO: ${p.toDescription()}');
+      }
+    };
+
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
