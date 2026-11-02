@@ -19,6 +19,7 @@ import com.google.ar.core.Config
 import com.google.ar.core.Coordinates2d
 import com.google.ar.core.Frame
 import com.google.ar.core.Plane
+import com.google.ar.core.Pose
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
@@ -95,6 +96,8 @@ private class ArCoreView(
     private var session: Session? = null
     private var anchor: Anchor? = null
     @Volatile private var placeRequest: MethodChannel.Result? = null
+    // AR Lab / world-location spawn: anchor at a given ground position (x, z) in ARCore world space.
+    @Volatile private var placeAtRequest: Pair<FloatArray, MethodChannel.Result>? = null
     @Volatile private var clearRequested = false
     private var viewportWidth = 1
     private var viewportHeight = 1
@@ -118,6 +121,14 @@ private class ArCoreView(
                 "placeAnchor" -> {
                     placeRequest?.success(false)
                     placeRequest = result
+                }
+                // Anchor on the ground at world (x, z): a ray straight down onto a detected
+                // floor plane; without one, at the lowest floor seen (or 1.4 m below the camera).
+                "placeAnchorAt" -> {
+                    val x = (call.argument<Number>("x") ?: 0).toFloat()
+                    val z = (call.argument<Number>("z") ?: 0).toFloat()
+                    placeAtRequest?.second?.success(null)
+                    placeAtRequest = Pair(floatArrayOf(x, z), result)
                 }
                 "clearAnchor" -> {
                     clearRequested = true
@@ -238,6 +249,12 @@ private class ArCoreView(
             main.post { request.success(placed) }
         }
 
+        placeAtRequest?.let { (xz, request) ->
+            placeAtRequest = null
+            val placed = if (tracking) placeAt(s, frame, xz[0], xz[1]) else null
+            main.post { request.success(placed) }
+        }
+
         val planes = s.getAllTrackables(Plane::class.java).count {
             it.trackingState == TrackingState.TRACKING && it.subsumedBy == null
         }
@@ -259,6 +276,31 @@ private class ArCoreView(
             payload["anchor"] = anchorMatrix.map { it.toDouble() }
         }
         main.post { sink?.success(payload) }
+    }
+
+    private fun placeAt(s: Session, frame: Frame, x: Float, z: Float): Map<String, Any>? {
+        val camY = frame.camera.pose.ty()
+        var y: Float? = null
+        var onPlane = false
+        try {
+            for (hit in frame.hitTest(floatArrayOf(x, camY + 0.3f, z), 0, floatArrayOf(0f, -1f, 0f), 0)) {
+                val t = hit.trackable
+                if (t is Plane && t.type == Plane.Type.HORIZONTAL_UPWARD_FACING && t.trackingState == TrackingState.TRACKING) {
+                    y = hit.hitPose.ty()
+                    onPlane = true
+                    break
+                }
+            }
+        } catch (_: Exception) {
+        }
+        if (y == null) {
+            y = s.getAllTrackables(Plane::class.java)
+                .filter { it.trackingState == TrackingState.TRACKING && it.subsumedBy == null && it.type == Plane.Type.HORIZONTAL_UPWARD_FACING }
+                .minOfOrNull { it.centerPose.ty() } ?: (camY - 1.4f)
+        }
+        anchor?.detach()
+        anchor = s.createAnchor(Pose.makeTranslation(x, y, z))
+        return mapOf("x" to x.toDouble(), "y" to y.toDouble(), "z" to z.toDouble(), "onPlane" to onPlane)
     }
 
     private fun tryPlace(frame: Frame): Boolean {
