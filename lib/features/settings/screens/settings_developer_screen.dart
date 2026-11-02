@@ -105,6 +105,18 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                 onTap: () => context.push('/ar-diagnostics'),
               ),
             ),
+            const SizedBox(height: AppSpacing.sm),
+            Card(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                key: const ValueKey('settings_pixel_lab'),
+                leading: const Icon(Icons.grid_on_rounded, color: AppColors.woodBrown),
+                title: const Text('Pixel lab'),
+                subtitle: const Text('Designer pixel art in the brand palette.'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push('/settings/pixel-lab'),
+              ),
+            ),
             const SizedBox(height: AppSpacing.sectionGap),
           ],
         ],

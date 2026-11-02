@@ -1,0 +1,52 @@
+{
+  "_doc": "JuanderQuest pixel palette. Every colour is a brand colour (mobile lib/core/theme/app_colors.dart or web src/app/globals.css tokens), or a documented mix of two brand colours (the shade/tint ramps pixel art needs). Keys are single characters used in the generated pixel rows; '.' is transparent. Never reuse or reorder keys: generated art depends on them.",
+  "colors": [
+    {"key": "0", "name": "ink",         "hex": "0D1B2A", "source": "app deepInk"},
+    {"key": "1", "name": "slate",       "hex": "414844", "source": "app textSecondary"},
+    {"key": "2", "name": "stone",       "hex": "717973", "source": "app textMuted / outline"},
+    {"key": "3", "name": "mist",        "hex": "C1C8C2", "source": "app outlineVariant"},
+    {"key": "4", "name": "paperDim",    "hex": "E3E2DF", "source": "app surfaceContainerHighest"},
+    {"key": "5", "name": "paper",       "hex": "FAF9F5", "source": "app background (Warm Paper)"},
+    {"key": "6", "name": "white",       "hex": "FFFFFF", "source": "app surfaceContainerLowest"},
+
+    {"key": "7", "name": "greenDeep",   "hex": "1B4332", "source": "web brand-primary-hover"},
+    {"key": "8", "name": "greenDark",   "hex": "274E3C", "source": "app primaryDark"},
+    {"key": "9", "name": "green",       "hex": "3F6653", "source": "app primary (Tourism Green)"},
+    {"key": "a", "name": "greenBright", "hex": "2D6A4F", "source": "web brand-primary / app success"},
+    {"key": "b", "name": "greenMid",    "mix": ["green", "greenLight", 0.45], "source": "mix primary -> primaryContainer 45%"},
+    {"key": "c", "name": "greenLight",  "hex": "C1ECD4", "source": "app primaryContainer"},
+
+    {"key": "d", "name": "goldDeep",    "hex": "6B4B00", "source": "app onSecondaryContainer"},
+    {"key": "e", "name": "gold",        "hex": "B45309", "source": "web brand-accent-dark"},
+    {"key": "f", "name": "amber",       "hex": "D97706", "source": "app/web warning"},
+    {"key": "g", "name": "flame",       "hex": "F77F00", "source": "web brand-accent-hover"},
+    {"key": "h", "name": "sun",         "hex": "FFB703", "source": "app sunGold / web brand-accent"},
+    {"key": "i", "name": "sunLight",    "hex": "FFDEA9", "source": "app secondaryContainer"},
+    {"key": "j", "name": "cream",       "hex": "FFF8E1", "source": "web brand-accent-light"},
+
+    {"key": "k", "name": "woodNight",   "mix": ["woodDeep", "ink", 0.5], "source": "mix brand-brown-dark -> deepInk 50%"},
+    {"key": "l", "name": "woodDeep",    "hex": "3E1F0A", "source": "web brand-brown-dark"},
+    {"key": "m", "name": "wood",        "hex": "582F0E", "source": "app woodBrown / web brand-brown"},
+    {"key": "n", "name": "woodMid",     "hex": "7B4B27", "source": "web brand-brown-light"},
+    {"key": "o", "name": "woodLight",   "mix": ["woodMid", "sunLight", 0.55], "source": "mix brand-brown-light -> secondaryContainer 55%"},
+    {"key": "p", "name": "parchment",   "hex": "F7EBE1", "source": "app openDataBg"},
+
+    {"key": "q", "name": "redNight",    "mix": ["redDeep", "ink", 0.6], "source": "mix crowd-surging -> deepInk 60%"},
+    {"key": "r", "name": "redDeep",     "hex": "991B1B", "source": "web crowd-surging"},
+    {"key": "s", "name": "red",         "hex": "BC4749", "source": "web status-danger"},
+    {"key": "t", "name": "redBright",   "mix": ["red", "white", 0.18], "source": "mix status-danger -> white 18%"},
+    {"key": "u", "name": "redSoft",     "mix": ["red", "redLight", 0.6], "source": "mix status-danger -> status-danger-bg 60%"},
+    {"key": "v", "name": "redLight",    "hex": "FDE8E8", "source": "web status-danger-bg"},
+    {"key": "w", "name": "alert",       "hex": "BA1A1A", "source": "app danger"},
+
+    {"key": "x", "name": "orange",      "hex": "E67E22", "source": "app crowdBusy"},
+    {"key": "y", "name": "orangeLight", "hex": "FFECE0", "source": "app crowdBusyBg"},
+
+    {"key": "z", "name": "blueDeep",    "mix": ["blue", "ink", 0.5], "source": "mix lguVerified -> deepInk 50%"},
+    {"key": "A", "name": "blue",        "hex": "1B4965", "source": "app lguVerified / info"},
+    {"key": "B", "name": "blueBright",  "hex": "2563EB", "source": "web status-info"},
+    {"key": "C", "name": "blueMid",     "mix": ["blueBright", "blueLight", 0.45], "source": "mix web status-info -> status-info-bg 45%"},
+    {"key": "D", "name": "blueLight",   "hex": "DBEAFE", "source": "web status-info-bg"},
+    {"key": "E", "name": "sky",         "hex": "E0F2FE", "source": "app infoBg"}
+  ]
+}
