@@ -14,6 +14,7 @@ import '../../core/pixel/pixel_input.dart';
 import '../../core/pixel/pixel_nav.dart';
 import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
+import '../dashboard/home_tips.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
   const PixelLabScreen({super.key});
@@ -275,6 +276,19 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
             label: 'Reset kit',
             variant: PixelButtonVariant.secondary,
             onPressed: notifier.reset,
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            label: 'Replay Home tips',
+            variant: PixelButtonVariant.secondary,
+            onPressed: () async {
+              await ref
+                  .read(homeTipsControllerProvider.notifier)
+                  .resetForReplay();
+              if (context.mounted) {
+                showPixelToast(context, 'HOME TIPS WILL SHOW AGAIN');
+              }
+            },
           ),
         ],
       ),

@@ -46,6 +46,7 @@ Future<void> render(
   Size size = const Size(320, 568),
   double scale = 2,
   SubmissionState? submissionState,
+  bool settle = true,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -100,7 +101,12 @@ Future<void> render(
     ],
     child: MaterialApp(theme: AppTheme.lightTheme, home: screen),
   ));
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
 
 void main() {
@@ -132,10 +138,10 @@ void main() {
   });
   testWidgets('recent activity title is readable at 320px, 2x text',
       (tester) async {
-    await render(tester, const DashboardScreen());
+    await render(tester, const DashboardScreen(), settle: false);
     await tester.scrollUntilVisible(find.text(longTitle), 150,
         scrollable: find.byType(Scrollable).first);
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(tester.takeException(), isNull);
     final title = tester.renderObject<RenderParagraph>(find.text(longTitle));
     expect(title.didExceedMaxLines, isFalse,
@@ -143,10 +149,10 @@ void main() {
   });
   testWidgets('cultural quiz CTA title is readable at 320px, 2x text',
       (tester) async {
-    await render(tester, const DashboardScreen());
+    await render(tester, const DashboardScreen(), settle: false);
     await tester.scrollUntilVisible(find.text('Cultural quizzes'), 150,
         scrollable: find.byType(Scrollable).first);
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(tester.takeException(), isNull);
     final title =
         tester.renderObject<RenderParagraph>(find.text('Cultural quizzes'));
