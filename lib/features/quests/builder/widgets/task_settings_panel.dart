@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../../core/pixel/pixel_input.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../builder_models.dart';
 import 'location_fence_map_picker.dart';
@@ -310,8 +311,10 @@ class TaskSettingsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        TextFormField(
+        PixelTextField(
           initialValue: ver.prompt,
+          hint: 'e.g., Take a photo of the heritage marker plaque or main pavilion.',
+          maxLines: 2,
           onChanged: (val) {
             onChanged(task.copyWith(
               verification: PhotoVerification(
@@ -321,17 +324,6 @@ class TaskSettingsPanel extends StatelessWidget {
               ),
             ));
           },
-          decoration: const InputDecoration(
-            hintText:
-                'e.g., Take a photo of the heritage marker plaque or main pavilion.',
-            hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.zero,
-              borderSide: BorderSide(color: PixelPalette.mist),
-            ),
-            contentPadding: EdgeInsets.all(12),
-          ),
-          maxLines: 2,
         ),
         const SizedBox(height: 12),
         Container(
@@ -734,8 +726,10 @@ class TaskSettingsPanel extends StatelessWidget {
         }),
         if (kind == 'complete_quiz') ...[
           const SizedBox(height: 8),
-          TextFormField(
+          PixelTextField(
             initialValue: ver.task['quiz_id'] as String? ?? '',
+            label: 'Cultural Quiz ID',
+            hint: 'e.g. quiz_lingayen_history_01',
             onChanged: (val) {
               onChanged(task.copyWith(
                 verification: ActionVerification(
@@ -743,19 +737,13 @@ class TaskSettingsPanel extends StatelessWidget {
                 ),
               ));
             },
-            decoration: const InputDecoration(
-              labelText: 'Cultural Quiz ID',
-              labelStyle: TextStyle(fontSize: 12),
-              hintText: 'e.g. quiz_lingayen_history_01',
-              border: OutlineInputBorder(borderRadius: BorderRadius.zero),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
           ),
         ],
         if (kind == 'save_spot' || kind == 'like_spot') ...[
           const SizedBox(height: 8),
-          TextFormField(
+          PixelTextField(
             initialValue: ver.task['spot_id'] as String? ?? destinationSpotId,
+            label: 'Target Spot ID',
             onChanged: (val) {
               onChanged(task.copyWith(
                 verification: ActionVerification(
@@ -763,12 +751,6 @@ class TaskSettingsPanel extends StatelessWidget {
                 ),
               ));
             },
-            decoration: const InputDecoration(
-              labelText: 'Target Spot ID',
-              labelStyle: TextStyle(fontSize: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.zero),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
           ),
         ],
       ],
