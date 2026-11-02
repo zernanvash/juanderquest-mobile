@@ -1,9 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -21,6 +19,7 @@ import '../core/world_ar.dart';
 import '../engine/shapes_factory.dart';
 import '../widgets/ar_camera_layer.dart';
 import '../widgets/ar_overlay.dart';
+import '../widgets/world_ar_view.dart';
 
 /// Which AR tier is running (Plan 47 §2).
 enum ArTier {
@@ -317,7 +316,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
         fit: StackFit.expand,
         children: [
           if (ready && _tier == ArTier.world)
-            _WorldArView(onCreated: _onWorldViewCreated)
+            WorldArView(onCreated: _onWorldViewCreated)
           else if (ready)
             ArCameraLayer(
               onPreviewAspect: (a) => setState(() => _previewAspect = a),
@@ -521,39 +520,6 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
 }
 
 /// Native ARCore camera view (Hybrid Composition, needed for a SurfaceView).
-class _WorldArView extends StatelessWidget {
-  final ValueChanged<int> onCreated;
-
-  const _WorldArView({required this.onCreated});
-
-  static const viewType = 'jdq/arcore_view';
-
-  @override
-  Widget build(BuildContext context) {
-    return PlatformViewLink(
-      viewType: viewType,
-      surfaceFactory: (context, controller) => AndroidViewSurface(
-        controller: controller as AndroidViewController,
-        gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
-        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-      ),
-      onCreatePlatformView: (params) {
-        final controller = PlatformViewsService.initExpensiveAndroidView(
-          id: params.id,
-          viewType: viewType,
-          layoutDirection: TextDirection.ltr,
-          creationParamsCodec: const StandardMessageCodec(),
-          onFocus: () => params.onFocusChanged(true),
-        )
-          ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
-          ..addOnPlatformViewCreatedListener(onCreated);
-        controller.create();
-        return controller;
-      },
-    );
-  }
-}
-
 /// Bottom card: a four-stage progress strip (locate, reach, find, collect),
 /// what to do now, and the one relevant action.
 class ArStatusCard extends StatelessWidget {

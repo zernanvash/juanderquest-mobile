@@ -212,6 +212,24 @@ class WorldArSession {
     }
   }
 
+  /// Anchors the object on the ground at ARCore world (x, z) on the next frame.
+  /// Returns the placed position and whether it landed on a detected plane, or
+  /// null when ARCore was not tracking.
+  Future<({double x, double y, double z, bool onPlane})?> placeAnchorAt(double x, double z) async {
+    try {
+      final m = await _methods.invokeMapMethod<String, dynamic>('placeAnchorAt', {'x': x, 'z': z});
+      if (m == null) return null;
+      return (
+        x: (m['x'] as num).toDouble(),
+        y: (m['y'] as num).toDouble(),
+        z: (m['z'] as num).toDouble(),
+        onPlane: m['onPlane'] == true,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> clearAnchor() async {
     try {
       await _methods.invokeMethod<bool>('clearAnchor');
