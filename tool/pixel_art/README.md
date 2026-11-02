@@ -13,4 +13,15 @@ Preview everything in a debug build at Settings → Developer tools → Pixel la
 
 ## For the artist
 
-Load `juanderquest-pixel.gpl` (GIMP/Aseprite), `juanderquest-pixel.hex` (Lospec/Aseprite) or `juanderquest-pixel-palette.png` (a 1 px swatch strip) into your drawing tool and draw only with these colours. Then the converter changes nothing. The export rules are in Plan 75 §6.
+Load `juanderquest-pixel.gpl` (GIMP/Aseprite), `juanderquest-pixel.hex` (Lospec/Aseprite) or `juanderquest-pixel-palette.png` (a 1 px swatch strip) into your drawing tool and draw only with these colours. Then the converter changes nothing.
+
+- Draw at **1 px per art pixel** on a **transparent** background, with no anti-aliasing (pencil tool, not brush).
+- **Sizes:**
+  - nav and action icons 24×24
+  - item, stamp and badge icons 36×36
+  - characters 32×48
+  - map pins 16×24
+- **Animations:** one horizontal strip of equal-size frames, no gaps. Tell us the fps (idle loops 8, effects 12, hearts 16).
+- **Export:** PNG. Name files in `kebab-case` (`heart-liked.png`, `juan-wave.png`) and put them in the workspace `assets/` folder.
+- **Outlines:** use `ink` (0D1B2A), not pure black, so the art matches the UI outlines.
+- Don't scale art up before exporting; the app scales it by whole numbers.
