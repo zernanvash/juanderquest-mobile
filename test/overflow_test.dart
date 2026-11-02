@@ -11,6 +11,7 @@ import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
 import 'package:juanderquest_app/features/quests/providers/quest_provider.dart';
+import 'package:juanderquest_app/features/quests/pixel/daily_mission.dart';
 import 'package:juanderquest_app/features/shop/models/voucher_model.dart';
 import 'package:juanderquest_app/features/shop/providers/voucher_provider.dart';
 import 'package:juanderquest_app/features/submissions/models/submission_model.dart';
@@ -488,6 +489,17 @@ void main() {
           ));
           return;
         }
+        if (options.path == '/me/daily') {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {'missions': []},
+            },
+          ));
+          return;
+        }
         // Plan 66: a fully pre-filled recognition is the widest posting sheet.
         if (options.path == '/spots/recognize') {
           handler.resolve(Response(
@@ -497,9 +509,15 @@ void main() {
               'success': true,
               'data': {
                 'recognized': true,
-                'place_name': 'Minor Basilica of Our Lady of the Rosary of Manaoag Pilgrim Center',
-                'name_suggestions': ['Manaoag Pilgrim Center', 'Brgy. Poblacion Church', 'Manaoag Church'],
-                'formatted_address': 'Milo Street, Brgy. Poblacion, Manaoag, Pangasinan',
+                'place_name':
+                    'Minor Basilica of Our Lady of the Rosary of Manaoag Pilgrim Center',
+                'name_suggestions': [
+                  'Manaoag Pilgrim Center',
+                  'Brgy. Poblacion Church',
+                  'Manaoag Church'
+                ],
+                'formatted_address':
+                    'Milo Street, Brgy. Poblacion, Manaoag, Pangasinan',
                 'municipality': 'Manaoag',
                 'barangay': 'Brgy. Poblacion',
                 'outside_pangasinan': true,
@@ -516,7 +534,11 @@ void main() {
                   'Please dress modestly and keep voices low, especially during masses and events.',
                 ],
                 'nearby_duplicates': [
-                  {'id': 'spot-manaoag', 'name': 'Minor Basilica of Manaoag', 'distance_meters': 35},
+                  {
+                    'id': 'spot-manaoag',
+                    'name': 'Minor Basilica of Manaoag',
+                    'distance_meters': 35
+                  },
                 ],
               },
             },
@@ -600,9 +622,11 @@ void main() {
         overrides: [
           if (child is AffiliateApplicationScreen ||
               child is QuestDetailScreen ||
+              child is QuestListScreen ||
               child is InterestsScreen ||
               child is MapViewScreen)
             apiClientProvider.overrideWithValue(affiliateApi),
+          dailyMissionFetcherProvider.overrideWithValue(() async => false),
           authProvider.overrideWith((ref) => InertAuthNotifier(
               ref.watch(apiClientProvider),
               ref.watch(authRefreshProvider.notifier),
@@ -698,7 +722,9 @@ void main() {
     );
 
     await tester.pump();
-    if (child is QuestDetailScreen || child is InterestsScreen || child is SpotPostingSheet) {
+    if (child is QuestDetailScreen ||
+        child is InterestsScreen ||
+        child is SpotPostingSheet) {
       await tester.pumpAndSettle();
     }
     if (child is SpotDiscoveryStudioScreen) {
@@ -895,7 +921,8 @@ void main() {
           tester, const MapViewScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('MapViewScreen with FakeJdqMap does not overflow in small landscape',
+    testWidgets(
+        'MapViewScreen with FakeJdqMap does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
           tester, const MapViewScreen(), const Size(568, 320), 2.0);
@@ -905,17 +932,20 @@ void main() {
         (tester) async {
       await testScreenOverflow(
         tester,
-        const SpotDiscoveryStudioScreen(routePin: StudioPin(16.0294, 120.2289, 15)),
+        const SpotDiscoveryStudioScreen(
+            routePin: StudioPin(16.0294, 120.2289, 15)),
         const Size(320, 568),
         2.0,
       );
     });
 
-    testWidgets('SpotDiscoveryStudioScreen does not overflow in small landscape',
+    testWidgets(
+        'SpotDiscoveryStudioScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
         tester,
-        const SpotDiscoveryStudioScreen(routePin: StudioPin(16.0294, 120.2289, 15)),
+        const SpotDiscoveryStudioScreen(
+            routePin: StudioPin(16.0294, 120.2289, 15)),
         const Size(568, 320),
         2.0,
       );

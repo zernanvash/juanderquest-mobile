@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../../core/pixel/pixel_box.dart';
+import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/base_tile_layer.dart';
 import '../builder_models.dart';
@@ -43,17 +46,11 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
+        PixelPanel(
+          style: PixelBoxStyle.slot,
+          padding: 1,
+          child: SizedBox(
             height: 180,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: _editing ? AppColors.primary : const Color(0xFFE7E5E4),
-                width: _editing ? 2 : 1,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
             child: Stack(
               children: [
                 IgnorePointer(
@@ -102,15 +99,8 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 4,
-                                ),
-                              ],
+                            decoration: const BoxDecoration(
+                              color: PixelPalette.white,
                             ),
                             child: Text(
                               widget.pinLabel,
@@ -135,20 +125,12 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                 Positioned(
                   right: 8,
                   bottom: 8,
-                  child: FilledButton.tonalIcon(
+                  child: PixelButton(
                     key: const ValueKey('fence_map_move_pin'),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      visualDensity: VisualDensity.compact,
-                    ),
+                    label: _editing ? 'Done' : 'Move pin',
+                    style: PixelBoxStyle.wood,
+                    textColor: PixelPalette.white,
                     onPressed: () => setState(() => _editing = !_editing),
-                    icon: Icon(
-                        _editing
-                            ? Icons.check_rounded
-                            : Icons.open_with_rounded,
-                        size: 18),
-                    label: Text(_editing ? 'Done' : 'Move pin'),
                   ),
                 ),
               ],
@@ -159,9 +141,8 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F4),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE7E5E4)),
+            color: PixelPalette.paperDim,
+            border: Border.all(color: PixelPalette.mist),
           ),
           child: Column(
             children: [
@@ -191,8 +172,8 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                 min: 30,
                 max: 500,
                 divisions: 47,
-                activeColor: AppColors.primary,
-                inactiveColor: const Color(0xFFD6D3D1),
+                activeColor: PixelPalette.green,
+                inactiveColor: PixelPalette.mist,
                 onChanged: (val) {
                   widget.onChanged(
                       widget.fence.copyWith(radiusMeters: val.round()));

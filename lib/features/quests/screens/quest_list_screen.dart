@@ -2,17 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/filter_chip_row.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/jdq_search_field.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_input.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/quest_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../submissions/providers/submission_provider.dart';
 import '../models/campaign_model.dart';
 import '../models/quest_model.dart';
+import '../pixel/daily_mission.dart';
+import '../pixel/pixel_tag.dart';
+import '../pixel/quest_paging.dart';
+import '../pixel/saved_quests.dart';
 import '../providers/campaign_provider.dart';
 import '../providers/quest_provider.dart';
 
@@ -24,20 +34,37 @@ class QuestListScreen extends ConsumerStatefulWidget {
 }
 
 class _QuestListScreenState extends ConsumerState<QuestListScreen> {
-  int _activeTabIndex = 0; // 0 = Ongoing Trails, 1 = Event Campaigns
-  String _selectedCategory = '';
-  final TextEditingController _searchController = TextEditingController();
-
-  final List<FilterChipOption> _categoryOptions = const [
-    FilterChipOption(key: '', label: 'All Quests', icon: Icons.explore_rounded),
-    FilterChipOption(key: 'eco', label: '🌿 Eco', icon: null),
-    FilterChipOption(key: 'cultural', label: '🏛️ Cultural', icon: null),
-    FilterChipOption(key: 'food', label: '🍱 Culinary', icon: null),
+  static const _questCategories = <(String, String)>[
+    ('', 'All'),
+    ('eco', 'Eco-Tourism'),
+    ('cultural', 'Cultural Heritage'),
+    ('food', 'Culinary'),
   ];
+
+  static const _campaignCategories = <(String, String)>[
+    ('', 'All campaigns'),
+    ('eco', 'Eco-cleanups'),
+    ('cultural', 'Cultural festivals'),
+    ('sports_adventure', 'Sports & adventure'),
+    ('food_trade', 'Food & agri-trade'),
+  ];
+
+  int _activeTabIndex = 0;
+  String _selectedCategory = '';
+  String _selectedCampaignCategory = '';
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  int _visibleCount = 10;
+  int _filteredCount = 0;
+  bool _showTop = false;
+  bool _dailyMissionActive = false;
+  bool _dailyMissionRequested = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     Future.microtask(() {
       ref.read(questProvider.notifier).fetchQuests();
       ref.read(campaignProvider.notifier).fetchCampaigns();
@@ -47,8 +74,50 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
 
   @override
   void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final showTop = position.pixels > MediaQuery.sizeOf(context).height * 0.8;
+    if (showTop != _showTop) {
+      setState(() => _showTop = showTop);
+    }
+    if (position.pixels >= position.maxScrollExtent - 300 &&
+        _visibleCount < _filteredCount) {
+      setState(() {
+        _visibleCount = nextPageCount(_visibleCount, _filteredCount);
+      });
+    }
+  }
+
+  Future<void> _loadDailyMission() async {
+    if (!mounted) return;
+    if (!ref.read(authProvider).isAuthenticated) {
+      if (mounted) setState(() => _dailyMissionActive = false);
+      return;
+    }
+    try {
+      final active = await ref.read(dailyMissionFetcherProvider)();
+      if (mounted) setState(() => _dailyMissionActive = active);
+    } catch (_) {
+      if (mounted) setState(() => _dailyMissionActive = false);
+    }
+  }
+
+  Future<void> _refresh() async {
+    _visibleCount = 10;
+    await Future.wait([
+      ref.read(questProvider.notifier).fetchQuests(),
+      ref.read(campaignProvider.notifier).fetchCampaigns(forceRefresh: true),
+      ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
+      _loadDailyMission(),
+    ]);
   }
 
   String _getQuestStatus(QuestModel quest) {
@@ -56,11 +125,76 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
     final userSub = submissions
         .where((s) => s.questTitle == quest.title || s.id == quest.id)
         .toList();
-
     if (userSub.any((s) => s.status == 'approved')) return 'COMPLETED';
     if (userSub.any((s) => s.status == 'pending')) return 'PENDING REVIEW';
     if (userSub.any((s) => s.status == 'rejected')) return 'REJECTED';
     return 'AVAILABLE';
+  }
+
+  bool _questMatches(QuestModel quest) {
+    final query = _searchController.text.toLowerCase().trim();
+    final matchesSearch = query.isEmpty ||
+        quest.title.toLowerCase().contains(query) ||
+        quest.locationName.toLowerCase().contains(query) ||
+        quest.categoryDisplay.toLowerCase().contains(query) ||
+        quest.tags.any((tag) => tag.toLowerCase().contains(query));
+    if (!matchesSearch) return false;
+    if (_selectedCategory.isEmpty) return true;
+    final category = quest.category.toLowerCase();
+    final display = quest.categoryDisplay.toLowerCase();
+    if (_selectedCategory == 'food') {
+      return category == 'food' ||
+          category == 'food_trade' ||
+          display.contains('food') ||
+          display.contains('culinary');
+    }
+    return category == _selectedCategory || display.contains(_selectedCategory);
+  }
+
+  bool _campaignMatches(CampaignModel campaign) {
+    final query = _searchController.text.toLowerCase().trim();
+    final matchesSearch = query.isEmpty ||
+        campaign.title.toLowerCase().contains(query) ||
+        campaign.locationName.toLowerCase().contains(query) ||
+        campaign.municipality.toLowerCase().contains(query) ||
+        campaign.description.toLowerCase().contains(query);
+    if (!matchesSearch) return false;
+    if (_selectedCampaignCategory.isEmpty) return true;
+    final category = campaign.category.toLowerCase();
+    if (_selectedCampaignCategory == 'food_trade') {
+      return category == 'food' ||
+          category == 'food_trade' ||
+          category.contains('food');
+    }
+    if (_selectedCampaignCategory == 'sports_adventure') {
+      return category == 'sports_adventure' || category.contains('sport');
+    }
+    return category == _selectedCampaignCategory ||
+        category.contains(_selectedCampaignCategory);
+  }
+
+  void _selectTab(int index) {
+    setState(() {
+      _activeTabIndex = index;
+      _visibleCount = 10;
+    });
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  }
+
+  void _selectQuestCategory(String key) {
+    setState(() {
+      _selectedCategory = key;
+      _visibleCount = 10;
+    });
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  }
+
+  void _selectCampaignCategory(String key) {
+    setState(() {
+      _selectedCampaignCategory = key;
+      _visibleCount = 10;
+    });
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
   }
 
   @override
@@ -68,541 +202,513 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
     final questState = ref.watch(questProvider);
     final campaignState = ref.watch(campaignProvider);
     final user = ref.watch(authProvider).user;
+    final savedQuests = ref.watch(savedQuestsProvider);
     final points = user?.points ?? 1250;
+    final signedIn = user != null;
 
-    final filteredQuests = questState.quests.where((q) {
-      final query = _searchController.text.toLowerCase().trim();
-      final matchesSearch = query.isEmpty ||
-          q.title.toLowerCase().contains(query) ||
-          q.locationName.toLowerCase().contains(query) ||
-          q.categoryDisplay.toLowerCase().contains(query);
+    if (signedIn && !_dailyMissionRequested) {
+      _dailyMissionRequested = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadDailyMission();
+      });
+    }
 
-      final matchesCategory = _selectedCategory.isEmpty ||
-          q.categoryDisplay
-              .toLowerCase()
-              .contains(_selectedCategory.toLowerCase());
+    final filteredQuests = questState.quests.where(_questMatches).toList();
+    final filteredCampaigns =
+        campaignState.campaigns.where(_campaignMatches).toList();
+    _filteredCount =
+        _activeTabIndex == 0 ? filteredQuests.length : filteredCampaigns.length;
+    if (_visibleCount > _filteredCount) {
+      _visibleCount = _filteredCount;
+    }
 
-      return matchesSearch && matchesCategory;
-    }).toList();
+    final missionQuestId = dailyMissionQuestId(
+      filteredQuests,
+      _getQuestStatus,
+      signedIn && _dailyMissionActive,
+    );
 
-    final filteredCampaigns = campaignState.campaigns.where((c) {
-      final query = _searchController.text.toLowerCase().trim();
-      return query.isEmpty ||
-          c.title.toLowerCase().contains(query) ||
-          c.locationName.toLowerCase().contains(query) ||
-          c.municipality.toLowerCase().contains(query) ||
-          c.description.toLowerCase().contains(query);
-    }).toList();
-
-    return JdqScaffold(
-      appBar: AppBar(
-        titleSpacing: 16,
-        title: const FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.emoji_events_rounded,
-                  color: AppColors.sunGold, size: 22),
-              SizedBox(width: AppSpacing.sm),
-              Text(
-                'Quests & Campaigns Hub',
-                style: TextStyle(
-                  color: AppColors.woodBrown,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 14),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.sunGold.withOpacity(0.2),
-              borderRadius: AppSpacing.roundedPill,
-              border: Border.all(color: AppColors.sunGold),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.stars_rounded,
-                    size: 14, color: AppColors.woodBrown),
-                const SizedBox(width: 4),
-                Text(
-                  '$points mJDQ',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.woodBrown,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.wait([
-            ref.read(questProvider.notifier).fetchQuests(),
-            ref
-                .read(campaignProvider.notifier)
-                .fetchCampaigns(forceRefresh: true),
-            ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
-          ]);
-        },
-        color: AppColors.primary,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          children: [
-            // Segmented Tab Switcher (Ongoing Trails vs Event Campaigns)
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: AppSpacing.roundedXl,
-                border: Border.all(color: AppColors.borderLowContrast),
-              ),
-              child: Row(
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _activeTabIndex = 0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _activeTabIndex == 0
-                              ? AppColors.primary
-                              : Colors.transparent,
-                          borderRadius: AppSpacing.roundedLg,
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.bolt_rounded,
-                                size: 15,
-                                color: _activeTabIndex == 0
-                                    ? AppColors.sunGold
-                                    : AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Ongoing Trails',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: _activeTabIndex == 0
-                                      ? Colors.white
-                                      : AppColors.woodBrown,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: _activeTabIndex == 0
-                                      ? Colors.white.withOpacity(0.2)
-                                      : AppColors.surfaceContainerLow,
-                                  borderRadius: AppSpacing.roundedPill,
-                                ),
-                                child: Text(
-                                  '${questState.quests.length}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: _activeTabIndex == 0
-                                        ? Colors.white
-                                        : AppColors.textMuted,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                  PixelAppBar(
+                    title: 'Quests',
+                    actions: [
+                      PixelChip(
+                        '$points mJDQ',
+                        style: PixelBoxStyle.gold,
+                        textColor: PixelPalette.ink,
                       ),
-                    ),
+                    ],
                   ),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _activeTabIndex = 1),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _activeTabIndex == 1
-                              ? AppColors.primary
-                              : Colors.transparent,
-                          borderRadius: AppSpacing.roundedLg,
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.festival_rounded,
-                                size: 15,
-                                color: _activeTabIndex == 1
-                                    ? AppColors.sunGold
-                                    : AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Event Campaigns',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: _activeTabIndex == 1
-                                      ? Colors.white
-                                      : AppColors.woodBrown,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: _activeTabIndex == 1
-                                      ? Colors.white.withOpacity(0.2)
-                                      : AppColors.surfaceContainerLow,
-                                  borderRadius: AppSpacing.roundedPill,
-                                ),
-                                child: Text(
-                                  '${campaignState.campaigns.length}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: _activeTabIndex == 1
-                                        ? Colors.white
-                                        : AppColors.textMuted,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Search Field
-            JdqSearchField(
-              controller: _searchController,
-              hintText: _activeTabIndex == 0
-                  ? 'Search quest trails...'
-                  : 'Search event campaigns & festivals...',
-              onChanged: (_) => setState(() {}),
-              onClear: () {
-                _searchController.clear();
-                setState(() {});
-              },
-            ),
-
-            const SizedBox(height: 10),
-
-            // Sub-category filters (For Ongoing Trails)
-            if (_activeTabIndex == 0) ...[
-              FilterChipRow(
-                options: _categoryOptions,
-                selectedKey: _selectedCategory,
-                onSelected: (key) => setState(() => _selectedCategory = key),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Active Tab Content
-            if (_activeTabIndex == 0)
-              _buildTrailsView(questState, filteredQuests)
-            else
-              _buildCampaignsView(campaignState, filteredCampaigns),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrailsView(
-      QuestState questState, List<QuestModel> filteredQuests) {
-    if (questState.isLoading && questState.quests.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 40),
-        child:
-            Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      );
-    }
-
-    if (questState.error != null && questState.quests.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: AppSpacing.roundedLg,
-          border: Border.all(color: AppColors.danger.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            const Icon(Icons.error_outline_rounded,
-                size: 40, color: AppColors.danger),
-            const SizedBox(height: 8),
-            Text('Failed to load quest trails',
-                style: AppTypography.labelLarge
-                    .copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () => ref.read(questProvider.notifier).fetchQuests(),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (filteredQuests.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: AppSpacing.roundedLg,
-          border: Border.all(color: AppColors.borderLowContrast),
-        ),
-        child: const Column(
-          children: [
-            Icon(Icons.search_off_rounded,
-                size: 44, color: AppColors.textMuted),
-            SizedBox(height: 10),
-            Text('No quest trails found',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            SizedBox(height: 4),
-            Text('Try changing your search terms or category filter.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: filteredQuests.map<Widget>((quest) {
-        final status = _getQuestStatus(quest);
-        return QuestCard(
-          quest: quest,
-          status: status,
-          onTap: () => context.push('/quests/${quest.id}'),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildCampaignsView(
-      CampaignState campaignState, List<CampaignModel> filteredCampaigns) {
-    if (campaignState.isLoading && campaignState.campaigns.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 40),
-        child:
-            Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      );
-    }
-
-    if (filteredCampaigns.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: AppSpacing.roundedLg,
-          border: Border.all(color: AppColors.borderLowContrast),
-        ),
-        child: const Column(
-          children: [
-            Icon(Icons.festival_outlined, size: 44, color: AppColors.textMuted),
-            SizedBox(height: 10),
-            Text('No event campaigns found',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            SizedBox(height: 4),
-            Text(
-                'Check back soon for upcoming municipal festivals and eco-rallies.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: filteredCampaigns
-          .map((campaign) => _buildCampaignCard(campaign))
-          .toList(),
-    );
-  }
-
-  Widget _buildCampaignCard(CampaignModel campaign) {
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedXl,
-        border: Border.all(color: AppColors.borderLowContrast),
-        boxShadow: AppSpacing.cardShadow,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () =>
-            context.push('/quests/campaigns/${campaign.id}', extra: campaign),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Facebook-Style Full-Bleed Banner Photo
-            Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Image.network(
-                    campaign.bannerImageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: AppColors.surfaceContainerLow,
-                      child: const Center(
-                        child: Icon(Icons.festival_rounded,
-                            color: AppColors.textMuted, size: 40),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 9, vertical: 3.5),
-                    decoration: const BoxDecoration(
-                      color: AppColors.sunGold,
-                      borderRadius: AppSpacing.roundedPill,
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Stack(
                       children: [
-                        Icon(Icons.emoji_events_rounded,
-                            size: 13, color: AppColors.woodBrown),
-                        SizedBox(width: 3),
-                        Text(
-                          'Preview',
-                          style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.woodBrown),
+                        RefreshIndicator(
+                          color: PixelPalette.green,
+                          backgroundColor: PixelPalette.parchment,
+                          onRefresh: _refresh,
+                          child: ListView(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(
+                              grid.px(4),
+                              grid.px(3),
+                              grid.px(4),
+                              grid.px(10) +
+                                  MediaQuery.paddingOf(context).bottom,
+                            ),
+                            children: [
+                              _intro(context, grid, questState, campaignState),
+                              SizedBox(height: grid.px(3)),
+                              _categoryChips(context, grid),
+                              SizedBox(height: grid.px(2)),
+                              _search(context, grid),
+                              SizedBox(height: grid.px(3)),
+                              if (_activeTabIndex == 0)
+                                ..._quests(
+                                  context,
+                                  grid,
+                                  questState,
+                                  filteredQuests,
+                                  savedQuests,
+                                  missionQuestId,
+                                )
+                              else
+                                ..._campaigns(
+                                  context,
+                                  grid,
+                                  campaignState,
+                                  filteredCampaigns,
+                                ),
+                            ],
+                          ),
                         ),
+                        if (_showTop)
+                          Positioned(
+                            right: grid.px(4),
+                            bottom: grid.px(4),
+                            child: PixelButton(
+                              key: const ValueKey('quests_top_btn'),
+                              label: 'Top',
+                              style: PixelBoxStyle.wood,
+                              textColor: PixelPalette.white,
+                              onPressed: () => _scrollController.jumpTo(0),
+                            ),
+                          ),
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
-
-            // Content Area
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Municipality Tag & Category
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_rounded,
-                          size: 12, color: AppColors.primary),
-                      const SizedBox(width: 2),
-                      Text(
-                        campaign.municipality,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryDark),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text('•',
-                          style: TextStyle(
-                              color: AppColors.textMuted, fontSize: 11)),
-                      const SizedBox(width: 6),
-                      Text(
-                        campaign.hostName,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // Title
-                  Text(
-                    campaign.title,
-                    style: AppTypography.headlineSmall.copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.woodBrown),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Description
-                  Text(
-                    campaign.description,
-                    style: AppTypography.bodySmall
-                        .copyWith(color: AppColors.textSecondary, fontSize: 12),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Footer: honest feature status and detail link
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Registration under development',
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textSecondary),
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            'View Details',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary),
-                          ),
-                          SizedBox(width: 2),
-                          Icon(Icons.arrow_forward_rounded,
-                              size: 12, color: AppColors.primary),
-                        ],
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
-          ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _intro(
+    BuildContext context,
+    PixelGrid grid,
+    QuestState questState,
+    CampaignState campaignState,
+  ) {
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PixelTag(
+            'Location challenges & bounties',
+            style: PixelBoxStyle.gold,
+            textColor: PixelPalette.ink,
+            maxWidth: grid.px(150),
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            'Eco-Quests',
+            style: PixelType.title(context, color: PixelPalette.paper),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Visit a place, verify it on site, earn points and badges.',
+            style: PixelType.small(context, color: PixelPalette.paperDim),
+          ),
+          SizedBox(height: grid.px(3)),
+          PixelSegmented(
+            items: [
+              'Quests · ${questState.quests.length}',
+              'Events · ${campaignState.campaigns.length}',
+            ],
+            selectedIndex: _activeTabIndex,
+            onChanged: _selectTab,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _categoryChips(BuildContext context, PixelGrid grid) {
+    final options =
+        _activeTabIndex == 0 ? _questCategories : _campaignCategories;
+    final selected =
+        _activeTabIndex == 0 ? _selectedCategory : _selectedCampaignCategory;
+    return Wrap(
+      spacing: grid.px(2),
+      runSpacing: grid.px(1),
+      children: [
+        for (final option in options)
+          _CategoryChip(
+            key: ValueKey('quests_category_${option.$1}'),
+            label: option.$2,
+            selected: selected == option.$1,
+            onTap: () => _activeTabIndex == 0
+                ? _selectQuestCategory(option.$1)
+                : _selectCampaignCategory(option.$1),
+          ),
+      ],
+    );
+  }
+
+  Widget _search(BuildContext context, PixelGrid grid) {
+    return Row(
+      children: [
+        const PixelSprite(DesignerArt.search, scale: 2),
+        SizedBox(width: grid.px(2)),
+        Expanded(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: PixelTextField(
+              controller: _searchController,
+              hint: _activeTabIndex == 0
+                  ? 'Quests, town, tag'
+                  : 'Events & festivals',
+              onChanged: (_) => setState(() {
+                _visibleCount = 10;
+              }),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _quests(
+    BuildContext context,
+    PixelGrid grid,
+    QuestState state,
+    List<QuestModel> filtered,
+    Set<String> saved,
+    String? missionQuestId,
+  ) {
+    if (state.isLoading && state.quests.isEmpty) {
+      return [
+        const Padding(
+            padding: EdgeInsets.all(32), child: Center(child: PixelLoader()))
+      ];
+    }
+    if (state.error != null && state.quests.isEmpty) {
+      return [
+        _UnavailablePanel(
+          message: 'Failed to load quest trails',
+          onRetry: () => ref.read(questProvider.notifier).fetchQuests(),
+        ),
+      ];
+    }
+    if (filtered.isEmpty) {
+      return [
+        const _EmptyPanel(
+          title: 'No quest trails found',
+          message: 'Try changing your search terms or category filter.',
+        ),
+      ];
+    }
+    final visible = filtered.take(_visibleCount).toList();
+    return [
+      for (final quest in visible) ...[
+        QuestCard(
+          quest: quest,
+          status: _getQuestStatus(quest),
+          isSaved: saved.contains(quest.id),
+          dailyMission: quest.id == missionQuestId,
+          onToggleSaved: () =>
+              ref.read(savedQuestsProvider.notifier).toggle(quest.id),
+          onTap: () => context.push('/quests/${quest.id}'),
+          onDirections: () => context.push(
+            '/navigate?name=${Uri.encodeComponent(quest.title)}&lat=${quest.gpsLat}&lng=${quest.gpsLng}&address=${Uri.encodeComponent(quest.locationName)}',
+          ),
+        ),
+        SizedBox(height: grid.px(3)),
+      ],
+      if (_visibleCount < filtered.length)
+        Padding(
+          padding: EdgeInsets.only(bottom: grid.px(3)),
+          child: Text(
+            'Loading more as you scroll...',
+            textAlign: TextAlign.center,
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+        ),
+    ];
+  }
+
+  List<Widget> _campaigns(
+    BuildContext context,
+    PixelGrid grid,
+    CampaignState state,
+    List<CampaignModel> filtered,
+  ) {
+    if (state.isLoading && state.campaigns.isEmpty) {
+      return [
+        const Padding(
+            padding: EdgeInsets.all(32), child: Center(child: PixelLoader()))
+      ];
+    }
+    if (state.failure != null && state.campaigns.isEmpty) {
+      return [
+        _UnavailablePanel(
+          message: 'Event campaigns are unavailable.',
+          onRetry: () => ref
+              .read(campaignProvider.notifier)
+              .fetchCampaigns(forceRefresh: true),
+        ),
+      ];
+    }
+    if (filtered.isEmpty) {
+      return [
+        const _EmptyPanel(
+          title: 'No event campaigns found',
+          message:
+              'Check back soon for upcoming municipal festivals and eco-rallies.',
+        ),
+      ];
+    }
+    final visible = filtered.take(_visibleCount).toList();
+    return [
+      for (final campaign in visible) ...[
+        _CampaignCard(campaign: campaign),
+        SizedBox(height: grid.px(3)),
+      ],
+      if (_visibleCount < filtered.length)
+        Padding(
+          padding: EdgeInsets.only(bottom: grid.px(3)),
+          child: Text(
+            'Loading more as you scroll...',
+            textAlign: TextAlign.center,
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+        ),
+    ];
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            pixelTick(context);
+            onTap();
+          },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Center(
+              widthFactor: 1,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: grid.px(110)),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: PixelChip(
+                    label,
+                    style: selected ? PixelBoxStyle.green : PixelBoxStyle.slot,
+                    textColor:
+                        selected ? PixelPalette.white : PixelPalette.slate,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+class _UnavailablePanel extends StatelessWidget {
+  const _UnavailablePanel({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return PixelPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(message, style: PixelType.body(context)),
+          SizedBox(height: grid.px(2)),
+          PixelButton(label: 'Retry', onPressed: onRetry),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyPanel extends StatelessWidget {
+  const _EmptyPanel({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return PixelPanel(
+      child: PixelEmptyState(
+        title: title,
+        message: message,
+      ),
+    );
+  }
+}
+
+class _CampaignCard extends StatelessWidget {
+  const _CampaignCard({required this.campaign});
+
+  final CampaignModel campaign;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final start = campaign.startDate.split('T').first;
+    final end = campaign.endDate.split('T').first;
+    return Semantics(
+      button: true,
+      label: '${campaign.title}. ${campaign.hostName}. ${campaign.status}.',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => context.push(
+          '/quests/campaigns/${campaign.id}',
+          extra: campaign,
+        ),
+        child: PixelPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PixelPanel(
+                style: PixelBoxStyle.slot,
+                sunken: true,
+                padding: 1,
+                child: ClipRect(
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Image.network(
+                      campaign.bannerImageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const _CampaignFallback(),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: grid.px(2)),
+              Wrap(
+                spacing: grid.px(2),
+                runSpacing: grid.px(1),
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  PixelTag(
+                    campaign.municipality,
+                    style: PixelBoxStyle.green,
+                    textColor: PixelPalette.white,
+                    maxWidth: grid.px(70),
+                  ),
+                  PixelTag(
+                    campaign.status,
+                    style: PixelBoxStyle.gold,
+                    textColor: PixelPalette.ink,
+                    maxWidth: grid.px(45),
+                  ),
+                ],
+              ),
+              SizedBox(height: grid.px(2)),
+              Text(
+                campaign.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.body(context)
+                    .copyWith(fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: grid.px(1)),
+              Text(
+                '${campaign.hostName} · $start to $end',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+              SizedBox(height: grid.px(1)),
+              Text(
+                campaign.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+              SizedBox(height: grid.px(2)),
+              PixelButton(
+                label: 'View event >',
+                expand: true,
+                onPressed: () => context.push(
+                  '/quests/campaigns/${campaign.id}',
+                  extra: campaign,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CampaignFallback extends StatelessWidget {
+  const _CampaignFallback();
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+        color: PixelPalette.paperDim,
+        child: Center(
+          child: Text(
+            'No banner',
+            style: PixelType.small(context, color: PixelPalette.stone),
+          ),
+        ),
+      );
 }
