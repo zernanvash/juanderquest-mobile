@@ -12,6 +12,7 @@ import '../../app_update/providers/app_update_provider.dart';
 import '../../../core/services/push_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
+import '../../../core/app_release.dart';
 
 /// Settings home: short categories that open their own pages, so a new
 /// setting adds a row here instead of growing one long screen.
@@ -26,7 +27,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final updateState = ref.watch(appUpdateProvider);
-    final version = 'v${updateState.installedVersionName} (${updateState.installedVersionCode})';
+    final version = '${versionLabel(updateState.installedVersionName)} (${updateState.installedVersionCode})';
 
     return JdqScaffold(
       scrollable: true,
