@@ -121,8 +121,9 @@ class HomeTipsController extends StateNotifier<HomeTipsState> {
 
   Future<void> resetForReplay() async {
     _completed = false;
-    state = const HomeTipsState();
     await _store.reset();
+    if (!mounted) return;
+    state = const HomeTipsState(showing: true);
   }
 }
 

@@ -795,6 +795,7 @@ void main() {
     await container.read(homeTipsControllerProvider.notifier).resetForReplay();
     expect(store.seenValue, isFalse);
     expect(store.resetCount, 1);
+    expect(container.read(homeTipsControllerProvider).showing, isTrue);
   });
 
   testWidgets('app bar back arrow is 24 px with a 48 px target', (
