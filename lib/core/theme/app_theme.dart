@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../pixel/pixel_theme.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
 
 /// AppTheme builds the unified ThemeData for JuanderQuest.
 abstract class AppTheme {
+  static ThemeData get pixel => PixelTheme.build();
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,

@@ -5,11 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'app/app.dart';
 import 'core/network/api_client.dart';
+import 'core/pixel/pixel_background.dart';
+import 'core/pixel/pixel_theme.dart';
 import 'core/services/push_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PixelFonts.registerLicences();
+  await PixelShaders.load();
   BuiltInMapCachingProvider.getOrCreateInstance(
     maxCacheSize: 200 * 1024 * 1024,
   );
@@ -52,4 +56,3 @@ void main() async {
     ),
   );
 }
-

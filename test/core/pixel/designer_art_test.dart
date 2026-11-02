@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
 import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
 import 'package:juanderquest_app/core/pixel/pixel_art.dart';
+import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/pixel_lab/pixel_lab_screen.dart';
 
 Iterable<PixelArt> _allArt() sync* {
@@ -46,9 +48,22 @@ void main() {
   });
 
   testWidgets('pixel lab renders and the like button plays', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: PixelLabScreen()));
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.pixel,
+          home: const PixelLabScreen(),
+        ),
+      ),
+    );
+    expect(find.text('Pixel lab'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('pixel_lab_like')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const ValueKey('pixel_lab_like')));
     await tester.pump(const Duration(seconds: 2));
-    expect(find.text('Pixel lab'), findsOneWidget);
+    expect(find.byKey(const ValueKey('pixel_lab_like')), findsOneWidget);
   });
 }
