@@ -36,6 +36,7 @@ dependencies:
   firebase_messaging: ^16.7.0
   mobile_scanner: ^7.4.2
   qr_flutter: ^4.1.0
+  flame: ^1.38.2
 
 
 dev_dependencies:
@@ -43,6 +44,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
   fake_async: ^1.3.1
+  flame_test: ^2.3.1
 
 flutter:
   uses-material-design: true
