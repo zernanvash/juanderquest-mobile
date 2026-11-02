@@ -137,6 +137,9 @@ private class ArCoreView(
                 }
                 "setNativeObject" -> {
                     nativeObject = call.argument<Boolean>("visible") == true
+                    call.argument<List<Number>>("color")?.takeIf { it.size >= 3 }?.let { c ->
+                        gem.color = floatArrayOf(c[0].toFloat(), c[1].toFloat(), c[2].toFloat())
+                    }
                     result.success(true)
                 }
                 "clearAnchor" -> {

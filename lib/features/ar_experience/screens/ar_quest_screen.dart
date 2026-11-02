@@ -20,6 +20,8 @@ import '../engine/shapes_factory.dart';
 import '../widgets/ar_camera_layer.dart';
 import '../widgets/ar_overlay.dart';
 import '../widgets/world_ar_view.dart';
+import '../core/ar_math.dart';
+import '../core/geo_anchor.dart';
 
 /// Which AR tier is running (Plan 47 §2).
 enum ArTier {
@@ -53,6 +55,10 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   /// Fall back to Compass AR if World AR can't track for this long.
   static const worldTrackingGrace = Duration(seconds: 8);
 
+  /// If the compass can't settle this long after the ground is found (indoors,
+  /// near metal), place the object where the camera aims instead of waiting.
+  static const headingGrace = Duration(seconds: 8);
+
   final ArDevice _device = ArDevice();
   ArTaskSpec? _task;
   ArHuntController? _hunt;
@@ -66,6 +72,12 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   WorldArSession? _world;
   DateTime? _worldNotTrackingSince;
   bool _placing = false;
+
+  /// Links compass bearings to ARCore's yaw so the object spawns in a real
+  /// direction (AR Lab, owner 2026-11-02: "IT WORKED").
+  final HeadingCalibration _heading = HeadingCalibration();
+  DateTime _lastHeadingSample = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime? _groundFoundAt;
   final ValueNotifier<ArScreenObject?> _worldObject = ValueNotifier(null);
   CompassObjectProjector? _compassObject;
 
@@ -169,6 +181,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     if (await WorldArPrefs.enabled()) {
       var a = await WorldArSupport.check();
       if (a == WorldArAvailability.installable &&
+          await WorldArPrefs.explicitlyEnabled() &&
           await WorldArSupport.requestInstall()) {
         a = WorldArAvailability.installed;
       }
@@ -190,6 +203,8 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     final session = WorldArSession(id);
     session.frame.addListener(_onWorldFrame);
     _world = session;
+    // Drawn natively in the camera frame, so it never lags behind the picture.
+    session.setNativeObject(true, color: _task?.color);
   }
 
   void _onWorldFrame() {
@@ -210,6 +225,17 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       }
     } else {
       _worldNotTrackingSince = null;
+      // Heading link: compass bearing of the camera vs its yaw in ARCore space.
+      final yaw = GeoAnchor.cameraYaw(frame.view!);
+      final pose = _device.pose.value;
+      if (yaw != null &&
+          pose.hasData &&
+          !pose.compassUnreliable &&
+          pose.camera.elevation.abs() < 40 &&
+          now.difference(_lastHeadingSample).inMilliseconds >= 150) {
+        _heading.add(compassBearing: pose.camera.bearing, arYaw: yaw);
+        _lastHeadingSample = now;
+      }
     }
 
     final screen = MediaQuery.sizeOf(context);
@@ -229,16 +255,37 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       hunt.onCentred(o.centredOn(screen) && p.depth <= 4.5);
     }
 
-    // Once the object is unlocked, drop it on the first ground plane ahead.
+    // Once the object is unlocked, put it on the ground in its real direction:
+    // the hunt picked the bearing (towards the AR point, or off to one side when
+    // you are standing on it); the calibrated heading turns that bearing into
+    // ARCore space, and ARCore's tracking then holds it still while you walk.
     final searching = hunt.phase == ArHuntPhase.searching ||
         hunt.phase == ArHuntPhase.aligned;
+    if (frame.anchor != null) _groundFoundAt = null;
     if (searching &&
         frame.tracking &&
         frame.anchor == null &&
         frame.planes > 0 &&
         !_placing) {
-      _placing = true;
-      _world!.placeAnchor().whenComplete(() => _placing = false);
+      _groundFoundAt ??= now;
+      final offset = _heading.ready ? _heading.offset : null;
+      final position = hunt.objectPosition;
+      if (offset != null && position != null) {
+        final cam = GeoAnchor.cameraPosition(frame.view!);
+        final p = GeoAnchor.localPoint(
+          camX: cam.x,
+          camZ: cam.z,
+          bearing: ArGeo.bearingOf(position),
+          distance: ArHuntRules.spawnDistanceM,
+          headingOffset: offset,
+        );
+        _placing = true;
+        _world!.placeAnchorAt(p.x, p.z).whenComplete(() => _placing = false);
+      } else if (now.difference(_groundFoundAt!) > headingGrace) {
+        // Compass never settled: drop it where the camera aims, as before.
+        _placing = true;
+        _world!.placeAnchor().whenComplete(() => _placing = false);
+      }
     }
     setState(() {}); // refresh the status hint (the overlay is separate)
   }
@@ -376,9 +423,12 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     final waitingForGround = world && unlocked && frame?.anchor == null;
     String? searchingHint;
     if (waitingForGround) {
-      searchingHint = (frame?.tracking ?? false)
-          ? 'Point at the ground a few steps ahead.'
-          : frame?.trackingHint ?? 'Move your phone slowly to scan the ground.';
+      final tracking = frame?.tracking ?? false;
+      searchingHint = !tracking
+          ? frame?.trackingHint ?? 'Move your phone slowly to scan the ground.'
+          : (frame?.planes ?? 0) == 0
+              ? 'Point at the ground a few steps ahead.'
+              : 'Hold your phone up and look around slowly.';
     }
     return [
       if (unlocked) ...[
@@ -392,6 +442,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
           color: task.color,
           collectable: phase == ArHuntPhase.aligned,
           onTap: hunt.collect,
+          drawObject: !world,
         ),
       ],
       if (phase == ArHuntPhase.outside &&

@@ -18,20 +18,25 @@ class GeoAnchor {
   static ({double east, double north}) enuOffset(
       double lat, double lng, double tLat, double tLng) {
     final north = (tLat - lat) * _metersPerDegLat;
-    final east = (tLng - lng) * _metersPerDegLat * math.cos(lat * math.pi / 180);
+    final east =
+        (tLng - lng) * _metersPerDegLat * math.cos(lat * math.pi / 180);
     return (east: east, north: north);
   }
 
   /// Compass bearing (0 = north, clockwise) and distance of an east/north offset.
   static ({double bearing, double distance}) polar(double east, double north) {
     final b = math.atan2(east, north) * 180 / math.pi;
-    return (bearing: (b + 360) % 360, distance: math.sqrt(east * east + north * north));
+    return (
+      bearing: (b + 360) % 360,
+      distance: math.sqrt(east * east + north * north)
+    );
   }
 
   /// Camera position in ARCore world space from a column-major view matrix.
   static ({double x, double y, double z}) cameraPosition(List<double> v) {
     final t = [v[12], v[13], v[14]];
-    double c(int i) => -(v[i * 4] * t[0] + v[i * 4 + 1] * t[1] + v[i * 4 + 2] * t[2]);
+    double c(int i) =>
+        -(v[i * 4] * t[0] + v[i * 4 + 1] * t[1] + v[i * 4 + 2] * t[2]);
     return (x: c(0), y: c(1), z: c(2));
   }
 
@@ -61,7 +66,10 @@ class GeoAnchor {
     required double headingOffset,
   }) {
     final yaw = (bearing - headingOffset) * math.pi / 180;
-    return (x: camX + distance * math.sin(yaw), z: camZ - distance * math.cos(yaw));
+    return (
+      x: camX + distance * math.sin(yaw),
+      z: camZ - distance * math.cos(yaw)
+    );
   }
 }
 
