@@ -48,3 +48,26 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/licenses/
+  shaders:
+    - shaders/dither_bg.frag
+  fonts:
+    - family: Silkscreen
+      fonts:
+        - asset: assets/fonts/Silkscreen-Regular.ttf
+        - asset: assets/fonts/Silkscreen-Bold.ttf
+          weight: 700
+    - family: Monocraft
+      fonts:
+        - asset: assets/fonts/Monocraft.ttf
+        - asset: assets/fonts/Monocraft-Bold.ttf
+          weight: 700
+    - family: PixelifySans
+      fonts:
+        - asset: assets/fonts/PixelifySans.ttf
+    - family: VT323
+      fonts:
+        - asset: assets/fonts/VT323-Regular.ttf
+    - family: PressStart2P
+      fonts:
+        - asset: assets/fonts/PressStart2P-Regular.ttf

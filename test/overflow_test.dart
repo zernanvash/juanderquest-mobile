@@ -65,6 +65,7 @@ import 'package:juanderquest_app/features/spots/utils/spot_location_handoff.dart
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_updates_screen.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_developer_screen.dart';
+import 'package:juanderquest_app/features/pixel_lab/pixel_lab_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
@@ -1078,6 +1079,18 @@ void main() {
         const Size(320, 568),
         2.0,
       );
+    });
+
+    testWidgets('PixelLabScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const PixelLabScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('PixelLabScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const PixelLabScreen(), const Size(568, 320), 2.0);
     });
   });
 }
