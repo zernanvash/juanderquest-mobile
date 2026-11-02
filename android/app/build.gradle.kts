@@ -72,6 +72,11 @@ android {
             if (project.findProperty("jdqArLab") == "true") {
                 applicationIdSuffix = ".arlab"
                 resValue("string", "app_name", "JDQ AR Lab")
+            } else if (project.findProperty("jdqArTest") == "true") {
+                // The full app with in-progress AR work (-PjdqArTest=true), so AR testing and the
+                // implementers' jdq-dev builds don't overwrite each other on the owner's phone.
+                applicationIdSuffix = ".artest"
+                resValue("string", "app_name", "JDQ AR Test")
             } else {
                 applicationIdSuffix = ".dev"
                 resValue("string", "app_name", "jdq-dev")
@@ -110,8 +115,8 @@ dependencies {
     implementation("com.google.ar:core:1.56.0")
 }
 
-// The AR Lab test app has no Firebase client (it never initialises Firebase), so skip the
-// google-services step for it instead of registering another app ID.
-if (project.findProperty("jdqArLab") == "true") {
+// The AR Lab and AR Test apps have no registered Firebase client (main.dart initialises Firebase
+// from code options and carries on if it fails), so skip the google-services step for them.
+if (project.findProperty("jdqArLab") == "true" || project.findProperty("jdqArTest") == "true") {
     tasks.matching { it.name.contains("GoogleServices") }.configureEach { enabled = false }
 }
