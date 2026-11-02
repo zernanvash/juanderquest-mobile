@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../domain/update_classification.dart';
 import '../providers/startup_update_controller.dart';
+import '../../../core/app_release.dart';
 
 class StartupUpdateGate extends ConsumerWidget {
   final Widget child;
@@ -141,7 +142,7 @@ class _StartupLoadingView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    'v${state.installedVersionName} (Build ${state.installedVersionCode})',
+                    '${versionLabel(state.installedVersionName)} (Build ${state.installedVersionCode})',
                     style: AppTypography.labelSmall.copyWith(
                       color: Colors.white54,
                     ),
