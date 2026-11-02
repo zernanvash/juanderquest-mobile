@@ -9,8 +9,6 @@ import 'package:permission_handler/permission_handler.dart';
 import '../ar_experience/core/ar_device.dart';
 import '../ar_experience/core/geo_anchor.dart';
 import '../ar_experience/core/world_ar.dart';
-import '../ar_experience/engine/shapes_factory.dart';
-import '../ar_experience/widgets/ar_overlay.dart';
 import '../ar_experience/widgets/world_ar_view.dart';
 
 /// A place in the real world the gem should spawn at.
@@ -35,7 +33,6 @@ class ArLabScreen extends StatefulWidget {
 class _ArLabScreenState extends State<ArLabScreen> {
   final ArDevice _device = ArDevice();
   final HeadingCalibration _cal = HeadingCalibration();
-  final ValueNotifier<ArScreenObject?> _object = ValueNotifier(null);
   WorldArSession? _world;
   StreamSubscription<Position>? _gps;
   Position? _fix;
@@ -70,14 +67,40 @@ class _ArLabScreenState extends State<ArLabScreen> {
     _device.start();
     _gps = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.best, distanceFilter: 0),
-    ).listen((p) => _fix = p, onError: (_) {});
+    ).listen(_onGps, onError: (_) {});
     setState(() => _permissionsOk = true);
+  }
+
+  /// Recent good fixes (±12 m or better), for an averaged position.
+  final List<Position> _good = [];
+
+  void _onGps(Position p) {
+    _fix = p;
+    if (p.accuracy <= 12) {
+      _good.add(p);
+      if (_good.length > 6) _good.removeAt(0);
+    }
+  }
+
+  /// Accuracy-weighted mean of the recent good fixes, or null if GPS is poor now.
+  ({double lat, double lng, double acc})? get _averagedFix {
+    final f = _fix;
+    if (f == null || f.accuracy > 12 || _good.length < 3) return null;
+    var w = 0.0, lat = 0.0, lng = 0.0;
+    for (final g in _good) {
+      final k = 1 / (g.accuracy * g.accuracy);
+      w += k;
+      lat += g.latitude * k;
+      lng += g.longitude * k;
+    }
+    return (lat: lat / w, lng: lng / w, acc: f.accuracy);
   }
 
   void _onViewCreated(int id) {
     final s = WorldArSession(id);
     s.frame.addListener(_onFrame);
     _world = s;
+    s.setNativeObject(true);
   }
 
   void _onFrame() {
@@ -95,15 +118,6 @@ class _ArLabScreenState extends State<ArLabScreen> {
         _lastSample = now;
       }
     }
-    final screen = MediaQuery.sizeOf(context);
-    final p = WorldProjection.project(frame, screen);
-    _object.value = p == null
-        ? null
-        : ArScreenObject.from(
-            p,
-            WorldProjection.focalPx(frame, screen) * ArObjectLayer.objectSizeM / (p.depth <= 0 ? 1 : p.depth),
-            WorldProjection.relativeDegrees(frame),
-          );
     if (now.difference(_lastUi).inMilliseconds > 250) {
       _lastUi = now;
       setState(() {});
@@ -138,18 +152,22 @@ class _ArLabScreenState extends State<ArLabScreen> {
     });
   }
 
-  Future<void> _place() async {
+  Future<void> _place({double? maxDistance}) async {
     final frame = _world?.frame.value;
-    final f = _fix, t = _target, offset = _cal.offset;
+    final f = _averagedFix, t = _target, offset = _cal.offset;
     if (frame == null || !frame.tracking) return setState(() => _note('ARCore is not tracking yet: move the phone slowly.'));
-    if (f == null) return setState(() => _note('No GPS fix yet.'));
+    if (f == null) {
+      return setState(() => _note('Waiting for steady GPS (±12 m or better, a few readings).'));
+    }
     if (t == null) return setState(() => _note('Pick a target first.'));
     if (offset == null) return setState(() => _note('Compass not calibrated: look at the horizon and turn slowly.'));
-    final enu = GeoAnchor.enuOffset(f.latitude, f.longitude, t.lat, t.lng);
+    final enu = GeoAnchor.enuOffset(f.lat, f.lng, t.lat, t.lng);
     final polar = GeoAnchor.polar(enu.east, enu.north);
+    // Quest style: never further than [maxDistance] from you, in the target's direction.
+    final distance = maxDistance == null ? polar.distance : math.min(polar.distance, maxDistance);
     final cam = GeoAnchor.cameraPosition(frame.view!);
     final local = GeoAnchor.localPoint(
-      camX: cam.x, camZ: cam.z, bearing: polar.bearing, distance: polar.distance, headingOffset: offset);
+      camX: cam.x, camZ: cam.z, bearing: polar.bearing, distance: distance, headingOffset: offset);
     final placed = await _world?.placeAnchorAt(local.x, local.z);
     if (!mounted) return;
     setState(() {
@@ -157,9 +175,9 @@ class _ArLabScreenState extends State<ArLabScreen> {
       _placedTarget = t.label;
       _note(placed == null
           ? 'Place failed (not tracking).'
-          : 'Placed ${polar.distance.toStringAsFixed(1)} m @ ${polar.bearing.toStringAsFixed(0)}° '
+          : 'Placed ${distance.toStringAsFixed(1)} m @ ${polar.bearing.toStringAsFixed(0)}°${maxDistance == null ? '' : ' (quest style)'} '
               '(${placed.onPlane ? 'on a detected floor' : 'floor estimated'}), '
-              'heading ±${_cal.spread.toStringAsFixed(0)}°, GPS ±${f.accuracy.toStringAsFixed(0)} m');
+              'heading ±${_cal.spread.toStringAsFixed(0)}°, GPS ±${f.acc.toStringAsFixed(0)} m (avg of ${_good.length})');
     });
   }
 
@@ -206,7 +224,6 @@ class _ArLabScreenState extends State<ArLabScreen> {
     _world?.frame.removeListener(_onFrame);
     _world?.dispose();
     _device.dispose();
-    _object.dispose();
     super.dispose();
   }
 
@@ -256,13 +273,6 @@ class _ArLabScreenState extends State<ArLabScreen> {
       backgroundColor: Colors.black,
       body: Stack(children: [
         Positioned.fill(child: WorldArView(onCreated: _onViewCreated)),
-        ArObjectLayer(
-          object: _object,
-          mesh: ShapesFactory.createShape(ShapeType.gem, themeColor: const Color(0xFFFFB703)),
-          color: const Color(0xFFFFB703),
-          collectable: false,
-          onTap: () {},
-        ),
         SafeArea(
           child: Align(
             alignment: Alignment.topCenter,
@@ -316,8 +326,15 @@ class _ArLabScreenState extends State<ArLabScreen> {
                 Row(children: [
                   Expanded(
                     child: FilledButton(
+                      onPressed: () => _place(maxDistance: 4),
+                      child: Text(_cal.ready ? 'QUEST STYLE (≤4 m)' : 'heading not ready'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.tonal(
                       onPressed: _place,
-                      child: Text(_cal.ready ? 'PLACE GEM AT TARGET' : 'PLACE (heading not ready)'),
+                      child: const Text('EXACT SPOT'),
                     ),
                   ),
                   const SizedBox(width: 8),

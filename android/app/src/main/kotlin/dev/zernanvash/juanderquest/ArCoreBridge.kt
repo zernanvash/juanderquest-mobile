@@ -103,6 +103,11 @@ private class ArCoreView(
     private var viewportHeight = 1
     private var viewportChanged = true
     private val background = CameraBackground()
+    // Native gem drawn in the camera's own frame (no lag). Off unless Dart asks: the main app's
+    // AR screen still draws its object in Flutter until the AR Lab work is integrated.
+    private val gem = ArGemRenderer()
+    @Volatile private var nativeObject = false
+    private val startNs = System.nanoTime()
     private val view = FloatArray(16)
     private val proj = FloatArray(16)
     private val anchorMatrix = FloatArray(16)
@@ -129,6 +134,10 @@ private class ArCoreView(
                     val z = (call.argument<Number>("z") ?: 0).toFloat()
                     placeAtRequest?.second?.success(null)
                     placeAtRequest = Pair(floatArrayOf(x, z), result)
+                }
+                "setNativeObject" -> {
+                    nativeObject = call.argument<Boolean>("visible") == true
+                    result.success(true)
                 }
                 "clearAnchor" -> {
                     clearRequested = true
@@ -210,6 +219,7 @@ private class ArCoreView(
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         background.create()
+        gem.create()
         session?.setCameraTextureName(background.textureId)
     }
 
@@ -274,6 +284,9 @@ private class ArCoreView(
         if (a != null && a.trackingState == TrackingState.TRACKING) {
             a.pose.toMatrix(anchorMatrix, 0)
             payload["anchor"] = anchorMatrix.map { it.toDouble() }
+            if (nativeObject && tracking) {
+                gem.draw(anchorMatrix, view, proj, 0.35f, (System.nanoTime() - startNs) / 1e9f)
+            }
         }
         main.post { sink?.success(payload) }
     }

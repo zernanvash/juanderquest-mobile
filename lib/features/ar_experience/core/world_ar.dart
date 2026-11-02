@@ -230,6 +230,13 @@ class WorldArSession {
     }
   }
 
+  /// Draw the object natively in ARCore's own frame (no lag behind the camera).
+  Future<void> setNativeObject(bool visible) async {
+    try {
+      await _methods.invokeMethod<bool>('setNativeObject', {'visible': visible});
+    } catch (_) {}
+  }
+
   Future<void> clearAnchor() async {
     try {
       await _methods.invokeMethod<bool>('clearAnchor');
