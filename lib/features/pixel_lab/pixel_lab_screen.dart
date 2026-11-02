@@ -14,6 +14,7 @@ import '../../core/pixel/pixel_input.dart';
 import '../../core/pixel/pixel_nav.dart';
 import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
+import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
@@ -96,6 +97,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           _navigation(context, grid),
                           SizedBox(height: grid.px(3)),
                           _sprites(context, grid, settings),
+                          SizedBox(height: grid.px(3)),
+                          _celebrations(context, grid),
                           SizedBox(height: grid.px(6)),
                         ],
                       ),
@@ -810,6 +813,55 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
           Text(
             'ART PIXEL ${_sizeLabel(settings.artPx)} · SPRITES KEEP THEIR OWN PIXEL SIZE.',
             style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _celebrations(BuildContext context, PixelGrid grid) {
+    return _section(
+      context,
+      'Celebrations',
+      Column(
+        children: [
+          PixelButton(
+            label: 'Quest complete',
+            variant: PixelButtonVariant.primary,
+            expand: true,
+            onPressed: () => showCelebration(
+              context,
+              const QuestComplete(
+                questTitle: 'Hundred Islands Eco Run',
+                reward: 75,
+              ),
+            ),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            label: 'Level up (7 → 8)',
+            variant: PixelButtonVariant.primary,
+            expand: true,
+            onPressed: () => showCelebration(
+              context,
+              const LevelUp(
+                fromLevel: 7,
+                toLevel: 8,
+              ),
+            ),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            label: 'Stamp earned',
+            variant: PixelButtonVariant.primary,
+            expand: true,
+            onPressed: () => showCelebration(
+              context,
+              const StampEarned(
+                stampName: 'JuanChoice Voter',
+                stamp: DesignerArt.juanChoice,
+              ),
+            ),
           ),
         ],
       ),
