@@ -8,6 +8,7 @@ import '../../../core/widgets/jdq_scaffold.dart';
 import '../../../core/widgets/jdq_section_header.dart';
 import '../../app_update/providers/app_update_provider.dart';
 import '../../app_update/widgets/update_dialog.dart';
+import '../../../core/app_release.dart';
 
 /// Settings -> App updates: over-the-air APK check and the installed build.
 class SettingsUpdatesScreen extends ConsumerWidget {
@@ -56,7 +57,7 @@ class SettingsUpdatesScreen extends ConsumerWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'App is up to date (v${current.installedVersionName} · Build ${current.installedVersionCode}).',
+                                  'App is up to date (${versionLabel(current.installedVersionName)} · Build ${current.installedVersionCode}).',
                                 ),
                                 backgroundColor: AppColors.primary,
                               ),
@@ -122,7 +123,7 @@ class SettingsUpdatesScreen extends ConsumerWidget {
                                     borderRadius: AppSpacing.roundedPill,
                                   ),
                                   child: Text(
-                                    'v${updateState.installedVersionName} (${updateState.installedVersionCode})',
+                                    '${versionLabel(updateState.installedVersionName)} (${updateState.installedVersionCode})',
                                     style: AppTypography.bodySmall.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.textPrimary,

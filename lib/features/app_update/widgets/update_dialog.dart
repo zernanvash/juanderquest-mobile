@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/app_version_info.dart';
 import '../providers/app_update_provider.dart';
+import '../../../core/app_release.dart';
 
 class UpdateDialog extends ConsumerWidget {
   final AppVersionInfo versionInfo;
@@ -81,7 +82,7 @@ class UpdateDialog extends ConsumerWidget {
                   borderRadius: AppSpacing.roundedPill,
                 ),
                 child: Text(
-                  'v${updateState.installedVersionName} → v${versionInfo.versionName}',
+                  '${versionLabel(updateState.installedVersionName)} → ${versionLabel(versionInfo.versionName)}',
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
