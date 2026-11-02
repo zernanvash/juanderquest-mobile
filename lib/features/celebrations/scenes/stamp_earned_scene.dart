@@ -78,7 +78,7 @@ class StampEarnedGame extends FlameGame {
       onLand: () {
         onHaptic?.call();
         if (!reducedMotion) {
-          _splatComp.splat(_stampComp.position);
+          _splatComp.splat(_stampComp.position, _stampComp.size.y);
         }
       },
     );
@@ -122,17 +122,18 @@ class StampEarnedGame extends FlameGame {
   void _layout(Vector2 s) {
     if (s.x <= 0 || s.y <= 0) return;
     final isLandscape = s.x > s.y;
-    if (isLandscape) {
-      _title.position = Vector2(s.x / 2, s.y * 0.16);
-      _stampCaption.position = Vector2(s.x / 2, s.y * 0.28);
-      _stampComp.targetPosition = Vector2(s.x / 2, s.y * 0.56);
-    } else {
-      _title.position = Vector2(s.x / 2, s.y * 0.15);
-      _stampCaption.position = Vector2(s.x / 2, s.y * 0.23);
-      _stampComp.targetPosition = Vector2(s.x / 2, s.y * 0.46);
-    }
+    final targetY = isLandscape ? s.y * 0.58 : s.y * 0.48;
+    _title.position = Vector2(s.x / 2, s.y * 0.16);
+    _stampCaption.position = Vector2(
+      s.x / 2,
+      isLandscape ? s.y * 0.28 : s.y * 0.25,
+    );
+    _stampComp.targetPosition = Vector2(s.x / 2, targetY);
+
     if (reducedMotion || _stampComp.hasLanded) {
-      _stampComp.position = _stampComp.targetPosition;
+      _stampComp.position = _stampComp.targetPosition.clone();
+    } else {
+      _stampComp.position.x = _stampComp.targetPosition.x;
     }
   }
 
@@ -177,20 +178,21 @@ class _StampSpriteComponent extends PositionComponent {
   double _stepAcc = 0;
   bool _landed = false;
   int _squashFrame = 0;
-  double _scaleX = 1.0;
-  double _scaleY = 1.0;
 
   bool get hasLanded => _landed;
 
   @override
   Future<void> onLoad() async {
     _img = stamp.image();
-    // 32x32 art pixels at 3x scale
-    size = Vector2(stamp.width * unit * 3, stamp.height * unit * 3);
+    final scaleMultiplier = stamp.width <= 32 ? 2.5 : 1.75;
+    size = Vector2(
+      (stamp.width * unit * scaleMultiplier).roundToDouble(),
+      (stamp.height * unit * scaleMultiplier).roundToDouble(),
+    );
 
     if (reducedMotion) {
       _landed = true;
-      position = targetPosition;
+      position = targetPosition.clone();
     } else {
       // Start above screen
       position = Vector2(targetPosition.x, -size.y);
@@ -217,30 +219,25 @@ class _StampSpriteComponent extends PositionComponent {
           position.y = targetPosition.y;
           _landed = true;
           _squashFrame = 1; // start 2-frame squash
-          _scaleX = 1.25;
-          _scaleY = 0.75;
+          scale = Vector2(1.25, 0.75);
           onLand();
         }
       } else if (_squashFrame == 1) {
         // Frame 2: normal
         _squashFrame = 2;
-        _scaleX = 1.0;
-        _scaleY = 1.0;
+        scale = Vector2(1.0, 1.0);
       }
     }
   }
 
   @override
   void render(Canvas canvas) {
-    canvas.save();
-    canvas.scale(_scaleX, _scaleY);
     canvas.drawImageRect(
       _img,
       Rect.fromLTWH(0, 0, _img.width.toDouble(), _img.height.toDouble()),
-      Rect.fromLTWH(-size.x / 2, -size.y / 2, size.x, size.y),
+      Rect.fromLTWH(0, 0, size.x, size.y),
       _paint,
     );
-    canvas.restore();
   }
 }
 
@@ -260,11 +257,11 @@ class _InkSplatComponent extends Component
     ..isAntiAlias = false
     ..color = PixelPalette.redSoft;
 
-  void splat(Vector2 from) {
+  void splat(Vector2 from, double stampHeight) {
     _stepper = InkSplatStepper(
       unit: unit,
       originX: from.x,
-      originY: from.y + 24 * unit,
+      originY: from.y + stampHeight * 0.2,
       count: 16,
     );
     _active = true;
@@ -284,7 +281,7 @@ class _InkSplatComponent extends Component
       final y = (p.y / unit).round() * unit;
       final s = p.sizePx * unit;
       final paint = p.isSoft ? _paintRedSoft : _paintRed;
-      canvas.drawRect(Rect.fromLTWH(x, y, s, s), paint);
+      canvas.drawRect(Rect.fromLTWH(x - s / 2, y - s / 2, s, s), paint);
     }
   }
 }

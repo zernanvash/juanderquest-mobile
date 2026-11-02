@@ -113,17 +113,18 @@ class LevelUpGame extends FlameGame {
         ? Vector2(s.x * 0.45, s.y * 0.52)
         : Vector2(s.x / 2, s.y * 0.46);
 
+    final sunRadius = math.min(s.x, s.y) * 0.32;
     _sunRays.position = centerPos;
-    _sunRays.rebuildPictures(centerPos, math.max(s.x, s.y) * 0.6);
+    _sunRays.rebuildPictures(centerPos, sunRadius);
 
     if (isLandscape) {
       _title.position = Vector2(s.x / 2, s.y * 0.16);
-      _numeral.position = Vector2(centerPos.x - 20 * unit, centerPos.y);
-      _juan.position = Vector2(centerPos.x + 36 * unit, centerPos.y);
+      _numeral.position = Vector2(centerPos.x - 24 * unit, centerPos.y);
+      _juan.position = Vector2(centerPos.x + 28 * unit, centerPos.y);
     } else {
       _title.position = Vector2(s.x / 2, s.y * 0.16);
-      _numeral.position = Vector2(centerPos.x - 18 * unit, centerPos.y);
-      _juan.position = Vector2(centerPos.x + 32 * unit, centerPos.y);
+      _numeral.position = Vector2(centerPos.x - 24 * unit, centerPos.y);
+      _juan.position = Vector2(centerPos.x + 24 * unit, centerPos.y);
     }
   }
 
@@ -178,16 +179,28 @@ class _SunRaysComponent extends PositionComponent {
       final canvas = Canvas(recorder);
       final baseRot = step * (2 * math.pi / 8);
 
+      // Clip wedges into a circular medallion so dark ink sky and stars show around it
+      canvas.save();
+      canvas.clipPath(Path()..addOval(Rect.fromCircle(center: Offset.zero, radius: radius)));
+
       for (var i = 0; i < wedgeCount; i++) {
         final a1 = baseRot + i * wedgeAngle;
         final a2 = baseRot + (i + 1) * wedgeAngle;
         final path = Path()
           ..moveTo(0, 0)
-          ..lineTo(radius * math.cos(a1), radius * math.sin(a1))
-          ..lineTo(radius * math.cos(a2), radius * math.sin(a2))
+          ..lineTo(radius * 1.5 * math.cos(a1), radius * 1.5 * math.sin(a1))
+          ..lineTo(radius * 1.5 * math.cos(a2), radius * 1.5 * math.sin(a2))
           ..close();
         canvas.drawPath(path, i % 2 == 0 ? paintSun : paintSunLight);
       }
+      canvas.restore();
+
+      final borderPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = unit * 2
+        ..color = PixelPalette.ink;
+      canvas.drawCircle(Offset.zero, radius, borderPaint);
+
       _pictures.add(recorder.endRecording());
     }
   }
@@ -242,25 +255,38 @@ class _LevelNumeralComponent extends PositionComponent {
 
   late int _level;
   double _t = 0;
-  double _scaleX = 1.0;
-  double _scaleY = 1.0;
   bool _flipped = false;
 
   int get currentLevel => _level;
 
+  late final TextPaint _lvlLabelPaint;
   late final TextPaint _numeralPaint;
 
   @override
   Future<void> onLoad() async {
     _level = reducedMotion ? toLevel : fromLevel;
+    size = Vector2(24 * unit, 32 * unit);
+
+    _lvlLabelPaint = TextPaint(
+      style: TextStyle(
+        fontFamily: font,
+        fontSize: (10 * fontScale).roundToDouble().clamp(8, 18),
+        fontWeight: FontWeight.w700,
+        color: PixelPalette.sun,
+        shadows: [
+          Shadow(color: PixelPalette.ink, offset: Offset(unit, unit)),
+        ],
+      ),
+    );
+
     _numeralPaint = TextPaint(
       style: TextStyle(
         fontFamily: font,
-        fontSize: (44 * fontScale).roundToDouble().clamp(16, 72),
+        fontSize: (22 * fontScale).roundToDouble().clamp(14, 40),
         fontWeight: FontWeight.w700,
         color: PixelPalette.white,
         shadows: [
-          Shadow(color: PixelPalette.ink, offset: Offset(unit * 2, unit * 2)),
+          Shadow(color: PixelPalette.ink, offset: Offset(unit * 1.5, unit * 1.5)),
         ],
       ),
     );
@@ -281,34 +307,50 @@ class _LevelNumeralComponent extends PositionComponent {
 
     // 3-frame squash at t = 0.6s..0.8s
     if (_t < 0.6) {
-      _scaleX = 1.0;
-      _scaleY = 1.0;
+      scale = Vector2(1.0, 1.0);
     } else if (_t < 0.7) {
       // Frame 1: tall
-      _scaleX = 0.7;
-      _scaleY = 1.3;
+      scale = Vector2(0.7, 1.3);
     } else if (_t < 0.8) {
       // Frame 2: wide (flip beat)
-      _scaleX = 1.4;
-      _scaleY = 0.6;
+      scale = Vector2(1.4, 0.6);
     } else {
       // Frame 3: normal
-      _scaleX = 1.0;
-      _scaleY = 1.0;
+      scale = Vector2(1.0, 1.0);
     }
   }
 
   @override
   void render(Canvas canvas) {
-    canvas.save();
-    canvas.scale(_scaleX, _scaleY);
+    final plateRect = Rect.fromLTWH(0, 0, size.x, size.y);
+    final rrect = RRect.fromRectAndRadius(plateRect, Radius.circular(unit * 2));
+
+    // Dark ink badge background
+    final bgPaint = Paint()..color = PixelPalette.ink;
+    canvas.drawRRect(rrect, bgPaint);
+
+    // Border
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = unit * 1.5
+      ..color = PixelPalette.woodLight;
+    canvas.drawRRect(rrect, borderPaint);
+
+    // "LVL" tag at upper part
+    _lvlLabelPaint.render(
+      canvas,
+      'LVL',
+      Vector2(size.x / 2, size.y * 0.28),
+      anchor: Anchor.center,
+    );
+
+    // Numeral in lower center
     _numeralPaint.render(
       canvas,
       '$_level',
-      Vector2.zero(),
+      Vector2(size.x / 2, size.y * 0.68),
       anchor: Anchor.center,
     );
-    canvas.restore();
   }
 }
 
@@ -326,8 +368,8 @@ class _JuanComponent extends PositionComponent {
   @override
   Future<void> onLoad() async {
     _frames = DesignerArt.juanIdle.frames.map((f) => f.image()).toList();
-    // Juan idle is 16x16 art pixels at 4x scale
-    size = Vector2.all(16 * unit * 4);
+    // Juan idle is 16x16 art pixels at 3.5x scale
+    size = Vector2.all(16 * unit * 3.5);
   }
 
   @override
