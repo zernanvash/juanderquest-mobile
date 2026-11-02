@@ -10,3 +10,7 @@ Turns designer PNGs (drawn 1 px per art pixel) into brand-palette pixel data tha
 `palette.json` is the single source of the pixel palette. Each colour is either a brand colour (mobile `AppColors` or web `globals.css`) or a documented mix of two brand colours. Keys are permanent, so append new colours and never reorder.
 
 Preview everything in a debug build at Settings → Developer tools → Pixel lab.
+
+## For the artist
+
+Load `juanderquest-pixel.gpl` (GIMP/Aseprite), `juanderquest-pixel.hex` (Lospec/Aseprite) or `juanderquest-pixel-palette.png` (a 1 px swatch strip) into your drawing tool and draw only with these colours. Then the converter changes nothing. The export rules are in Plan 75 §6.

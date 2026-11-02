@@ -1,0 +1,45 @@
+GIMP Palette
+Name: JuanderQuest Pixel
+Columns: 7
+# Brand colours and brand mixes. Generated from tool/pixel_art/palette.json.
+ 13  27  42	ink
+ 65  72  68	slate
+113 121 115	stone
+193 200 194	mist
+227 226 223	paperDim
+250 249 245	paper
+255 255 255	white
+ 27  67  50	greenDeep
+ 39  78  60	greenDark
+ 63 102  83	green
+ 45 106  79	greenBright
+122 162 141	greenMid
+193 236 212	greenLight
+107  75   0	goldDeep
+180  83   9	gold
+217 119   6	amber
+247 127   0	flame
+255 183   3	sun
+255 222 169	sunLight
+255 248 225	cream
+ 38  29  26	woodNight
+ 62  31  10	woodDeep
+ 88  47  14	wood
+123  75  39	woodMid
+196 156 110	woodLight
+247 235 225	parchment
+ 69  27  36	redNight
+153  27  27	redDeep
+188  71  73	red
+200 104 106	redBright
+227 168 168	redSoft
+253 232 232	redLight
+186  26  26	alert
+230 126  34	orange
+255 236 224	orangeLight
+ 20  50  72	blueDeep
+ 27  73 101	blue
+ 37  99 235	blueBright
+119 160 244	blueMid
+219 234 254	blueLight
+224 242 254	sky
