@@ -2,10 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../theater/theater_panel.dart';
 
 /// One field log ("comment") on a destination, as returned by
 /// `GET /spots/:id/comments`.
@@ -97,8 +100,8 @@ String _errorText(Object e, String fallback) {
   return fallback;
 }
 
-/// Likes, comments ("field logs") and problem reports for a destination —
-/// the community section the web destination page has (Plan 47 B3).
+/// Likes, comments ("explorer notes") and problem reports for a destination —
+/// restyled for the pixel theater layout.
 class SpotCommunitySection extends ConsumerStatefulWidget {
   final String spotId;
   final String spotName;
@@ -160,7 +163,7 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _loadError = 'Comments could not load.';
+        _loadError = 'Notes could not load.';
       });
     }
   }
@@ -211,7 +214,7 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
       });
       FocusScope.of(context).unfocus();
     } catch (e) {
-      if (mounted) _snack(_errorText(e, 'Your comment was not posted.'));
+      if (mounted) _snack(_errorText(e, 'Your note was not posted.'));
     } finally {
       if (mounted) setState(() => _posting = false);
     }
@@ -243,16 +246,22 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
   }
 
   void _snack(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: PixelPalette.ink,
+        content: Text(
+          text,
+          style: const TextStyle(color: PixelPalette.paper),
+        ),
+      ),
+    );
   }
 
   Future<void> _openReport() async {
     final sent = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) => SpotReportSheet(
         spotName: widget.spotName,
         onSubmit: (reason, details) async {
@@ -270,166 +279,307 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      key: const ValueKey('spot_community'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilterChip(
-              key: const ValueKey('spot_like'),
-              selected: _liked,
-              onSelected: (_) => _toggleLike(),
-              avatar: Icon(
-                _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                size: 18,
-                color: _liked ? AppColors.danger : AppColors.textSecondary,
+    final grid = PixelGrid.of(context);
+
+    return TheaterPanel(
+      child: Column(
+        key: const ValueKey('spot_community'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title
+          Text(
+            'NOTES',
+            style: PixelType.title(context, color: PixelPalette.paper),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Tips and updates from people who visited.',
+            style: PixelType.body(context, color: PixelPalette.mist),
+          ),
+          SizedBox(height: grid.px(2)),
+
+          // Top Action Buttons: Like & Report Problem
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Semantics(
+                button: true,
+                label: _liked ? 'Liked spot' : 'Like spot',
+                child: InkWell(
+                  key: const ValueKey('spot_like'),
+                  onTap: _toggleLike,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    alignment: Alignment.center,
+                    child: PixelPanel(
+                      style: _liked
+                          ? PixelBoxStyle.red.copyWith(corner: 0, shadowPx: 0)
+                          : PixelBoxStyle.inkDialogue.copyWith(
+                              fill: PixelPalette.ink,
+                              outline: PixelPalette.paper,
+                              corner: 0,
+                              shadowPx: 0,
+                            ),
+                      padding: 1,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: grid.px(3),
+                          vertical: grid.px(1),
+                        ),
+                        child: Text(
+                          _liked ? '♥ LIKED' : '♡ LIKE',
+                          style: PixelType.small(
+                            context,
+                            color: _liked ? PixelPalette.white : PixelPalette.paper,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              showCheckmark: false,
-              label: Text(_liked ? 'Liked' : 'Like'),
+              Semantics(
+                button: true,
+                label: 'Report a problem',
+                child: InkWell(
+                  key: const ValueKey('spot_report'),
+                  onTap: _openReport,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    alignment: Alignment.center,
+                    child: PixelPanel(
+                      style: PixelBoxStyle.inkDialogue.copyWith(
+                        fill: PixelPalette.ink,
+                        outline: PixelPalette.paper,
+                        corner: 0,
+                        shadowPx: 0,
+                      ),
+                      padding: 1,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: grid.px(3),
+                          vertical: grid.px(1),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '⚑ REPORT A PROBLEM',
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.paper,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: grid.px(3)),
+
+          // Note Composer
+          _buildComposer(grid),
+
+          SizedBox(height: grid.px(3)),
+
+          // Notes List / State
+          if (_loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(color: PixelPalette.sun),
+              ),
+            )
+          else if (_loadError != null)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _loadError!,
+                    style: PixelType.small(context, color: PixelPalette.red),
+                  ),
+                ),
+                PixelButton(
+                  label: 'RETRY',
+                  variant: PixelButtonVariant.ghost,
+                  onPressed: _load,
+                ),
+              ],
+            )
+          else if (_comments.isEmpty)
+            Text(
+              'No notes yet. Be the first to share a tip.',
+              style: PixelType.small(context, color: PixelPalette.stone),
+            )
+          else
+            for (final c in _comments) ...[
+              _buildCommentItem(c, grid),
+              if (c != _comments.last) SizedBox(height: grid.px(2)),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComposer(PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.inkDialogue.copyWith(
+        fill: PixelPalette.ink,
+        outline: PixelPalette.paper,
+        corner: 0,
+        shadowPx: 0,
+      ),
+      padding: 1,
+      child: Padding(
+        padding: EdgeInsets.all(grid.px(2)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              key: const ValueKey('spot_comment_input'),
+              controller: _composer,
+              minLines: 2,
+              maxLines: 4,
+              maxLength: 1000,
+              style: PixelType.body(context, color: PixelPalette.paper),
+              decoration: InputDecoration(
+                hintText: 'Share a tip for other explorers…',
+                hintStyle: PixelType.body(context, color: PixelPalette.stone),
+                border: InputBorder.none,
+                counterText: '',
+              ),
             ),
-            ActionChip(
-              key: const ValueKey('spot_report'),
-              onPressed: _openReport,
-              avatar: const Icon(Icons.flag_outlined, size: 18),
-              label: const Text('Report a problem'),
+            SizedBox(height: grid.px(1)),
+            Wrap(
+              spacing: grid.px(1),
+              runSpacing: grid.px(1),
+              crossAxisAlignment: WrapCrossAlignment.center,
+              alignment: WrapAlignment.spaceBetween,
+              children: [
+                DropdownButton<String>(
+                  key: const ValueKey('spot_comment_tag'),
+                  value: _tag,
+                  dropdownColor: PixelPalette.ink,
+                  underline: const SizedBox.shrink(),
+                  items: [
+                    for (final e in spotCommentTags.entries)
+                      DropdownMenuItem(
+                        value: e.key,
+                        child: Text(
+                          e.value.toUpperCase(),
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.paper,
+                          ),
+                        ),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => _tag = v ?? 'general'),
+                ),
+                PixelButton(
+                  key: const ValueKey('spot_comment_post'),
+                  label: _posting ? 'POSTING…' : 'POST NOTE',
+                  variant: PixelButtonVariant.primary,
+                  onPressed: _posting ? null : _post,
+                ),
+              ],
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Text(
-          'Explorer notes',
-          style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Tips and updates from people who visited.',
-          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _buildComposer(),
-        const SizedBox(height: AppSpacing.md),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_loadError != null)
-          Row(
-            children: [
-              Expanded(child: Text(_loadError!)),
-              TextButton(onPressed: _load, child: const Text('Retry')),
-            ],
-          )
-        else if (_comments.isEmpty)
-          Text(
-            'No notes yet. Be the first to share a tip.',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
-          )
-        else
-          for (final c in _comments) _buildComment(c),
-      ],
-    );
-  }
-
-  Widget _buildComposer() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedMd,
-        border: Border.all(color: AppColors.borderLowContrast),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            key: const ValueKey('spot_comment_input'),
-            controller: _composer,
-            minLines: 1,
-            maxLines: 4,
-            maxLength: 1000,
-            decoration: const InputDecoration(
-              hintText: 'Share a tip for other explorers…',
-              border: InputBorder.none,
-              counterText: '',
-            ),
-          ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            alignment: WrapAlignment.spaceBetween,
-            children: [
-              DropdownButton<String>(
-                key: const ValueKey('spot_comment_tag'),
-                value: _tag,
-                underline: const SizedBox.shrink(),
-                items: [
-                  for (final e in spotCommentTags.entries)
-                    DropdownMenuItem(value: e.key, child: Text(e.value)),
-                ],
-                onChanged: (v) => setState(() => _tag = v ?? 'general'),
-              ),
-              FilledButton(
-                key: const ValueKey('spot_comment_post'),
-                onPressed: _posting ? null : _post,
-                child: Text(_posting ? 'Posting…' : 'Post'),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildComment(SpotComment c) {
+  Widget _buildCommentItem(SpotComment c, PixelGrid grid) {
     final voted = _helpfulVoted.contains(c.id);
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedMd,
-        border: Border.all(color: AppColors.borderLowContrast),
+
+    return PixelPanel(
+      style: PixelBoxStyle.inkDialogue.copyWith(
+        fill: PixelPalette.ink,
+        outline: PixelPalette.slate,
+        corner: 0,
+        shadowPx: 0,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(c.authorName,
-                  style: AppTypography.labelLarge
-                      .copyWith(fontWeight: FontWeight.bold)),
-              if (c.verifiedVisit)
-                const Icon(Icons.verified_rounded,
-                    size: 16, color: AppColors.success),
-              Text(
-                '${spotCommentTags[c.tag] ?? 'General'} · ${_relative(c.createdAt)}',
-                style:
-                    AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(c.content, style: AppTypography.bodyMedium),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: voted ? null : () => _markHelpful(c),
-              icon: Icon(
-                voted ? Icons.thumb_up_alt_rounded : Icons.thumb_up_alt_outlined,
-                size: 16,
-              ),
-              label: Text('Helpful (${c.helpfulCount})'),
+      padding: 1,
+      child: Padding(
+        padding: EdgeInsets.all(grid.px(2)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: grid.px(1),
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  c.authorName.toUpperCase(),
+                  style: PixelType.small(context, color: PixelPalette.paper),
+                ),
+                if (c.verifiedVisit)
+                  const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: PixelChip(
+                      'VERIFIED VISIT',
+                      style: PixelBoxStyle.green,
+                      textColor: PixelPalette.white,
+                    ),
+                  ),
+                Text(
+                  '${spotCommentTags[c.tag]?.toUpperCase() ?? 'GENERAL'} · ${_relative(c.createdAt).toUpperCase()}',
+                  style: PixelType.small(context, color: PixelPalette.mist),
+                ),
+              ],
             ),
-          ),
-        ],
+            SizedBox(height: grid.px(1)),
+            Text(
+              c.content,
+              style: PixelType.body(context, color: PixelPalette.paperDim),
+            ),
+            SizedBox(height: grid.px(1)),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Semantics(
+                button: true,
+                label: 'Mark note helpful (${c.helpfulCount})',
+                child: InkWell(
+                  onTap: voted ? null : () => _markHelpful(c),
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 48, minHeight: 36),
+                    alignment: Alignment.center,
+                    child: PixelPanel(
+                      style: voted
+                          ? PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0)
+                          : PixelBoxStyle.inkDialogue.copyWith(
+                              fill: PixelPalette.slate,
+                              outline: PixelPalette.mist,
+                              corner: 0,
+                              shadowPx: 0,
+                            ),
+                      padding: 1,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: grid.px(2),
+                          vertical: grid.px(1),
+                        ),
+                        child: Text(
+                          '👍 HELPFUL (${c.helpfulCount})',
+                          style: PixelType.small(
+                            context,
+                            color: voted ? PixelPalette.ink : PixelPalette.paper,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -484,63 +634,114 @@ class _SpotReportSheetState extends State<SpotReportSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.gutter,
-        right: AppSpacing.gutter,
-        top: AppSpacing.lg,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
-      ),
-      child: SingleChildScrollView(
+    final grid = PixelGrid.of(context);
+
+    return Material(
+      color: PixelPalette.ink,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: grid.px(3),
+          right: grid.px(3),
+          top: grid.px(3),
+          bottom: MediaQuery.viewInsetsOf(context).bottom + grid.px(3),
+        ),
+        child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Report a problem',
-                style: AppTypography.headlineSmall
-                    .copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(widget.spotName,
-                style: AppTypography.bodySmall
-                    .copyWith(color: AppColors.textSecondary)),
-            const SizedBox(height: AppSpacing.md),
-            RadioGroup<String>(
-              groupValue: _reason,
-              onChanged: (v) => setState(() => _reason = v),
-              child: Column(
-                children: [
-                  for (final e in spotReportReasons.entries)
-                    RadioListTile<String>(
-                      key: ValueKey('report_${e.key}'),
-                      value: e.key,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(e.value),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'REPORT A PROBLEM',
+                      style: PixelType.title(context, color: PixelPalette.paper),
                     ),
-                ],
-              ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => Navigator.of(context).pop(false),
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '✕',
+                      style: PixelType.title(context, color: PixelPalette.paper),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            TextField(
-              controller: _details,
-              maxLength: 500,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Details (optional)',
-                border: OutlineInputBorder(),
+            SizedBox(height: grid.px(1)),
+            Text(
+              widget.spotName.toUpperCase(),
+              style: PixelType.small(context, color: PixelPalette.mist),
+            ),
+            SizedBox(height: grid.px(2)),
+            Column(
+              children: [
+                for (final e in spotReportReasons.entries)
+                  RadioListTile<String>(
+                    key: ValueKey('report_${e.key}'),
+                    value: e.key,
+                    groupValue: _reason,
+                    activeColor: PixelPalette.sun,
+                    onChanged: (v) => setState(() => _reason = v),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      e.value,
+                      style: PixelType.small(context, color: PixelPalette.paper),
+                    ),
+                  ),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            PixelPanel(
+              style: PixelBoxStyle.inkDialogue.copyWith(
+                fill: PixelPalette.ink,
+                outline: PixelPalette.slate,
+                corner: 0,
+                shadowPx: 0,
+              ),
+              padding: 1,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: grid.px(2)),
+                child: TextField(
+                  controller: _details,
+                  maxLength: 500,
+                  maxLines: 3,
+                  style: PixelType.body(context, color: PixelPalette.paper),
+                  decoration: InputDecoration(
+                    labelText: 'DETAILS (OPTIONAL)',
+                    labelStyle: PixelType.small(context, color: PixelPalette.mist),
+                    border: InputBorder.none,
+                    counterStyle: PixelType.small(context, color: PixelPalette.stone),
+                  ),
+                ),
               ),
             ),
             if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: const TextStyle(color: AppColors.danger)),
+              SizedBox(height: grid.px(1)),
+              Text(
+                _error!,
+                style: PixelType.small(context, color: PixelPalette.red),
+              ),
             ],
-            const SizedBox(height: AppSpacing.md),
-            FilledButton(
+            SizedBox(height: grid.px(2)),
+            PixelButton(
               key: const ValueKey('report_send'),
+              label: _sending ? 'SENDING…' : 'SEND REPORT',
+              variant: PixelButtonVariant.primary,
               onPressed: _reason == null || _sending ? null : _send,
-              child: Text(_sending ? 'Sending…' : 'Send report'),
             ),
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
