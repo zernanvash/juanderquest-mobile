@@ -1,0 +1,12 @@
+# Pixel art pipeline
+
+Turns designer PNGs (drawn 1 px per art pixel) into brand-palette pixel data that the app draws pixel-perfect.
+
+1. Put the PNG in the workspace `assets/` folder. One sprite per file; animations go in a horizontal strip of equal frames.
+2. Add an entry to `assets.json`: `name`, `file`, and for strips `frameWidth` (plus `frameCount`/`trim` if the strip has gaps, and `fps`).
+3. From `juanderquest_app/`, run `python tool/pixel_art/png_to_dart.py --root .. --review /tmp/review.png`. This needs Pillow.
+4. Check the review sheet: original on top, brand palette underneath. Commit the regenerated `lib/core/pixel/generated/*.g.dart`.
+
+`palette.json` is the single source of the pixel palette. Each colour is either a brand colour (mobile `AppColors` or web `globals.css`) or a documented mix of two brand colours. Keys are permanent, so append new colours and never reorder.
+
+Preview everything in a debug build at Settings → Developer tools → Pixel lab.

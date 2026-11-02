@@ -19,6 +19,7 @@ import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/settings/screens/settings_updates_screen.dart';
 import '../features/settings/screens/settings_developer_screen.dart';
+import '../features/pixel_lab/pixel_lab_screen.dart';
 import '../features/cosmetics/screens/appearance_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
@@ -337,6 +338,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path:'appearance',builder:(context,state)=>const AppearanceScreen()),
           GoRoute(path: 'updates', builder: (context, state) => const SettingsUpdatesScreen()),
           GoRoute(path: 'developer', builder: (context, state) => const SettingsDeveloperScreen()),
+          GoRoute(path: 'pixel-lab', builder: (context, state) => const PixelLabScreen()),
         ],
       ),
       GoRoute(

@@ -1,0 +1,251 @@
+"""Convert designer pixel-art PNGs into brand-palette pixel data for Flutter.
+
+Usage (from juanderquest_app/):
+    python tool/pixel_art/png_to_dart.py --root .. [--review out.png]
+
+Reads tool/pixel_art/palette.json and tool/pixel_art/assets.json and writes:
+    lib/core/pixel/generated/pixel_palette.g.dart
+    lib/core/pixel/generated/designer_art.g.dart
+
+Every pixel is mapped to the nearest palette colour in CIELAB space, so the art
+keeps its shapes and shading but only uses JuanderQuest brand colours.
+--review writes a side-by-side sheet (original | converted) for a human check.
+Requires Pillow.
+"""
+import argparse
+import json
+import math
+from pathlib import Path
+
+from PIL import Image, ImageDraw
+
+HERE = Path(__file__).resolve().parent
+APP = HERE.parent.parent
+
+
+def hex_rgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def srgb_to_lab(rgb):
+    def lin(c):
+        c /= 255.0
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (lin(c) for c in rgb)
+    x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
+    y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
+
+    def f(t):
+        return t ** (1 / 3) if t > 0.008856 else 7.787 * t + 16 / 116
+
+    fx, fy, fz = f(x), f(y), f(z)
+    return (116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz))
+
+
+def load_palette():
+    spec = json.loads((HERE / 'palette.json').read_text())['colors']
+    by_name = {}
+    pending = list(spec)
+    while pending:
+        left = []
+        for c in pending:
+            if 'hex' in c:
+                by_name[c['name']] = hex_rgb(c['hex'])
+            else:
+                a, b, t = c['mix']
+                if a in by_name and b in by_name:
+                    ca, cb = by_name[a], by_name[b]
+                    by_name[c['name']] = tuple(round(ca[i] + (cb[i] - ca[i]) * t) for i in range(3))
+                else:
+                    left.append(c)
+        if len(left) == len(pending):
+            raise SystemExit(f'unresolvable mixes: {[c["name"] for c in left]}')
+        pending = left
+    out = []
+    for c in spec:
+        rgb = by_name[c['name']]
+        out.append({**c, 'rgb': rgb, 'lab': srgb_to_lab(rgb)})
+    keys = [c['key'] for c in out]
+    assert len(set(keys)) == len(keys) and '.' not in keys, 'palette keys must be unique, never "."'
+    return out
+
+
+def nearest(palette, rgb, cache):
+    if rgb in cache:
+        return cache[rgb]
+    lab = srgb_to_lab(rgb)
+    best, best_d = None, 1e18
+    for c in palette:
+        d = sum((lab[i] - c['lab'][i]) ** 2 for i in range(3))
+        if d < best_d:
+            best, best_d = c, d
+    cache[rgb] = (best, math.sqrt(best_d))
+    return cache[rgb]
+
+
+def frames_of(img, spec):
+    w, h = img.size
+    fw = spec.get('frameWidth')
+    if not fw:
+        return [img]
+    count = spec.get('frameCount') or w // fw
+    frames = [img.crop((i * fw, 0, min(i * fw + fw, w), h)) for i in range(count)]
+    if spec.get('trim'):
+        # One common box for all frames so the animation does not jitter.
+        boxes = [f.getbbox() for f in frames if f.getbbox()]
+        box = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+        frames = [f.crop(box) for f in frames]
+    widths = {f.size for f in frames}
+    assert len(widths) == 1, f'{spec["name"]}: frames differ in size {widths}'
+    return frames
+
+
+def convert(frame, palette, cache, stats):
+    frame = frame.convert('RGBA')
+    w, h = frame.size
+    px = frame.load()
+    rows = []
+    for y in range(h):
+        row = []
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a < 128:
+                row.append('.')
+                continue
+            c, d = nearest(palette, (r, g, b), cache)
+            stats.append(d)
+            row.append(c['key'])
+        rows.append(''.join(row))
+    return rows
+
+
+def render(rows, palette_by_key):
+    h, w = len(rows), len(rows[0])
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    px = im.load()
+    for y, row in enumerate(rows):
+        for x, k in enumerate(row):
+            if k != '.':
+                px[x, y] = palette_by_key[k]['rgb'] + (255,)
+    return im
+
+
+def dart_string_list(rows, indent):
+    pad = ' ' * indent
+    return '\n'.join(f"{pad}'{r}'," for r in rows)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--root', default='..', help='workspace root that holds assets/')
+    ap.add_argument('--review', help='write an original|converted comparison PNG here')
+    args = ap.parse_args()
+    root = (APP / args.root).resolve() if not Path(args.root).is_absolute() else Path(args.root)
+
+    palette = load_palette()
+    by_key = {c['key']: c for c in palette}
+    assets = json.loads((HERE / 'assets.json').read_text())['assets']
+    cache = {}
+
+    gen = APP / 'lib' / 'core' / 'pixel' / 'generated'
+    gen.mkdir(parents=True, exist_ok=True)
+
+    # Palette file.
+    lines = [
+        '// GENERATED by tool/pixel_art/png_to_dart.py from tool/pixel_art/palette.json. Do not edit.',
+        '// ignore_for_file: constant_identifier_names',
+        "import 'dart:ui';",
+        '',
+        '/// JuanderQuest pixel palette: brand colours plus documented brand mixes.',
+        'abstract final class PixelPalette {',
+    ]
+    for c in palette:
+        lines.append(f"  /// {c['source']}")
+        lines.append(f"  static const {c['name']} = Color(0xFF{''.join(f'{v:02X}' for v in c['rgb'])});")
+    lines.append('')
+    lines.append('  /// Key used in generated pixel rows -> colour.')
+    lines.append('  static const byKey = <String, Color>{')
+    for c in palette:
+        lines.append(f"    '{c['key']}': {c['name']},")
+    lines.append('  };')
+    lines.append('')
+    lines.append('  /// Palette names in order, for galleries.')
+    lines.append('  static const names = <String, Color>{')
+    for c in palette:
+        lines.append(f"    '{c['name']}': {c['name']},")
+    lines.append('  };')
+    lines.append('}')
+    (gen / 'pixel_palette.g.dart').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+    # Art file.
+    out = [
+        '// GENERATED by tool/pixel_art/png_to_dart.py from the designer PNGs in assets/. Do not edit.',
+        '// Each character is one art pixel; see pixel_palette.g.dart for keys, "." is transparent.',
+        "import '../pixel_art.dart';",
+        '',
+        'abstract final class DesignerArt {',
+    ]
+    review_pairs = []
+    report = []
+    for spec in assets:
+        src = Image.open(root / spec['file']).convert('RGBA')
+        frames = frames_of(src, spec)
+        stats = []
+        converted = [convert(f, palette, cache, stats) for f in frames]
+        avg = sum(stats) / max(len(stats), 1)
+        report.append(f"{spec['name']:<20} {len(frames):>2} frame(s) {len(converted[0][0])}x{len(converted[0])}  "
+                      f"avg dE {avg:5.1f}  max dE {max(stats):5.1f}")
+        if len(frames) == 1:
+            out.append(f"  static const {spec['name']} = PixelArt('{spec['name']}', [")
+            out.append(dart_string_list(converted[0], 4))
+            out.append('  ]);')
+        else:
+            out.append(f"  static const {spec['name']} = PixelFrames('{spec['name']}', fps: {spec.get('fps', 12)}, frames: [")
+            for i, rows in enumerate(converted):
+                out.append(f"    PixelArt('{spec['name']}#{i}', [")
+                out.append(dart_string_list(rows, 6))
+                out.append('    ]),')
+            out.append('  ]);')
+        out.append('')
+        review_pairs.append((spec['name'], src, [render(r, by_key) for r in converted]))
+    out.append('  static const all = <String, Object>{')
+    for spec in assets:
+        out.append(f"    '{spec['name']}': {spec['name']},")
+    out.append('  };')
+    out.append('}')
+    (gen / 'designer_art.g.dart').write_text('\n'.join(out) + '\n', encoding='utf-8')
+    print('\n'.join(report))
+    used = {k for _, _, imgs in review_pairs for im in imgs for k in []}
+    del used
+
+    if args.review:
+        s = 5
+        rows_h = []
+        for name, src, conv in review_pairs:
+            strip = Image.new('RGBA', (sum(c.width for c in conv), conv[0].height))
+            x = 0
+            for c in conv:
+                strip.alpha_composite(c, (x, 0))
+                x += c.width
+            rows_h.append((name, src, strip))
+        width = max(max(sw.width, cv.width) for _, sw, cv in rows_h) * s + 20
+        height = sum((sw.height + cv.height) * s + 40 for _, sw, cv in rows_h)
+        sheet = Image.new('RGBA', (min(width, 3200), height), (250, 249, 245, 255))
+        d = ImageDraw.Draw(sheet)
+        y = 5
+        for name, sw, cv in rows_h:
+            d.text((10, y), f'{name}: original (top) / brand palette (bottom)', fill=(13, 27, 42, 255))
+            y += 14
+            for im in (sw, cv):
+                big = im.resize((im.width * s, im.height * s), Image.NEAREST)
+                sheet.alpha_composite(big.crop((0, 0, min(big.width, 3180), big.height)), (10, y))
+                y += big.height + 4
+            y += 8
+        sheet.save(args.review)
+        print('review sheet:', args.review)
+
+
+if __name__ == '__main__':
+    main()
