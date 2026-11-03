@@ -676,13 +676,11 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         final points = data is Map && data['awarded_points'] is num
             ? (data['awarded_points'] as num).toInt()
             : 0;
-        if (mounted) {
+        // Celebrate only a paid reward; a quest sent to review gets just the dialog.
+        if (awarded && mounted) {
           await showCelebration(
             context,
-            QuestComplete(
-              questTitle: widget.quest.title,
-              reward: awarded ? points : widget.quest.rewardPoints,
-            ),
+            QuestComplete(questTitle: widget.quest.title, reward: points),
           );
         }
         if (!mounted) return;

@@ -259,6 +259,7 @@ Future<ApiClient> _detailApi(
   QuestModel quest, {
   List<QuestStepModel>? steps,
   bool completeSucceeds = true,
+  bool rewardAwarded = true,
   bool hasAttempt = true,
 }) async {
   final api = ApiClient(enableRetries: false);
@@ -307,7 +308,10 @@ Future<ApiClient> _detailApi(
                 statusCode: 200,
                 data: {
                   'success': true,
-                  'data': {'reward_awarded': true, 'awarded_points': 75},
+                  'data': {
+                    'reward_awarded': rewardAwarded,
+                    'awarded_points': rewardAwarded ? 75 : 0,
+                  },
                 },
               ),
             );
@@ -469,6 +473,7 @@ Future<void> _pumpDetail(
   List<QuestStepModel>? steps,
   UserModel? user,
   bool completeSucceeds = true,
+  bool rewardAwarded = true,
   bool hasAttempt = true,
   Size size = const Size(400, 2400),
   double textScale = 1,
@@ -485,6 +490,7 @@ Future<void> _pumpDetail(
     quest,
     steps: steps,
     completeSucceeds: completeSucceeds,
+    rewardAwarded: rewardAwarded,
     hasAttempt: hasAttempt,
   );
   final router = _router('/detail', QuestDetailScreen(quest: quest));
@@ -853,6 +859,19 @@ void main() {
       steps: verified,
       completeSucceeds: false,
     );
+    await tester.tap(find.byKey(const ValueKey('quest_finish_btn')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(CelebrationPage), findsNothing);
+  });
+
+  testWidgets('FINISH QUEST sent to review does not celebrate', (
+    tester,
+  ) async {
+    final quest = _quest('q1', 'Finish review', steps: _setupSteps);
+    final verified =
+        _setupSteps.map((step) => step.copyWith(status: 'verified')).toList();
+    await _pumpDetail(tester, quest, steps: verified, rewardAwarded: false);
     await tester.tap(find.byKey(const ValueKey('quest_finish_btn')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
