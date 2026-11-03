@@ -1,11 +1,16 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as gl;
 import '../../../core/config/map_config.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../pixel/map_marker_art.dart';
 import '../utils/admin_areas.dart';
 import 'building_layer_style.dart';
 import 'jdq_map.dart';
@@ -192,6 +197,29 @@ class MapLibreJdqMap extends JdqMap {
     if (!_disposed) _location.value = enabled;
   }
 
+  Future<Uint8List?> _rasterizeToPng(PixelArt art, {int scale = 2}) async {
+    try {
+      final img = art.image();
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      final targetW = art.width * scale;
+      final targetH = art.height * scale;
+      canvas.drawImageRect(
+        img,
+        Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+        Rect.fromLTWH(0, 0, targetW.toDouble(), targetH.toDouble()),
+        Paint()
+          ..filterQuality = FilterQuality.none
+          ..isAntiAlias = false,
+      );
+      final scaled = await recorder.endRecording().toImage(targetW, targetH);
+      final byteData = await scaled.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _loaded(VoidCallback onReady) async {
     if (_disposed) return;
     try {
@@ -217,15 +245,47 @@ class MapLibreJdqMap extends JdqMap {
               textHaloColor: '#FFFFFF',
               textHaloWidth: 1.5,
               textAllowOverlap: false));
-      // Transitional pin presentation; Phase 2 supplies the JDQ symbol artwork.
-      await c.addCircleLayer(
-          'jdq-pins',
-          'jdq-pin-dots',
-          const gl.CircleLayerProperties(
-              circleRadius: 6,
-              circleColor: '#2D6A4F',
-              circleStrokeColor: '#FFFFFF',
-              circleStrokeWidth: 2));
+
+      bool symbolsAdded = false;
+      try {
+        final questBytes = await _rasterizeToPng(DesignerArt.questMarker, scale: 2);
+        final spotBytes = await _rasterizeToPng(MapMarkerArt.spotPin, scale: 2);
+        if (questBytes != null && spotBytes != null) {
+          await c.addImage('jdq-pin-quest', questBytes);
+          await c.addImage('jdq-pin-spot', spotBytes);
+          await c.addSymbolLayer(
+            'jdq-pins',
+            'jdq-pin-symbols',
+            const gl.SymbolLayerProperties(
+              iconImage: [
+                'case',
+                ['get', 'quest'],
+                'jdq-pin-quest',
+                'jdq-pin-spot',
+              ],
+              iconSize: 1.0,
+              iconAllowOverlap: true,
+              iconAnchor: 'bottom',
+            ),
+          );
+          symbolsAdded = true;
+        }
+      } catch (_) {
+        symbolsAdded = false;
+      }
+
+      if (!symbolsAdded) {
+        // Fallback: circle dots
+        await c.addCircleLayer(
+            'jdq-pins',
+            'jdq-pin-dots',
+            const gl.CircleLayerProperties(
+                circleRadius: 6,
+                circleColor: '#2D6A4F',
+                circleStrokeColor: '#FFFFFF',
+                circleStrokeWidth: 2));
+      }
+
       await c.addFillExtrusionLayer(
           'openmaptiles',
           'jdq-buildings',
@@ -273,7 +333,7 @@ class MapLibreJdqMap extends JdqMap {
     if (!_ready || _disposed) return;
     try {
       final hits = await _controller!.queryRenderedFeatures(
-          point, ['jdq-pin-dots', 'admin-place-labels'], null);
+          point, ['jdq-pin-symbols', 'jdq-pin-dots', 'admin-place-labels'], null);
       if (_disposed) return;
       for (final hit in hits) {
         if (hit is! Map) continue;
