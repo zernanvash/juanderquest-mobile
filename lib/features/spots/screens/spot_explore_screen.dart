@@ -1,24 +1,34 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
-import '../../../core/widgets/designer_guide.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../models/spot_model.dart';
-import '../providers/spot_discovery_provider.dart';
-import '../providers/hidden_gem_provider.dart';
-import '../widgets/hidden_gem_card.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../../cultural_quizzes/widgets/nearby_quiz_card.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
-import '../../juanchoice/models/juanchoice_models.dart';
+import '../explore/juanchoice_placement.dart';
+import '../explore/spot_filter_state.dart';
+import '../explore/widgets/explore_featured_card.dart';
+import '../explore/widgets/explore_header_panel.dart';
+import '../explore/widgets/explore_juanchoice_card.dart';
+import '../explore/widgets/explore_spot_card.dart';
+import '../models/spot_model.dart';
+import '../providers/hidden_gem_provider.dart';
+import '../providers/spot_discovery_provider.dart';
+import '../widgets/hidden_gem_card.dart';
+import '../widgets/spot_community_section.dart';
 
 class SpotExploreScreen extends ConsumerStatefulWidget {
   const SpotExploreScreen({super.key});
@@ -31,6 +41,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   final Map<String, int> _likes = {};
   final Set<String> _likedSpots = {};
   Position? _currentPosition;
+  SpotFilterState _filterState = const SpotFilterState();
+  int _visibleCount = 10;
 
   @override
   void initState() {
@@ -51,7 +63,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.medium);
+        desiredAccuracy: LocationAccuracy.medium,
+      );
       if (mounted) {
         setState(() {
           _currentPosition = pos;
@@ -70,22 +83,36 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     ]);
   }
 
-  void _toggleLike(String spotId) {
+  void _toggleLike(SpotModel spot) {
     setState(() {
-      final currentCount = _likes[spotId] ?? (45 + spotId.hashCode % 120).abs();
-      if (_likedSpots.contains(spotId)) {
-        _likedSpots.remove(spotId);
-        _likes[spotId] = currentCount - 1;
+      final currentCount = _likes[spot.id] ?? (45 + spot.name.length * 3);
+      if (_likedSpots.contains(spot.id)) {
+        _likedSpots.remove(spot.id);
+        _likes[spot.id] = currentCount - 1;
       } else {
-        _likedSpots.add(spotId);
-        _likes[spotId] = currentCount + 1;
+        _likedSpots.add(spot.id);
+        _likes[spot.id] = currentCount + 1;
       }
     });
   }
 
-  void _launchDirections(SpotModel spot) {
-    context.push(
-      '/navigate?lat=${spot.gpsLat}&lng=${spot.gpsLng}&name=${Uri.encodeComponent(spot.name)}&address=${Uri.encodeComponent(spot.address.isNotEmpty ? spot.address : spot.municipality)}',
+  void _openReportSheet(SpotModel spot) {
+    showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SpotReportSheet(
+        spotName: spot.name,
+        onSubmit: (reason, details) async {
+          await ref.read(apiClientProvider).dio.post(
+            '/spots/${spot.id}/reports',
+            data: {
+              'reason': reason,
+              if (details.isNotEmpty) 'details': details,
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -93,895 +120,491 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(spotDiscoveryProvider);
     final spotlight = ref.watch(choiceSpotlightProvider).valueOrNull;
-    final spotlightPlan =
-        planChoiceSpotlight(state.spots, (spot) => spot.id, spotlight);
     final user = ref.watch(authProvider).user;
-    final userInitial =
-        user?.displayName != null && user!.displayName.isNotEmpty
-            ? user.displayName.substring(0, 1).toUpperCase()
-            : 'U';
+    final userInitial = user?.displayName != null && user!.displayName.isNotEmpty
+        ? user.displayName.substring(0, 1).toUpperCase()
+        : 'U';
 
-    return JdqScaffold(
-      appBar: AppBar(
-        titleSpacing: 12,
-        title: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: AppColors.sunGold,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.explore_rounded,
-                    color: AppColors.woodBrown, size: 18),
-              ),
-              const SizedBox(width: 8),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'JuanDerQuest',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.woodBrown,
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+            final grid = PixelGrid.of(context);
+
+            // 1. Initial extraction of categories & towns from all spots
+            final categories = SpotFilterState.extractCategories(state.spots);
+            final municipalities = SpotFilterState.extractMunicipalities(state.spots);
+
+            // 2. Apply combined category and municipality filtering
+            final visibleSpots = _filterState.apply(state.spots);
+
+            // 3. Featured Destination: first ordinary spot with a photo
+            SpotModel? topHeroSpot;
+            for (final s in visibleSpots) {
+              if (s.imageUrl != null && s.imageUrl!.trim().isNotEmpty) {
+                topHeroSpot = s;
+                break;
+              }
+            }
+
+            // 4. JuanChoice In-Feed Placement Planning
+            final spotlightPlacement = planJuanChoicePlacement<SpotModel>(
+              spots: visibleSpots,
+              idOf: (s) => s.id,
+              spotlight: spotlight,
+            );
+
+            final ordinarySpots = spotlightPlacement.ordinary;
+            final pagedSpots = ordinarySpots.take(_visibleCount).toList();
+            final hasMore = _visibleCount < ordinarySpots.length;
+
+            final winnerSpots = spotlight == null
+                ? const <SpotModel>[]
+                : state.spots
+                    .where((s) => spotlight.winnerSpotIds.contains(s.id))
+                    .toList();
+
+            return Scaffold(
+              backgroundColor: PixelPalette.paper,
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(56),
+                child: PixelAppBar(
+                  title: 'EXPLORE',
+                  actions: [
+                    PixelIconButton(
+                      icon: DesignerArt.search,
+                      semanticLabel: 'Search & Filters',
+                      style: PixelBoxStyle.parchment,
+                      iconHeight: 20,
+                      onPressed: () => context.push('/search'),
                     ),
+                  ],
+                ),
+              ),
+              body: RefreshIndicator(
+                onRefresh: () => _load(refresh: true),
+                color: PixelPalette.green,
+                backgroundColor: PixelPalette.paper,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: grid.px(2),
+                    vertical: grid.px(2),
                   ),
-                  Text(
-                    'Travel & Quest Feed',
-                    style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            icon: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.search_rounded,
-                  color: AppColors.primary, size: 18),
-            ),
-            tooltip: 'Search & Filters',
-            onPressed: () => context.push('/search'),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => _load(refresh: true),
-        color: AppColors.primary,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          children: [
-            // 1. Social Media Search Bar (Tapping opens dedicated /search screen)
-            GestureDetector(
-              onTap: () => context.push('/search'),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
-                  borderRadius: AppSpacing.roundedLg,
-                  border: Border.all(color: AppColors.borderLowContrast),
-                  boxShadow: AppSpacing.cardShadow,
-                ),
-                child: Row(
                   children: [
-                    const Icon(Icons.search_rounded,
-                        color: AppColors.primary, size: 20),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Search destinations, food, towns...',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    // Header Filter Panel
+                    ExploreHeaderPanel(
+                      filterState: _filterState,
+                      categories: categories,
+                      municipalities: municipalities,
+                      onToggleCategory: (cat) {
+                        setState(() {
+                          _filterState = _filterState.toggleCategory(cat);
+                          _visibleCount = 10;
+                        });
+                      },
+                      onToggleMunicipality: (muni) {
+                        setState(() {
+                          _filterState = _filterState.toggleMunicipality(muni);
+                          _visibleCount = 10;
+                        });
+                      },
+                      onReset: () {
+                        setState(() {
+                          _filterState = _filterState.reset();
+                          _visibleCount = 10;
+                        });
+                      },
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerLow,
-                        borderRadius: AppSpacing.roundedMd,
-                        border: Border.all(color: AppColors.borderLowContrast),
-                      ),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Filter',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            SizedBox(width: 2),
-                            Icon(Icons.tune_rounded,
-                                size: 12, color: AppColors.primary),
-                          ],
+                    SizedBox(height: grid.px(2)),
+
+                    // App-only blocks preserved in order
+                    // Offline Fallback Banner
+                    if (state.isOfflineFallback) ...[
+                      PixelPanel(
+                        style: PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0),
+                        padding: 2,
+                        child: Text(
+                          'OFFLINE MODE • VIEWING CACHED DESTINATIONS FROM DEVICE STORAGE. CONNECT TO REFRESH.',
+                          style: PixelType.small(context, color: PixelPalette.ink),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Card(
-              color: AppColors.surfaceContainerLowest,
-              child: ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: AppColors.sunGold,
-                  child: Icon(Icons.route_rounded, color: AppColors.woodBrown),
-                ),
-                title: const Text('The Trail'),
-                subtitle:
-                    const Text('Route-based destination ideas · Coming soon'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.push('/trail'),
-              ),
-            ),
-            if (state.isOfflineFallback) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.sunGold.withOpacity(0.18),
-                  borderRadius: AppSpacing.roundedMd,
-                  border: Border.all(color: AppColors.sunGold.withOpacity(0.5)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.cloud_off_rounded,
-                        color: AppColors.woodBrown, size: 16),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Offline Mode • Viewing cached destinations from device storage. Connect to refresh.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.woodBrown,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (spotlight != null && spotlightPlan.winners.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.md),
-              Semantics(
-                label: 'JuanChoice community-selected destination spotlight',
-                child: Card(
-                  color: AppColors.sunGold.withOpacity(0.16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Community-selected spotlight',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.woodBrown)),
-                          Text(spotlight.theme,
-                              maxLines: 2, overflow: TextOverflow.ellipsis),
-                          const SizedBox(height: AppSpacing.sm),
-                          for (final winner in spotlightPlan.winners)
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                  Icons.workspace_premium_rounded,
-                                  color: AppColors.woodBrown),
-                              title: Text(winner.name),
-                              subtitle: Text(winner.municipality),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => context.push(
-                                  '/explore/${winner.slug}',
-                                  extra: winner),
-                            ),
-                          Text('Expires ${spotlight.expiresAt.toLocal()}',
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.textMuted)),
-                        ]),
-                  ),
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            // 2. Location-Triggered Cultural Quiz Nearby Invitation
-            if (_currentPosition != null)
-              Consumer(
-                builder: (context, ref, _) {
-                  final nearbyAsync = ref.watch(nearbyQuizzesProvider((
-                    lat: _currentPosition!.latitude,
-                    lng: _currentPosition!.longitude,
-                  )));
-                  return nearbyAsync.when(
-                    data: (quizzes) {
-                      if (quizzes.isEmpty) return const SizedBox.shrink();
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: quizzes
-                            .map((q) => NearbyQuizCard(invitation: q))
-                            .toList(),
-                      );
-                    },
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  );
-                },
-              ),
-
-            // 3. Personalized Hidden Gem (native ad-style feed unit, not sponsored)
-            const HiddenGemCard(),
-
-            // 3. Post Creation Prompt Box
-            GestureDetector(
-              onTap: () async {
-                final added = await context.push<Object?>('/map/add-spot');
-                if (added != null) _load(refresh: true);
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
-                  borderRadius: AppSpacing.roundedLg,
-                  border: Border.all(color: AppColors.borderLowContrast),
-                  boxShadow: AppSpacing.cardShadow,
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: AppColors.primary,
-                      child: Text(
-                        userInitial,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Share a video clip, spot, or food tip...',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const Icon(Icons.add_a_photo_rounded,
-                        color: AppColors.primary, size: 20),
-                  ],
-                ),
-              ),
-            ),
-
-            if (state.isRefreshing)
-              const Padding(
-                padding: EdgeInsets.only(top: 10),
-                child: LinearProgressIndicator(
-                    minHeight: 2, color: AppColors.primary),
-              ),
-
-            const SizedBox(height: 14),
-
-            // 4. Feed Stream List
-            if (state.isInitialLoading)
-              const _DestinationSkeleton()
-            else if (state.failure != null && state.spots.isEmpty)
-              _buildErrorCard(state.failure!.message)
-            else if (state.spots.isEmpty)
-              _buildEmptyCard()
-            else ...[
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10, left: 4, right: 4),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    Text(
-                      '${spotlightPlan.ordinary.length} Community Field Reports',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.woodBrown),
-                    ),
-                    GestureDetector(
-                      onTap: () => context.push('/search'),
-                      child: const Text(
-                        'Advanced Search →',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Facebook-Style Edge-to-Edge Post Feed
-              ...spotlightPlan.ordinary
-                  .map((spot) => _buildForumPostCard(spot)),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildForumPostCard(SpotModel spot) {
-    final likeCount = _likes[spot.id] ?? (45 + spot.name.length * 3);
-    final isLiked = _likedSpots.contains(spot.id);
-
-    return UiSpecContainer(
-      spec: const UiSpec(
-        title: 'Destination Community Post Card',
-        figmaLayer: '#Spot_Forum_Card',
-        dimensions: 'Full width, Radius: 20dp, Edge-to-Edge photo clip',
-        dataBinding:
-            'spotDiscoveryProvider (municipality, sourceName, trustLevel, crowdStatus, likeCount)',
-        stateNotes:
-            'Instagram Heart Toggle -> Dynamic like counter -> Quest tag link',
-        uxNotes:
-            'Wood brown typography with warm sun gold accents and responsive category wrap.',
-      ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: AppSpacing.roundedXl,
-          border: Border.all(color: AppColors.borderLowContrast),
-          boxShadow: AppSpacing.cardShadow,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Compact Header & Caption Area
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Meta Header
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.location_on_rounded,
-                              size: 13, color: AppColors.primary),
-                          const SizedBox(width: 2),
-                          Flexible(
-                            child: Text(
-                              spot.municipality,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryDark,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Text('•',
-                          style: TextStyle(
-                              color: AppColors.textMuted, fontSize: 11)),
-                      Text(
-                        'Shared by ${spot.sourceName}',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600),
-                      ),
-                      if (spot.trustLevel == 'lgu_verified') ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1.5),
-                          decoration: const BoxDecoration(
-                            color: AppColors.lguVerifiedBg,
-                            borderRadius: AppSpacing.roundedPill,
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.verified_rounded,
-                                  color: AppColors.lguVerified, size: 11),
-                              SizedBox(width: 2),
-                              Text(
-                                'LGU Verified',
-                                style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.lguVerified),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      SizedBox(height: grid.px(2)),
                     ],
-                  ),
 
-                  const SizedBox(height: 6),
-
-                  // Title
-                  GestureDetector(
-                    onTap: () =>
-                        context.push('/explore/${spot.slug}', extra: spot),
-                    child: Text(
-                      spot.name,
-                      style: AppTypography.headlineSmall.copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.woodBrown,
-                      ),
-                    ),
-                  ),
-
-                  // Crowd Status (if busy or quiet)
-                  if (spot.crowdStatus == 'estimated_busy') ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: const BoxDecoration(
-                        color: AppColors.crowdBusyBg,
-                        borderRadius: AppSpacing.roundedSm,
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.warning_amber_rounded,
-                              size: 12, color: AppColors.crowdBusy),
-                          SizedBox(width: 4),
-                          Text(
-                            'Peak Activity Reported',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.crowdBusy),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else if (spot.crowdStatus == 'quiet') ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: const BoxDecoration(
-                        color: AppColors.crowdQuietBg,
-                        borderRadius: AppSpacing.roundedSm,
-                      ),
-                      child: const Text(
-                        '🌿 Serene & Low Crowd',
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.crowdQuiet),
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 4),
-
-                  // Description Snippet
-                  Text(
-                    spot.description,
-                    style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                        fontSize: 12),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-
-            // 2. Full-Bleed Edge-to-Edge Photo (Facebook-Style Border Clipping)
-            if (spot.imageUrl != null && spot.imageUrl!.isNotEmpty) ...[
-              GestureDetector(
-                onTap: () => context.push('/explore/${spot.slug}', extra: spot),
-                child: Stack(
-                  children: [
-                    AspectRatio(
-                      aspectRatio: 16 / 10,
-                      child: Image.network(
-                        spot.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: AppColors.surfaceContainerLow,
-                          child: const Center(
-                            child: Icon(Icons.image_outlined,
-                                color: AppColors.textMuted, size: 36),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (spot.isVideo)
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF0F172A).withValues(alpha: 0.85),
-                            borderRadius: AppSpacing.roundedPill,
-                            boxShadow: AppSpacing.cardShadow,
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
+                    // "The Trail" card (Coming soon)
+                    PixelPanel(
+                      style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+                      padding: 2,
+                      child: Semantics(
+                        button: true,
+                        label: 'The Trail: Route-based destination ideas, coming soon',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            pixelTick(context);
+                            context.push('/trail');
+                          },
+                          child: Row(
                             children: [
-                              Icon(Icons.videocam_rounded,
-                                  size: 13, color: AppColors.sunGold),
-                              SizedBox(width: 4),
-                              Text(
-                                'Video Post',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                              PixelPanel(
+                                style: PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0),
+                                padding: 1,
+                                child: Text(
+                                  'TRAIL',
+                                  style: PixelType.small(context, color: PixelPalette.ink),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    if (spot.questId != null && spot.questId!.isNotEmpty) ...[
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.sunGold,
-                            borderRadius: AppSpacing.roundedPill,
-                            boxShadow: AppSpacing.cardShadow,
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.emoji_events_rounded,
-                                  size: 13, color: AppColors.woodBrown),
-                              SizedBox(width: 4),
+                              SizedBox(width: grid.px(2)),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'THE TRAIL',
+                                      style: PixelType.body(context, color: PixelPalette.wood),
+                                    ),
+                                    Text(
+                                      'Route-based destination ideas · Coming soon',
+                                      style: PixelType.small(context, color: PixelPalette.stone),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               Text(
-                                '+250 mJDQ Bounty',
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.woodBrown),
+                                '›',
+                                style: PixelType.title(context, color: PixelPalette.green),
                               ),
                             ],
                           ),
                         ),
                       ),
+                    ),
+                    SizedBox(height: grid.px(2)),
+
+                    // Nearby Cultural Quizzes (if location available)
+                    if (_currentPosition != null)
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final nearbyAsync = ref.watch(nearbyQuizzesProvider((
+                            lat: _currentPosition!.latitude,
+                            lng: _currentPosition!.longitude,
+                          )));
+                          return nearbyAsync.when(
+                            data: (quizzes) {
+                              if (quizzes.isEmpty) return const SizedBox.shrink();
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (final q in quizzes) ...[
+                                    NearbyQuizCard(invitation: q),
+                                    SizedBox(height: grid.px(2)),
+                                  ],
+                                ],
+                              );
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          );
+                        },
+                      ),
+
+                    // Personalized Hidden Gem (ad-style feed unit)
+                    const HiddenGemCard(),
+                    SizedBox(height: grid.px(2)),
+
+                    // Post Creation Prompt Box
+                    PixelPanel(
+                      style: PixelBoxStyle.slot.copyWith(corner: 1, shadowPx: 0),
+                      padding: 2,
+                      child: Semantics(
+                        button: true,
+                        label: 'Share a video clip, spot, or food tip',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () async {
+                            pixelTick(context);
+                            final added = await context.push<Object?>('/map/add-spot');
+                            if (added != null) _load(refresh: true);
+                          },
+                          child: Row(
+                            children: [
+                              PixelPanel(
+                                style: PixelBoxStyle.green.copyWith(corner: 0, shadowPx: 0),
+                                padding: 1,
+                                child: Text(
+                                  userInitial,
+                                  style: PixelType.body(context, color: PixelPalette.white),
+                                ),
+                              ),
+                              SizedBox(width: grid.px(2)),
+                              Expanded(
+                                child: Text(
+                                  'Share a video clip, spot, or food tip...',
+                                  style: PixelType.body(context, color: PixelPalette.slate),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                '+',
+                                style: PixelType.title(context, color: PixelPalette.green),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: grid.px(2)),
+
+                    // Loading State
+                    if (state.isInitialLoading && state.spots.isEmpty)
+                      _buildLoadingSkeleton(context, grid)
+
+                    // Error State
+                    else if (state.failure != null && state.spots.isEmpty)
+                      _buildErrorCard(context, grid, state.failure!.message)
+
+                    // Empty State
+                    else if (visibleSpots.isEmpty && !spotlightPlacement.hasSpotlight)
+                      _buildEmptyCard(context, grid)
+
+                    // Feed Stream List
+                    else ...[
+                      // Featured Destination (Hero card with real photo)
+                      if (topHeroSpot != null) ...[
+                        ExploreFeaturedCard(
+                          spot: topHeroSpot,
+                          onTap: () => context.push(
+                            '/explore/${topHeroSpot!.slug}',
+                            extra: topHeroSpot,
+                          ),
+                        ),
+                        SizedBox(height: grid.px(2)),
+                      ],
+
+                      // Feed Cards + JuanChoice Insertion
+                      for (var i = 0; i < pagedSpots.length; i++) ...[
+                        if (spotlightPlacement.hasSpotlight &&
+                            spotlightPlacement.insertionIndex == i) ...[
+                          ExploreJuanChoiceCard(
+                            spotlight: spotlightPlacement.spotlight!,
+                            winnerSpots: winnerSpots,
+                            onTapWinner: (winner) => context.push(
+                              '/explore/${winner.slug}',
+                              extra: winner,
+                            ),
+                            onSeeResults: () => context.push('/juanchoice'),
+                          ),
+                          SizedBox(height: grid.px(2)),
+                        ],
+                        ExploreSpotCard(
+                          spot: pagedSpots[i],
+                          likeCount: _likes[pagedSpots[i].id] ??
+                              (45 + pagedSpots[i].name.length * 3),
+                          isLiked: _likedSpots.contains(pagedSpots[i].id),
+                          isSaved: pagedSpots[i].saved,
+                          onTapCard: () => context.push(
+                            '/explore/${pagedSpots[i].slug}',
+                            extra: pagedSpots[i],
+                          ),
+                          onToggleLike: () => _toggleLike(pagedSpots[i]),
+                          onToggleSave: () => ref
+                              .read(spotDiscoveryProvider.notifier)
+                              .toggleSaved(pagedSpots[i]),
+                          onReport: () => _openReportSheet(pagedSpots[i]),
+                          onPlayQuest: pagedSpots[i].questId != null &&
+                                  pagedSpots[i].questId!.trim().isNotEmpty
+                              ? () => context.push(
+                                  '/quests/${pagedSpots[i].questId}')
+                              : null,
+                        ),
+                        SizedBox(height: grid.px(2)),
+                      ],
+
+                      // End-of-feed JuanChoice insertion if insertion index is at or beyond pagedSpots length
+                      if (spotlightPlacement.hasSpotlight &&
+                          spotlightPlacement.insertionIndex >= pagedSpots.length) ...[
+                        ExploreJuanChoiceCard(
+                          spotlight: spotlightPlacement.spotlight!,
+                          winnerSpots: winnerSpots,
+                          onTapWinner: (winner) => context.push(
+                            '/explore/${winner.slug}',
+                            extra: winner,
+                          ),
+                          onSeeResults: () => context.push('/juanchoice'),
+                        ),
+                        SizedBox(height: grid.px(2)),
+                      ],
+
+                      // Paging Controls
+                      _buildPagingFooter(context, grid, hasMore, state.failure != null),
                     ],
                   ],
                 ),
               ),
-            ],
+            );
+          },
+        ),
+      );
+  }
 
-            // 3. Compact Social Action Row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  // Like Button
-                  GestureDetector(
-                    onTap: () => _toggleLike(spot.id),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isLiked
-                            ? const Color(0xFFFFF0F1)
-                            : AppColors.surfaceContainerLow,
-                        borderRadius: AppSpacing.roundedPill,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isLiked
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            size: 14,
-                            color: isLiked
-                                ? const Color(0xFFE63946)
-                                : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            '$likeCount',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isLiked
-                                  ? const Color(0xFFE63946)
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Tips Button
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: AppSpacing.roundedPill,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.chat_bubble_outline_rounded,
-                            size: 13, color: AppColors.textMuted),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${spot.reasons.length + 3} Tips',
-                          style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Bookmark
-                  IconButton(
-                    icon: Icon(
-                      spot.saved
-                          ? Icons.bookmark_rounded
-                          : Icons.bookmark_border_rounded,
-                      size: 16,
-                      color:
-                          spot.saved ? AppColors.sunGold : AppColors.textMuted,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 24, minHeight: 24),
-                    onPressed: () => ref
-                        .read(spotDiscoveryProvider.notifier)
-                        .toggleSaved(spot),
-                  ),
-
-                  // Play Quest (if available)
-                  if (spot.questId != null && spot.questId!.isNotEmpty)
-                    GestureDetector(
-                      onTap: () => context.push('/quests/${spot.questId}'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 9, vertical: 5),
-                        decoration: const BoxDecoration(
-                          color: AppColors.sunGold,
-                          borderRadius: AppSpacing.roundedPill,
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.play_arrow_rounded,
-                                size: 13, color: AppColors.woodBrown),
-                            SizedBox(width: 2),
-                            Text(
-                              'Play Quest',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.woodBrown),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  // Navigate Button
-                  GestureDetector(
-                    onTap: () => _launchDirections(spot),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 5),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: AppSpacing.roundedPill,
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.navigation_rounded,
-                              size: 12, color: Colors.white),
-                          SizedBox(width: 3),
-                          Text(
-                            'Navigate',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+  Widget _buildPagingFooter(
+    BuildContext context,
+    PixelGrid grid,
+    bool hasMore,
+    bool hasError,
+  ) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasError) ...[
+            Text(
+              'Failed to load posts. Please try again.',
+              style: PixelType.small(context, color: PixelPalette.red),
+            ),
+            SizedBox(height: grid.px(1)),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Center(
+                child: PixelButton(
+                  label: 'TRY AGAIN',
+                  variant: PixelButtonVariant.secondary,
+                  style: PixelBoxStyle.parchment,
+                  onPressed: () => _load(refresh: true),
+                ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorCard(String error) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.danger.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.error_outline_rounded,
-              size: 40, color: AppColors.danger),
-          const SizedBox(height: 8),
-          Text('Failed to load feed',
-              style: AppTypography.labelLarge
-                  .copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(error,
-              textAlign: TextAlign.center,
-              style:
-                  AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
-          const SizedBox(height: 12),
-          PrimaryButton(label: 'Retry', onPressed: () => _load(refresh: true)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyCard() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.borderLowContrast),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.explore_off_rounded,
-              size: 48, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          const Text('No posts found',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          const SizedBox(height: 4),
-          const Text('Pull down to refresh destination stream.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-          const SizedBox(height: 16),
-          SecondaryButton(
-              label: 'Refresh Feed', onPressed: () => _load(refresh: true)),
-        ],
-      ),
-    );
-  }
-}
-
-class _DestinationSkeleton extends StatelessWidget {
-  const _DestinationSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(
-        3,
-        (index) => Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: AppSpacing.roundedXl,
-            border: Border.all(color: AppColors.borderLowContrast),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                      width: 80,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: AppSpacing.roundedSm)),
-                  const SizedBox(width: 8),
-                  Container(
-                      width: 60,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: AppSpacing.roundedSm)),
-                ],
+          ] else if (hasMore) ...[
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Center(
+                child: PixelButton(
+                  label: 'LOAD MORE',
+                  variant: PixelButtonVariant.secondary,
+                  style: PixelBoxStyle.parchment,
+                  expand: true,
+                  onPressed: () {
+                    setState(() {
+                      _visibleCount += 10;
+                    });
+                  },
+                ),
               ),
-              const SizedBox(height: 10),
-              Container(
-                  width: double.infinity,
-                  height: 16,
-                  decoration: const BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: AppSpacing.roundedSm)),
-              const SizedBox(height: 8),
-              Container(
-                  width: 140,
-                  height: 12,
-                  decoration: const BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: AppSpacing.roundedSm)),
-              const SizedBox(height: 12),
-              Container(
-                  width: double.infinity,
-                  height: 120,
-                  decoration: const BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: AppSpacing.roundedMd)),
-            ],
+            ),
+          ] else ...[
+            Text(
+              "You're caught up. Checking for new posts…",
+              style: PixelType.small(context, color: PixelPalette.stone),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingSkeleton(BuildContext context, PixelGrid grid) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Center(child: PixelLoader()),
+        SizedBox(height: grid.px(2)),
+        for (var i = 0; i < 2; i++) ...[
+          PixelPanel(
+            style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+            padding: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(height: grid.px(3), width: 120, color: PixelPalette.paperDim),
+                SizedBox(height: grid.px(2)),
+                Container(height: grid.px(4), width: double.infinity, color: PixelPalette.paperDim),
+                SizedBox(height: grid.px(2)),
+                Container(height: 120, width: double.infinity, color: PixelPalette.paperDim),
+              ],
+            ),
           ),
-        ),
+          SizedBox(height: grid.px(2)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildErrorCard(BuildContext context, PixelGrid grid, String message) {
+    return PixelPanel(
+      style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+      padding: 3,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ShadowText(
+            'Failed to load feed',
+            style: PixelType.title(context, color: PixelPalette.red),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            message,
+            style: PixelType.body(context, color: PixelPalette.slate),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: grid.px(2)),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Center(
+              child: PixelButton(
+                label: 'TRY AGAIN',
+                variant: PixelButtonVariant.primary,
+                style: PixelBoxStyle.green,
+                onPressed: () => _load(refresh: true),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyCard(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+      padding: 3,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ShadowText(
+            'No destinations found in feed',
+            style: PixelType.title(context, color: PixelPalette.wood),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'The community feed could not find active destinations matching your filter.',
+            style: PixelType.body(context, color: PixelPalette.slate),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: grid.px(2)),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Center(
+              child: PixelButton(
+                label: 'RESET & REFRESH FEED',
+                variant: PixelButtonVariant.secondary,
+                style: PixelBoxStyle.parchment,
+                onPressed: () {
+                  setState(() {
+                    _filterState = _filterState.reset();
+                    _visibleCount = 10;
+                  });
+                  _load(refresh: true);
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

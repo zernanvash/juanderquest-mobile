@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-
-
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
-import '../../../core/widgets/designer_guide.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
+import '../theater/theater_about_section.dart';
+import '../theater/theater_chapters.dart';
+import '../theater/theater_nearby_section.dart';
+import '../theater/theater_overview_section.dart';
+import '../theater/theater_panel.dart';
+import '../theater/theater_still_photo.dart';
+import '../theater/theater_title_block.dart';
+import '../theater/theater_venue_section.dart';
 import '../widgets/spot_community_section.dart';
 
 class SpotDetailScreen extends ConsumerStatefulWidget {
@@ -24,18 +29,118 @@ class SpotDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
+  late final ScrollController _scrollController;
   List<SpotModel> _alternatives = [];
   bool _loadingAlternatives = true;
   bool _isSaved = false;
+
+  SpotTheaterChapter _currentChapter = SpotTheaterChapter.overview;
+  double _readingProgress = 0.0;
+  double _scrollOffset = 0.0;
+
+  final _overviewKey = GlobalKey();
+  final _aboutKey = GlobalKey();
+  final _notesKey = GlobalKey();
+  final _venueKey = GlobalKey();
+  final _nearbyKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _isSaved = widget.spot.saved;
+    _scrollController = ScrollController()..addListener(_onScroll);
+
     Future.microtask(() {
       _loadAlternatives();
       _logInteraction('view');
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!mounted) return;
+    final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+    final maxScroll = _scrollController.hasClients
+        ? _scrollController.position.maxScrollExtent
+        : 1.0;
+    final progress = maxScroll > 0 ? (offset / maxScroll).clamp(0.0, 1.0) : 0.0;
+
+    // Scroll-spy to determine the active chapter
+    SpotTheaterChapter active = _currentChapter;
+    final available =
+        SpotTheaterChapter.getAvailable(hasAlternatives: _alternatives.isNotEmpty);
+
+    double getSectionTop(GlobalKey key) {
+      final ctx = key.currentContext;
+      if (ctx == null) return double.infinity;
+      final box = ctx.findRenderObject() as RenderBox?;
+      if (box == null || !box.hasSize) return double.infinity;
+      return box.localToGlobal(Offset.zero).dy;
+    }
+
+    const barThreshold = 180.0;
+    if (available.contains(SpotTheaterChapter.nearby) &&
+        getSectionTop(_nearbyKey) <= barThreshold) {
+      active = SpotTheaterChapter.nearby;
+    } else if (getSectionTop(_venueKey) <= barThreshold) {
+      active = SpotTheaterChapter.venue;
+    } else if (getSectionTop(_notesKey) <= barThreshold) {
+      active = SpotTheaterChapter.notes;
+    } else if (getSectionTop(_aboutKey) <= barThreshold) {
+      active = SpotTheaterChapter.about;
+    } else {
+      active = SpotTheaterChapter.overview;
+    }
+
+    final offsetCrossed10 = (_scrollOffset < 10 && offset >= 10) ||
+        (_scrollOffset >= 10 && offset < 10);
+    final progressChanged = (_readingProgress - progress).abs() > 0.01;
+    final chapterChanged = active != _currentChapter;
+
+    if (offsetCrossed10 || progressChanged || chapterChanged) {
+      setState(() {
+        _scrollOffset = offset;
+        _readingProgress = progress;
+        _currentChapter = active;
+      });
+    }
+  }
+
+  void _scrollToChapter(SpotTheaterChapter chapter) {
+    GlobalKey? targetKey;
+    switch (chapter) {
+      case SpotTheaterChapter.overview:
+        targetKey = _overviewKey;
+        break;
+      case SpotTheaterChapter.about:
+        targetKey = _aboutKey;
+        break;
+      case SpotTheaterChapter.notes:
+        targetKey = _notesKey;
+        break;
+      case SpotTheaterChapter.venue:
+        targetKey = _venueKey;
+        break;
+      case SpotTheaterChapter.nearby:
+        targetKey = _nearbyKey;
+        break;
+    }
+
+    final ctx = targetKey.currentContext;
+    if (ctx != null) {
+      // Stepped jump with zero duration (stepped motion rule)
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.0,
+        duration: Duration.zero,
+      );
+    }
   }
 
   Future<void> _logInteraction(String type) async {
@@ -67,702 +172,298 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     }
   }
 
+  Future<void> _toggleSaved() async {
+    final wasSaved = _isSaved;
+    setState(() => _isSaved = !wasSaved);
+    final failure = await ref
+        .read(spotDiscoveryProvider.notifier)
+        .toggleSaved(widget.spot.copyWith(saved: wasSaved));
+    if (!mounted) return;
+    if (failure != null) setState(() => _isSaved = wasSaved);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        backgroundColor: PixelPalette.ink,
+        content: Text(
+          failure?.message ??
+              (_isSaved
+                  ? 'Added "${widget.spot.name}" to saved places.'
+                  : 'Removed from saved places.'),
+          style: const TextStyle(color: PixelPalette.paper),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _shareSpot() {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        backgroundColor: PixelPalette.ink,
+        content: Text(
+          'Share link copied: https://juanderquest.app/spots/${widget.spot.slug}',
+          style: const TextStyle(color: PixelPalette.paper),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openDirections() async {
     await _logInteraction('directions');
     final spot = widget.spot;
     if (!mounted) return;
-    context.push(
-      '/navigate?lat=${spot.gpsLat}&lng=${spot.gpsLng}&name=${Uri.encodeComponent(spot.name)}&address=${Uri.encodeComponent(spot.address.isNotEmpty ? spot.address : spot.municipality)}',
-    );
+    try {
+      context.push(
+        '/navigate?lat=${spot.gpsLat}&lng=${spot.gpsLng}&name=${Uri.encodeComponent(spot.name)}&address=${Uri.encodeComponent(spot.address.isNotEmpty ? spot.address : spot.municipality)}',
+      );
+    } catch (_) {}
   }
 
+  void _playQuest() {
+    if (widget.spot.questId != null) {
+      try {
+        context.push('/quests/${widget.spot.questId}');
+      } catch (_) {}
+    }
+  }
 
-  bool _canCreateQuest(WidgetRef ref, SpotModel spot) {
+  bool _isSpotAuthor(WidgetRef ref, SpotModel spot) {
     final user = ref.watch(authProvider).user;
-    // Only the spot's author: the backend refuses everyone else, admins included.
     if (user == null) return false;
     return spot.createdBy != null && spot.createdBy == user.id;
+  }
+
+  Future<void> _openReportSheet() async {
+    final sent = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SpotReportSheet(
+        spotName: widget.spot.name,
+        onSubmit: (reason, details) async {
+          await ref.read(apiClientProvider).dio.post(
+            '/spots/${widget.spot.id}/reports',
+            data: {
+              'reason': reason,
+              if (details.isNotEmpty) 'details': details,
+            },
+          );
+        },
+      ),
+    );
+    if (sent == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: PixelPalette.ink,
+          content: Text(
+            'Thanks. Our moderators will check this destination.',
+            style: TextStyle(color: PixelPalette.paper),
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final spot = widget.spot;
-    final hasImage = spot.imageUrl != null &&
-        spot.imageUrl!.isNotEmpty &&
-        (spot.imageUrl!.startsWith('http://') || spot.imageUrl!.startsWith('https://'));
+    final isAuthor = _isSpotAuthor(ref, spot);
+    final hasAlternatives = _alternatives.isNotEmpty;
 
-    final isBusy = spot.crowdStatus == 'estimated_busy';
-    final isQuiet = spot.crowdStatus == 'estimated_quiet' || spot.crowdStatus == 'quiet';
-
-    return JdqScaffold(
-      padding: EdgeInsets.zero,
-      appBar: AppBar(
-        title: Text(spot.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isSaved ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
-              color: _isSaved ? AppColors.sunGold : null,
-            ),
-            tooltip: _isSaved ? 'Saved to Wishlist' : 'Save Spot',
-            onPressed: () async {
-              // Saved on the server (Plan 43 "save this destination" tasks
-              // depend on it), not just on this screen.
-              final wasSaved = _isSaved;
-              setState(() => _isSaved = !wasSaved);
-              final failure = await ref
-                  .read(spotDiscoveryProvider.notifier)
-                  .toggleSaved(spot.copyWith(saved: wasSaved));
-              if (!context.mounted) return;
-              if (failure != null) setState(() => _isSaved = wasSaved);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(failure?.message ??
-                      (_isSaved
-                          ? 'Added "${spot.name}" to saved places.'
-                          : 'Removed from saved places.')),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: 'Share Destination',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Share link copied: https://juanderquest.app/spots/${spot.slug}')),
-              );
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hero Image Header
-            UiSpecContainer(
-              spec: const UiSpec(
-                title: 'Destination Photography & LGU Verification Header',
-                figmaLayer: '#Spot_Detail_Hero_Image',
-                dimensions: 'Full width, AspectRatio: 16/10 (1080x675)',
-                dataBinding: 'spot.imageUrl / spot.category / spot.trustLevel / spot.municipality',
-                stateNotes: 'Network photography with dark contrast gradient & provenance chip',
-                uxNotes: 'Displays municipality banner and LGU Verified badge.',
+    return PixelScope(
+      settings: const PixelSettings(),
+      child: Theme(
+        data: AppTheme.pixel,
+        child: Scaffold(
+          backgroundColor: PixelPalette.ink,
+          body: Stack(
+            children: [
+              // 1. Stationary background photo layer: never scrolls, pans or zooms
+              Positioned.fill(
+                key: const Key('theater_still_photo'),
+                child: SpotStillPhoto(spot: spot),
               ),
-              child: Stack(
-                children: [
-                  AspectRatio(
-                    aspectRatio: 16 / 10,
-                    child: hasImage
-                        ? Image.network(
-                            spot.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildHeaderPlaceholder(spot),
-                          )
-                        : _buildHeaderPlaceholder(spot),
-                  ),
 
-                  // Gradient Overlay for contrast
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withOpacity(0.3),
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.6),
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
-                        ),
-                      ),
+              // 2. Story content: scrolls over the stationary photo
+              CustomScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  // First Viewport: unobstructed photo, top controls, hero block, scroll hint
+                  SliverToBoxAdapter(
+                    child: TheaterFirstViewport(
+                      spot: spot,
+                      isSaved: _isSaved,
+                      scrollOffset: _scrollOffset,
+                      onToggleSave: _toggleSaved,
+                      onShare: _shareSpot,
+                      onDirections: _openDirections,
+                      onPlayQuest: _playQuest,
                     ),
                   ),
 
-                  // Category & Provenance Top Badges
-                  Positioned(
-                    top: AppSpacing.md,
-                    left: AppSpacing.md,
-                    right: AppSpacing.md,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryDark.withOpacity(0.9),
-                            borderRadius: AppSpacing.roundedPill,
-                          ),
-                          child: Text(
-                            spot.category.replaceAll('_', ' ').toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
-                            borderRadius: AppSpacing.roundedPill,
-                            border: Border.all(color: Colors.white24),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                spot.trustLevel == 'lgu_verified'
-                                    ? Icons.verified_rounded
-                                    : Icons.public_rounded,
-                                size: 13,
-                                color: spot.trustLevel == 'lgu_verified'
-                                    ? AppColors.sunGold
-                                    : Colors.white70,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                spot.trustLevel == 'lgu_verified'
-                                    ? 'LGU VERIFIED'
-                                    : spot.sourceName.isNotEmpty
-                                        ? spot.sourceName.toUpperCase()
-                                        : 'COMMUNITY SPOT',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                  // Sticky pixel chapter bar
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _TheaterChapterBarDelegate(
+                      currentChapter: _currentChapter,
+                      hasAlternatives: hasAlternatives,
+                      readingProgress: _readingProgress,
+                      onSelectChapter: _scrollToChapter,
                     ),
                   ),
 
-                  // Municipality & Distance Bottom Banner
-                  Positioned(
-                    bottom: AppSpacing.md,
-                    left: AppSpacing.md,
-                    right: AppSpacing.md,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on_rounded, color: AppColors.sunGold, size: 16),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            spot.municipality.isNotEmpty
-                                ? spot.municipality
-                                : 'Location unavailable',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
-                            ),
+                  // Story content sections with generous spacing revealing photo between panels
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        // Chapter 1: OVERVIEW
+                        Container(
+                          key: _overviewKey,
+                          child: TheaterOverviewSection(
+                            spot: spot,
+                            isAuthor: isAuthor,
+                            onPlayQuest: _playQuest,
                           ),
                         ),
-                        if (spot.distanceKm != null)
+                        const SizedBox(height: 28),
+
+                        // Chapter 2: ABOUT
+                        Container(
+                          key: _aboutKey,
+                          child: TheaterAboutSection(spot: spot),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Chapter 3: NOTES
+                        Container(
+                          key: _notesKey,
+                          child: SpotCommunitySection(
+                            spotId: spot.id,
+                            spotName: spot.name,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Chapter 4: VENUE & MAP
+                        Container(
+                          key: _venueKey,
+                          child: TheaterVenueSection(
+                            spot: spot,
+                            onDirections: _openDirections,
+                          ),
+                        ),
+
+                        // Chapter 5: NEARBY (only when alternatives exist)
+                        if (hasAlternatives) ...[
+                          const SizedBox(height: 28),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: const BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: AppSpacing.roundedPill,
-                            ),
-                            child: Text(
-                              '${spot.distanceKm!.toStringAsFixed(1)} km away',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            key: _nearbyKey,
+                            child: TheaterNearbySection(
+                              alternatives: _alternatives,
+                              isLoading: _loadingAlternatives,
                             ),
                           ),
-                      ],
+                        ],
+
+                        const SizedBox(height: 28),
+
+                        // End panel: photo credit, report problem, safe area
+                        _buildEndPanel(context, spot),
+
+                        SizedBox(
+                          height: MediaQuery.paddingOf(context).bottom + 24,
+                        ),
+                      ]),
                     ),
                   ),
                 ],
               ),
-            ),
-
-            // Content Body
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.gutter),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title & Address
-                  Text(
-                    spot.name,
-                    style: AppTypography.displayMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.woodBrown,
-                    ),
-                  ),
-
-                  if (spot.address.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      spot.address,
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                    ),
-                  ],
-
-                  const SizedBox(height: AppSpacing.md),
-
-                  // Crowd Status Bar
-                  UiSpecContainer(
-                    spec: const UiSpec(
-                      title: 'Live Crowd Status & Visitor Density Card',
-                      figmaLayer: '#Spot_Crowd_Status_Card',
-                      dimensions: 'Full width, Padding: 12dp, Radius: 12dp',
-                      dataBinding: 'spot.crowdStatus (estimated_busy / tranquil / moderate)',
-                      stateNotes: 'Green (Tranquil Gem) -> Yellow (Moderate) -> Red (High Tourist Traffic)',
-                      uxNotes: 'Provides dynamic diversion guidance for tourists.',
-                    ),
-                    child: _buildCrowdStatusCard(isBusy, isQuiet),
-                  ),
-
-                  const SizedBox(height: AppSpacing.md),
-
-                  // Quick Action Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: PrimaryButton(
-                          label: 'Get Directions',
-                          icon: Icons.directions_rounded,
-                          onPressed: _openDirections,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: SecondaryButton(
-                          label: 'Add Photo',
-                          icon: Icons.add_a_photo_rounded,
-                          onPressed: () => context.push('/map/add-spot'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_canCreateQuest(ref, spot)) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    FilledButton.icon(
-                      key: const ValueKey('spot_create_quest_btn'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        minimumSize: const Size(0, 48),
-                      ),
-                      onPressed: () => context.push(
-                        '/explore/${spot.slug.isNotEmpty ? spot.slug : spot.id}/quests/new',
-                        extra: spot,
-                      ),
-                      icon: const Icon(Icons.add_task_rounded),
-                      label: const Text('Create a quest here'),
-                    ),
-                  ],
-
-                  const SizedBox(height: AppSpacing.sectionGap),
-
-                  // Gamified Quest Card (The Incentive Flywheel)
-                  if (spot.questId != null) ...[
-                    UiSpecContainer(
-                      spec: const UiSpec(
-                        title: 'Gamified Location Quest Flywheel Card',
-                        figmaLayer: '#Spot_Quest_Flywheel_Card',
-                        dimensions: 'Full width, Padding: 16dp, Radius: 16dp',
-                        dataBinding: 'spot.questId / quest.rewardPoints',
-                        stateNotes: 'Visible only when destination has an active quest attached',
-                        uxNotes: 'Prominently showcases the +250 mJDQ Bounty reward and direct check-in CTA.',
-                      ),
-                      child: _buildQuestIncentiveCard(context, spot),
-                    ),
-                    const SizedBox(height: AppSpacing.sectionGap),
-                  ],
-
-                  // Overview & Description
-                  Text(
-                    'About this Destination',
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.woodBrown,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    spot.description.isNotEmpty
-                        ? spot.description
-                        : spot.municipality.isNotEmpty
-                            ? 'Explore this destination in ${spot.municipality} and discover what the local community has to offer.'
-                            : 'Explore this destination and discover what the local community has to offer.',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textPrimary,
-                      height: 1.5,
-                    ),
-                  ),
-
-                  // Tags Wrap
-                  if (spot.tags.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: spot.tags.map((tag) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceContainerLow,
-                            borderRadius: AppSpacing.roundedPill,
-                            border: Border.all(color: AppColors.borderLowContrast),
-                          ),
-                          child: Text(
-                            '#${tag.replaceAll('_', ' ')}',
-                            style: AppTypography.bodySmall.copyWith(
-                              fontSize: 12,
-                              color: AppColors.primaryDark,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-
-                  const SizedBox(height: AppSpacing.sectionGap),
-
-                  // Likes, explorer notes and problem reports (Plan 47 B3)
-                  SpotCommunitySection(spotId: spot.id, spotName: spot.name),
-
-                  const SizedBox(height: AppSpacing.sectionGap),
-
-                  // Similar Hidden Gems Nearby
-                  _buildAlternativesSection(context),
-
-                  const SizedBox(height: AppSpacing.xl),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCrowdStatusCard(bool isBusy, bool isQuiet) {
-    if (isBusy) {
-      return Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.crowdBusyBg,
-          borderRadius: AppSpacing.roundedLg,
-          border: Border.all(color: AppColors.crowdBusy.withOpacity(0.3)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.people_outline_rounded, color: AppColors.crowdBusy, size: 22),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Peak Visiting Hours Detected',
-                    style: TextStyle(
-                      color: AppColors.crowdBusy,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'This spot may be busy based on recent traveler activity. Consider checking out quieter nearby alternatives below for bonus rewards!',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.crowdBusy.withOpacity(0.9),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+  Widget _buildEndPanel(BuildContext context, SpotModel spot) {
+    final grid = PixelGrid.of(context);
 
-    if (isQuiet) {
-      return Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.crowdQuietBg,
-          borderRadius: AppSpacing.roundedLg,
-          border: Border.all(color: AppColors.crowdQuiet.withOpacity(0.3)),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.eco_rounded, color: AppColors.crowdQuiet, size: 20),
-            SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                'Low Crowd Pressure — Great tranquil time to visit & photograph!',
-                style: TextStyle(
-                  color: AppColors.crowdQuiet,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildQuestIncentiveCard(BuildContext context, SpotModel spot) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.sunGold, width: 1.5),
-        boxShadow: AppSpacing.cardShadow,
-      ),
+    return TheaterPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'JUANDERQUEST DESTINATION STORY',
+            style: PixelType.small(context, color: PixelPalette.mist),
+          ),
+          if (spot.sourceName.isNotEmpty) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'PHOTOGRAPHY & CURATION: ${spot.sourceName.toUpperCase()}',
+              style: PixelType.small(context, color: PixelPalette.paperDim),
+            ),
+          ],
+          SizedBox(height: grid.px(2)),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: AppColors.sunGold,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.emoji_events_rounded, color: AppColors.woodBrown, size: 20),
-              ),
-              const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'OPTIONAL DESTINATION QUEST',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.woodBrown,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      'Check-in & Earn +250 mJDQ',
-                      style: AppTypography.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.woodBrown,
-                      ),
-                    ),
-                  ],
+                child: PixelButton(
+                  key: const Key('theater_end_report_btn'),
+                  label: '⚑ REPORT A PROBLEM',
+                  variant: PixelButtonVariant.ghost,
+                  expand: true,
+                  onPressed: _openReportSheet,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Visit this destination in person to verify your quest and earn available rewards.',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: PrimaryButton(
-              label: 'Start Quest at this Spot',
-              icon: Icons.rocket_launch_rounded,
-              onPressed: () => context.push('/quests/${spot.questId}'),
-            ),
-          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildAlternativesSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Nearby Hidden Gems',
-              style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.woodBrown,
-              ),
-            ),
-            const Text(
-              '10–25 km Radius',
-              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Discover quieter alternatives and local favorites.',
-          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: AppSpacing.md),
+class _TheaterChapterBarDelegate extends SliverPersistentHeaderDelegate {
+  _TheaterChapterBarDelegate({
+    required this.currentChapter,
+    required this.hasAlternatives,
+    required this.readingProgress,
+    required this.onSelectChapter,
+  });
 
-        if (_loadingAlternatives)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-          )
-        else if (_alternatives.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: AppSpacing.roundedMd,
-            ),
-            child: const Text(
-              'No other alternatives found in immediate vicinity.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-            ),
-          )
-        else
-          SizedBox(
-            height: 190,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _alternatives.length,
-              separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final alt = _alternatives[index];
-                return _buildAlternativeCard(context, alt);
-              },
-            ),
-          ),
-      ],
+  final SpotTheaterChapter currentChapter;
+  final bool hasAlternatives;
+  final double readingProgress;
+  final ValueChanged<SpotTheaterChapter> onSelectChapter;
+
+  @override
+  double get minExtent => 56.0;
+
+  @override
+  double get maxExtent => 56.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return TheaterChapterBar(
+      currentChapter: currentChapter,
+      hasAlternatives: hasAlternatives,
+      readingProgress: readingProgress,
+      onSelectChapter: onSelectChapter,
     );
   }
 
-  Widget _buildAlternativeCard(BuildContext context, SpotModel alt) {
-    return GestureDetector(
-      onTap: () => context.push('/explore/${alt.slug}', extra: alt),
-      child: Container(
-        width: 170,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: AppSpacing.roundedLg,
-          border: Border.all(color: AppColors.borderLowContrast),
-          boxShadow: AppSpacing.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thumbnail
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: alt.imageUrl != null && alt.imageUrl!.isNotEmpty
-                    ? Image.network(
-                        alt.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildCardPlaceholder(alt),
-                      )
-                    : _buildCardPlaceholder(alt),
-              ),
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    alt.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    alt.municipality.isNotEmpty ? alt.municipality : 'Location unavailable',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: alt.crowdStatus == 'estimated_quiet' ? AppColors.crowdQuietBg : AppColors.surfaceContainerLow,
-                          borderRadius: AppSpacing.roundedPill,
-                        ),
-                        child: Text(
-                          alt.crowdStatus == 'estimated_quiet' ? 'Quiet' : alt.category.replaceAll('_', ' '),
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: alt.crowdStatus == 'estimated_quiet' ? AppColors.crowdQuiet : AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      if (alt.distanceKm != null)
-                        Text(
-                          '${alt.distanceKm!.toStringAsFixed(0)} km',
-                          style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w500),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderPlaceholder(SpotModel spot) {
-    return Container(
-      color: AppColors.primaryDark,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.terrain_rounded, size: 54, color: Colors.white38),
-            const SizedBox(height: 6),
-            Text(
-              spot.name,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white60, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardPlaceholder(SpotModel spot) {
-    return Container(
-      color: AppColors.surfaceContainerLow,
-      child: const Center(
-        child: Icon(Icons.image_outlined, size: 28, color: AppColors.textMuted),
-      ),
-    );
-  }
+  @override
+  bool shouldRebuild(_TheaterChapterBarDelegate oldDelegate) =>
+      oldDelegate.currentChapter != currentChapter ||
+      oldDelegate.hasAlternatives != hasAlternatives ||
+      oldDelegate.readingProgress != readingProgress;
 }
