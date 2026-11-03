@@ -73,6 +73,33 @@ class GeoAnchor {
   }
 }
 
+/// Plan 76: where an object anchored in ARCore space really is. The creator's
+/// camera stood at [camX], [camZ] with GPS fix ([lat], [lng]); the anchor is at
+/// [anchorX], [anchorZ]. The inverse of [GeoAnchor.localPoint].
+({double lat, double lng, double bearing, double distance}) geoPointOf({
+  required double lat,
+  required double lng,
+  required double camX,
+  required double camZ,
+  required double anchorX,
+  required double anchorZ,
+  required double headingOffset,
+}) {
+  final dx = anchorX - camX, dz = anchorZ - camZ;
+  final distance = math.sqrt(dx * dx + dz * dz);
+  final yaw = math.atan2(dx, -dz) * 180 / math.pi;
+  final bearing = ((yaw + headingOffset) % 360 + 360) % 360;
+  final b = bearing * math.pi / 180;
+  final north = distance * math.cos(b), east = distance * math.sin(b);
+  return (
+    lat: lat + north / GeoAnchor._metersPerDegLat,
+    lng: lng +
+        east / (GeoAnchor._metersPerDegLat * math.cos(lat * math.pi / 180)),
+    bearing: bearing,
+    distance: distance,
+  );
+}
+
 /// Circular mean of (compass bearing − ARCore yaw) samples. The compass is
 /// noisy and a passing metal object bends it, so a single reading is not
 /// enough; [spread] tells how much the samples disagree (degrees).

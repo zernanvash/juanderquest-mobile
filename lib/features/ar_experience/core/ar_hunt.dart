@@ -59,8 +59,9 @@ class ArHuntRules {
     required ArFence fence,
     required double cameraBearing,
     required math.Random rng,
+    bool exactPoint = false,
   }) {
-    if (distanceToCentre(fix, fence) > 25) {
+    if (exactPoint || distanceToCentre(fix, fence) > 25) {
       return bearingToCentre(fix, fence);
     }
     final offset = 35 + rng.nextDouble() * 85;
@@ -139,6 +140,9 @@ class ArHuntController extends ChangeNotifier {
   final ArFence fence;
   final RequestChallenge requestChallenge;
   final SubmitArEvidence submitEvidence;
+
+  /// Plan 76: the object sits at the fence centre (placed live by the creator).
+  final bool exactPoint;
   final math.Random _rng;
   final DateTime Function() _now;
 
@@ -149,6 +153,7 @@ class ArHuntController extends ChangeNotifier {
     required this.fence,
     required this.requestChallenge,
     required this.submitEvidence,
+    this.exactPoint = false,
     math.Random? rng,
     DateTime Function()? now,
   })  : _rng = rng ?? math.Random(),
@@ -306,7 +311,11 @@ class ArHuntController extends ChangeNotifier {
     }
     _challenge = result.data;
     final bearing = ArHuntRules.spawnBearing(
-        fix: fix, fence: fence, cameraBearing: cameraBearing, rng: _rng);
+        fix: fix,
+        fence: fence,
+        cameraBearing: cameraBearing,
+        rng: _rng,
+        exactPoint: exactPoint);
     _objectPosition = ArHuntRules.spawnPosition(bearing);
     _alignedSince = null;
     _set(ArHuntPhase.searching);

@@ -149,19 +149,56 @@ class ArVerification implements TaskVerification {
   final String object; // 'token' | 'gem' | 'beacon' | 'box'
   final String color; // '#FFB703' | '#2D6A4F' | '#3B82F6' | '#E11D48'
 
+  /// Plan 76: true when the creator placed the object with the AR camera, so
+  /// [fence] centres on the object's own point. False = a map pin (approximate).
+  final bool placedLive;
+
+  /// GPS accuracy (m) when the object was placed live.
+  final double? placementAccuracyM;
+
   const ArVerification({
     required this.fence,
     this.object = 'token',
     this.color = '#FFB703',
+    this.placedLive = false,
+    this.placementAccuracyM,
   });
 
-  factory ArVerification.fromJson(Map<String, dynamic> json) => ArVerification(
-        fence: json['fence'] is Map<String, dynamic>
-            ? GeoFence.fromJson(json['fence'] as Map<String, dynamic>)
-            : const GeoFence(lat: 0, lng: 0, radiusMeters: 50),
-        object: json['object'] as String? ?? 'token',
-        color: json['color'] as String? ?? '#FFB703',
-      );
+  factory ArVerification.fromJson(Map<String, dynamic> json) {
+    final placement = json['placement'];
+    final live = placement is Map && placement['mode'] == 'ar_live';
+    return ArVerification(
+      fence: json['fence'] is Map<String, dynamic>
+          ? GeoFence.fromJson(json['fence'] as Map<String, dynamic>)
+          : const GeoFence(lat: 0, lng: 0, radiusMeters: 50),
+      object: json['object'] as String? ?? 'token',
+      color: json['color'] as String? ?? '#FFB703',
+      placedLive: live,
+      placementAccuracyM: live && placement['gps_accuracy_m'] is num
+          ? (placement['gps_accuracy_m'] as num).toDouble()
+          : null,
+    );
+  }
+
+  /// Copies with changes. A new [fence] alone (a map pin) makes the placement
+  /// approximate again unless [placedLive] says otherwise.
+  ArVerification copyWith({
+    GeoFence? fence,
+    String? object,
+    String? color,
+    bool? placedLive,
+    double? placementAccuracyM,
+  }) {
+    final live = placedLive ?? (fence == null && this.placedLive);
+    return ArVerification(
+      fence: fence ?? this.fence,
+      object: object ?? this.object,
+      color: color ?? this.color,
+      placedLive: live,
+      placementAccuracyM:
+          live ? (placementAccuracyM ?? this.placementAccuracyM) : null,
+    );
+  }
 
   @override
   Map<String, dynamic> toJson() => {
@@ -169,6 +206,12 @@ class ArVerification implements TaskVerification {
         'fence': fence.toJson(),
         'object': object,
         'color': color,
+        'placement': {
+          'mode': placedLive ? 'ar_live' : 'map',
+          if (placedLive && placementAccuracyM != null)
+            'gps_accuracy_m':
+                double.parse(placementAccuracyM!.toStringAsFixed(1)),
+        },
       };
 }
 

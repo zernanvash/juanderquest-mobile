@@ -66,6 +66,17 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   /// seen, so a wall or a bed in the way makes it try closer.
   static const spawnDistances = [ArHuntRules.spawnDistanceM, 2.5, 1.5];
 
+  /// Plan 76: an object the creator placed live appears once its real point is
+  /// this close (ARCore only sees floor a few metres away); farther, the finder
+  /// arrow leads the traveler there.
+  static const liveSpawnMaxM = 8.0;
+
+  /// Too far from the live point to spawn it yet.
+  bool get _liveTooFar {
+    final d = _hunt?.distanceToCentre;
+    return (_task?.placedLive ?? false) && d != null && d > liveSpawnMaxM;
+  }
+
   final ArDevice _device = ArDevice();
   ArTaskSpec? _task;
   ArHuntController? _hunt;
@@ -112,6 +123,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       final api = ArQuestApi(ref.read(apiClientProvider).dio, task);
       final hunt = ArHuntController(
         fence: task.fence,
+        exactPoint: task.placedLive,
         requestChallenge: api.requestChallenge,
         submitEvidence: api.submitEvidence,
       )..addListener(_onHunt);
@@ -298,8 +310,9 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     // closer if the way is blocked.
     final searching = hunt.phase == ArHuntPhase.searching ||
         hunt.phase == ArHuntPhase.aligned;
-    if (frame.anchor != null) _placeTryingSince = null;
+    if (frame.anchor != null || _liveTooFar) _placeTryingSince = null;
     if (searching &&
+        !_liveTooFar &&
         _calibration.done &&
         frame.tracking &&
         frame.anchor == null &&
@@ -309,13 +322,23 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       final offset = _calibration.headingFallback ? null : _heading.offset;
       final position = hunt.objectPosition;
       final giveUp = now.difference(_placeTryingSince!) > placeGrace;
+      final live = _task!.placedLive;
       if (offset != null && position != null && !giveUp) {
         final cam = GeoAnchor.cameraPosition(frame.view!);
+        // A live-placed object goes to its real point first (true bearing and
+        // distance from the traveler's GPS), then closer if that floor is unseen.
+        final liveDistance =
+            (hunt.distanceToCentre ?? 0).clamp(1.0, liveSpawnMaxM);
+        final distances = live
+            ? [liveDistance, ...spawnDistances.where((d) => d < liveDistance)]
+            : spawnDistances;
         final p = GeoAnchor.localPoint(
           camX: cam.x,
           camZ: cam.z,
-          bearing: ArGeo.bearingOf(position),
-          distance: spawnDistances[_spawnTry++ % spawnDistances.length],
+          bearing: live && hunt.bearingToCentre != null
+              ? hunt.bearingToCentre!
+              : ArGeo.bearingOf(position),
+          distance: distances[_spawnTry++ % distances.length],
           headingOffset: offset,
         );
         _placing = true;
@@ -480,7 +503,10 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     final frame = _world?.frame.value;
     final waitingForGround = world && unlocked && frame?.anchor == null;
     String? searchingHint;
-    if (waitingForGround) {
+    if (waitingForGround && _liveTooFar) {
+      searchingHint =
+          'Walk about ${hunt.distanceToCentre!.round()} m towards the arrow. The ${task.objectLabel.toLowerCase()} is right where the creator left it.';
+    } else if (waitingForGround) {
       final tracking = frame?.tracking ?? false;
       searchingHint = !tracking
           ? frame?.trackingHint ?? 'Move your phone slowly to scan the ground.'
@@ -501,7 +527,8 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
           drawObject: !world,
         ),
       ],
-      if (phase == ArHuntPhase.outside &&
+      if ((phase == ArHuntPhase.outside ||
+              (unlocked && _liveTooFar && frame?.anchor == null)) &&
           hunt.distanceToCentre != null &&
           hunt.bearingToCentre != null)
         Center(

@@ -47,6 +47,11 @@ import 'package:juanderquest_app/features/navigation/screens/navigation_screen.d
 import 'package:juanderquest_app/features/ar_experience/core/ar_hunt.dart';
 import 'package:juanderquest_app/features/ar_experience/core/heading_fusion.dart';
 import 'package:juanderquest_app/features/ar_experience/screens/ar_diagnostics_screen.dart';
+import 'package:juanderquest_app/features/ar_experience/screens/ar_placement_screen.dart';
+import 'package:juanderquest_app/features/quests/builder/builder_models.dart'
+    as qb;
+import 'package:juanderquest_app/features/quests/builder/widgets/task_settings_panel.dart'
+    as qbp;
 import 'package:juanderquest_app/features/ar_experience/screens/ar_quest_screen.dart';
 import 'package:juanderquest_app/features/ar_experience/widgets/ar_overlay.dart';
 import 'package:juanderquest_app/features/quests/screens/qr_scan_screen.dart';
@@ -937,6 +942,31 @@ void main() {
           size,
           2.0,
         );
+      });
+
+      testWidgets(
+          'ArPlacementScreen (no ARCore) does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(tester, const ArPlacementScreen(), size, 2.0);
+      });
+
+      testWidgets(
+          'ArPlacementSection does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(
+            tester,
+            Scaffold(
+              body: SingleChildScrollView(
+                child: qbp.ArPlacementSection(
+                  verification: const qb.ArVerification(
+                      fence: qb.GeoFence(
+                          lat: 16.03, lng: 120.33, radiusMeters: 50)),
+                  onChanged: (_) {},
+                ),
+              ),
+            ),
+            size,
+            2.0);
       });
 
       testWidgets(
