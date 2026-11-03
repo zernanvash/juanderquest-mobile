@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../../core/pixel/pixel_input.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../builder_models.dart';
 import 'location_fence_map_picker.dart';
@@ -48,7 +50,8 @@ class TaskSettingsPanel extends StatelessWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.location_on_rounded, size: 16, color: AppColors.primary),
+                Icon(Icons.location_on_rounded,
+                    size: 16, color: AppColors.primary),
                 SizedBox(width: 6),
                 Text(
                   'Check-in Location & Radius',
@@ -67,7 +70,8 @@ class TaskSettingsPanel extends StatelessWidget {
               ),
               onPressed: () {
                 onChanged(task.copyWith(
-                  verification: LocationVerification(fence: destinationDefaultFence),
+                  verification:
+                      LocationVerification(fence: destinationDefaultFence),
                 ));
               },
               icon: const Icon(Icons.refresh_rounded, size: 14),
@@ -92,7 +96,8 @@ class TaskSettingsPanel extends StatelessWidget {
   Widget _buildQrSettings() {
     final ver = task.verification is QrVerification
         ? task.verification as QrVerification
-        : QrVerification(fence: destinationDefaultFence.copyWith(radiusMeters: 80));
+        : QrVerification(
+            fence: destinationDefaultFence.copyWith(radiusMeters: 80));
 
     final isHostScan = ver.scanMode == 'host_scans_traveler';
 
@@ -122,14 +127,18 @@ class TaskSettingsPanel extends StatelessWidget {
                     ),
                   ));
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.zero,
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: !isHostScan ? const Color(0xFFEFF6FF) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    color: !isHostScan
+                        ? PixelPalette.blueLight
+                        : PixelPalette.white,
+                    borderRadius: BorderRadius.zero,
                     border: Border.all(
-                      color: !isHostScan ? const Color(0xFF2563EB) : const Color(0xFFE7E5E4),
+                      color: !isHostScan
+                          ? PixelPalette.blueBright
+                          : PixelPalette.mist,
                       width: !isHostScan ? 1.5 : 1,
                     ),
                   ),
@@ -140,7 +149,9 @@ class TaskSettingsPanel extends StatelessWidget {
                         children: [
                           Icon(Icons.qr_code_scanner_rounded,
                               size: 16,
-                              color: !isHostScan ? const Color(0xFF1D4ED8) : AppColors.textMuted),
+                              color: !isHostScan
+                                  ? PixelPalette.blue
+                                  : AppColors.textMuted),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -148,7 +159,9 @@ class TaskSettingsPanel extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: !isHostScan ? const Color(0xFF1E3A8A) : AppColors.woodBrown,
+                                color: !isHostScan
+                                    ? PixelPalette.blueDeep
+                                    : AppColors.woodBrown,
                               ),
                             ),
                           ),
@@ -157,7 +170,8 @@ class TaskSettingsPanel extends StatelessWidget {
                       const SizedBox(height: 4),
                       const Text(
                         'You print a placard; traveler scans it on site.',
-                        style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                        style: TextStyle(
+                            fontSize: 10, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -177,14 +191,18 @@ class TaskSettingsPanel extends StatelessWidget {
                     ),
                   ));
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.zero,
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: isHostScan ? const Color(0xFFEFF6FF) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    color: isHostScan
+                        ? PixelPalette.blueLight
+                        : PixelPalette.white,
+                    borderRadius: BorderRadius.zero,
                     border: Border.all(
-                      color: isHostScan ? const Color(0xFF2563EB) : const Color(0xFFE7E5E4),
+                      color: isHostScan
+                          ? PixelPalette.blueBright
+                          : PixelPalette.mist,
                       width: isHostScan ? 1.5 : 1,
                     ),
                   ),
@@ -195,7 +213,9 @@ class TaskSettingsPanel extends StatelessWidget {
                         children: [
                           Icon(Icons.person_pin_circle_rounded,
                               size: 16,
-                              color: isHostScan ? const Color(0xFF1D4ED8) : AppColors.textMuted),
+                              color: isHostScan
+                                  ? PixelPalette.blue
+                                  : AppColors.textMuted),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -203,7 +223,9 @@ class TaskSettingsPanel extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: isHostScan ? const Color(0xFF1E3A8A) : AppColors.woodBrown,
+                                color: isHostScan
+                                    ? PixelPalette.blueDeep
+                                    : AppColors.woodBrown,
                               ),
                             ),
                           ),
@@ -212,7 +234,8 @@ class TaskSettingsPanel extends StatelessWidget {
                       const SizedBox(height: 4),
                       const Text(
                         'Traveler shows pass; you scan it on site.',
-                        style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                        style: TextStyle(
+                            fontSize: 10, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -225,20 +248,23 @@ class TaskSettingsPanel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFBFDBFE)),
+            color: PixelPalette.blueLight,
+            borderRadius: BorderRadius.zero,
+            border: Border.all(color: PixelPalette.blueMid),
           ),
           child: Text(
             isHostScan
                 ? 'Host scan: Each traveler generates a personal quest pass in the app (valid 10 minutes). Open the quest in the app and use "Scan traveler pass" while inside this area. Nothing needs printing.'
                 : 'Secret QR Code: A cryptographically secure, unpredictable code is assigned by the server upon saving. You can print the ready-to-display placard from the QR Sheet screen anytime.',
-            style: const TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF1E3A8A)),
+            style: const TextStyle(
+                fontSize: 11, height: 1.4, color: PixelPalette.blueDeep),
           ),
         ),
         const SizedBox(height: 12),
         Text(
-          isHostScan ? 'Where you scan travelers' : 'On-site QR Verification Fence',
+          isHostScan
+              ? 'Where you scan travelers'
+              : 'On-site QR Verification Fence',
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -248,7 +274,8 @@ class TaskSettingsPanel extends StatelessWidget {
         const SizedBox(height: 8),
         LocationFenceMapPicker(
           fence: ver.fence,
-          pinLabel: isHostScan ? 'Host check-in location' : 'QR placard location',
+          pinLabel:
+              isHostScan ? 'Host check-in location' : 'QR placard location',
           onChanged: (newFence) {
             onChanged(task.copyWith(
               verification: QrVerification(
@@ -284,8 +311,10 @@ class TaskSettingsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        TextFormField(
+        PixelTextField(
           initialValue: ver.prompt,
+          hint: 'e.g., Take a photo of the heritage marker plaque or main pavilion.',
+          maxLines: 2,
           onChanged: (val) {
             onChanged(task.copyWith(
               verification: PhotoVerification(
@@ -295,24 +324,14 @@ class TaskSettingsPanel extends StatelessWidget {
               ),
             ));
           },
-          decoration: InputDecoration(
-            hintText: 'e.g., Take a photo of the heritage marker plaque or main pavilion.',
-            hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE7E5E4)),
-            ),
-            contentPadding: const EdgeInsets.all(12),
-          ),
-          maxLines: 2,
         ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFEF3C7).withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFDE68A)),
+            color: PixelPalette.sunLight.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.zero,
+            border: Border.all(color: PixelPalette.sun),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,7 +347,9 @@ class TaskSettingsPanel extends StatelessWidget {
                         verification: PhotoVerification(
                           prompt: ver.prompt,
                           requireGps: enabled,
-                          fence: enabled ? (ver.fence ?? destinationDefaultFence) : null,
+                          fence: enabled
+                              ? (ver.fence ?? destinationDefaultFence)
+                              : null,
                         ),
                       ));
                     },
@@ -339,7 +360,7 @@ class TaskSettingsPanel extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF78350F),
+                        color: PixelPalette.woodDeep,
                       ),
                     ),
                   ),
@@ -349,7 +370,7 @@ class TaskSettingsPanel extends StatelessWidget {
                 padding: EdgeInsets.only(left: 12, right: 12, bottom: 4),
                 child: Text(
                   'When checked, traveler uploads require valid camera GPS metadata within the perimeter. All submitted photos are moderated by administrators before reward settlement.',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF92400E)),
+                  style: TextStyle(fontSize: 11, color: PixelPalette.goldDeep),
                 ),
               ),
             ],
@@ -387,7 +408,8 @@ class TaskSettingsPanel extends StatelessWidget {
   Widget _buildArSettings() {
     final ver = task.verification is ArVerification
         ? task.verification as ArVerification
-        : ArVerification(fence: destinationDefaultFence.copyWith(radiusMeters: 50));
+        : ArVerification(
+            fence: destinationDefaultFence.copyWith(radiusMeters: 50));
 
     final arObjects = [
       {'id': 'token', 'label': 'Gold Token', 'emoji': '🪙'},
@@ -397,10 +419,10 @@ class TaskSettingsPanel extends StatelessWidget {
     ];
 
     final arColors = [
-      {'hex': '#FFB703', 'name': 'Gold', 'color': const Color(0xFFFFB703)},
-      {'hex': '#2D6A4F', 'name': 'Emerald', 'color': const Color(0xFF2D6A4F)},
-      {'hex': '#3B82F6', 'name': 'Azure', 'color': const Color(0xFF3B82F6)},
-      {'hex': '#E11D48', 'name': 'Ruby', 'color': const Color(0xFFE11D48)},
+      {'hex': '#FFB703', 'name': 'Gold', 'color': PixelPalette.sun},
+      {'hex': '#2D6A4F', 'name': 'Emerald', 'color': PixelPalette.greenBright},
+      {'hex': '#3B82F6', 'name': 'Azure', 'color': PixelPalette.blueBright},
+      {'hex': '#E11D48', 'name': 'Ruby', 'color': PixelPalette.red},
     ];
 
     return Column(
@@ -409,19 +431,21 @@ class TaskSettingsPanel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFAF5FF),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE9D5FF)),
+            color: PixelPalette.parchment,
+            borderRadius: BorderRadius.zero,
+            border: Border.all(color: PixelPalette.mist),
           ),
           child: const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.view_in_ar_rounded, size: 18, color: Color(0xFF7E22CE)),
+              Icon(Icons.view_in_ar_rounded,
+                  size: 18, color: PixelPalette.blueBright),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Mobile-Exclusive AR Experience: Travelers use their smartphone camera in the JuanDerQuest Android app to find and collect the 3D model on-site.',
-                  style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF581C87)),
+                  style: TextStyle(
+                      fontSize: 11, height: 1.4, color: PixelPalette.blueDeep),
                 ),
               ),
             ],
@@ -452,28 +476,35 @@ class TaskSettingsPanel extends StatelessWidget {
                   ),
                 ));
               },
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.zero,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFAF5FF) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  color:
+                      isSelected ? PixelPalette.parchment : PixelPalette.white,
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF9333EA) : const Color(0xFFE7E5E4),
+                    color: isSelected
+                        ? PixelPalette.blueBright
+                        : PixelPalette.mist,
                     width: isSelected ? 1.5 : 1,
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(obj['emoji'] as String, style: const TextStyle(fontSize: 16)),
+                    Text(obj['emoji'] as String,
+                        style: const TextStyle(fontSize: 16)),
                     const SizedBox(width: 6),
                     Text(
                       obj['label'] as String,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? const Color(0xFF581C87) : AppColors.woodBrown,
+                        color: isSelected
+                            ? PixelPalette.blueDeep
+                            : AppColors.woodBrown,
                       ),
                     ),
                   ],
@@ -507,14 +538,18 @@ class TaskSettingsPanel extends StatelessWidget {
                   ),
                 ));
               },
-              borderRadius: BorderRadius.circular(100),
+              borderRadius: BorderRadius.zero,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFAF5FF) : Colors.white,
-                  borderRadius: BorderRadius.circular(100),
+                  color:
+                      isSelected ? PixelPalette.parchment : PixelPalette.white,
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF9333EA) : const Color(0xFFE7E5E4),
+                    color: isSelected
+                        ? PixelPalette.blueBright
+                        : PixelPalette.mist,
                     width: isSelected ? 1.5 : 1,
                   ),
                 ),
@@ -535,7 +570,9 @@ class TaskSettingsPanel extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? const Color(0xFF581C87) : AppColors.woodBrown,
+                        color: isSelected
+                            ? PixelPalette.blueDeep
+                            : AppColors.woodBrown,
                       ),
                     ),
                   ],
@@ -574,15 +611,32 @@ class TaskSettingsPanel extends StatelessWidget {
   Widget _buildActionSettings() {
     final ver = task.verification is ActionVerification
         ? task.verification as ActionVerification
-        : ActionVerification(task: {'kind': 'save_spot', 'spot_id': destinationSpotId});
+        : ActionVerification(
+            task: {'kind': 'save_spot', 'spot_id': destinationSpotId});
 
     final kind = ver.task['kind'] as String? ?? 'save_spot';
 
     final actionKinds = [
-      {'kind': 'save_spot', 'label': 'Bookmark Destination', 'desc': 'Traveler saves this spot.'},
-      {'kind': 'like_spot', 'label': 'Like Destination', 'desc': 'Traveler likes on explore feed.'},
-      {'kind': 'complete_quiz', 'label': 'Cultural Quiz', 'desc': 'Complete a cultural quiz.'},
-      {'kind': 'vote_juanchoice', 'label': 'Governance Vote', 'desc': 'Vote in community campaign.'},
+      {
+        'kind': 'save_spot',
+        'label': 'Bookmark Destination',
+        'desc': 'Traveler saves this spot.'
+      },
+      {
+        'kind': 'like_spot',
+        'label': 'Like Destination',
+        'desc': 'Traveler likes on explore feed.'
+      },
+      {
+        'kind': 'complete_quiz',
+        'label': 'Cultural Quiz',
+        'desc': 'Complete a cultural quiz.'
+      },
+      {
+        'kind': 'vote_juanchoice',
+        'label': 'Governance Vote',
+        'desc': 'Vote in community campaign.'
+      },
     ];
 
     return Column(
@@ -613,14 +667,16 @@ class TaskSettingsPanel extends StatelessWidget {
                   verification: ActionVerification(task: newTask),
                 ));
               },
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.zero,
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.08)
+                      : PixelPalette.white,
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : const Color(0xFFE7E5E4),
+                    color: isSelected ? AppColors.primary : PixelPalette.mist,
                     width: isSelected ? 1.5 : 1,
                   ),
                 ),
@@ -656,7 +712,8 @@ class TaskSettingsPanel extends StatelessWidget {
                           ),
                           Text(
                             a['desc'] as String,
-                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -669,8 +726,10 @@ class TaskSettingsPanel extends StatelessWidget {
         }),
         if (kind == 'complete_quiz') ...[
           const SizedBox(height: 8),
-          TextFormField(
+          PixelTextField(
             initialValue: ver.task['quiz_id'] as String? ?? '',
+            label: 'Cultural Quiz ID',
+            hint: 'e.g. quiz_lingayen_history_01',
             onChanged: (val) {
               onChanged(task.copyWith(
                 verification: ActionVerification(
@@ -678,19 +737,13 @@ class TaskSettingsPanel extends StatelessWidget {
                 ),
               ));
             },
-            decoration: InputDecoration(
-              labelText: 'Cultural Quiz ID',
-              labelStyle: const TextStyle(fontSize: 12),
-              hintText: 'e.g. quiz_lingayen_history_01',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
           ),
         ],
         if (kind == 'save_spot' || kind == 'like_spot') ...[
           const SizedBox(height: 8),
-          TextFormField(
+          PixelTextField(
             initialValue: ver.task['spot_id'] as String? ?? destinationSpotId,
+            label: 'Target Spot ID',
             onChanged: (val) {
               onChanged(task.copyWith(
                 verification: ActionVerification(
@@ -698,12 +751,6 @@ class TaskSettingsPanel extends StatelessWidget {
                 ),
               ));
             },
-            decoration: InputDecoration(
-              labelText: 'Target Spot ID',
-              labelStyle: const TextStyle(fontSize: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
           ),
         ],
       ],

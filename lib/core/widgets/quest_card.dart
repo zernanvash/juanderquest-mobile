@@ -1,202 +1,273 @@
 import 'package:flutter/material.dart';
+
 import '../../features/quests/models/quest_model.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
-import '../theme/app_typography.dart';
+import '../../features/quests/pixel/pixel_tag.dart';
+import '../../features/quests/pixel/saved_quest_heart.dart';
+import '../pixel/generated/designer_art.g.dart';
+import '../pixel/generated/pixel_palette.g.dart';
+import '../pixel/pixel_art.dart';
+import '../pixel/pixel_box.dart';
+import '../pixel/pixel_controls.dart';
+import '../pixel/pixel_grid.dart';
+import '../pixel/pixel_text.dart';
 
-/// QuestCard displays playable quest cards with categories, reward badges, and status.
 class QuestCard extends StatelessWidget {
-  final QuestModel quest;
-  final String status;
-  final VoidCallback onTap;
-  final bool isFeatured;
-
   const QuestCard({
     super.key,
     required this.quest,
     required this.status,
     required this.onTap,
+    this.onDirections,
     this.isFeatured = false,
+    this.isSaved = false,
+    this.onToggleSaved,
+    this.dailyMission = false,
   });
+
+  final QuestModel quest;
+  final String status;
+  final VoidCallback onTap;
+  final VoidCallback? onDirections;
+  final bool isFeatured;
+  final bool isSaved;
+  final VoidCallback? onToggleSaved;
+  final bool dailyMission;
+
+  static const _sunFrame = PixelBoxStyle(
+    fill: PixelPalette.sun,
+    highlight: PixelPalette.sun,
+    shade: PixelPalette.sun,
+    outline: PixelPalette.sun,
+    corner: 2,
+    shadowPx: 0,
+    bevel: false,
+  );
 
   @override
   Widget build(BuildContext context) {
-    Color statusColor;
-    switch (status) {
-      case 'COMPLETED':
-        statusColor = AppColors.success;
-        break;
-      case 'PENDING REVIEW':
-        statusColor = AppColors.warning;
-        break;
-      case 'REJECTED':
-        statusColor = AppColors.danger;
-        break;
-      default:
-        statusColor = AppColors.primary;
-    }
-
-    final hasImage = quest.imageUrl != null &&
-        quest.imageUrl!.isNotEmpty &&
-        (quest.imageUrl!.startsWith('http://') || quest.imageUrl!.startsWith('https://'));
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.borderLowContrast),
-        boxShadow: AppSpacing.cardShadow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: AppSpacing.roundedLg,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    if (status == 'COMPLETED') return _completedCard(context);
+    final grid = PixelGrid.of(context);
+    final card = PixelPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (dailyMission) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: PixelTag(
+                'Daily mission · Complete a quest step',
+                style: PixelBoxStyle.gold,
+                textColor: PixelPalette.ink,
+                maxWidth: grid.px(150),
+              ),
+            ),
+            SizedBox(height: grid.px(2)),
+          ],
+          Stack(
             children: [
-              // Hero photo / gradient container
-              Stack(
-                children: [
-                  AspectRatio(
+              PixelPanel(
+                style: PixelBoxStyle.slot,
+                sunken: true,
+                padding: 1,
+                child: ClipRect(
+                  child: AspectRatio(
                     aspectRatio: isFeatured ? 16 / 9 : 16 / 10,
-                    child: hasImage
+                    child: quest.imageUrl != null
                         ? Image.network(
                             quest.imageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                            errorBuilder: (_, __, ___) =>
+                                _imagePlaceholder(context),
                           )
-                        : _buildPlaceholder(),
+                        : _imagePlaceholder(context),
                   ),
-
-                  // Category Pill Top Left
-                  Positioned(
-                    top: AppSpacing.md,
-                    left: AppSpacing.md,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryDark,
-                        borderRadius: AppSpacing.roundedPill,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(_getCategoryIcon(quest.categoryDisplay), size: 12, color: Colors.white),
-                          const SizedBox(width: 4),
-                          Text(
-                            quest.categoryDisplay,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Reward Points Badge Top Right
-                  Positioned(
-                    top: AppSpacing.md,
-                    right: AppSpacing.md,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerLowest.withValues(alpha: 0.92),
-                        borderRadius: AppSpacing.roundedPill,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.stars_rounded, size: 14, color: AppColors.sunGold),
-                          const SizedBox(width: 4),
-                          Text(
-                            '+${quest.rewardPoints} pts',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.woodBrown,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
+              Positioned(
+                top: grid.px(2),
+                left: grid.px(2),
+                child: Wrap(
+                  spacing: grid.px(1),
+                  runSpacing: grid.px(1),
+                  children: [
+                    PixelTag(
+                      quest.categoryDisplay,
+                      style: PixelBoxStyle.parchment,
+                      textColor: PixelPalette.ink,
+                      maxWidth: grid.px(70),
+                    ),
+                    if (quest.isTest)
+                      PixelTag(
+                        'Test',
+                        style: PixelBoxStyle.gold,
+                        textColor: PixelPalette.ink,
+                        maxWidth: grid.px(35),
+                      ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: grid.px(1),
+                right: grid.px(1),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PixelTag(
+                      '+${quest.rewardPoints} mJDQ',
+                      style: PixelBoxStyle.gold,
+                      textColor: PixelPalette.ink,
+                      maxWidth: grid.px(45),
+                    ),
+                    if (onToggleSaved != null)
+                      SavedQuestHeart(
+                        saved: isSaved,
+                        questTitle: quest.title,
+                        onToggle: onToggleSaved!,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  quest.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.body(context)
+                      .copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              SizedBox(width: grid.px(2)),
+              _StatusChip(status: status),
+            ],
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            quest.locationName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: PixelType.small(context, color: PixelPalette.greenBright),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            quest.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              PixelChip(
+                '${quest.radiusMeters}m geofence',
+                style: PixelBoxStyle.slot,
+                textColor: PixelPalette.slate,
+              ),
+              PixelChip(
+                '${quest.steps.length} tasks',
+                style: PixelBoxStyle.slot,
+                textColor: PixelPalette.slate,
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Row(
+            children: [
+              Expanded(
+                child: PixelButton(
+                  key: ValueKey('quest_directions_${quest.id}'),
+                  label: 'Directions',
+                  style: PixelBoxStyle.wood,
+                  textColor: PixelPalette.white,
+                  expand: true,
+                  onPressed: onDirections,
+                ),
+              ),
+              SizedBox(width: grid.px(2)),
+              Expanded(
+                child: PixelButton(
+                  key: ValueKey('quest_open_${quest.id}'),
+                  label: dailyMission ? 'Play >' : 'View quest >',
+                  expand: true,
+                  onPressed: onTap,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    final wrapped = dailyMission
+        ? PixelPanel(style: _sunFrame, padding: 1, child: card)
+        : card;
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      button: true,
+      label: '${quest.title}. $status. ${quest.locationName}',
+      onTap: onTap,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: wrapped,
+      ),
+    );
+  }
 
-              // Content Area
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+  Widget _completedCard(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      button: true,
+      label: '${quest.title}. Completed.',
+      onTap: onTap,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: PixelPanel(
+          padding: 2,
+          child: Row(
+            children: [
+              const PixelSprite(DesignerArt.questMarker, scale: 2),
+              SizedBox(width: grid.px(2)),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            quest.title,
-                            style: AppTypography.headlineSmall.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.1),
-                            borderRadius: AppSpacing.roundedSm,
-                            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            status,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: statusColor,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      quest.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.body(context)
+                          .copyWith(fontWeight: FontWeight.w700),
                     ),
-
-                    const SizedBox(height: 6),
-
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on_rounded, size: 14, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            quest.allowedRadiusMeters > 0
-                                ? '${quest.locationName} · ${quest.allowedRadiusMeters}m radius'
-                                : quest.locationName,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    SizedBox(height: grid.px(1)),
+                    Text(
+                      '${quest.locationName} · ${quest.categoryDisplay} · ${quest.steps.length} tasks',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.slate,
+                      ),
                     ),
                   ],
                 ),
+              ),
+              SizedBox(width: grid.px(1)),
+              const PixelChip(
+                'Completed',
+                style: PixelBoxStyle.green,
+                textColor: PixelPalette.white,
               ),
             ],
           ),
@@ -205,44 +276,47 @@ class QuestCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholder() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primaryDark, AppColors.primary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+  Widget _imagePlaceholder(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return ColoredBox(
+      color: PixelPalette.paperDim,
       child: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(_getCategoryIcon(quest.categoryDisplay), size: 40, color: AppColors.sunGold),
-            const SizedBox(height: 6),
+            const PixelSprite(DesignerArt.questMarker, scale: 3),
+            SizedBox(height: grid.px(1)),
             Text(
               quest.locationName,
-              style: AppTypography.bodySmall.copyWith(color: Colors.white70),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: PixelType.small(context, color: PixelPalette.stone),
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  static IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'eco':
-      case 'nature':
-        return Icons.eco_rounded;
-      case 'cultural':
-      case 'heritage':
-        return Icons.museum_rounded;
-      case 'food':
-      case 'culinary':
-        return Icons.restaurant_rounded;
-      default:
-        return Icons.explore_rounded;
-    }
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (style, textColor) = switch (status) {
+      'COMPLETED' => (PixelBoxStyle.green, PixelPalette.white),
+      'PENDING REVIEW' => (PixelBoxStyle.gold, PixelPalette.ink),
+      'REJECTED' => (PixelBoxStyle.red, PixelPalette.white),
+      _ => (PixelBoxStyle.green, PixelPalette.white),
+    };
+    return PixelTag(
+      status,
+      style: style,
+      textColor: textColor,
+      maxWidth: 140,
+    );
   }
 }

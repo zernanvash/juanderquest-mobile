@@ -6,17 +6,31 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/jdq_section_header.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../celebrations/celebration.dart';
+import '../models/quest_model.dart';
+import '../pixel/checkpoint_map_preview.dart';
+import '../pixel/pixel_tag.dart';
+import '../pixel/saved_quest_heart.dart';
+import '../pixel/saved_quests.dart';
+import '../pixel/task_icons.dart';
 import 'qr_scan_screen.dart';
 import 'quest_pass_host.dart';
-import '../models/quest_model.dart';
-import '../../../core/widgets/designer_guide.dart';
 
 class QuestDetailScreen extends ConsumerWidget {
   final QuestModel? quest;
@@ -304,9 +318,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -452,9 +464,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -536,9 +546,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                       const SizedBox(height: AppSpacing.sm),
                       Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
@@ -667,6 +676,16 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         final points = data is Map && data['awarded_points'] is num
             ? (data['awarded_points'] as num).toInt()
             : 0;
+        if (mounted) {
+          await showCelebration(
+            context,
+            QuestComplete(
+              questTitle: widget.quest.title,
+              reward: awarded ? points : widget.quest.rewardPoints,
+            ),
+          );
+        }
+        if (!mounted) return;
         await _loadProgress();
         if (mounted) {
           await showQuestFinishedDialog(context,
@@ -716,55 +735,6 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     return user.role == 'admin' ||
         user.role == 'qa' ||
         (widget.quest.authorId != null && widget.quest.authorId == user.id);
-  }
-
-  /// For the quest's host (author) or an admin: scan travelers' passes for host-scan tasks.
-  Widget _buildHostScanSection() {
-    final hostSteps = widget.quest.steps.where(isHostScanStep).toList();
-    if (hostSteps.isEmpty || !_isQuestHost) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.infoBg,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(children: [
-            const Icon(Icons.qr_code_scanner_rounded, color: AppColors.info),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-                child: Text('You host this quest',
-                    style: AppTypography.labelLarge)),
-          ]),
-          const SizedBox(height: 4),
-          Text(
-              "Scan each traveler's quest pass on site to verify their check-in.",
-              style: AppTypography.bodySmall
-                  .copyWith(color: AppColors.textSecondary)),
-          const SizedBox(height: AppSpacing.sm),
-          for (final step in hostSteps)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: OutlinedButton.icon(
-                onPressed: () => hostScanTravelerPass(
-                  context: context,
-                  ref: ref,
-                  quest: widget.quest,
-                  step: step,
-                  getPosition: _safeGetPosition,
-                ),
-                icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                label: Text('Scan traveler pass · Step ${step.order}',
-                    overflow: TextOverflow.ellipsis),
-              ),
-            ),
-        ],
-      ),
-    );
   }
 
   static const _noGpsMessage =
@@ -835,469 +805,201 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
   @override
   Widget build(BuildContext context) {
     final quest = widget.quest;
-    final hasImage = quest.imageUrl != null &&
-        quest.imageUrl!.isNotEmpty &&
-        (quest.imageUrl!.startsWith('http://') ||
-            quest.imageUrl!.startsWith('https://'));
-
-    // If attempt has live steps, use those; otherwise use default quest steps
     final displaySteps = _attempt != null && _attempt!.steps.isNotEmpty
         ? _attempt!.steps
         : quest.steps;
+    final saved = ref.watch(savedQuestsProvider).contains(quest.id);
+    final user = ref.watch(authProvider).user;
+    final isAuthor = user != null && quest.authorId == user.id;
 
-    return JdqScaffold(
-      padding: EdgeInsets.zero,
-      appBar: AppBar(
-        title: Text(quest.title),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hero Image
-            UiSpecContainer(
-              spec: const UiSpec(
-                title: 'Quest Hero Photography & Bounty Pills',
-                figmaLayer: '#Quest_Detail_Hero_Image',
-                dimensions: 'Full width hero image, Height: 240dp',
-                dataBinding: 'quest.markerImageUrl / quest.category',
-                stateNotes:
-                    'Displays curated destination photography with category badge overlay',
-                uxNotes:
-                    'Hero visual provides strong sense of place and local Pangasinan heritage.',
-              ),
-              child: Stack(
-                children: [
-                  Container(
-                    height: 240,
-                    width: double.infinity,
-                    color: AppColors.woodBrown,
-                    child: hasImage
-                        ? Image.network(
-                            quest.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _buildHeaderPlaceholder(),
-                          )
-                        : _buildHeaderPlaceholder(),
-                  ),
-                  Positioned(
-                    top: AppSpacing.gutter,
-                    left: AppSpacing.gutter,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.woodBrown.withOpacity(0.85),
-                        borderRadius: AppSpacing.roundedSm,
-                      ),
-                      child: Text(
-                        quest.categoryDisplay,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Content Body
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.gutter),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    quest.title,
-                    style: AppTypography.displayMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_rounded,
-                          color: AppColors.primary, size: 16),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          quest.locationName,
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  if (quest.crowdStatus == 'estimated_busy') ...[
-                    const SizedBox(height: AppSpacing.md),
-                    UiSpecContainer(
-                      spec: const UiSpec(
-                        title: 'Live Overcrowding Diversion Card',
-                        figmaLayer: '#Quest_Crowd_Pressure_Alert',
-                        dimensions: 'Full width, Padding: 16dp, Radius: 16dp',
-                        dataBinding:
-                            'quest.crowdStatus (estimated_busy / tranquil / moderate)',
-                        stateNotes:
-                            'Displays warning alert when tourist congestion is high to redirect visitors',
-                        uxNotes:
-                            'Amber/Coral alert container with warning icon and link to tranquil gems.',
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        decoration: BoxDecoration(
-                          color: AppColors.crowdBusyBg,
-                          borderRadius: AppSpacing.roundedLg,
-                          border: Border.all(
-                              color: AppColors.crowdBusy.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.warning_amber_rounded,
-                                color: AppColors.crowdBusy, size: 22),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'High Tourist Activity Detected',
-                                    style: TextStyle(
-                                      color: AppColors.crowdBusy,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'This destination is currently experiencing high foot traffic. Explore quieter hidden gems in the Explore tab for bonus rewards!',
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color:
-                                          AppColors.crowdBusy.withOpacity(0.9),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  if (quest.campaignId != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.sunGold.withOpacity(0.15),
-                        borderRadius: AppSpacing.roundedMd,
-                        border: Border.all(color: AppColors.sunGold),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.campaign_rounded,
-                              color: AppColors.woodBrown, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Sponsored Campaign: ${quest.remainingSlots ?? "Open"} reward slots available',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.woodBrown),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Quest Parameters Card
-                  UiSpecContainer(
-                    spec: const UiSpec(
-                      title: 'Quest Reward & GPS Guard Parameters Card',
-                      figmaLayer: '#Quest_Specs_Metrics_Card',
-                      dimensions:
-                          'Full width split card, Height: ~84dp, Radius: 16dp',
-                      dataBinding:
-                          'quest.rewardPoints / quest.allowedRadiusMeters',
-                      stateNotes:
-                          'Points pill + Radar icon with server-enforced radius constraint',
-                      uxNotes:
-                          'Prominently clarifies physical verification constraints before travel.',
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerLowest,
-                        borderRadius: AppSpacing.roundedLg,
-                        border: Border.all(color: AppColors.borderLowContrast),
-                        boxShadow: AppSpacing.cardShadow,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'QUEST REWARD',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textMuted,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.stars_rounded,
-                                  color: AppColors.sunGold, size: 20),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  '${quest.rewardPoints} Points',
-                                  style: AppTypography.labelLarge.copyWith(
-                                    color: AppColors.woodBrown,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (quest.funding != null) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(AppSpacing.sm),
-                              decoration: BoxDecoration(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.07),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Funded Eco-Quest · ${quest.funding!.completionsLeftEstimate} estimated rewards left',
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  if (quest.funding!.sponsors.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Supported by ${quest.funding!.sponsors.map((sponsor) => sponsor['name']?.toString()).whereType<String>().join(', ')}',
-                                      style: AppTypography.bodySmall.copyWith(
-                                          color: AppColors.textSecondary),
-                                    ),
-                                  ],
-                                  if (quest.funding!.perk case final perk?) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Sponsor perk: ${perk['title'] ?? 'available'} · ${perk['remaining'] ?? 0} available',
-                                      style: AppTypography.bodySmall
-                                          .copyWith(color: AppColors.primary),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Simulated points only; no cash or blockchain value.',
-                                    style: AppTypography.bodySmall
-                                        .copyWith(color: AppColors.textMuted),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          if (quest.authorId != null &&
-                              ref.watch(authProvider).user?.id ==
-                                  quest.authorId) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    key: const ValueKey('quest_edit_btn'),
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size(0, 48),
-                                      foregroundColor: AppColors.woodBrown,
-                                    ),
-                                    onPressed: () => context.push('/quests/${quest.id}/edit'),
-                                    icon: const Icon(Icons.edit_rounded, size: 16),
-                                    label: const Text('Edit quest'),
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    key: const ValueKey('quest_qr_sheet_btn'),
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size(0, 48),
-                                      foregroundColor: AppColors.woodBrown,
-                                    ),
-                                    onPressed: () => context.push('/quests/${quest.id}/qr-sheet'),
-                                    icon: const Icon(Icons.qr_code_2_rounded, size: 16),
-                                    label: const Text('QR sheet'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size(0, 48),
-                              ),
-                              onPressed: () =>
-                                  context.push('/quests/${quest.id}/funding'),
-                              icon: const Icon(
-                                  Icons.account_balance_wallet_outlined),
-                              label: const Text('Manage funding'),
-                            ),
-                          ],
-                          const Divider(height: AppSpacing.lg * 2),
-                          const Text(
-                            'GPS RADIUS GUARD',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textMuted,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.radar_rounded,
-                                  color: AppColors.primary, size: 20),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  'Within ${quest.allowedRadiusMeters}m',
-                                  style: AppTypography.labelLarge.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Overview
-                  const JdqSectionHeader(
-                    title: 'Quest Overview',
-                  ),
-                  Text(
-                    quest.description,
-                    style: AppTypography.bodyLarge,
-                  ),
-
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Objective Steps
-                  const JdqSectionHeader(
-                    title: 'Quest Objectives',
-                    subtitle:
-                        'Requirements set by the destination quest author.',
-                  ),
-
-                  if (displaySteps.isEmpty)
-                    _buildStepCard(
-                      step: const QuestStepModel(
-                        order: 1,
-                        title: 'Destination check-in',
-                        description:
-                            'Submit location proof for independent review.',
-                        checkpointType: 'location',
-                        required: true,
-                        status: 'ready',
-                      ),
-                    )
-                  else
-                    for (final step in displaySteps) ...[
-                      _buildStepCard(step: step),
-                      const SizedBox(height: AppSpacing.sm),
-                    ],
-
-                  const SizedBox(height: AppSpacing.sectionGap),
-
-                  // Enrollment and Progress CTA
-                  UiSpecContainer(
-                    spec: const UiSpec(
-                      title: 'Start Quest Experience CTA',
-                      figmaLayer: '#Quest_Start_Action_Button',
-                      dimensions:
-                          'Full width button, Height: 52dp, Radius: 12dp',
-                      dataBinding:
-                          'POST /quests/:id/attempts and GET /quests/:id/progress',
-                      stateNotes:
-                          'Shows the server-confirmed enrollment or completion state',
-                      uxNotes:
-                          'Prominent primary CTA to begin interactive verification with in-app navigation shortcut.',
-                      deferred: false,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.only(bottom: grid.px(3)),
                       children: [
-                        _buildParticipationSection(),
-                        const SizedBox(height: AppSpacing.sm),
-                        InkWell(
-                          onTap: () {
-                            context.push(
-                              '/navigate?lat=${quest.gpsLat}&lng=${quest.gpsLng}&name=${Uri.encodeComponent(quest.title)}&address=${Uri.encodeComponent(quest.locationName)}',
-                            );
-                          },
-                          borderRadius: AppSpacing.roundedMd,
-                          child: Container(
-                            height: 50,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceContainerLow,
-                              borderRadius: AppSpacing.roundedMd,
-                              border: Border.all(
-                                  color: AppColors.borderLowContrast),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.navigation_rounded,
-                                    size: 18, color: AppColors.primary),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Route',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.woodBrown),
-                                ),
+                        _hero(context, grid, quest, saved),
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            grid.px(4),
+                            grid.px(3),
+                            grid.px(4),
+                            grid.px(4),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _objectives(context, grid, quest),
+                              SizedBox(height: grid.px(3)),
+                              if (quest.funding != null) ...[
+                                _funded(context, grid, quest.funding!),
+                                SizedBox(height: grid.px(3)),
                               ],
-                            ),
+                              if (quest.crowdStatus == 'estimated_busy') ...[
+                                _crowd(context, grid),
+                                SizedBox(height: grid.px(3)),
+                              ],
+                              _checkpoint(context, grid, quest),
+                              SizedBox(height: grid.px(3)),
+                              _tasks(context, grid, displaySteps),
+                              SizedBox(height: grid.px(3)),
+                              if (_isQuestHost) ...[
+                                _hostScan(context, grid),
+                                SizedBox(height: grid.px(3)),
+                              ],
+                              if (isAuthor) ...[
+                                _authorTools(context, grid),
+                                SizedBox(height: grid.px(3)),
+                              ],
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: AppSpacing.sectionGap),
+                  _bottomBar(context, grid, displaySteps),
                 ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _hero(
+    BuildContext context,
+    PixelGrid grid,
+    QuestModel quest,
+    bool saved,
+  ) {
+    final hasImage = quest.imageUrl != null &&
+        quest.imageUrl!.isNotEmpty &&
+        (quest.imageUrl!.startsWith('http://') ||
+            quest.imageUrl!.startsWith('https://'));
+    final topInset = MediaQuery.paddingOf(context).top + grid.px(2);
+    return SizedBox(
+      height: 300,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: hasImage
+                ? Image.network(
+                    quest.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        _heroPlaceholder(context, quest),
+                  )
+                : _heroPlaceholder(context, quest),
+          ),
+          Positioned.fill(
+            child: ColoredBox(
+              color: PixelPalette.ink.withValues(alpha: 0.18),
+            ),
+          ),
+          Positioned(
+            top: topInset,
+            left: grid.px(2),
+            child: PixelIconButton(
+              icon: _questBackIcon,
+              semanticLabel: 'Back',
+              iconHeight: 24,
+              style: PixelBoxStyle.parchment,
+              onPressed: () => context.pop(),
+            ),
+          ),
+          Positioned(
+            top: topInset,
+            right: grid.px(2),
+            child: SavedQuestHeart(
+              saved: saved,
+              questTitle: quest.title,
+              onToggle: () =>
+                  ref.read(savedQuestsProvider.notifier).toggle(quest.id),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: PixelPalette.ink.withValues(alpha: 0.78),
+              padding: EdgeInsets.fromLTRB(
+                grid.px(3),
+                grid.px(2),
+                grid.px(3),
+                grid.px(2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  PixelTag(
+                    '${quest.categoryDisplay} Â· Eco-Quest',
+                    style: PixelBoxStyle.gold,
+                    textColor: PixelPalette.ink,
+                    maxWidth: grid.px(140),
+                  ),
+                  SizedBox(height: grid.px(1)),
+                  Text(
+                    quest.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: PixelType.title(context, color: PixelPalette.paper),
+                  ),
+                  SizedBox(height: grid.px(1)),
+                  Text(
+                    quest.locationName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PixelType.small(
+                      context,
+                      color: PixelPalette.paperDim,
+                    ),
+                  ),
+                  SizedBox(height: grid.px(2)),
+                  PixelButton(
+                    label: 'Directions',
+                    style: PixelBoxStyle.wood,
+                    textColor: PixelPalette.white,
+                    onPressed: _openDirections,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroPlaceholder(BuildContext context, QuestModel quest) {
+    final grid = PixelGrid.of(context);
+    return ColoredBox(
+      color: PixelPalette.woodDeep,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const PixelSprite(DesignerArt.questMarker, scale: 4),
+            SizedBox(height: grid.px(2)),
+            Text(
+              quest.locationName,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: PixelType.small(
+                context,
+                color: PixelPalette.paperDim,
               ),
             ),
           ],
@@ -1306,317 +1008,750 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     );
   }
 
-  Widget _buildStepCard({required QuestStepModel step}) {
+  Widget _objectives(BuildContext context, PixelGrid grid, QuestModel quest) {
+    final base = _baseReward(quest.baseRewardPhp);
+    final difficulty = _difficulty(quest.difficultyFactor);
+    return PixelPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Mission objectives',
+            style:
+                PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            quest.description,
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+          if (quest.campaignId != null) ...[
+            SizedBox(height: grid.px(2)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: PixelTag(
+                'Sponsored campaign Â· ${quest.remainingSlots ?? 'open'} slots',
+                style: PixelBoxStyle.gold,
+                textColor: PixelPalette.ink,
+                maxWidth: grid.px(110),
+              ),
+            ),
+          ],
+          SizedBox(height: grid.px(3)),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final gap = grid.px(2);
+              final width = ((constraints.maxWidth - gap) / 2)
+                  .clamp(1.0, 400.0)
+                  .toDouble();
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  _statSlot(
+                    context,
+                    grid,
+                    width,
+                    'Reward bounty',
+                    '+${quest.rewardPoints} mJDQ',
+                  ),
+                  _statSlot(
+                    context,
+                    grid,
+                    width,
+                    'Base reward',
+                    'P$base',
+                    semantics: '$base pesos',
+                  ),
+                  _statSlot(
+                    context,
+                    grid,
+                    width,
+                    'GPS radius',
+                    '${quest.radiusMeters}m',
+                  ),
+                  _statSlot(
+                    context,
+                    grid,
+                    width,
+                    'Difficulty',
+                    '${difficulty}x',
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statSlot(
+    BuildContext context,
+    PixelGrid grid,
+    double width,
+    String label,
+    String value, {
+    String? semantics,
+  }) {
+    final text = Text(
+      value,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: PixelType.title(context),
+    );
+    return SizedBox(
+      width: width,
+      child: PixelPanel(
+        style: PixelBoxStyle.slot,
+        sunken: true,
+        padding: 2,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: grid.px(16),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: semantics == null
+                    ? text
+                    : Semantics(label: semantics, child: text),
+              ),
+            ),
+            SizedBox(height: grid.px(1)),
+            Text(
+              label,
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _funded(
+    BuildContext context,
+    PixelGrid grid,
+    QuestFundingSummary funding,
+  ) {
+    final sponsors = funding.sponsors
+        .map((sponsor) => sponsor['name']?.toString())
+        .whereType<String>()
+        .join(', ');
+    final perk = funding.perk;
+    return PixelPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              Text(
+                'Funded Eco-Quest',
+                style: PixelType.body(context)
+                    .copyWith(fontWeight: FontWeight.w700),
+              ),
+              PixelChip(
+                '${funding.rewardPoints} pts each',
+                style: PixelBoxStyle.gold,
+                textColor: PixelPalette.ink,
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            'About ${funding.completionsLeftEstimate} funded rewards left.',
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+          if (funding.endsAt != null) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Round closes ${funding.endsAt!.toIso8601String().split('T').first}.',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+          ],
+          if (sponsors.isNotEmpty) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Supported by $sponsors.',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+          ],
+          if (perk != null) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Sponsor perk: ${perk['title'] ?? 'available'} Â· ${perk['remaining'] ?? 0} available',
+              style: PixelType.small(context, color: PixelPalette.greenBright),
+            ),
+          ],
+          SizedBox(height: grid.px(2)),
+          Text(
+            'Prototype reward points are simulated and have no cash or blockchain value.',
+            style: PixelType.small(context, color: PixelPalette.stone),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _crowd(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.red,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'High tourist activity detected',
+            style: PixelType.body(context, color: PixelPalette.white)
+                .copyWith(fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'This destination is currently experiencing high foot traffic. Explore quieter hidden gems in the Explore tab for bonus rewards!',
+            style: PixelType.small(context, color: PixelPalette.paper),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            label: 'Explore quieter gems',
+            style: PixelBoxStyle.parchment,
+            textColor: PixelPalette.ink,
+            onPressed: () => context.go('/explore'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _checkpoint(BuildContext context, PixelGrid grid, QuestModel quest) {
+    return PixelPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              Text(
+                'Checkpoint map',
+                style: PixelType.body(context)
+                    .copyWith(fontWeight: FontWeight.w700),
+              ),
+              _actionLink(
+                context,
+                'Full map',
+                () => context.go('/map?quest=${quest.id}'),
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          CheckpointMapPreview(
+            quest: quest,
+            onTap: () => context.go('/map?quest=${quest.id}'),
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            'Check-ins count within ${quest.radiusMeters}m of the pin.',
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tasks(
+    BuildContext context,
+    PixelGrid grid,
+    List<QuestStepModel> steps,
+  ) {
+    final shown = steps.isEmpty
+        ? const [
+            QuestStepModel(
+              order: 1,
+              title: 'Destination check-in',
+              description: 'Submit location proof for independent review.',
+              checkpointType: 'location',
+              required: true,
+              status: 'ready',
+            ),
+          ]
+        : steps;
+    final done = shown.where((step) => step.isVerified).length;
+    final orderMode = _attempt?.stepOrderMode ?? widget.quest.stepOrderMode;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Your tasks Â· $done / ${shown.length} done',
+          style: PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
+        ),
+        SizedBox(height: grid.px(1)),
+        Text(
+          orderMode == 'sequential' ? 'Do them in order.' : 'Any order.',
+          style: PixelType.small(context, color: PixelPalette.slate),
+        ),
+        SizedBox(height: grid.px(2)),
+        for (final step in shown) ...[
+          _taskCard(context, grid, step),
+          SizedBox(height: grid.px(2)),
+        ],
+      ],
+    );
+  }
+
+  Widget _taskCard(BuildContext context, PixelGrid grid, QuestStepModel step) {
     final hasAttempt = _attempt != null;
     final isVerified = step.isVerified;
     final isPendingReview = step.isPendingReview;
     final isNeedsChanges = step.isNeedsChanges;
     final isReady = step.isReady;
-
-    Color badgeBg;
-    Color badgeFg;
-    String badgeText;
-    IconData badgeIcon;
-
-    if (isVerified) {
-      badgeBg = AppColors.success.withOpacity(0.15);
-      badgeFg = AppColors.success;
-      badgeText = 'Verified';
-      badgeIcon = Icons.check_circle_rounded;
-    } else if (isPendingReview) {
-      badgeBg = AppColors.sunGold.withOpacity(0.18);
-      badgeFg = AppColors.woodBrown;
-      badgeText = 'Pending Review';
-      badgeIcon = Icons.hourglass_top_rounded;
-    } else if (isNeedsChanges) {
-      badgeBg = AppColors.danger.withOpacity(0.15);
-      badgeFg = AppColors.danger;
-      badgeText = 'Needs Changes';
-      badgeIcon = Icons.error_outline_rounded;
-    } else if (isReady) {
-      badgeBg = AppColors.primary.withOpacity(0.15);
-      badgeFg = AppColors.primary;
-      badgeText = 'Ready';
-      badgeIcon = Icons.play_circle_fill_rounded;
-    } else {
-      badgeBg = AppColors.borderLowContrast;
-      badgeFg = AppColors.textMuted;
-      badgeText = 'Locked';
-      badgeIcon = Icons.lock_outline_rounded;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedMd,
-        border: Border.all(
-          color: isReady
-              ? AppColors.primary.withOpacity(0.4)
-              : AppColors.borderLowContrast,
-          width: isReady ? 1.5 : 1.0,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: isVerified
-                      ? AppColors.success.withOpacity(0.15)
-                      : AppColors.crowdModerateBg,
-                  shape: BoxShape.circle,
+    final isLocked = step.isLocked;
+    final readyStyle = PixelBoxStyle.parchment.copyWith(
+      outline: PixelPalette.sun,
+    );
+    final style = isReady
+        ? readyStyle
+        : isLocked
+            ? PixelBoxStyle.slot
+            : PixelBoxStyle.parchment;
+    final actionVisible = hasAttempt &&
+        (isReady || isNeedsChanges) &&
+        !_completed &&
+        !(_attempt?.isSubmitted ?? false);
+    return PixelPanel(
+      key: ValueKey('quest_task_${step.order}'),
+      style: style,
+      padding: 2,
+      child: Opacity(
+        opacity: isLocked && !isVerified ? 0.72 : 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PixelSprite(
+                  QuestTaskIcons.forCheckpoint(step.checkpointType),
+                  scale: 2,
                 ),
-                child: Icon(
-                  switch (step.checkpointType) {
-                    'qr' => Icons.qr_code_scanner_rounded,
-                    'photo' => Icons.camera_alt_rounded,
-                    'location' => Icons.location_on_rounded,
-                    'ar' => Icons.view_in_ar_rounded,
-                    _ => Icons.touch_app_rounded,
-                  },
-                  color: isVerified ? AppColors.success : AppColors.woodBrown,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
+                SizedBox(width: grid.px(2)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: grid.px(2),
+                        runSpacing: grid.px(1),
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            'Step ${step.order} Â· ${_taskTypeLabel(step.checkpointType)}',
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.slate,
+                            ),
+                          ),
+                          _taskStateChip(
+                            isVerified: isVerified,
+                            isPendingReview: isPendingReview,
+                            isNeedsChanges: isNeedsChanges,
+                            isReady: isReady,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        step.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: PixelType.body(context)
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        step.description,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                      if (step.rejectionReason != null &&
+                          step.rejectionReason!.isNotEmpty) ...[
+                        SizedBox(height: grid.px(1)),
                         Text(
-                          'Step ${step.order}: ${step.title}',
-                          style: AppTypography.labelLarge.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (hasAttempt)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: badgeBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(badgeIcon, size: 12, color: badgeFg),
-                                const SizedBox(width: 4),
-                                Text(
-                                  badgeText,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: badgeFg,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      step.description,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if (step.rejectionReason != null &&
-                        step.rejectionReason!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.danger.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
                           'Feedback: ${step.rejectionReason}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.danger,
-                            fontWeight: FontWeight.w500,
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.alert,
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
+              ],
+            ),
+            if (actionVisible) ...[
+              SizedBox(height: grid.px(2)),
+              PixelButton(
+                key: ValueKey('quest_task_action_${step.order}'),
+                label: _taskActionLabel(step),
+                expand: true,
+                onPressed: _stepSubmitting ? null : () => _taskAction(step),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static const _readyChipStyle = PixelBoxStyle(
+    fill: PixelPalette.sunLight,
+    highlight: PixelPalette.cream,
+    shade: PixelPalette.sun,
+    outline: PixelPalette.sun,
+    corner: 1,
+    shadowPx: 0,
+  );
+
+  Widget _taskStateChip({
+    required bool isVerified,
+    required bool isPendingReview,
+    required bool isNeedsChanges,
+    required bool isReady,
+  }) {
+    if (isVerified) {
+      return const PixelTag(
+        'Verified',
+        style: PixelBoxStyle.green,
+        textColor: PixelPalette.white,
+        maxWidth: 140,
+      );
+    }
+    if (isPendingReview) {
+      return const PixelTag(
+        'Pending review',
+        style: PixelBoxStyle.gold,
+        textColor: PixelPalette.ink,
+        maxWidth: 140,
+      );
+    }
+    if (isNeedsChanges) {
+      return const PixelTag(
+        'Needs changes',
+        style: PixelBoxStyle.red,
+        textColor: PixelPalette.white,
+        maxWidth: 140,
+      );
+    }
+    if (isReady) {
+      return const PixelTag(
+        'Ready',
+        style: _readyChipStyle,
+        textColor: PixelPalette.goldDeep,
+        maxWidth: 140,
+      );
+    }
+    return const PixelTag(
+      'Locked',
+      style: PixelBoxStyle.stone,
+      textColor: PixelPalette.white,
+      maxWidth: 140,
+    );
+  }
+
+  Widget _hostScan(BuildContext context, PixelGrid grid) {
+    final hostSteps = widget.quest.steps.where(isHostScanStep).toList();
+    if (hostSteps.isEmpty || !_isQuestHost) return const SizedBox.shrink();
+    return PixelPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'You host this quest',
+            style:
+                PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
           ),
-          if (hasAttempt &&
-              (isReady || isNeedsChanges) &&
-              !_completed &&
-              !(_attempt?.isSubmitted ?? false)) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerRight,
-              child: _buildStepActionButton(step),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Scan each traveler\'s quest pass on site to verify their check-in.',
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+          SizedBox(height: grid.px(2)),
+          for (final step in hostSteps) ...[
+            PixelButton(
+              label: 'Scan traveler pass Â· step ${step.order}',
+              variant: PixelButtonVariant.secondary,
+              expand: true,
+              onPressed: () => hostScanTravelerPass(
+                context: context,
+                ref: ref,
+                quest: widget.quest,
+                step: step,
+                getPosition: _safeGetPosition,
+              ),
             ),
+            SizedBox(height: grid.px(1)),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildStepActionButton(QuestStepModel step) {
-    final hostScan = isHostScanStep(step);
-    final label = hostScan
-        ? 'Show my pass'
-        : switch (step.checkpointType) {
-            'location' => 'Verify Location (GPS)',
-            'qr' => 'Scan QR Code',
-            'photo' => 'Submit Photo Proof',
-            'ar' => 'Open AR',
-            _ => 'Check task',
-          };
-    final icon = hostScan
-        ? Icons.badge_rounded
-        : switch (step.checkpointType) {
-            'location' => Icons.my_location_rounded,
-            'qr' => Icons.qr_code_scanner_rounded,
-            'photo' => Icons.camera_alt_rounded,
-            'ar' => Icons.view_in_ar_rounded,
-            _ => Icons.check_circle_outline_rounded,
-          };
-
-    return SizedBox(
-      height: 36,
-      child: ElevatedButton.icon(
-        onPressed: _stepSubmitting
-            ? null
-            : () {
-                switch (step.checkpointType) {
-                  case 'location':
-                    _verifyLocation(step);
-                    break;
-                  case 'qr':
-                    if (hostScan) {
-                      _showQuestPass(step);
-                    } else {
-                      _showQrVerificationModal(step);
-                    }
-                    break;
-                  case 'photo':
-                    _showPhotoVerificationModal(step);
-                    break;
-                  case 'ar':
-                    _launchAR(step);
-                    break;
-                  default:
-                    _checkInAppTask(step);
-                }
-              },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+  Widget _authorTools(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'You made this quest',
+            style: PixelType.body(context, color: PixelPalette.paper)
+                .copyWith(fontWeight: FontWeight.w700),
           ),
-        ),
-        icon: Icon(icon, size: 16),
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        ),
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              PixelButton(
+                key: const ValueKey('quest_edit_btn'),
+                label: 'Edit',
+                variant: PixelButtonVariant.secondary,
+                onPressed: () =>
+                    context.push('/quests/${widget.quest.id}/edit'),
+              ),
+              PixelButton(
+                key: const ValueKey('quest_qr_sheet_btn'),
+                label: 'QR sheet',
+                variant: PixelButtonVariant.secondary,
+                onPressed: () =>
+                    context.push('/quests/${widget.quest.id}/qr-sheet'),
+              ),
+              PixelButton(
+                key: const ValueKey('quest_funding_btn'),
+                label: 'Funding',
+                variant: PixelButtonVariant.secondary,
+                onPressed: () =>
+                    context.push('/quests/${widget.quest.id}/funding'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildParticipationSection() {
+  Widget _bottomBar(
+    BuildContext context,
+    PixelGrid grid,
+    List<QuestStepModel> displaySteps,
+  ) {
     final signedIn = ref.watch(authProvider).isAuthenticated;
     final hasAttempt = _attempt != null;
     final isSubmitted = _attempt?.isSubmitted ?? false;
-
     final canSubmitReview = hasAttempt &&
         _attempt!.isInProgress &&
         _attempt!.steps.isNotEmpty &&
         _attempt!.steps
-            .where((s) => s.required)
-            .every((s) => s.isVerified || s.isPendingReview);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildHostScanSection(),
-        if (_completed)
-          const Text(
-              'Quest completed and reviewed. Your reward is recorded in your account.')
-        else if (isSubmitted)
-          const Text(
-              'Proof submitted. Your quest is waiting for independent review; no reward has been granted yet.')
-        else if (hasAttempt)
-          Text(
-              'Quest accepted. ${_attempt!.verifiedSteps} of ${_attempt!.requiredSteps} required tasks done. Finish them all, then tap Finish quest.')
-        else if (signedIn && !_loading && _error == null)
-          const Text('Accept this quest to register your attempt.'),
-        if (_error != null) ...[
-          const SizedBox(height: 4),
-          Text(_error!, style: const TextStyle(color: AppColors.danger)),
-          TextButton(
-            onPressed: _loading ? null : _loadProgress,
-            child: const Text('Retry progress'),
-          ),
-        ],
-        const SizedBox(height: AppSpacing.sm),
-        if (_loading)
-          const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
-        else if (!signedIn)
-          PrimaryButton(
-            label: 'Sign in to accept',
-            icon: Icons.login_rounded,
-            onPressed: () => context.push('/login'),
-          )
-        else if (!_completed && !hasAttempt)
-          PrimaryButton(
-            label: 'Accept quest',
-            icon: Icons.play_arrow_rounded,
-            onPressed: _error == null ? _acceptQuest : null,
-          )
-        else if (canSubmitReview)
-          PrimaryButton(
-            label: 'Finish quest',
-            icon: Icons.flag_rounded,
-            onPressed: _finishQuest,
-          ),
-      ],
-    );
-  }
-
-  Widget _buildHeaderPlaceholder() {
+            .where((step) => step.required)
+            .every((step) => step.isVerified || step.isPendingReview);
+    final done = _attempt?.verifiedSteps ?? 0;
+    final total = _attempt?.totalSteps ?? displaySteps.length;
+    final status = _completed
+        ? 'Quest completed and reviewed. Your reward is recorded in your account.'
+        : isSubmitted
+            ? 'Proof submitted. Waiting for independent review; no reward has been granted yet.'
+            : hasAttempt
+                ? 'Quest accepted. ${_attempt!.verifiedSteps} of ${_attempt!.requiredSteps} required tasks done. Finish them all, then tap Finish quest.'
+                : null;
     return Container(
-      color: AppColors.primaryDark,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.stars_rounded, size: 64, color: AppColors.sunGold),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              widget.quest.locationName,
-              style: AppTypography.bodyMedium.copyWith(color: Colors.white70),
-            ),
-          ],
+      color: PixelPalette.ink,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            grid.px(3),
+            grid.px(2),
+            grid.px(3),
+            grid.px(2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                '$done / $total tasks done',
+                style: PixelType.small(
+                  context,
+                  color: PixelPalette.paperDim,
+                ),
+              ),
+              if (status != null) ...[
+                SizedBox(height: grid.px(1)),
+                Text(
+                  status,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.paper,
+                  ),
+                ),
+              ],
+              if (_error != null) ...[
+                SizedBox(height: grid.px(1)),
+                Text(
+                  _error!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.redSoft,
+                  ),
+                ),
+                SizedBox(height: grid.px(1)),
+                PixelButton(
+                  key: const ValueKey('quest_retry_progress_btn'),
+                  label: 'Retry progress',
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: _loading ? null : _loadProgress,
+                ),
+              ],
+              SizedBox(height: grid.px(2)),
+              if (_loading)
+                const Center(child: PixelLoader())
+              else if (!signedIn)
+                PixelButton(
+                  key: const ValueKey('quest_signin_btn'),
+                  label: 'Sign in to accept',
+                  expand: true,
+                  onPressed: () => context.push('/login'),
+                )
+              else if (!_completed && !hasAttempt)
+                PixelButton(
+                  key: const ValueKey('quest_accept_btn'),
+                  label: 'Accept quest',
+                  expand: true,
+                  onPressed: _error == null ? _acceptQuest : null,
+                )
+              else if (canSubmitReview)
+                PixelButton(
+                  key: const ValueKey('quest_finish_btn'),
+                  label: 'Finish quest',
+                  expand: true,
+                  onPressed: _finishQuest,
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _actionLink(
+    BuildContext context,
+    String label,
+    VoidCallback onTap,
+  ) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              widthFactor: 1,
+              child: Text(
+                '$label >',
+                style: PixelType.small(
+                  context,
+                  color: PixelPalette.blueBright,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openDirections() {
+    context.push(
+      '/navigate?name=${Uri.encodeComponent(widget.quest.title)}&lat=${widget.quest.gpsLat}&lng=${widget.quest.gpsLng}&address=${Uri.encodeComponent(widget.quest.locationName)}',
+    );
+  }
+
+  static String _baseReward(double value) => value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toStringAsFixed(2);
+
+  static String _difficulty(double value) => value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toStringAsFixed(1);
+
+  static String _taskTypeLabel(String type) => switch (type) {
+        'qr' => 'QR code',
+        'photo' => 'Photo',
+        'ar' => 'AR finder',
+        'action' => 'In-app action',
+        _ => 'Location',
+      };
+
+  String _taskActionLabel(QuestStepModel step) {
+    if (isHostScanStep(step)) return 'Show my pass';
+    return switch (step.checkpointType) {
+      'location' => 'Verify location',
+      'qr' => 'Scan QR code',
+      'photo' => 'Submit photo proof',
+      'ar' => 'Open AR',
+      _ => 'Check task',
+    };
+  }
+
+  void _taskAction(QuestStepModel step) {
+    if (isHostScanStep(step)) {
+      _showQuestPass(step);
+      return;
+    }
+    switch (step.checkpointType) {
+      case 'location':
+        _verifyLocation(step);
+        break;
+      case 'qr':
+        _showQrVerificationModal(step);
+        break;
+      case 'photo':
+        _showPhotoVerificationModal(step);
+        break;
+      case 'ar':
+        _launchAR(step);
+        break;
+      default:
+        _checkInAppTask(step);
+    }
+  }
 }
+
+const _questBackIcon = PixelArt('questBack', [
+  '..0..',
+  '.00..',
+  '00000',
+  '.00..',
+  '..0..',
+]);
 
 /// Where the traveler can go to do an in-app task, if the app has a screen
 /// for it.

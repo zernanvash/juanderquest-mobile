@@ -55,7 +55,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('accepting a quest uses server attempt and enables proof submission',
+  testWidgets(
+      'accepting a quest uses server attempt and enables proof submission',
       (tester) async {
     tester.view.physicalSize = const Size(640, 1136);
     tester.view.devicePixelRatio = 2;
@@ -149,18 +150,20 @@ void main() {
       overrides: [
         apiClientProvider.overrideWithValue(client),
         authProvider.overrideWith((ref) => _SignedInAuth(
-            ref.read(apiClientProvider), ref.read(authRefreshProvider.notifier))),
+            ref.read(apiClientProvider),
+            ref.read(authRefreshProvider.notifier))),
       ],
       child: MaterialApp(home: QuestDetailScreen(quest: quest)),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('Step 1: Photo evidence'), findsOneWidget);
-    await tester.ensureVisible(find.text('Accept quest'));
-    await tester.tap(find.text('Accept quest'));
+    expect(find.text('Photo evidence'), findsOneWidget);
+    final acceptButton = find.byKey(const ValueKey('quest_accept_btn'));
+    await tester.ensureVisible(acceptButton);
+    await tester.tap(acceptButton);
     await tester.pumpAndSettle();
     expect(starts, 1);
     expect(find.textContaining('Quest accepted.'), findsOneWidget);
-    expect(find.text('Submit Photo Proof'), findsOneWidget);
+    expect(find.byKey(const ValueKey('quest_task_action_1')), findsOneWidget);
   });
 
   testWidgets('displays QR step with interactive verification modal',
@@ -238,15 +241,18 @@ void main() {
       overrides: [
         apiClientProvider.overrideWithValue(client),
         authProvider.overrideWith((ref) => _SignedInAuth(
-            ref.read(apiClientProvider), ref.read(authRefreshProvider.notifier))),
+            ref.read(apiClientProvider),
+            ref.read(authRefreshProvider.notifier))),
       ],
       child: MaterialApp(home: QuestDetailScreen(quest: quest)),
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('Scan QR Code'), findsOneWidget);
-    await tester.ensureVisible(find.text('Scan QR Code'));
-    await tester.tap(find.text('Scan QR Code'));
+    final qrAction = find.byKey(const ValueKey('quest_task_action_1'));
+    expect(qrAction, findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    await tester.tap(qrAction);
     await tester.pumpAndSettle();
 
     // Verify modal elements are displayed
@@ -254,7 +260,8 @@ void main() {
     expect(find.text('Verify QR'), findsOneWidget);
   });
 
-  testWidgets('displays photo modal with default unselected gallery privacy opt-in',
+  testWidgets(
+      'displays photo modal with default unselected gallery privacy opt-in',
       (tester) async {
     tester.view.physicalSize = const Size(640, 1136);
     tester.view.devicePixelRatio = 2;
@@ -329,18 +336,22 @@ void main() {
       overrides: [
         apiClientProvider.overrideWithValue(client),
         authProvider.overrideWith((ref) => _SignedInAuth(
-            ref.read(apiClientProvider), ref.read(authRefreshProvider.notifier))),
+            ref.read(apiClientProvider),
+            ref.read(authRefreshProvider.notifier))),
       ],
       child: MaterialApp(home: QuestDetailScreen(quest: quest)),
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('Submit Photo Proof'), findsOneWidget);
-    await tester.ensureVisible(find.text('Submit Photo Proof'));
-    await tester.tap(find.text('Submit Photo Proof'));
+    final photoAction = find.byKey(const ValueKey('quest_task_action_1'));
+    expect(photoAction, findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    await tester.tap(photoAction);
     await tester.pumpAndSettle();
 
-    expect(find.text('Feature photo in destination gallery upon review approval'),
+    expect(
+        find.text('Feature photo in destination gallery upon review approval'),
         findsOneWidget);
     // Verify privacy opt-in checkbox is unchecked by default
     final checkboxFinder = find.byType(Checkbox);

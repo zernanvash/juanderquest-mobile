@@ -140,8 +140,10 @@ void main() {
   );
 
   group('Plan 73 — Quest Builder Widget Tests', () {
-    testWidgets('Non-author does not see "Create a quest here" on spot detail', (tester) async {
-      final fakeRepo = _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
+    testWidgets('Non-author does not see "Create a quest here" on spot detail',
+        (tester) async {
+      final fakeRepo =
+          _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
       final testClient = ApiClient(enableRetries: false);
       testClient.dio.interceptors.insert(0, InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -157,7 +159,10 @@ void main() {
         ProviderScope(
           overrides: [
             apiClientProvider.overrideWithValue(testClient),
-            authProvider.overrideWith((ref) => _InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyNonAuthor)),
+            authProvider.overrideWith((ref) => _InertAuthNotifier(
+                ref.watch(apiClientProvider),
+                ref.watch(authRefreshProvider.notifier),
+                dummyNonAuthor)),
             questBuilderRepositoryProvider.overrideWithValue(fakeRepo),
           ],
           child: MaterialApp(
@@ -172,8 +177,10 @@ void main() {
       expect(find.byKey(const Key('spot_create_quest_btn')), findsNothing);
     });
 
-    testWidgets('Spot author sees "Create a quest here" on spot detail', (tester) async {
-      final fakeRepo = _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
+    testWidgets('Spot author sees "Create a quest here" on spot detail',
+        (tester) async {
+      final fakeRepo =
+          _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
       final testClient = ApiClient(enableRetries: false);
       testClient.dio.interceptors.insert(0, InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -189,7 +196,10 @@ void main() {
         ProviderScope(
           overrides: [
             apiClientProvider.overrideWithValue(testClient),
-            authProvider.overrideWith((ref) => _InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyAuthor)),
+            authProvider.overrideWith((ref) => _InertAuthNotifier(
+                ref.watch(apiClientProvider),
+                ref.watch(authRefreshProvider.notifier),
+                dummyAuthor)),
             questBuilderRepositoryProvider.overrideWithValue(fakeRepo),
           ],
           child: MaterialApp(
@@ -204,8 +214,10 @@ void main() {
       expect(find.byKey(const Key('spot_create_quest_btn')), findsOneWidget);
     });
 
-    testWidgets('Quest author sees "Edit quest" and "QR sheet" on quest detail', (tester) async {
-      final fakeRepo = _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
+    testWidgets('Quest author sees "Edit quest" and "QR sheet" on quest detail',
+        (tester) async {
+      final fakeRepo =
+          _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
       final testClient = ApiClient(enableRetries: false);
       testClient.dio.interceptors.insert(0, InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -213,7 +225,10 @@ void main() {
             return handler.resolve(Response(
               requestOptions: options,
               statusCode: 200,
-              data: {'success': true, 'data': {'has_completed': false, 'active_attempt': null}},
+              data: {
+                'success': true,
+                'data': {'has_completed': false, 'active_attempt': null}
+              },
             ));
           }
           handler.next(options);
@@ -224,7 +239,10 @@ void main() {
         ProviderScope(
           overrides: [
             apiClientProvider.overrideWithValue(testClient),
-            authProvider.overrideWith((ref) => _InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyAuthor)),
+            authProvider.overrideWith((ref) => _InertAuthNotifier(
+                ref.watch(apiClientProvider),
+                ref.watch(authRefreshProvider.notifier),
+                dummyAuthor)),
             questBuilderRepositoryProvider.overrideWithValue(fakeRepo),
           ],
           child: MaterialApp(
@@ -240,7 +258,9 @@ void main() {
       expect(find.byKey(const Key('quest_qr_sheet_btn')), findsOneWidget);
     });
 
-    testWidgets('Create a 3-task quest (AR + host-scan QR + photo) and verify POST payload', (tester) async {
+    testWidgets(
+        'Create a 3-task quest (AR + host-scan QR + photo) and verify POST payload',
+        (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -248,12 +268,16 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      final fakeRepo = _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
+      final fakeRepo =
+          _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            authProvider.overrideWith((ref) => _InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyAuthor)),
+            authProvider.overrideWith((ref) => _InertAuthNotifier(
+                ref.watch(apiClientProvider),
+                ref.watch(authRefreshProvider.notifier),
+                dummyAuthor)),
             questBuilderRepositoryProvider.overrideWithValue(fakeRepo),
           ],
           child: MaterialApp(
@@ -270,18 +294,14 @@ void main() {
       expect(find.byKey(const Key('quest_title_input')), findsOneWidget);
 
       // Task 0 is created by default as Location Geofence. Let's switch Task 0 to AR:
-      await tester.tap(find.byKey(const Key('task_type_dropdown_0')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Augmented Reality (AR)').last);
+      await tester.tap(find.text('AR FINDER').last);
       await tester.pumpAndSettle();
 
       // Tap "Add Task" to add Task 1: QR Task with host_scans
       await tester.tap(find.byKey(const Key('builder_add_task_btn')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('task_type_dropdown_1')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('QR Code Verification').last);
+      await tester.tap(find.text('QR CODE').last);
       await tester.pumpAndSettle();
 
       // Switch to host scans traveler
@@ -293,9 +313,7 @@ void main() {
       await tester.tap(find.byKey(const Key('builder_add_task_btn')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('task_type_dropdown_2')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Photo Submission').last);
+      await tester.tap(find.text('PHOTO').last);
       await tester.pumpAndSettle();
 
       // Verify Save Draft button has minimumSize 48 and sits in bottom bar
@@ -321,12 +339,16 @@ void main() {
       expect(tasks[2]['verification']['type'], 'photo');
       // Changing a task's type keeps it at the destination: a 0,0 fence fails
       // the server's Philippines bounds check (found on the phone, 2026-11-01).
-      expect(tasks[0]['verification']['fence'], {'lat': 16.2044, 'lng': 120.0406, 'radius_meters': 50});
-      expect(tasks[1]['verification']['fence'], {'lat': 16.2044, 'lng': 120.0406, 'radius_meters': 80});
+      expect(tasks[0]['verification']['fence'],
+          {'lat': 16.2044, 'lng': 120.0406, 'radius_meters': 50});
+      expect(tasks[1]['verification']['fence'],
+          {'lat': 16.2044, 'lng': 120.0406, 'radius_meters': 80});
       expect(tasks[1]['verification']['scan_mode'], 'host_scans_traveler');
     });
 
-    testWidgets('Edit quest loads GET /quests/:id/edit and sends PATCH with expected_version', (tester) async {
+    testWidgets(
+        'Edit quest loads GET /quests/:id/edit and sends PATCH with expected_version',
+        (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -334,12 +356,16 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      final fakeRepo = _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
+      final fakeRepo =
+          _FakeQuestBuilderRepository(ApiClient(enableRetries: false));
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            authProvider.overrideWith((ref) => _InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyAuthor)),
+            authProvider.overrideWith((ref) => _InertAuthNotifier(
+                ref.watch(apiClientProvider),
+                ref.watch(authRefreshProvider.notifier),
+                dummyAuthor)),
             questBuilderRepositoryProvider.overrideWithValue(fakeRepo),
           ],
           child: MaterialApp(
@@ -353,7 +379,7 @@ void main() {
       expect(tester.takeException(), isNull);
 
       // Verify existing title is loaded
-      expect(find.text('Existing Edit Quest'), findsOneWidget);
+      expect(find.text('Existing Edit Quest'), findsWidgets);
 
       // Tap Publish to save changes via PATCH
       final publishBtnFinder = find.byKey(const Key('builder_publish_btn'));
@@ -367,7 +393,8 @@ void main() {
       expect(fakeRepo.lastPatchedPayload!['expected_version'], 3);
     });
 
-    testWidgets('Second save sends the version the server returned (no 409)', (tester) async {
+    testWidgets('Second save sends the version the server returned (no 409)',
+        (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -375,13 +402,17 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      final fakeRepo = _FakeQuestBuilderRepository(ApiClient(enableRetries: false))
-        ..nextPatchVersion = 4;
+      final fakeRepo =
+          _FakeQuestBuilderRepository(ApiClient(enableRetries: false))
+            ..nextPatchVersion = 4;
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            authProvider.overrideWith((ref) => _InertAuthNotifier(ref.watch(apiClientProvider), ref.watch(authRefreshProvider.notifier), dummyAuthor)),
+            authProvider.overrideWith((ref) => _InertAuthNotifier(
+                ref.watch(apiClientProvider),
+                ref.watch(authRefreshProvider.notifier),
+                dummyAuthor)),
             questBuilderRepositoryProvider.overrideWithValue(fakeRepo),
           ],
           child: MaterialApp(
@@ -407,4 +438,3 @@ void main() {
     });
   });
 }
-

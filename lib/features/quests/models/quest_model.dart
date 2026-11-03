@@ -72,14 +72,20 @@ class QuestStepModel {
   }
 
   factory QuestStepModel.fromJson(Map<String, dynamic> json) => QuestStepModel(
-        order: (json['step_order'] as num?)?.toInt() ?? (json['order'] as num?)?.toInt() ?? 0,
+        order: (json['step_order'] as num?)?.toInt() ??
+            (json['order'] as num?)?.toInt() ??
+            0,
         title: json['title'] as String? ?? '',
         description: json['description'] as String? ?? '',
-        checkpointType: json['checkpoint_type'] as String? ?? json['checkpointType'] as String? ?? 'action',
+        checkpointType: json['checkpoint_type'] as String? ??
+            json['checkpointType'] as String? ??
+            'action',
         required: json['required'] as bool? ?? true,
         status: json['status'] as String? ?? 'not_started',
         rejectionReason: json['rejection_reason'] as String?,
-        verifiedAt: json['verified_at'] != null ? DateTime.tryParse(json['verified_at'] as String) : null,
+        verifiedAt: json['verified_at'] != null
+            ? DateTime.tryParse(json['verified_at'] as String)
+            : null,
         hint: json['hint'] as String?,
         gpsLat: (json['gps_lat'] as num?)?.toDouble(),
         gpsLng: (json['gps_lng'] as num?)?.toDouble(),
@@ -89,6 +95,23 @@ class QuestStepModel {
             ? json['verification'] as Map<String, dynamic>
             : null,
       );
+
+  Map<String, dynamic> toJson() => {
+        'step_order': order,
+        'title': title,
+        'description': description,
+        'checkpoint_type': checkpointType,
+        'required': required,
+        'status': status,
+        if (rejectionReason != null) 'rejection_reason': rejectionReason,
+        if (verifiedAt != null) 'verified_at': verifiedAt!.toIso8601String(),
+        if (hint != null) 'hint': hint,
+        if (gpsLat != null) 'gps_lat': gpsLat,
+        if (gpsLng != null) 'gps_lng': gpsLng,
+        if (radiusMeters != null) 'radius_meters': radiusMeters,
+        if (key != null) 'key': key,
+        if (verification != null) 'verification': verification,
+      };
 }
 
 class QuestAttemptModel {
@@ -161,9 +184,13 @@ class QuestModel {
   final String? campaignId;
   final int? remainingSlots;
   final List<QuestStepModel> steps;
+  final List<String> tags;
   final String? authorId;
   final String stepOrderMode;
   final QuestFundingSummary? funding;
+  final double baseRewardPhp;
+  final double difficultyFactor;
+  final bool isTest;
 
   QuestModel({
     required this.id,
@@ -180,9 +207,13 @@ class QuestModel {
     this.campaignId,
     this.remainingSlots,
     this.steps = const [],
+    this.tags = const [],
     this.authorId,
     this.stepOrderMode = 'sequential',
     this.funding,
+    this.baseRewardPhp = 0,
+    this.difficultyFactor = 1,
+    this.isTest = false,
   });
 
   int get allowedRadiusMeters => radiusMeters;
@@ -208,13 +239,42 @@ class QuestModel {
           .map(QuestStepModel.fromJson)
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order)),
+      tags: (json['tags'] as List?)?.whereType<String>().toList() ?? const [],
       authorId: json['author_id'] as String? ?? json['authorId'] as String?,
       stepOrderMode: json['step_order_mode'] as String? ?? 'sequential',
-      funding: json['funding'] is Map<String,dynamic>
-          ? QuestFundingSummary.fromJson(json['funding'] as Map<String,dynamic>)
+      funding: json['funding'] is Map<String, dynamic>
+          ? QuestFundingSummary.fromJson(
+              json['funding'] as Map<String, dynamic>)
           : null,
+      baseRewardPhp: (json['base_reward_php'] as num?)?.toDouble() ?? 0,
+      difficultyFactor: (json['difficulty_factor'] as num?)?.toDouble() ?? 1,
+      isTest: json['is_test'] == true,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'category': category,
+        'location_name': locationName,
+        'gps_lat': gpsLat,
+        'gps_lng': gpsLng,
+        'radius_meters': radiusMeters,
+        'reward_points': rewardPoints,
+        'marker_image_url': markerImageUrl,
+        'crowd_status': crowdStatus,
+        if (campaignId != null) 'campaign_id': campaignId,
+        if (remainingSlots != null) 'remaining_slots': remainingSlots,
+        'steps': steps.map((step) => step.toJson()).toList(),
+        'tags': tags,
+        if (authorId != null) 'author_id': authorId,
+        'step_order_mode': stepOrderMode,
+        if (funding != null) 'funding': funding!.toJson(),
+        'base_reward_php': baseRewardPhp,
+        'difficulty_factor': difficultyFactor,
+        'is_test': isTest,
+      };
 
   String get categoryDisplay {
     switch (category.toLowerCase()) {
@@ -238,14 +298,41 @@ class QuestFundingSummary {
   final DateTime? endsAt;
   final int rewardPoints;
   final int completionsLeftEstimate;
-  final List<Map<String,dynamic>> sponsors;
-  final Map<String,dynamic>? perk;
-  const QuestFundingSummary({required this.status,required this.mode,this.endsAt,required this.rewardPoints,required this.completionsLeftEstimate,this.sponsors=const [],this.perk});
-  factory QuestFundingSummary.fromJson(Map<String,dynamic> json)=>QuestFundingSummary(
-    status:json['status']?.toString()??'unknown',mode:json['mode']?.toString()??'budget',
-    endsAt:DateTime.tryParse(json['ends_at']?.toString()??''),rewardPoints:(json['reward_points'] as num?)?.toInt()??0,
-    completionsLeftEstimate:(json['completions_left_estimate'] as num?)?.toInt()??0,
-    sponsors:(json['sponsors'] is List ? (json['sponsors'] as List).whereType<Map<String,dynamic>>().toList() : const []),
-    perk:json['perk'] is Map<String,dynamic>?json['perk'] as Map<String,dynamic>:null,
-  );
+  final List<Map<String, dynamic>> sponsors;
+  final Map<String, dynamic>? perk;
+  const QuestFundingSummary(
+      {required this.status,
+      required this.mode,
+      this.endsAt,
+      required this.rewardPoints,
+      required this.completionsLeftEstimate,
+      this.sponsors = const [],
+      this.perk});
+  factory QuestFundingSummary.fromJson(Map<String, dynamic> json) =>
+      QuestFundingSummary(
+        status: json['status']?.toString() ?? 'unknown',
+        mode: json['mode']?.toString() ?? 'budget',
+        endsAt: DateTime.tryParse(json['ends_at']?.toString() ?? ''),
+        rewardPoints: (json['reward_points'] as num?)?.toInt() ?? 0,
+        completionsLeftEstimate:
+            (json['completions_left_estimate'] as num?)?.toInt() ?? 0,
+        sponsors: (json['sponsors'] is List
+            ? (json['sponsors'] as List)
+                .whereType<Map<String, dynamic>>()
+                .toList()
+            : const []),
+        perk: json['perk'] is Map<String, dynamic>
+            ? json['perk'] as Map<String, dynamic>
+            : null,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'status': status,
+        'mode': mode,
+        if (endsAt != null) 'ends_at': endsAt!.toIso8601String(),
+        'reward_points': rewardPoints,
+        'completions_left_estimate': completionsLeftEstimate,
+        'sponsors': sponsors,
+        if (perk != null) 'perk': perk,
+      };
 }
