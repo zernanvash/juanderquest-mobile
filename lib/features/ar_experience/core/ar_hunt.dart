@@ -47,6 +47,24 @@ class ArHuntRules {
   static const double spawnDistanceM = 3.5;
   static const double spawnHeightM = -0.45;
 
+  /// Plan 76: a live-placed object appears once its real point is this close
+  /// (ARCore only sees floor a few metres away); farther, the finder leads.
+  static const double liveSpawnMaxM = 8.0;
+
+  /// After this long unlocked, stop waiting to reach the live point and spawn
+  /// near the traveler as usual, so bad GPS never leaves anyone stuck.
+  static const Duration liveWaitLimit = Duration(seconds: 30);
+
+  /// Still too far to spawn a live-placed object? The GPS error (up to 10 m)
+  /// counts in the traveler's favour.
+  static bool liveTooFar({
+    required double distance,
+    required double accuracy,
+    required Duration unlockedFor,
+  }) =>
+      unlockedFor < liveWaitLimit &&
+      distance - accuracy.clamp(0, 10) > liveSpawnMaxM;
+
   /// Degrees between view direction and object that count as "centred".
   static const double alignDegrees = 9;
   static const Duration holdToCollect = Duration(milliseconds: 600);

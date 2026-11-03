@@ -71,15 +71,26 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   /// seen, so a wall or a bed in the way makes it try closer.
   static const spawnDistances = [ArHuntRules.spawnDistanceM, 2.5, 1.5];
 
-  /// Plan 76: an object the creator placed live appears once its real point is
-  /// this close (ARCore only sees floor a few metres away); farther, the finder
-  /// arrow leads the traveler there.
-  static const liveSpawnMaxM = 8.0;
+  /// Plan 76: when the object was unlocked (for the live-point wait limit).
+  DateTime? _unlockedAt;
+
+  Duration get _unlockedFor => _unlockedAt == null
+      ? Duration.zero
+      : DateTime.now().difference(_unlockedAt!);
+
+  /// Spawn a live-placed object at its real point (until the wait limit).
+  bool get _liveExact =>
+      (_task?.placedLive ?? false) && _unlockedFor < ArHuntRules.liveWaitLimit;
 
   /// Too far from the live point to spawn it yet.
   bool get _liveTooFar {
     final d = _hunt?.distanceToCentre;
-    return (_task?.placedLive ?? false) && d != null && d > liveSpawnMaxM;
+    final fix = _hunt?.fix;
+    return (_task?.placedLive ?? false) &&
+        d != null &&
+        fix != null &&
+        ArHuntRules.liveTooFar(
+            distance: d, accuracy: fix.accuracy, unlockedFor: _unlockedFor);
   }
 
   final ArDevice _device = ArDevice();
@@ -327,13 +338,13 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       final offset = _calibration.headingFallback ? null : _heading.offset;
       final position = hunt.objectPosition;
       final giveUp = now.difference(_placeTryingSince!) > placeGrace;
-      final live = _task!.placedLive;
+      final live = _liveExact;
       if (offset != null && position != null && !giveUp) {
         final cam = GeoAnchor.cameraPosition(frame.view!);
         // A live-placed object goes to its real point first (true bearing and
         // distance from the traveler's GPS), then closer if that floor is unseen.
         final liveDistance =
-            (hunt.distanceToCentre ?? 0).clamp(1.0, liveSpawnMaxM);
+            (hunt.distanceToCentre ?? 0).clamp(1.0, ArHuntRules.liveSpawnMaxM);
         final distances = live
             ? [liveDistance, ...spawnDistances.where((d) => d < liveDistance)]
             : spawnDistances;
@@ -380,6 +391,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
 
   void _onHunt() {
     if (!mounted) return;
+    if (_hunt?.phase == ArHuntPhase.searching) _unlockedAt ??= DateTime.now();
     // While the object exists, only the gyro moves the scene, so it stays put.
     switch (_hunt?.phase) {
       case ArHuntPhase.searching:

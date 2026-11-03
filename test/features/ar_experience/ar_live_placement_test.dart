@@ -48,27 +48,81 @@ void main() {
   });
 
   group('PlacementGps', () {
-    test('needs three fixes and 8 m or better, and weights by accuracy', () {
+    final t = DateTime(2026, 11, 3, 10);
+
+    test('needs three fixes and 8 m or better', () {
       final g = PlacementGps();
-      final t = DateTime(2026, 11, 3, 10);
       g.add(16.0, 120.0, 4, t);
       g.add(16.0, 120.0, 4, t);
-      expect(g.position, isNull);
-      g.add(16.0001, 120.0, 40, t);
+      expect(g.accuracy, isNull);
+      expect(g.objectPoint(anchorX: 0, anchorZ: -3, headingOffset: 0), isNull);
+      g.add(16.0, 120.0, 40, t);
       expect(g.accuracy, 4);
       expect(g.good, isTrue);
-      expect(
-          g.position!.lat, lessThan(16.000002)); // the 40 m fix barely counts
     });
 
-    test('drops fixes older than the window', () {
+    test('walking around before saving does not move the object', () {
+      // Heading offset 0: ARCore -Z is north. The anchor sits at z = -3.
+      // The creator walks 3 m east between fixes and GPS follows exactly.
+      final still = PlacementGps();
+      final walking = PlacementGps();
+      for (var i = 0; i < 4; i++) {
+        still.add(16.0, 120.0, 4, t);
+        final eastM = i.toDouble();
+        final dLng = eastM / (111320 * math.cos(16 * math.pi / 180));
+        walking.add(16.0, 120.0 + dLng, 4, t, camX: eastM);
+      }
+      final a = still.objectPoint(anchorX: 0, anchorZ: -3, headingOffset: 0)!;
+      final b = walking.objectPoint(anchorX: 0, anchorZ: -3, headingOffset: 0)!;
+      final off = GeoAnchor.enuOffset(a.lat, a.lng, b.lat, b.lng);
+      expect(off.east.abs() + off.north.abs(), lessThan(0.01));
+      // And it is 3 m north of where the creator stood.
+      final from = GeoAnchor.enuOffset(16.0, 120.0, a.lat, a.lng);
+      expect(from.north, closeTo(3, 0.01));
+    });
+
+    test('drops fixes older than the window, and resets', () {
       final g = PlacementGps();
-      final t = DateTime(2026, 11, 3, 10);
+      for (var i = 0; i < 3; i++) {
+        g.add(16, 120, 3, t);
+      }
+      expect(g.accuracy, 3);
+      g.reset();
+      expect(g.accuracy, isNull);
       for (var i = 0; i < 3; i++) {
         g.add(16, 120, 3, t);
       }
       g.add(16, 120, 15, t.add(const Duration(seconds: 30)));
-      expect(g.position, isNull);
+      expect(g.accuracy, isNull);
+    });
+  });
+
+  group('live spawn wait', () {
+    test('GPS error counts for the traveler', () {
+      // 12 m away at ±5 m: close enough.
+      expect(
+          ArHuntRules.liveTooFar(
+              distance: 12, accuracy: 5, unlockedFor: Duration.zero),
+          isFalse);
+      // 20 m away at ±5 m: walk closer.
+      expect(
+          ArHuntRules.liveTooFar(
+              distance: 20, accuracy: 5, unlockedFor: Duration.zero),
+          isTrue);
+      // The allowance is capped at 10 m.
+      expect(
+          ArHuntRules.liveTooFar(
+              distance: 20, accuracy: 60, unlockedFor: Duration.zero),
+          isTrue);
+    });
+
+    test('nobody waits forever: after the limit it spawns near them', () {
+      expect(
+          ArHuntRules.liveTooFar(
+              distance: 40,
+              accuracy: 5,
+              unlockedFor: ArHuntRules.liveWaitLimit),
+          isFalse);
     });
   });
 
