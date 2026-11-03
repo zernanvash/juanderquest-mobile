@@ -17,6 +17,10 @@ class ArTaskSpec {
   final String objectLabel;
   final Color color;
 
+  /// Plan 76: the creator placed the object with the camera, so it belongs at
+  /// the fence centre itself, not near the traveler.
+  final bool placedLive;
+
   const ArTaskSpec({
     required this.questId,
     required this.stepOrder,
@@ -26,6 +30,7 @@ class ArTaskSpec {
     required this.shape,
     this.objectLabel = 'Token',
     required this.color,
+    this.placedLive = false,
   });
 
   static const defaultRadiusMeters = 50.0;
@@ -66,6 +71,8 @@ class ArTaskSpec {
       shape: shape,
       objectLabel: labelForShape(shape),
       color: colorFor(cfg['color']),
+      placedLive: cfg['placement'] is Map &&
+          (cfg['placement'] as Map)['mode'] == 'ar_live',
     );
   }
 

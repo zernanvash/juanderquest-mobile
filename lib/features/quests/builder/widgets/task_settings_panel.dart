@@ -5,6 +5,7 @@ import '../../../../core/pixel/pixel_input.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../map/pixel/map_marker_art.dart';
 import '../builder_models.dart';
+import '../../../ar_experience/screens/ar_placement_screen.dart';
 import 'location_fence_map_picker.dart';
 
 class TaskSettingsPanel extends StatelessWidget {
@@ -476,11 +477,7 @@ class TaskSettingsPanel extends StatelessWidget {
             return InkWell(
               onTap: () {
                 onChanged(task.copyWith(
-                  verification: ArVerification(
-                    fence: ver.fence,
-                    object: obj['id'] as String,
-                    color: ver.color,
-                  ),
+                  verification: ver.copyWith(object: obj['id'] as String),
                 ));
               },
               borderRadius: BorderRadius.zero,
@@ -538,11 +535,7 @@ class TaskSettingsPanel extends StatelessWidget {
             return InkWell(
               onTap: () {
                 onChanged(task.copyWith(
-                  verification: ArVerification(
-                    fence: ver.fence,
-                    object: ver.object,
-                    color: col['hex'] as String,
-                  ),
+                  verification: ver.copyWith(color: col['hex'] as String),
                 ));
               },
               borderRadius: BorderRadius.zero,
@@ -590,7 +583,7 @@ class TaskSettingsPanel extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const Text(
-          'AR Viewfinder Activation Fence',
+          'Where the object is',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -598,18 +591,9 @@ class TaskSettingsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        LocationFenceMapPicker(
-          fence: ver.fence,
-          pinLabel: 'AR object placement pin',
-          onChanged: (newFence) {
-            onChanged(task.copyWith(
-              verification: ArVerification(
-                fence: newFence,
-                object: ver.object,
-                color: ver.color,
-              ),
-            ));
-          },
+        ArPlacementSection(
+          verification: ver,
+          onChanged: (v) => onChanged(task.copyWith(verification: v)),
         ),
       ],
     );
@@ -758,6 +742,131 @@ class TaskSettingsPanel extends StatelessWidget {
                 ),
               ));
             },
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Plan 76: the creator places the AR object live with the camera. A map pin is
+/// only a fallback, kept behind a link and marked approximate.
+class ArPlacementSection extends StatefulWidget {
+  final ArVerification verification;
+  final ValueChanged<ArVerification> onChanged;
+
+  /// Opens the live placement screen; replaceable in tests.
+  final Future<ArPlacementResult?> Function(BuildContext context, Color color)?
+      placeLive;
+
+  const ArPlacementSection({
+    super.key,
+    required this.verification,
+    required this.onChanged,
+    this.placeLive,
+  });
+
+  @override
+  State<ArPlacementSection> createState() => _ArPlacementSectionState();
+}
+
+class _ArPlacementSectionState extends State<ArPlacementSection> {
+  bool _showMap = false;
+
+  Future<void> _placeLive() async {
+    final ver = widget.verification;
+    final color =
+        Color(int.parse('FF${ver.color.replaceFirst('#', '')}', radix: 16));
+    final result = await (widget.placeLive ??
+        (ctx, c) => Navigator.of(ctx).push<ArPlacementResult>(
+              MaterialPageRoute(builder: (_) => ArPlacementScreen(color: c)),
+            ))(context, color);
+    if (result == null || !mounted) return;
+    setState(() => _showMap = false);
+    widget.onChanged(ver.copyWith(
+      fence: ver.fence.copyWith(lat: result.lat, lng: result.lng),
+      placedLive: true,
+      placementAccuracyM: result.accuracyM,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ver = widget.verification;
+    final live = ver.placedLive;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          key: const ValueKey('ar-placement-status'),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: live ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                color:
+                    live ? const Color(0xFF6EE7B7) : const Color(0xFFFCD34D)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(live ? Icons.my_location : Icons.warning_amber_rounded,
+                  size: 18,
+                  color:
+                      live ? const Color(0xFF047857) : const Color(0xFFB45309)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  live
+                      ? 'Placed live with the camera'
+                          '${ver.placementAccuracyM != null ? ' (GPS ±${ver.placementAccuracyM!.round()} m)' : ''}. '
+                          'Travelers find it right there.'
+                      : 'APPROXIMATE: set on the map, not placed live. Travelers '
+                          'may find the object several metres off, so it appears '
+                          'near them inside the area.',
+                  style: const TextStyle(fontSize: 11, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            key: const ValueKey('ar-place-live'),
+            onPressed: _placeLive,
+            icon: const Icon(Icons.view_in_ar_rounded, size: 18),
+            label: Text(live ? 'PLACE AGAIN IN AR' : 'PLACE IN AR'),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Stand at the spot and drop the object on the floor with your camera.',
+          style: TextStyle(fontSize: 11, color: Color(0xFF78716C)),
+        ),
+        if (!_showMap)
+          TextButton(
+            key: const ValueKey('ar-place-map-link'),
+            onPressed: () => setState(() => _showMap = true),
+            child: const Text(
+              "Can't place it live? Use the map (approximate)",
+              style: TextStyle(fontSize: 12),
+            ),
+          )
+        else ...[
+          const SizedBox(height: 8),
+          LocationFenceMapPicker(
+            fence: ver.fence,
+            pinLabel: 'AR object pin (approximate)',
+            // Only moving the pin makes it approximate; a new radius keeps a
+            // live placement.
+            onChanged: (f) => widget.onChanged(ver.copyWith(
+              fence: f,
+              placedLive: ver.placedLive &&
+                  f.lat == ver.fence.lat &&
+                  f.lng == ver.fence.lng,
+            )),
           ),
         ],
       ],
