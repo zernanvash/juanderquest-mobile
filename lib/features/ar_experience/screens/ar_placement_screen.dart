@@ -20,8 +20,8 @@ class ArPlacementResult {
       {required this.lat, required this.lng, required this.accuracyM});
 }
 
-/// GPS fixes from the last few seconds while the creator stands still,
-/// averaged by accuracy.
+/// GPS fixes from the last few seconds, each with where the camera was in
+/// ARCore space at that moment, so the creator may walk around before saving.
 class PlacementGps {
   static const window = Duration(seconds: 20);
   static const minFixes = 3;
@@ -29,11 +29,57 @@ class PlacementGps {
   /// Live placement needs at least this GPS accuracy, in metres.
   static const maxAccuracyM = 8.0;
 
-  final List<({double lat, double lng, double acc, DateTime at})> _fixes = [];
+  final List<
+      ({
+        double lat,
+        double lng,
+        double acc,
+        DateTime at,
+        double camX,
+        double camZ
+      })> _fixes = [];
 
-  void add(double lat, double lng, double acc, DateTime at) {
-    _fixes.add((lat: lat, lng: lng, acc: acc.clamp(0.5, 100), at: at));
+  void add(double lat, double lng, double acc, DateTime at,
+      {double camX = 0, double camZ = 0}) {
+    _fixes.add((
+      lat: lat,
+      lng: lng,
+      acc: acc.clamp(0.5, 100),
+      at: at,
+      camX: camX,
+      camZ: camZ
+    ));
     _fixes.removeWhere((f) => at.difference(f.at) > window);
+  }
+
+  /// ARCore's origin can shift when tracking is lost; start over.
+  void reset() => _fixes.clear();
+
+  /// The object's lat/lng: each fix projected from where the camera stood
+  /// then to the anchor, weighted by 1/accuracy².
+  ({double lat, double lng})? objectPoint({
+    required double anchorX,
+    required double anchorZ,
+    required double headingOffset,
+  }) {
+    if (_fixes.length < minFixes) return null;
+    var w = 0.0, lat = 0.0, lng = 0.0;
+    for (final f in _fixes) {
+      final p = geoPointOf(
+        lat: f.lat,
+        lng: f.lng,
+        camX: f.camX,
+        camZ: f.camZ,
+        anchorX: anchorX,
+        anchorZ: anchorZ,
+        headingOffset: headingOffset,
+      );
+      final k = 1 / (f.acc * f.acc);
+      w += k;
+      lat += p.lat * k;
+      lng += p.lng * k;
+    }
+    return (lat: lat / w, lng: lng / w);
   }
 
   /// Best single-fix accuracy in the window, or null with too few fixes.
@@ -42,19 +88,6 @@ class PlacementGps {
       : _fixes.map((f) => f.acc).reduce((a, b) => a < b ? a : b);
 
   bool get good => (accuracy ?? double.infinity) <= maxAccuracyM;
-
-  /// Mean position, each fix weighted by 1/accuracy².
-  ({double lat, double lng})? get position {
-    if (_fixes.length < minFixes) return null;
-    var w = 0.0, lat = 0.0, lng = 0.0;
-    for (final f in _fixes) {
-      final k = 1 / (f.acc * f.acc);
-      w += k;
-      lat += f.lat * k;
-      lng += f.lng * k;
-    }
-    return (lat: lat / w, lng: lng / w);
-  }
 }
 
 /// The creator stands at the spot and drops the object on the floor with the
@@ -111,7 +144,12 @@ class _ArPlacementScreenState extends State<ArPlacementScreen> {
       locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best, distanceFilter: 0),
     ).listen((p) {
-      _gps.add(p.latitude, p.longitude, p.accuracy, DateTime.now());
+      // Only fixes taken while ARCore tracks, tagged with the camera position.
+      final frame = _world?.frame.value;
+      if (frame == null || !frame.tracking) return;
+      final cam = GeoAnchor.cameraPosition(frame.view!);
+      _gps.add(p.latitude, p.longitude, p.accuracy, DateTime.now(),
+          camX: cam.x, camZ: cam.z);
       if (mounted) setState(() {});
     }, onError: (_) {});
     if (mounted) setState(() => _ready = true);
@@ -136,6 +174,7 @@ class _ArPlacementScreenState extends State<ArPlacementScreen> {
       return;
     }
     final now = DateTime.now();
+    if (!frame.tracking) _gps.reset();
     final yaw = frame.tracking ? GeoAnchor.cameraYaw(frame.view!) : null;
     final pose = _device.pose.value;
     if (yaw != null &&
@@ -160,25 +199,13 @@ class _ArPlacementScreenState extends State<ArPlacementScreen> {
   void _save() {
     final frame = _world?.frame.value;
     final a = frame?.anchor;
-    final gps = _gps.position;
     final offset = _heading.offset;
-    if (frame == null ||
-        !frame.tracking ||
-        a == null ||
-        gps == null ||
-        offset == null) {
+    if (frame == null || !frame.tracking || a == null || offset == null) {
       return;
     }
-    final cam = GeoAnchor.cameraPosition(frame.view!);
-    final p = geoPointOf(
-      lat: gps.lat,
-      lng: gps.lng,
-      camX: cam.x,
-      camZ: cam.z,
-      anchorX: a[12],
-      anchorZ: a[14],
-      headingOffset: offset,
-    );
+    final p =
+        _gps.objectPoint(anchorX: a[12], anchorZ: a[14], headingOffset: offset);
+    if (p == null) return;
     Navigator.of(context).pop(
         ArPlacementResult(lat: p.lat, lng: p.lng, accuracyM: _gps.accuracy!));
   }
