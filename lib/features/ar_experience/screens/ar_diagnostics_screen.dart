@@ -10,6 +10,7 @@ import '../core/camera_optics.dart';
 import '../core/heading_fusion.dart';
 import '../core/world_ar.dart';
 import '../engine/shapes_factory.dart';
+import '../widgets/ar_calibration_panel.dart';
 import '../widgets/ar_camera_layer.dart';
 import '../widgets/ar_overlay.dart';
 
@@ -149,6 +150,24 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
                                   }
                                 },
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              key: const ValueKey('ar_diag_replay_tutorial'),
+                              onPressed: () async {
+                                await ArTutorialPrefs.reset();
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "Juan's AR tips will show on the next AR task."),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.replay_rounded,
+                                  color: Colors.white),
+                              label: const Text('Replay AR tutorial',
+                                  style: TextStyle(color: Colors.white)),
                             ),
                           ],
                         ),

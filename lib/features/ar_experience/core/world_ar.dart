@@ -62,7 +62,20 @@ class WorldArPrefs {
   static const _key = 'jdq_world_ar_enabled';
   static const _storage = FlutterSecureStorage();
 
+  /// World AR is the default (owner 2026-11-02, after the AR Lab test); only an
+  /// explicit "off" in AR diagnostics turns it off.
   static Future<bool> enabled() async {
+    try {
+      return await _storage.read(key: _key) != 'false';
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// True only when someone switched World AR on in AR diagnostics: then the
+  /// screen may also offer to install "Google Play Services for AR". By default
+  /// we use ARCore only where it is already installed.
+  static Future<bool> explicitlyEnabled() async {
     try {
       return await _storage.read(key: _key) == 'true';
     } catch (_) {
@@ -210,6 +223,38 @@ class WorldArSession {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Anchors the object on the ground at ARCore world (x, z) on the next frame.
+  /// Returns the placed position and whether it landed on a detected plane, or
+  /// null when ARCore was not tracking. With [strict], it only lands on floor the
+  /// camera has actually seen (never an estimate), and returns null otherwise.
+  Future<({double x, double y, double z, bool onPlane})?> placeAnchorAt(
+      double x, double z,
+      {bool strict = false}) async {
+    try {
+      final m = await _methods.invokeMapMethod<String, dynamic>(
+          'placeAnchorAt', {'x': x, 'z': z, 'strict': strict});
+      if (m == null || m['placed'] == false) return null;
+      return (
+        x: (m['x'] as num).toDouble(),
+        y: (m['y'] as num).toDouble(),
+        z: (m['z'] as num).toDouble(),
+        onPlane: m['onPlane'] == true,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Draw the object natively in ARCore's own frame (no lag behind the camera).
+  Future<void> setNativeObject(bool visible, {Color? color}) async {
+    try {
+      await _methods.invokeMethod<bool>('setNativeObject', {
+        'visible': visible,
+        if (color != null) 'color': [color.r, color.g, color.b],
+      });
+    } catch (_) {}
   }
 
   Future<void> clearAnchor() async {

@@ -1,9 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -12,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/providers/auth_provider.dart';
 import '../../quests/models/quest_model.dart';
+import '../core/ar_calibration.dart';
 import '../core/ar_device.dart';
 import '../core/ar_hunt.dart';
 import '../core/ar_task.dart';
@@ -19,8 +18,12 @@ import '../core/camera_optics.dart';
 import '../core/heading_fusion.dart';
 import '../core/world_ar.dart';
 import '../engine/shapes_factory.dart';
+import '../widgets/ar_calibration_panel.dart';
 import '../widgets/ar_camera_layer.dart';
 import '../widgets/ar_overlay.dart';
+import '../widgets/world_ar_view.dart';
+import '../core/ar_math.dart';
+import '../core/geo_anchor.dart';
 
 /// Which AR tier is running (Plan 47 §2).
 enum ArTier {
@@ -53,6 +56,15 @@ class ArQuestScreen extends ConsumerStatefulWidget {
 class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   /// Fall back to Compass AR if World AR can't track for this long.
   static const worldTrackingGrace = Duration(seconds: 8);
+  static const setupTrackingGrace = Duration(seconds: 30);
+
+  /// If the gem can't land on seen floor in its real direction this long, place
+  /// it where the camera aims instead (still on seen floor).
+  static const placeGrace = Duration(seconds: 8);
+
+  /// Spawn distances tried in turn: the gem only lands on floor the camera has
+  /// seen, so a wall or a bed in the way makes it try closer.
+  static const spawnDistances = [ArHuntRules.spawnDistanceM, 2.5, 1.5];
 
   final ArDevice _device = ArDevice();
   ArTaskSpec? _task;
@@ -67,6 +79,17 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   WorldArSession? _world;
   DateTime? _worldNotTrackingSince;
   bool _placing = false;
+
+  /// Links compass bearings to ARCore's yaw so the object spawns in a real
+  /// direction (AR Lab, owner 2026-11-02: "IT WORKED").
+  final HeadingCalibration _heading = HeadingCalibration();
+  DateTime _lastHeadingSample = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime? _placeTryingSince;
+  int _spawnTry = 0;
+
+  /// Guided set-up before the hunt; Juan's tutorial runs once per device first.
+  final ArCalibration _calibration = ArCalibration();
+  bool? _showTutorial;
   final ValueNotifier<ArScreenObject?> _worldObject = ValueNotifier(null);
   CompassObjectProjector? _compassObject;
 
@@ -170,12 +193,19 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     if (await WorldArPrefs.enabled()) {
       var a = await WorldArSupport.check();
       if (a == WorldArAvailability.installable &&
+          await WorldArPrefs.explicitlyEnabled() &&
           await WorldArSupport.requestInstall()) {
         a = WorldArAvailability.installed;
       }
       if (a == WorldArAvailability.installed) tier = ArTier.world;
     }
-    if (mounted) setState(() => _tier = tier);
+    final showTutorial = tier == ArTier.world && !await ArTutorialPrefs.seen();
+    if (mounted) {
+      setState(() {
+        _tier = tier;
+        _showTutorial = showTutorial;
+      });
+    }
   }
 
   void _fallBackToCompass() {
@@ -191,6 +221,8 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     final session = WorldArSession(id);
     session.frame.addListener(_onWorldFrame);
     _world = session;
+    // Drawn natively in the camera frame, so it never lags behind the picture.
+    session.setNativeObject(true, color: _task?.color);
   }
 
   void _onWorldFrame() {
@@ -203,20 +235,48 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     }
     final now = DateTime.now();
     if (!frame.tracking) {
+      // Reading Juan's tips is not a tracking failure; the set-up coaches the
+      // traveler, so it gets longer before we give up on World AR.
+      if (_showTutorial != false) _worldNotTrackingSince = null;
       _worldNotTrackingSince ??= now;
-      if (now.difference(_worldNotTrackingSince!) > worldTrackingGrace &&
+      final grace = _calibration.done ? worldTrackingGrace : setupTrackingGrace;
+      if (now.difference(_worldNotTrackingSince!) > grace &&
           frame.anchor == null) {
         _fallBackToCompass();
         return;
       }
     } else {
       _worldNotTrackingSince = null;
+      // Heading link: compass bearing of the camera vs its yaw in ARCore space.
+      final yaw = GeoAnchor.cameraYaw(frame.view!);
+      final pose = _device.pose.value;
+      if (yaw != null &&
+          pose.hasData &&
+          !pose.compassUnreliable &&
+          pose.camera.elevation.abs() < 40 &&
+          now.difference(_lastHeadingSample).inMilliseconds >= 150) {
+        _heading.add(compassBearing: pose.camera.bearing, arYaw: yaw);
+        _lastHeadingSample = now;
+      }
+    }
+
+    // Guided set-up first (after Juan's tutorial); the gem waits for it.
+    if (_showTutorial == false && !_calibration.done) {
+      _calibration.update(
+        tracking: frame.tracking,
+        planes: frame.planes,
+        compassUnreliable: _device.pose.value.compassUnreliable,
+        headingSamples: _heading.count,
+        headingReady: _heading.ready,
+      );
     }
 
     final screen = MediaQuery.sizeOf(context);
     final p = WorldProjection.project(frame, screen);
     if (p == null) {
       _worldObject.value = null;
+      // Off screen or tracking lost: not "locked on" any more.
+      hunt.onCentred(false);
     } else {
       final o = ArScreenObject.from(
         p,
@@ -230,16 +290,44 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       hunt.onCentred(o.centredOn(screen) && p.depth <= 4.5);
     }
 
-    // Once the object is unlocked, drop it on the first ground plane ahead.
+    // Once the object is unlocked, put it on the ground in its real direction:
+    // the hunt picked the bearing (towards the AR point, or off to one side when
+    // you are standing on it); the calibrated heading turns that bearing into
+    // ARCore space, and ARCore's tracking then holds it still while you walk.
+    // It only lands on floor the camera has seen (never behind a wall), trying
+    // closer if the way is blocked.
     final searching = hunt.phase == ArHuntPhase.searching ||
         hunt.phase == ArHuntPhase.aligned;
+    if (frame.anchor != null) _placeTryingSince = null;
     if (searching &&
+        _calibration.done &&
         frame.tracking &&
         frame.anchor == null &&
         frame.planes > 0 &&
         !_placing) {
-      _placing = true;
-      _world!.placeAnchor().whenComplete(() => _placing = false);
+      _placeTryingSince ??= now;
+      final offset = _calibration.headingFallback ? null : _heading.offset;
+      final position = hunt.objectPosition;
+      final giveUp = now.difference(_placeTryingSince!) > placeGrace;
+      if (offset != null && position != null && !giveUp) {
+        final cam = GeoAnchor.cameraPosition(frame.view!);
+        final p = GeoAnchor.localPoint(
+          camX: cam.x,
+          camZ: cam.z,
+          bearing: ArGeo.bearingOf(position),
+          distance: spawnDistances[_spawnTry++ % spawnDistances.length],
+          headingOffset: offset,
+        );
+        _placing = true;
+        _world!
+            .placeAnchorAt(p.x, p.z, strict: true)
+            .whenComplete(() => _placing = false);
+      } else {
+        // No reliable direction, or nowhere seen that way: drop it on the floor
+        // where the camera aims.
+        _placing = true;
+        _world!.placeAnchor().whenComplete(() => _placing = false);
+      }
     }
     setState(() {}); // refresh the status hint (the overlay is separate)
   }
@@ -298,6 +386,11 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     super.dispose();
   }
 
+  void _finishTutorial() {
+    ArTutorialPrefs.markSeen();
+    setState(() => _showTutorial = false);
+  }
+
   void _close({bool completed = false}) {
     if (context.canPop()) {
       context.pop(completed);
@@ -317,7 +410,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
         fit: StackFit.expand,
         children: [
           if (ready && _tier == ArTier.world)
-            _WorldArView(onCreated: _onWorldViewCreated)
+            WorldArView(onCreated: _onWorldViewCreated)
           else if (ready)
             ArCameraLayer(
               onPreviewAspect: (a) => setState(() => _previewAspect = a),
@@ -373,13 +466,25 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
         phase == ArHuntPhase.aligned ||
         phase == ArHuntPhase.submitting;
     final world = _tier == ArTier.world;
+    if (world && _showTutorial == true) {
+      return [ArTutorial(onDone: _finishTutorial)];
+    }
+    if (world && !_calibration.done) {
+      return [
+        ArCalibrationPanel(
+          calibration: _calibration,
+          trackingHint: _world?.frame.value?.trackingHint,
+        ),
+      ];
+    }
     final frame = _world?.frame.value;
     final waitingForGround = world && unlocked && frame?.anchor == null;
     String? searchingHint;
     if (waitingForGround) {
-      searchingHint = (frame?.tracking ?? false)
-          ? 'Point at the ground a few steps ahead.'
-          : frame?.trackingHint ?? 'Move your phone slowly to scan the ground.';
+      final tracking = frame?.tracking ?? false;
+      searchingHint = !tracking
+          ? frame?.trackingHint ?? 'Move your phone slowly to scan the ground.'
+          : 'Sweep the floor around you slowly so the gem has room to land.';
     }
     return [
       if (unlocked) ...[
@@ -393,6 +498,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
           color: task.color,
           collectable: phase == ArHuntPhase.aligned,
           onTap: hunt.collect,
+          drawObject: !world,
         ),
       ],
       if (phase == ArHuntPhase.outside &&
@@ -521,39 +627,6 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
 }
 
 /// Native ARCore camera view (Hybrid Composition, needed for a SurfaceView).
-class _WorldArView extends StatelessWidget {
-  final ValueChanged<int> onCreated;
-
-  const _WorldArView({required this.onCreated});
-
-  static const viewType = 'jdq/arcore_view';
-
-  @override
-  Widget build(BuildContext context) {
-    return PlatformViewLink(
-      viewType: viewType,
-      surfaceFactory: (context, controller) => AndroidViewSurface(
-        controller: controller as AndroidViewController,
-        gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
-        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-      ),
-      onCreatePlatformView: (params) {
-        final controller = PlatformViewsService.initExpensiveAndroidView(
-          id: params.id,
-          viewType: viewType,
-          layoutDirection: TextDirection.ltr,
-          creationParamsCodec: const StandardMessageCodec(),
-          onFocus: () => params.onFocusChanged(true),
-        )
-          ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
-          ..addOnPlatformViewCreatedListener(onCreated);
-        controller.create();
-        return controller;
-      },
-    );
-  }
-}
-
 /// Bottom card: a four-stage progress strip (locate, reach, find, collect),
 /// what to do now, and the one relevant action.
 class ArStatusCard extends StatelessWidget {

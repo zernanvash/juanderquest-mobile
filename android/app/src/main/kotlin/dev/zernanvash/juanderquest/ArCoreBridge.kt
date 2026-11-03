@@ -19,6 +19,7 @@ import com.google.ar.core.Config
 import com.google.ar.core.Coordinates2d
 import com.google.ar.core.Frame
 import com.google.ar.core.Plane
+import com.google.ar.core.Pose
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
@@ -95,11 +96,18 @@ private class ArCoreView(
     private var session: Session? = null
     private var anchor: Anchor? = null
     @Volatile private var placeRequest: MethodChannel.Result? = null
+    // AR Lab / world-location spawn: anchor at a given ground position (x, z) in ARCore world space.
+    @Volatile private var placeAtRequest: Pair<FloatArray, MethodChannel.Result>? = null
     @Volatile private var clearRequested = false
     private var viewportWidth = 1
     private var viewportHeight = 1
     private var viewportChanged = true
     private val background = CameraBackground()
+    // Native gem drawn in the camera's own frame (no lag). Off unless Dart asks: the main app's
+    // AR screen still draws its object in Flutter until the AR Lab work is integrated.
+    private val gem = ArGemRenderer()
+    @Volatile private var nativeObject = false
+    private val startNs = System.nanoTime()
     private val view = FloatArray(16)
     private val proj = FloatArray(16)
     private val anchorMatrix = FloatArray(16)
@@ -118,6 +126,24 @@ private class ArCoreView(
                 "placeAnchor" -> {
                     placeRequest?.success(false)
                     placeRequest = result
+                }
+                // Anchor on the ground at world (x, z): a ray straight down onto a detected
+                // floor plane; without one, at the lowest floor seen (or 1.4 m below the camera).
+                // strict: only on floor the camera has actually seen (inside a plane's
+                // polygon), never estimated, so the object can't land behind a wall.
+                "placeAnchorAt" -> {
+                    val x = (call.argument<Number>("x") ?: 0).toFloat()
+                    val z = (call.argument<Number>("z") ?: 0).toFloat()
+                    val strict = if (call.argument<Boolean>("strict") == true) 1f else 0f
+                    placeAtRequest?.second?.success(null)
+                    placeAtRequest = Pair(floatArrayOf(x, z, strict), result)
+                }
+                "setNativeObject" -> {
+                    nativeObject = call.argument<Boolean>("visible") == true
+                    call.argument<List<Number>>("color")?.takeIf { it.size >= 3 }?.let { c ->
+                        gem.color = floatArrayOf(c[0].toFloat(), c[1].toFloat(), c[2].toFloat())
+                    }
+                    result.success(true)
                 }
                 "clearAnchor" -> {
                     clearRequested = true
@@ -199,6 +225,7 @@ private class ArCoreView(
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         background.create()
+        gem.create()
         session?.setCameraTextureName(background.textureId)
     }
 
@@ -238,6 +265,12 @@ private class ArCoreView(
             main.post { request.success(placed) }
         }
 
+        placeAtRequest?.let { (xz, request) ->
+            placeAtRequest = null
+            val placed = if (tracking) placeAt(s, frame, xz[0], xz[1], xz[2] > 0f) else null
+            main.post { request.success(placed) }
+        }
+
         val planes = s.getAllTrackables(Plane::class.java).count {
             it.trackingState == TrackingState.TRACKING && it.subsumedBy == null
         }
@@ -257,8 +290,41 @@ private class ArCoreView(
         if (a != null && a.trackingState == TrackingState.TRACKING) {
             a.pose.toMatrix(anchorMatrix, 0)
             payload["anchor"] = anchorMatrix.map { it.toDouble() }
+            if (nativeObject && tracking) {
+                gem.draw(anchorMatrix, view, proj, 0.35f, (System.nanoTime() - startNs) / 1e9f)
+            }
         }
         main.post { sink?.success(payload) }
+    }
+
+    private fun placeAt(s: Session, frame: Frame, x: Float, z: Float, strict: Boolean): Map<String, Any>? {
+        val camY = frame.camera.pose.ty()
+        var y: Float? = null
+        var onPlane = false
+        try {
+            for (hit in frame.hitTest(floatArrayOf(x, camY + 0.3f, z), 0, floatArrayOf(0f, -1f, 0f), 0)) {
+                val t = hit.trackable
+                if (t is Plane && t.type == Plane.Type.HORIZONTAL_UPWARD_FACING && t.trackingState == TrackingState.TRACKING &&
+                    (!strict || t.isPoseInPolygon(hit.hitPose))
+                ) {
+                    y = hit.hitPose.ty()
+                    onPlane = true
+                    break
+                }
+            }
+        } catch (_: Exception) {
+        }
+        if (y == null && strict) {
+            return mapOf("placed" to false)
+        }
+        if (y == null) {
+            y = s.getAllTrackables(Plane::class.java)
+                .filter { it.trackingState == TrackingState.TRACKING && it.subsumedBy == null && it.type == Plane.Type.HORIZONTAL_UPWARD_FACING }
+                .minOfOrNull { it.centerPose.ty() } ?: (camY - 1.4f)
+        }
+        anchor?.detach()
+        anchor = s.createAnchor(Pose.makeTranslation(x, y, z))
+        return mapOf("placed" to true, "x" to x.toDouble(), "y" to y.toDouble(), "z" to z.toDouble(), "onPlane" to onPlane)
     }
 
     private fun tryPlace(frame: Frame): Boolean {
