@@ -18,7 +18,33 @@ import '../features/spots/providers/spot_discovery_provider.dart';
 class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
-  const MainShell({super.key, required this.navigationShell});
+  /// Current path; the hotbar shows only on the main pages (owner 2026-11-04).
+  final String location;
+
+  const MainShell({
+    super.key,
+    required this.navigationShell,
+    this.location = '/dashboard',
+  });
+
+  /// The six main pages. Detail pages (a spot, a quest, search, notifications,
+  /// saved) hide the hotbar; their back button returns to a main page.
+  static const mainPages = {
+    '/',
+    '/dashboard',
+    '/explore',
+    '/map',
+    '/quests',
+    '/choice',
+    '/profile',
+  };
+
+  static bool showsHotbar(String path) {
+    final p = path.length > 1 && path.endsWith('/')
+        ? path.substring(0, path.length - 1)
+        : path;
+    return mainPages.contains(p);
+  }
 
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
@@ -44,7 +70,8 @@ class _MainShellState extends ConsumerState<MainShell> {
     final currentIndex = widget.navigationShell.currentIndex;
     final tips = ref.watch(homeTipsControllerProvider);
     final tipsKeys = ref.watch(homeTipsKeysProvider);
-    final showTips = tips.showing && currentIndex == 0;
+    final onMainPage = MainShell.showsHotbar(widget.location);
+    final showTips = tips.showing && currentIndex == 0 && onMainPage;
 
     return PopScope(
       canPop: false,
@@ -82,43 +109,46 @@ class _MainShellState extends ConsumerState<MainShell> {
             body: Column(
               children: [
                 Expanded(child: widget.navigationShell),
-                CompanionCard(tabIndex: currentIndex),
+                if (onMainPage) CompanionCard(tabIndex: currentIndex),
               ],
             ),
-            bottomNavigationBar: PixelHotbar(
-              key: tipsKeys.hotbar,
-              index: currentIndex,
-              onTap: (index) {
-                if (index == currentIndex) {
-                  widget.navigationShell.goBranch(index, initialLocation: true);
-                } else {
-                  widget.navigationShell.goBranch(index);
-                }
-              },
-              items: const [
-                PixelHotbarItem(
-                  label: 'HOME',
-                  icon: PlaceholderArt.home,
-                ),
-                PixelHotbarItem(
-                  label: 'MAP',
-                  icon: DesignerArt.navExplore,
-                ),
-                PixelHotbarItem(
-                  label: 'QUESTS',
-                  icon: DesignerArt.questMarker,
-                ),
-                PixelHotbarItem(
-                  label: 'CHOICE',
-                  icon: DesignerArt.juanChoice,
-                  pressedIcon: DesignerArt.juanChoiceHover,
-                ),
-                PixelHotbarItem(
-                  label: 'PROFILE',
-                  icon: PlaceholderArt.profile,
-                ),
-              ],
-            ),
+            bottomNavigationBar: !onMainPage
+                ? null
+                : PixelHotbar(
+                    key: tipsKeys.hotbar,
+                    index: currentIndex,
+                    onTap: (index) {
+                      if (index == currentIndex) {
+                        widget.navigationShell
+                            .goBranch(index, initialLocation: true);
+                      } else {
+                        widget.navigationShell.goBranch(index);
+                      }
+                    },
+                    items: const [
+                      PixelHotbarItem(
+                        label: 'HOME',
+                        icon: PlaceholderArt.home,
+                      ),
+                      PixelHotbarItem(
+                        label: 'MAP',
+                        icon: DesignerArt.navExplore,
+                      ),
+                      PixelHotbarItem(
+                        label: 'QUESTS',
+                        icon: DesignerArt.questMarker,
+                      ),
+                      PixelHotbarItem(
+                        label: 'CHOICE',
+                        icon: DesignerArt.juanChoice,
+                        pressedIcon: DesignerArt.juanChoiceHover,
+                      ),
+                      PixelHotbarItem(
+                        label: 'PROFILE',
+                        icon: PlaceholderArt.profile,
+                      ),
+                    ],
+                  ),
           ),
           if (showTips)
             Positioned.fill(
@@ -128,6 +158,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                   nextStop: tipsKeys.nextStop,
                   hotbar: tipsKeys.hotbar,
                 ),
+                keepAbove: tipsKeys.hotbar,
                 onDone: () =>
                     ref.read(homeTipsControllerProvider.notifier).finish(),
               ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,11 +30,15 @@ class PixelTutorialOverlay extends StatefulWidget {
   final VoidCallback onDone;
   final String speaker;
 
+  /// A bar the text box must stay above (the hotbar), so it never covers it.
+  final GlobalKey? keepAbove;
+
   const PixelTutorialOverlay({
     super.key,
     required this.steps,
     required this.onDone,
     this.speaker = 'Juan',
+    this.keepAbove,
   });
 
   @override
@@ -127,8 +132,10 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
   }
 
   /// The target's rectangle in this overlay's coordinates.
-  Rect? _targetRect() {
-    final key = _current.target;
+  Rect? _targetRect() => _rectOf(_current.target);
+
+  /// [key]'s rectangle in this overlay's coordinates.
+  Rect? _rectOf(GlobalKey? key) {
     final target = key?.currentContext?.findRenderObject();
     final me = context.findRenderObject();
     if (target is! RenderBox || !target.hasSize || me is! RenderBox) {
@@ -224,9 +231,13 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
   /// When the spotlight is low, the box sits just above it.
   Widget _box(BuildContext context, PixelGrid grid, Rect? target) {
     final screenH = MediaQuery.sizeOf(context).height;
+    final bar = _rectOf(widget.keepAbove);
+    final floor = bar == null
+        ? MediaQuery.paddingOf(context).bottom + grid.px(4)
+        : screenH - bar.top + grid.px(4);
     final bottom = _low(target)
-        ? screenH - target!.top + grid.px(12)
-        : MediaQuery.paddingOf(context).bottom + grid.px(4);
+        ? math.max(floor, screenH - target!.top + grid.px(12))
+        : floor;
     return Positioned(
       left: 0,
       right: 0,
