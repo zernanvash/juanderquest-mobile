@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -331,7 +331,7 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
                 Expanded(
                   child: PixelButton(
                     key: ValueKey('proposal_yes_${prop.id}'),
-                    label: 'Vote YES',
+                    label: 'Vote yes',
                     expand: true,
                     onPressed: () =>
                         _showVoteConfirmationDialog(prop, 'yes'),
@@ -341,7 +341,7 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
                 Expanded(
                   child: PixelButton(
                     key: ValueKey('proposal_no_${prop.id}'),
-                    label: 'Vote NO',
+                    label: 'Vote no',
                     variant: PixelButtonVariant.danger,
                     expand: true,
                     onPressed: () => _showVoteConfirmationDialog(prop, 'no'),

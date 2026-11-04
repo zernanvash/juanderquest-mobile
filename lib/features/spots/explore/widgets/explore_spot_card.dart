@@ -259,7 +259,7 @@ class ExploreSpotCard extends StatelessWidget {
       color: PixelPalette.slate,
       alignment: Alignment.center,
       child: Text(
-        'PHOTO UNAVAILABLE',
+        'Photo unavailable',
         style: PixelType.small(context, color: PixelPalette.mist),
       ),
     );

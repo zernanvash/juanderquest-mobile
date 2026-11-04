@@ -244,6 +244,13 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Quests',
+                    onBack: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        context.go('/dashboard');
+                      }
+                    },
                     actions: [
                       PixelChip(
                         '$points mJDQ',

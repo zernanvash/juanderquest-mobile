@@ -46,7 +46,7 @@ class _TrailPreviewCardState extends State<TrailPreviewCard> {
                             size: 14, color: PixelPalette.green),
                         SizedBox(width: grid.px(1)),
                         Text(
-                          'THE TRAIL',
+                          'The Trail',
                           style: PixelType.small(ctx,
                                   color: PixelPalette.greenDeep)
                               .copyWith(fontWeight: FontWeight.w700),

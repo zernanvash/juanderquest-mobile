@@ -58,7 +58,7 @@ class ExploreJuanChoiceCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'COMMUNITY-SELECTED',
+                  'Community-selected',
                   style: PixelType.small(context, color: PixelPalette.goldDeep),
                 ),
               ],

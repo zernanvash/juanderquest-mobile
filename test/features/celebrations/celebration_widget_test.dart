@@ -75,10 +75,10 @@ void main() {
       // Celebration page is now showing
       expect(find.byType(CelebrationPage), findsOneWidget);
       expect(find.byWidgetPredicate((w) => w is GameWidget), findsOneWidget);
-      expect(find.text('CLAIM REWARD'), findsOneWidget);
+      expect(find.text('Claim reward'), findsOneWidget);
 
       // Tap action button to pop
-      await tester.tap(find.text('CLAIM REWARD'));
+      await tester.tap(find.text('Claim reward'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -109,7 +109,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(CelebrationPage), findsOneWidget);
-      expect(find.text('CONTINUE'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
 
       // Simulate back press via WidgetsBinding
       final dynamic widgetsAppState = tester.state(find.byType(WidgetsApp));
@@ -121,7 +121,7 @@ void main() {
       expect(find.text('TRIGGER_LEVEL'), findsOneWidget);
     });
 
-    testWidgets('Stamp earned scene shows ADD TO PASSPORT button and pops', (tester) async {
+    testWidgets('Stamp earned scene shows Add to passport button and pops', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
           home: Scaffold(
@@ -146,9 +146,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(CelebrationPage), findsOneWidget);
-      expect(find.text('ADD TO PASSPORT'), findsOneWidget);
+      expect(find.text('Add to passport'), findsOneWidget);
 
-      await tester.tap(find.text('ADD TO PASSPORT'));
+      await tester.tap(find.text('Add to passport'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 

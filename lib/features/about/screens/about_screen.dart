@@ -81,7 +81,7 @@ class AboutScreen extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: grid.px(3)),
-                          Text('Tri-Party Tourism Flywheel',
+                          Text('Tri-party tourism flywheel',
                               style: PixelType.title(context)),
                           SizedBox(height: grid.px(2)),
                           _flywheel(
@@ -105,7 +105,7 @@ class AboutScreen extends StatelessWidget {
                             'Balance tourism distribution, prevent overcrowding, and sponsor event campaigns with locked escrow pools.',
                           ),
                           SizedBox(height: grid.px(3)),
-                          Text('Research Authors & Development Team',
+                          Text('Research authors & development team',
                               style: PixelType.title(context)),
                           SizedBox(height: grid.px(2)),
                           for (final author in _authors) ...[

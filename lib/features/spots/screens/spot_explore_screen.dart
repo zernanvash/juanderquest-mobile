@@ -169,7 +169,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               appBar: PreferredSize(
                 preferredSize: const Size.fromHeight(56),
                 child: PixelAppBar(
-                  title: 'EXPLORE',
+                  title: 'Explore',
                   actions: [
                     PixelIconButton(
                       icon: DesignerArt.search,
@@ -251,7 +251,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                                 style: PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0),
                                 padding: 1,
                                 child: Text(
-                                  'TRAIL',
+                                  'Trail',
                                   style: PixelType.small(context, color: PixelPalette.ink),
                                 ),
                               ),
@@ -262,7 +262,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      'THE TRAIL',
+                                      'The Trail',
                                       style: PixelType.body(context, color: PixelPalette.wood),
                                     ),
                                     Text(

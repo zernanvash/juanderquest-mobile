@@ -283,7 +283,7 @@ class _TopControls extends StatelessWidget {
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'SHARE',
+                      'Share',
                       style: PixelType.small(context, color: PixelPalette.paper),
                     ),
                   ),
@@ -313,27 +313,27 @@ class _HeroTitleBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final categoryText = spot.category.replaceAll('_', ' ').toUpperCase();
+    final categoryText = spot.category.replaceAll('_', ' ');
     final townText = spot.municipality.isNotEmpty
-        ? spot.municipality.toUpperCase()
-        : 'PANGASINAN';
+        ? spot.municipality
+        : 'Pangasinan';
 
     final trustChip = spot.isTest
         ? const PixelChip(
-            'TEST SPOT',
+            'Test spot',
             style: PixelBoxStyle.red,
             textColor: PixelPalette.white,
           )
         : spot.trustLevel == 'lgu_verified'
             ? const PixelChip(
-                'LGU VERIFIED',
+                'LGU verified',
                 style: PixelBoxStyle.gold,
                 textColor: PixelPalette.ink,
               )
             : PixelChip(
                 spot.sourceName.isNotEmpty
-                    ? spot.sourceName.toUpperCase()
-                    : 'COMMUNITY SPOT',
+                    ? spot.sourceName
+                    : 'Community spot',
                 style: PixelBoxStyle.stone,
                 textColor: PixelPalette.paper,
               );

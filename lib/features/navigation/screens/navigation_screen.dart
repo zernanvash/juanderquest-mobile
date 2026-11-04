@@ -564,7 +564,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                   style: PixelType.body(context, color: PixelPalette.wood),
                 ),
                 if (route.summary.hasCrowdDiversion)
-                  const PixelChip('Tranquil Route',
+                  const PixelChip('Tranquil route',
                       style: PixelBoxStyle.green,
                       textColor: PixelPalette.white),
               ],

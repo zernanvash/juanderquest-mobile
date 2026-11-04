@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -85,7 +85,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                     PixelTextField(
                       key: const ValueKey('suggest_title'),
                       controller: _titleController,
-                      label: 'Destination Spot Title',
+                      label: 'Destination spot title',
                       hint: 'e.g. Patar White Beach Eco Trail',
                     ),
                     SizedBox(height: grid.px(2)),
@@ -96,7 +96,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                       hint: 'e.g. Municipality, province',
                     ),
                     SizedBox(height: grid.px(2)),
-                    Text('CATEGORY',
+                    Text('Category',
                         style: PixelType.small(
                           context,
                           color: PixelPalette.slate,
@@ -121,14 +121,14 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                     PixelTextField(
                       key: const ValueKey('suggest_description'),
                       controller: _descriptionController,
-                      label: 'Description & Significance',
+                      label: 'Description & significance',
                       hint: 'Describe why this destination should be featured',
                       maxLines: 3,
                     ),
                     SizedBox(height: grid.px(3)),
                     PixelButton(
                       key: const ValueKey('suggest_submit'),
-                      label: 'Submit Proposal to Screening',
+                      label: 'Submit proposal to screening',
                       expand: true,
                       onPressed: () async {
                         if (_titleController.text.trim().isEmpty ||
@@ -236,7 +236,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                           SizedBox(height: grid.px(3)),
                           PixelButton(
                             key: const ValueKey('vote_choice'),
-                            label: 'Go to JuanChoice Voting',
+                            label: 'Go to JuanChoice voting',
                             expand: true,
                             onPressed: () => context.push('/choice'),
                           ),
@@ -287,7 +287,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                           else if (govState.proposals.isEmpty)
                             const PixelEmptyState(
                               key: ValueKey('vote_empty'),
-                              title: 'No Active Proposals',
+                              title: 'No active proposals',
                               message:
                                   'Be the first to suggest a new destination spot!',
                             )

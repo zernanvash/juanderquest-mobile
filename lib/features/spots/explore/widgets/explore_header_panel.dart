@@ -44,7 +44,7 @@ class ExploreHeaderPanel extends StatelessWidget {
               vertical: grid.px(1),
             ),
             child: Text(
-              'EXPLORE PANGASINAN',
+              'Explore Pangasinan',
               style: PixelType.title(context, color: PixelPalette.wood),
             ),
           ),

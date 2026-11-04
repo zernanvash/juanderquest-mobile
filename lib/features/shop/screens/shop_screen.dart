@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -197,7 +197,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     child: Column(
                       children: [
                         Text(
-                          'MERCHANT REDEMPTION CODE',
+                          'Merchant redemption code',
                           style: PixelType.small(modalCtx),
                         ),
                         SizedBox(height: PixelGrid.of(modalCtx).px(1)),
@@ -216,7 +216,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                                 context, 'Voucher code copied to clipboard!');
                           },
                           child: Text(
-                            'COPY CODE',
+                            'Copy code',
                             style: PixelType.small(
                               modalCtx,
                               color: PixelPalette.greenDeep,
@@ -299,7 +299,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       child: Builder(
         builder: (context) {
           final grid = PixelGrid.of(context);
-          final canPop = Navigator.of(context).canPop();
           return Scaffold(
             backgroundColor: PixelPalette.paper,
             body: DitherBackground(
@@ -309,9 +308,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Traveler Shop',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack: null,
                     actions: [
                       PixelChip('$points mJDQ', style: PixelBoxStyle.gold),
                     ],
@@ -358,7 +355,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'MAKE YOUR PROFILE YOURS',
+            'Make your profile yours',
             style: PixelType.small(context, color: PixelPalette.sun),
           ),
           SizedBox(height: grid.px(1)),
@@ -405,15 +402,21 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                       : PixelBoxStyle.parchment)
                   .copyWith(corner: 1, shadowPx: 1),
               padding: 1,
-              child: Text(
-                tab.$2.toUpperCase(),
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                style: PixelType.small(
-                  context,
-                  color: _selectedTab == tab.$1
-                      ? PixelPalette.white
-                      : PixelPalette.ink,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: grid.px(2),
+                  vertical: grid.px(1),
+                ),
+                child: Text(
+                  tab.$2,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  style: PixelType.small(
+                    context,
+                    color: _selectedTab == tab.$1
+                        ? PixelPalette.white
+                        : PixelPalette.ink,
+                  ),
                 ),
               ),
             ),
@@ -467,9 +470,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                           : PixelBoxStyle.slot)
                       .copyWith(corner: 1, shadowPx: 0),
                   padding: 1,
-                  child: Text(
-                    filter.$2.toUpperCase(),
-                    style: PixelType.small(context),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: grid.px(2),
+                      vertical: grid.px(1),
+                    ),
+                    child: Text(
+                      filter.$2,
+                      style: PixelType.small(context),
+                    ),
                   ),
                 ),
               ),
@@ -692,7 +701,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   name: name,
                   avatarUrl: avatar,
                   actions: [
-                    if (item.buyable && item.pricePoints != null)
+                    if (item.buyable && item.pricePoints != null) ...[
                       PixelButton(
                         key: const ValueKey('shop_buy_cosmetic'),
                         label: points < item.pricePoints!
@@ -715,7 +724,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                                 }
                               },
                       ),
-                    if (item.owned)
+                      SizedBox(height: PixelGrid.of(context).px(2)),
+                    ],
+                    if (item.owned) ...[
                       PixelButton(
                         key: const ValueKey('shop_equip_cosmetic'),
                         label: item.equipped ? 'Unequip' : 'Equip now',
@@ -732,7 +743,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                           }
                         },
                       ),
-                    if (!item.owned && !item.buyable)
+                      SizedBox(height: PixelGrid.of(context).px(2)),
+                    ],
+                    if (!item.owned && !item.buyable) ...[
                       Text(
                         _cosmeticPrice(item),
                         style: PixelType.body(
@@ -740,7 +753,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                           color: PixelPalette.slate,
                         ),
                       ),
-                    if (item.owned)
+                      SizedBox(height: PixelGrid.of(context).px(2)),
+                    ],
+                    if (item.owned) ...[
                       GestureDetector(
                         key: const ValueKey('passport_view_profile'),
                         onTap: () {
@@ -759,6 +774,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                           ),
                         ),
                       ),
+                      SizedBox(height: PixelGrid.of(context).px(2)),
+                    ],
                     PixelButton(
                       label: 'Close preview',
                       variant: PixelButtonVariant.secondary,
@@ -830,7 +847,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               style: PixelBoxStyle.gold.copyWith(shadowPx: 0),
               padding: 1,
               child: Text(
-                'SAMPLE OFFER · PARTNER COMING SOON',
+                'Sample offer · Partner coming soon',
                 textAlign: TextAlign.center,
                 style: PixelType.small(context),
               ),
@@ -841,7 +858,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             spacing: grid.px(2),
             runSpacing: grid.px(1),
             children: [
-              PixelChip(voucher.category.replaceAll('_', ' ').toUpperCase(),
+              PixelChip(voucher.category.replaceAll('_', ' '),
                   style: PixelBoxStyle.slot),
               PixelChip(
                 '${voucher.costPoints} pts',
@@ -882,7 +899,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             PixelButton(
               key: ValueKey('shop_redeem_${voucher.id}'),
               label: canAfford
-                  ? 'Redeem Voucher'
+                  ? 'Redeem voucher'
                   : 'Need ${voucher.costPoints - userPoints} more points',
               expand: true,
               onPressed: canAfford && voucher.redeemable

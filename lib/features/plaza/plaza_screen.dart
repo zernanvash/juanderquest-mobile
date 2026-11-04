@@ -312,7 +312,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Text('Live Explorer Activity',
+          child: Text('Live explorer activity',
               style: PixelType.title(context)),
         ),
         SizedBox(width: grid.px(2)),

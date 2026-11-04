@@ -117,7 +117,7 @@ class _CulturalQuizDetailScreenState
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Cultural Quiz',
+                    title: 'Cultural quiz',
                     onBack: canPop
                         ? () => Navigator.of(context).maybePop()
                         : null,
@@ -222,7 +222,7 @@ class _CulturalQuizDetailScreenState
               _param(context, grid, 'Questions',
                   '5 multiple-choice (4/5 to pass)'),
               _divider(grid),
-              _param(context, grid, 'Time Limit',
+              _param(context, grid, 'Time limit',
                   '${quiz.timeLimitMinutes} minutes to submit'),
               _divider(grid),
               _param(context, grid, 'Start Location',

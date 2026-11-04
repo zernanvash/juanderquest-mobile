@@ -398,13 +398,13 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'JUANDERQUEST DESTINATION STORY',
+            'JuanDerQuest destination story',
             style: PixelType.small(context, color: PixelPalette.mist),
           ),
           if (spot.sourceName.isNotEmpty) ...[
             SizedBox(height: grid.px(1)),
             Text(
-              'PHOTOGRAPHY & CURATION: ${spot.sourceName.toUpperCase()}',
+              'Photography & curation: ${spot.sourceName}',
               style: PixelType.small(context, color: PixelPalette.paperDim),
             ),
           ],
@@ -414,7 +414,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
               Expanded(
                 child: PixelButton(
                   key: const Key('theater_end_report_btn'),
-                  label: '⚑ REPORT A PROBLEM',
+                  label: 'Report a problem',
                   variant: PixelButtonVariant.ghost,
                   expand: true,
                   onPressed: _openReportSheet,

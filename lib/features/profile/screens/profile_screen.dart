@@ -363,7 +363,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label.toUpperCase(),
+            label,
             style: PixelType.small(context, color: textColor),
           ),
           SizedBox(height: grid.px(1)),
@@ -414,7 +414,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               SizedBox(width: grid.px(2)),
               PixelChip(
-                hasWallet ? 'VERIFIED' : 'OFF-CHAIN',
+                hasWallet ? 'Verified' : 'Off-chain',
                 style: hasWallet ? PixelBoxStyle.green : PixelBoxStyle.gold,
                 textColor: hasWallet ? PixelPalette.white : PixelPalette.ink,
               ),
@@ -443,7 +443,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: Padding(
                       padding: EdgeInsets.all(grid.px(2)),
                       child: Text(
-                        'COPY',
+                        'Copy',
                         style: PixelType.small(
                           context,
                           color: PixelPalette.greenDeep,
