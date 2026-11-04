@@ -5,21 +5,22 @@ import 'package:go_router/go_router.dart';
 import 'package:reown_appkit/reown_appkit.dart'
     hide PrimaryButton, SecondaryButton;
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/designer_guide.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/jdq_section_header.dart';
-import '../../../core/widgets/metric_tile.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/wallet_signature_service.dart';
-import '../providers/profile_stats_provider.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
-import '../../cosmetics/widgets/display_name.dart';
 import '../../cosmetics/widgets/profile_banner.dart';
+import '../providers/profile_stats_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   final String? username;
@@ -97,391 +98,280 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final pointsBalance = currentUser?.points ?? stats.pointsBalance;
     final level = (pointsBalance / 50).floor() + 1;
 
-    return JdqScaffold(
-      scrollable: true,
-      appBar: AppBar(
-        title: Text(isMine ? 'Traveler Passport' : 'Explorer Profile'),
-        actions: [
-          if (isMine)
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              tooltip: 'Notifications',
-              onPressed: () => context.push('/notifications'),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: isMine ? 'Traveler Passport' : 'Explorer Profile',
+                    onBack: canPop && !isMine
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                    actions: [
+                      if (isMine)
+                        PixelIconButton(
+                          icon: DesignerArt.notifBell,
+                          semanticLabel: 'Notifications',
+                          onPressed: () => context.push('/notifications'),
+                        ),
+                      if (isMine)
+                        PixelIconButton(
+                          icon: DesignerArt.navSettings,
+                          semanticLabel: 'Explorer Settings',
+                          onPressed: () => context.push('/settings'),
+                        ),
+                    ],
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      children: [
+                        _identity(context, grid, isMine, displayName,
+                            displayHandle, currentUser, cosmetics, titleAsset,
+                            nameColorAsset, level, pointsBalance),
+                        SizedBox(height: grid.px(4)),
+                        if (isMine) ...[
+                          _sectionTitle(
+                              context, 'Web3 & Blockchain Identity',
+                              'Link any EVM or Web3 wallet to preserve your passport across devices.'),
+                          SizedBox(height: grid.px(2)),
+                          _walletCard(context, grid, currentUser),
+                          SizedBox(height: grid.px(4)),
+                          _sectionTitle(
+                              context, 'Traveler Statistics',
+                              'Your quest completions, submissions, and reward points balance.'),
+                          SizedBox(height: grid.px(2)),
+                          _stats(context, grid, stats, pointsBalance),
+                          SizedBox(height: grid.px(4)),
+                        ],
+                        _sectionTitle(
+                            context, 'Community & Ecosystem',
+                            'Compete in regional sprints and explore research pillars.'),
+                        SizedBox(height: grid.px(2)),
+                        _links(context, grid, isMine),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          if (isMine)
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Explorer Settings',
-              onPressed: () => context.push('/settings'),
-            ),
-        ],
+          );
+        },
       ),
-      body: Column(
+    );
+  }
+
+  Widget _identity(
+    BuildContext context,
+    PixelGrid grid,
+    bool isMine,
+    String displayName,
+    String displayHandle,
+    UserModel? currentUser,
+    Map<String, dynamic>? cosmetics,
+    Map<String, dynamic>? titleAsset,
+    Map<String, dynamic>? nameColorAsset,
+    int level,
+    int pointsBalance,
+  ) {
+    final nameColor = _cosmeticColor(nameColorAsset?['color']);
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      padding: 2,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.md),
-
-          // Traveler Identity Passport Header Card
-          UiSpecContainer(
-            spec: const UiSpec(
-              title: 'Traveler Passport Identity Header',
-              figmaLayer: '#Profile_Header_Card',
-              dimensions: 'Full width, Padding: 20dp, Avatar: 84x84dp circular',
-              dataBinding:
-                  'authProvider.user (displayName, handle, points, badges)',
-              stateNotes: 'Logged In -> LEVEL pill -> Avatar with Gold ring',
-              uxNotes: 'Wood brown typography with Epilogue display headers.',
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: AppSpacing.roundedLg,
-                border: Border.all(color: AppColors.borderLowContrast),
-                boxShadow: AppSpacing.cardShadow,
+          if (isMine)
+            SizedBox(
+              height: grid.px(36),
+              child: ClipRect(
+                child: ProfileBanner(
+                  height: grid.px(36),
+                  asset: _cosmeticAsset(cosmetics, 'banner'),
+                  seed: _cosmeticSeed(cosmetics, 'banner'),
+                  animate: true,
+                ),
               ),
-              child: Column(
-                children: [
-                  if (isMine)
-                    ClipRRect(
-                      borderRadius: AppSpacing.roundedMd,
-                      child: ProfileBanner(
-                        height: 72,
-                        asset: _cosmeticAsset(cosmetics, 'banner'),
-                        seed: _cosmeticSeed(cosmetics, 'banner'),
-                        animate: true,
-                      ),
-                    ),
-                  if (isMine) const SizedBox(height: AppSpacing.md),
-                  Container(
-                    padding: const EdgeInsets.all(3.5),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.sunGold,
-                    ),
-                    child: _buildAvatarWidget(
-                      isMine ? currentUser?.avatarUrl : null,
+            ),
+          if (isMine) SizedBox(height: grid.px(2)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PixelPanel(
+                style: PixelBoxStyle.gold,
+                padding: 1,
+                child: _buildAvatarWidget(
+                  isMine ? currentUser?.avatarUrl : null,
+                  displayName,
+                  cosmetics,
+                ),
+              ),
+              SizedBox(width: grid.px(2)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       displayName,
-                      cosmetics,
+                      maxLines: 2,
+                      style: PixelType.title(context).copyWith(color: nameColor),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  DisplayName(
-                    name: displayName,
-                    title: titleAsset?['text']?.toString(),
-                    color: _cosmeticColor(nameColorAsset?['color']),
-                    style: AppTypography.displayMedium
-                        .copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    displayHandle,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryContainer,
-                          borderRadius: AppSpacing.roundedPill,
-                        ),
-                        child: Text(
-                          'LEVEL $level EXPLORER',
-                          style: const TextStyle(
-                            color: AppColors.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
+                    SizedBox(height: grid.px(1)),
+                    Text(
+                      displayHandle,
+                      maxLines: 2,
+                      style: PixelType.body(
+                        context,
+                        color: PixelPalette.slate,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.sunGold.withOpacity(0.18),
-                          borderRadius: AppSpacing.roundedPill,
+                    ),
+                    if ((titleAsset?['text']?.toString() ?? '').isNotEmpty) ...[
+                      SizedBox(height: grid.px(1)),
+                      PixelPanel(
+                        style: PixelBoxStyle.gold.copyWith(
+                          corner: 1,
+                          shadowPx: 0,
                         ),
+                        padding: 1,
                         child: Text(
-                          '$pointsBalance mJDQ',
-                          style: const TextStyle(
-                            color: AppColors.woodBrown,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
+                          titleAsset!['text'].toString(),
+                          maxLines: 2,
+                          style: PixelType.small(context),
                         ),
                       ),
                     ],
-                  ),
-                  if (!isMine) ...[
-                    const SizedBox(height: AppSpacing.lg),
-                    SizedBox(
-                      width: 160,
-                      child: PrimaryButton(
-                        label: _isFollowing ? 'Following' : 'Follow Scout',
-                        icon: _isFollowing
-                            ? Icons.check_rounded
-                            : Icons.person_add_rounded,
-                        onPressed: () {
-                          setState(() => _isFollowing = !_isFollowing);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(_isFollowing
-                                  ? 'Now following $displayName.'
-                                  : 'Unfollowed $displayName.'),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
                   ],
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-
-          const SizedBox(height: AppSpacing.sectionGap),
-
-          // Stats Metrics Overview (Exclusive to owner)
-          if (isMine) ...[
-            const JdqSectionHeader(
-              title: 'Web3 & Blockchain Identity',
-              subtitle:
-                  'Link any EVM or Web3 wallet to preserve your passport across devices.',
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              PixelChip('Level $level Explorer',
+                  style: PixelBoxStyle.green, textColor: PixelPalette.white),
+              PixelChip('$pointsBalance mJDQ'),
+            ],
+          ),
+          if (!isMine) ...[
+            SizedBox(height: grid.px(3)),
+            PixelButton(
+              key: const ValueKey('profile_follow'),
+              label: _isFollowing ? 'Following' : 'Follow Scout',
+              onPressed: () {
+                setState(() => _isFollowing = !_isFollowing);
+                showPixelToast(
+                  context,
+                  _isFollowing
+                      ? 'Now following $displayName.'
+                      : 'Unfollowed $displayName.',
+                );
+              },
             ),
-
-            _buildWalletCard(context, currentUser),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-
-            const JdqSectionHeader(
-              title: 'Traveler Statistics',
-              subtitle:
-                  'Your quest completions, submissions, and reward points balance.',
-            ),
-
-            UiSpecContainer(
-              spec: const UiSpec(
-                title: 'Traveler Points & Proofs Overview Grid',
-                figmaLayer: '#Profile_Stats_Metrics_Grid',
-                dimensions:
-                    'Full width metric tile + 2-column split tiles (~88dp height)',
-                dataBinding:
-                    'profileStatsProvider (pointsBalance, completedQuests, totalSubmissions)',
-                stateNotes:
-                    'Real-time updated point balance & verified quest count',
-                uxNotes:
-                    'Sun gold icon for reward points, emerald green for verified completions.',
-              ),
-              child: Column(
-                children: [
-                  MetricTile(
-                    label: 'Reward Points Balance',
-                    value: '$pointsBalance PTS',
-                    icon: Icons.stars_rounded,
-                    iconColor: AppColors.sunGold,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: MetricTile(
-                          label: 'Completed',
-                          value: '${stats.completedQuests}',
-                          icon: Icons.check_circle_rounded,
-                          iconColor: AppColors.success,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: MetricTile(
-                          label: 'Submissions',
-                          value: '${stats.totalSubmissions}',
-                          icon: Icons.fact_check_rounded,
-                          iconColor: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
           ],
-
-          // Community & Project Links
-          const JdqSectionHeader(
-            title: 'Community & Ecosystem',
-            subtitle:
-                'Compete in regional sprints and explore research pillars.',
-          ),
-
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: Column(
-                children: [
-                  ListTile(
-                    onTap: () => context.push('/saved'),
-                    leading: const Icon(Icons.bookmark_outline_rounded,
-                        color: AppColors.primary),
-                    title: Text('Saved Destinations',
-                        style: AppTypography.labelLarge
-                            .copyWith(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Places you bookmarked for later',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.textSecondary)),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted),
-                  ),
-                  const Divider(height: 1, color: AppColors.borderLowContrast),
-                  ListTile(
-                    onTap: () => context.push('/trail'),
-                    leading: const Icon(Icons.route_rounded,
-                        color: AppColors.primary),
-                    title: Text('The Trail',
-                        style: AppTypography.labelLarge
-                            .copyWith(fontWeight: FontWeight.bold)),
-                    subtitle: Text(
-                        'Personalized route suggestions · Coming soon',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.textSecondary)),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted),
-                  ),
-                  const Divider(height: 1, color: AppColors.borderLowContrast),
-                  ListTile(
-                    onTap: () => context.push('/shop'),
-                    leading: const Icon(Icons.storefront_rounded,
-                        color: AppColors.woodBrown),
-                    title: Text('Merchant Shop',
-                        style: AppTypography.labelLarge
-                            .copyWith(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Browse available vouchers',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.textSecondary)),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted),
-                  ),
-                  const Divider(height: 1, color: AppColors.borderLowContrast),
-                  ListTile(
-                    onTap: () => context.push('/plaza'),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.sunGold.withOpacity(0.2),
-                        borderRadius: AppSpacing.roundedMd,
-                      ),
-                      child: const Icon(Icons.military_tech_rounded,
-                          color: AppColors.woodBrown, size: 22),
-                    ),
-                    title: Text(
-                      'Leaderboard',
-                      style: AppTypography.labelLarge
-                          .copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      'View top explorers, rankings, and sprint leaderboards.',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted),
-                  ),
-                  if (isMine) ...[
-                    const Divider(
-                        height: 1, color: AppColors.borderLowContrast),
-                    ListTile(
-                      onTap: () => context.push('/settings'),
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surfaceContainerHigh,
-                          borderRadius: AppSpacing.roundedMd,
-                        ),
-                        child: const Icon(Icons.settings_rounded,
-                            color: AppColors.woodBrown, size: 22),
-                      ),
-                      title: Text(
-                        'Explorer Settings',
-                        style: AppTypography.labelLarge
-                            .copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        'Configure preferences, AR calibration, and app updates.',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.textSecondary),
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded,
-                          color: AppColors.textMuted),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.sectionGap),
         ],
       ),
     );
   }
 
-  Widget _buildWalletCard(BuildContext context, UserModel? user) {
+  Widget _sectionTitle(BuildContext context, String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: PixelType.title(context)),
+        SizedBox(height: PixelGrid.of(context).px(1)),
+        Text(
+          subtitle,
+          style: PixelType.body(context, color: PixelPalette.slate),
+        ),
+      ],
+    );
+  }
+
+  Widget _stats(
+    BuildContext context,
+    PixelGrid grid,
+    ProfileStatsModel stats,
+    int pointsBalance,
+  ) {
+    return Column(
+      children: [
+        _metric(context, grid, 'Reward points balance', '$pointsBalance PTS',
+            PixelBoxStyle.gold),
+        SizedBox(height: grid.px(2)),
+        Row(
+          children: [
+            Expanded(
+              child: _metric(context, grid, 'Completed',
+                  '${stats.completedQuests}', PixelBoxStyle.green),
+            ),
+            SizedBox(width: grid.px(2)),
+            Expanded(
+              child: _metric(context, grid, 'Submissions',
+                  '${stats.totalSubmissions}', PixelBoxStyle.wood),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _metric(
+    BuildContext context,
+    PixelGrid grid,
+    String label,
+    String value,
+    PixelBoxStyle style,
+  ) {
+    final dark = style == PixelBoxStyle.wood;
+    final textColor = dark ? PixelPalette.white : PixelPalette.ink;
+    return PixelPanel(
+      style: style,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: PixelType.small(context, color: textColor),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            value,
+            style: PixelType.title(context, color: textColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _walletCard(
+      BuildContext context, PixelGrid grid, UserModel? user) {
     if (user == null) return const SizedBox.shrink();
     final hasWallet = user.hasBoundWallet;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(
-          color: hasWallet
-              ? AppColors.success.withValues(alpha: 0.3)
-              : AppColors.borderLowContrast,
-        ),
-        boxShadow: AppSpacing.cardShadow,
-      ),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: hasWallet
-                      ? AppColors.success.withValues(alpha: 0.12)
-                      : const Color(0xFFF6851B).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  hasWallet
-                      ? Icons.verified_user_rounded
-                      : Icons.account_balance_wallet_rounded,
-                  color:
-                      hasWallet ? AppColors.success : const Color(0xFFF6851B),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,118 +380,157 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       hasWallet
                           ? 'Web3 Passport Linked'
                           : 'Off-Chain Demo Account',
-                      style: AppTypography.labelLarge
-                          .copyWith(fontWeight: FontWeight.bold),
+                      style: PixelType.title(context),
                     ),
+                    SizedBox(height: grid.px(1)),
                     Text(
                       hasWallet
                           ? 'Wallet address linked to account'
                           : 'No Web3 Wallet Linked Yet',
-                      style: AppTypography.bodySmall.copyWith(
+                      style: PixelType.body(
+                        context,
                         color: hasWallet
-                            ? AppColors.success
-                            : AppColors.textSecondary,
-                        fontSize: 11,
+                            ? PixelPalette.greenDark
+                            : PixelPalette.slate,
                       ),
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: hasWallet
-                      ? AppColors.success.withValues(alpha: 0.15)
-                      : AppColors.sunGold.withValues(alpha: 0.2),
-                  borderRadius: AppSpacing.roundedPill,
-                ),
-                child: Text(
-                  hasWallet ? 'VERIFIED' : 'OFF-CHAIN',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: hasWallet ? AppColors.success : AppColors.woodBrown,
-                  ),
-                ),
+              SizedBox(width: grid.px(2)),
+              PixelChip(
+                hasWallet ? 'VERIFIED' : 'OFF-CHAIN',
+                style:
+                    hasWallet ? PixelBoxStyle.green : PixelBoxStyle.gold,
+                textColor: hasWallet ? PixelPalette.white : PixelPalette.ink,
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          SizedBox(height: grid.px(2)),
           if (hasWallet) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: AppSpacing.roundedMd,
-                border: Border.all(color: AppColors.borderLowContrast),
-              ),
+            PixelPanel(
+              style: PixelBoxStyle.slot,
               child: Row(
                 children: [
-                  const Icon(Icons.link_rounded,
-                      size: 18, color: AppColors.primary),
-                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       user.formattedWalletAddress ?? user.walletAddress ?? '',
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: AppColors.woodBrown,
-                      ),
+                      style: PixelType.numbers(context),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.copy_rounded, size: 16),
-                    tooltip: 'Copy full EVM address',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () {
+                  GestureDetector(
+                    key: const ValueKey('profile_copy_wallet'),
+                    onTap: () {
                       Clipboard.setData(
                           ClipboardData(text: user.walletAddress ?? ''));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Wallet address copied to clipboard.'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
+                      showPixelToast(
+                          context, 'Wallet address copied to clipboard.');
                     },
+                    child: Padding(
+                      padding: EdgeInsets.all(grid.px(2)),
+                      child: Text(
+                        'COPY',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.greenDeep,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
+            SizedBox(height: grid.px(2)),
             Text(
               'This address can sign in to your traveler account. Demo points remain off-chain and are not wallet tokens.',
-              style: AppTypography.bodySmall
-                  .copyWith(color: AppColors.textSecondary, fontSize: 11),
+              style: PixelType.body(context, color: PixelPalette.slate),
             ),
-            const SizedBox(height: AppSpacing.sm),
+            SizedBox(height: grid.px(2)),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(
+              child: PixelButton(
+                key: const ValueKey('profile_unlink_wallet'),
+                label: 'Unlink Wallet',
+                variant: PixelButtonVariant.danger,
                 onPressed: () => _confirmUnbindWallet(context),
-                icon: const Icon(Icons.link_off_rounded,
-                    size: 16, color: AppColors.danger),
-                label: const Text('Unlink Wallet',
-                    style: TextStyle(color: AppColors.danger, fontSize: 12)),
               ),
             ),
           ] else ...[
             Text(
               'You are playing with off-chain demo points (\$mJDQ). Link an EVM wallet for signature-based account sign-in; this does not unlock on-chain rewards or voting.',
-              style: AppTypography.bodySmall
-                  .copyWith(color: AppColors.textSecondary, height: 1.4),
+              style: PixelType.body(context, color: PixelPalette.slate),
             ),
-            const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
+            SizedBox(height: grid.px(3)),
+            PixelButton(
+              key: const ValueKey('profile_link_wallet'),
               label: 'Link Web3 / EVM Wallet',
-              icon: Icons.account_balance_wallet_rounded,
+              expand: true,
               onPressed: () => _showWalletBindingModal(context),
             ),
           ],
         ],
       ),
+    );
+  }
+
+  Widget _links(BuildContext context, PixelGrid grid, bool isMine) {
+    Widget row(String title, String subtitle, String route,
+        {ValueKey<String>? key}) {
+      return GestureDetector(
+        key: key,
+        onTap: () => context.push(route),
+        child: PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: PixelType.title(context)),
+                    SizedBox(height: grid.px(1)),
+                    Text(
+                      subtitle,
+                      style:
+                          PixelType.body(context, color: PixelPalette.slate),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: grid.px(2)),
+              Text(
+                '>',
+                style: PixelType.title(context, color: PixelPalette.woodMid),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        row('Saved Destinations', 'Places you bookmarked for later', '/saved',
+            key: const ValueKey('profile_saved')),
+        SizedBox(height: grid.px(2)),
+        row('The Trail', 'Personalized route suggestions · Coming soon',
+            '/trail',
+            key: const ValueKey('profile_trail')),
+        SizedBox(height: grid.px(2)),
+        row('Merchant Shop', 'Browse available vouchers', '/shop',
+            key: const ValueKey('profile_shop')),
+        SizedBox(height: grid.px(2)),
+        row('Leaderboard',
+            'View top explorers, rankings, and sprint leaderboards.', '/plaza',
+            key: const ValueKey('profile_leaderboard')),
+        if (isMine) ...[
+          SizedBox(height: grid.px(2)),
+          row('Explorer Settings',
+              'Configure preferences, AR calibration, and app updates.',
+              '/settings',
+              key: const ValueKey('profile_settings')),
+        ],
+      ],
     );
   }
 
@@ -611,11 +540,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       modal = await WalletSignatureService.initialize(context);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e is StateError
-                  ? e.message
-                  : 'Wallet connection is unavailable. Please try again.')),
+        showPixelToast(
+          context,
+          e is StateError
+              ? e.message
+              : 'Wallet connection is unavailable. Please try again.',
         );
       }
       return;
@@ -630,171 +559,125 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (sheetCtx) => StatefulBuilder(
         builder: (context, setSheetState) {
+          final grid = PixelGrid.of(context);
           final bottomInset = MediaQuery.of(context).viewInsets.bottom;
           return Padding(
-            padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg,
-                AppSpacing.lg, AppSpacing.lg + bottomInset),
+            padding: EdgeInsets.fromLTRB(
+              grid.px(3),
+              grid.px(3),
+              grid.px(3),
+              grid.px(3) + bottomInset,
+            ),
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: const BoxDecoration(
-                        color: AppColors.borderLowContrast,
-                        borderRadius: AppSpacing.roundedPill,
+              child: PixelPanel(
+                style: PixelBoxStyle.parchment,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Link Web3 Wallet', style: PixelType.title(context)),
+                    SizedBox(height: grid.px(1)),
+                    Text(
+                      'Progressive Web3 Passport Binding',
+                      style: PixelType.body(
+                        context,
+                        color: PixelPalette.slate,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color:
-                              const Color(0xFFF6851B).withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.account_balance_wallet_rounded,
-                            color: Color(0xFFF6851B), size: 24),
+                    SizedBox(height: grid.px(2)),
+                    Text(
+                      'A wallet signature links this address for account recovery. Your demo points remain off-chain; no tokens are minted or transferred.',
+                      style: PixelType.body(
+                        context,
+                        color: PixelPalette.slate,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Link Web3 Wallet',
-                              style: AppTypography.headlineSmall.copyWith(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              'Progressive Web3 Passport Binding',
-                              style: AppTypography.bodySmall
-                                  .copyWith(color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
+                    ),
+                    SizedBox(height: grid.px(2)),
+                    AppKitModalConnectButton(appKit: modal, context: context),
+                    SizedBox(height: grid.px(2)),
+                    Text(
+                      'Connect any Web3 wallet (MetaMask, Coinbase, Trust, Rainbow, etc.), approve the connection, then sign the one-time authentication message to link your wallet.',
+                      style: PixelType.body(
+                        context,
+                        color: PixelPalette.slate,
+                      ),
+                    ),
+                    if (modalError != null) ...[
+                      SizedBox(height: grid.px(2)),
+                      Text(
+                        modalError!,
+                        style:
+                            PixelType.body(context, color: PixelPalette.red),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.crowdQuietBg,
-                      borderRadius: AppSpacing.roundedMd,
-                      border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline_rounded,
-                            color: AppColors.primaryDark, size: 20),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            'A wallet signature links this address for account recovery. Your demo points remain off-chain; no tokens are minted or transferred.',
-                            style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.primaryDark, fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  AppKitModalConnectButton(appKit: modal, context: context),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Connect any Web3 wallet (MetaMask, Coinbase, Trust, Rainbow, etc.), approve the connection, then sign the one-time authentication message to link your wallet.',
-                    style: AppTypography.bodySmall
-                        .copyWith(color: AppColors.textSecondary),
-                  ),
-                  if (modalError != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(modalError!,
-                        style: const TextStyle(
-                            color: AppColors.danger, fontSize: 12)),
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
-                  PrimaryButton(
-                    label: 'Bind Wallet to Passport',
-                    icon: Icons.link_rounded,
-                    isLoading: isSubmitting,
-                    onPressed: isSubmitting
-                        ? null
-                        : () async {
-                            final addr =
-                                WalletSignatureService.connectedAddress(modal);
-                            if (addr == null) {
-                              setSheetState(() =>
-                                  modalError = 'Connect an EVM wallet first.');
-                              return;
-                            }
-
-                            setSheetState(() {
-                              isSubmitting = true;
-                              modalError = null;
-                            });
-
-                            bool ok = false;
-                            try {
-                              final challenge = await ref
-                                  .read(authProvider.notifier)
-                                  .requestWalletChallenge(addr);
-                              if (challenge == null) {
-                                throw StateError(
-                                    'Could not get a wallet challenge from the API.');
+                    SizedBox(height: grid.px(3)),
+                    PixelButton(
+                      key: const ValueKey('profile_bind_wallet'),
+                      label: 'Bind Wallet to Passport',
+                      expand: true,
+                      loading: isSubmitting,
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              final addr = WalletSignatureService
+                                  .connectedAddress(modal);
+                              if (addr == null) {
+                                setSheetState(() =>
+                                    modalError = 'Connect an EVM wallet first.');
+                                return;
                               }
-                              final signature =
-                                  await WalletSignatureService.signChallenge(
-                                      modal, challenge);
-                              ok = await ref
-                                  .read(authProvider.notifier)
-                                  .bindWallet(
-                                    address: addr,
-                                    signature: signature,
-                                  );
-                            } catch (e) {
+
+                              setSheetState(() {
+                                isSubmitting = true;
+                                modalError = null;
+                              });
+
+                              bool ok = false;
+                              try {
+                                final challenge = await ref
+                                    .read(authProvider.notifier)
+                                    .requestWalletChallenge(addr);
+                                if (challenge == null) {
+                                  throw StateError(
+                                      'Could not get a wallet challenge from the API.');
+                                }
+                                final signature = await WalletSignatureService
+                                    .signChallenge(modal, challenge);
+                                ok = await ref
+                                    .read(authProvider.notifier)
+                                    .bindWallet(
+                                      address: addr,
+                                      signature: signature,
+                                    );
+                              } catch (e) {
+                                if (sheetCtx.mounted) {
+                                  setSheetState(() => modalError = e is StateError
+                                      ? e.message
+                                      : 'Signature was not completed.');
+                                }
+                              }
+
                               if (sheetCtx.mounted) {
-                                setSheetState(() => modalError = e is StateError
-                                    ? e.message
-                                    : 'Signature was not completed.');
+                                if (ok) {
+                                  Navigator.of(sheetCtx).pop();
+                                  showPixelToast(context,
+                                      'Wallet successfully linked to your passport!');
+                                } else {
+                                  setSheetState(() {
+                                    isSubmitting = false;
+                                    modalError ??=
+                                        ref.read(authProvider).error ??
+                                            'Failed to bind wallet.';
+                                  });
+                                }
                               }
-                            }
-
-                            if (sheetCtx.mounted) {
-                              if (ok) {
-                                Navigator.of(sheetCtx).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Wallet successfully linked to your passport!'),
-                                    backgroundColor: AppColors.success,
-                                  ),
-                                );
-                              } else {
-                                setSheetState(() {
-                                  isSubmitting = false;
-                                  modalError ??= ref.read(authProvider).error ??
-                                      'Failed to bind wallet.';
-                                });
-                              }
-                            }
-                          },
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
+                            },
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -805,37 +688,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _confirmUnbindWallet(BuildContext context) {
-    showDialog(
+    showPixelDialog<void>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Unlink Web3 Wallet?'),
-        content: const Text(
+      title: 'Unlink Web3 wallet?',
+      message:
           'Your account will revert to off-chain mode. You can link this or another wallet at any time.',
+      actions: [
+        PixelButton(
+          label: 'Cancel',
+          variant: PixelButtonVariant.secondary,
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            onPressed: () async {
-              Navigator.of(dialogCtx).pop();
-              final ok = await ref.read(authProvider.notifier).unbindWallet();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(ok
-                        ? 'Wallet unlinked successfully.'
-                        : 'Failed to unlink wallet.'),
-                  ),
-                );
-              }
-            },
-            child: const Text('Unlink'),
-          ),
-        ],
-      ),
+        PixelButton(
+          key: const ValueKey('profile_confirm_unlink'),
+          label: 'Unlink',
+          variant: PixelButtonVariant.danger,
+          onPressed: () async {
+            Navigator.of(context).pop();
+            final ok = await ref.read(authProvider.notifier).unbindWallet();
+            if (context.mounted) {
+              showPixelToast(
+                context,
+                ok ? 'Wallet unlinked successfully.' : 'Failed to unlink wallet.',
+              );
+            }
+          },
+        ),
+      ],
     );
   }
 }

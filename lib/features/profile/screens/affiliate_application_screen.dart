@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_input.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/base_tile_layer.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
 
 const _affiliateCategories = <String>[
@@ -263,250 +273,441 @@ class _AffiliateApplicationScreenState
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final status = _existing?['status']?.toString();
-    return Scaffold(
-      appBar: AppBar(title: const Text('Merchant Affiliate')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                children: [
-                  Text('Partner with local tourism',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(color: AppColors.woodBrown)),
-                  const SizedBox(height: 8),
-                  const Text(
-                      'Local businesses can apply to participate in destination quests, vouchers, map discovery, and seasonal events. Applications are reviewed by the team.'),
-                  if (status != null) ...[
-                    const SizedBox(height: 12),
-                    Card(
-                        child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ListTile(
-                            leading: const Icon(Icons.info_outline),
-                            title: const Text('Application status'),
-                            subtitle: Text(status.replaceAll('_', ' '))),
-                        if (_existing?['applicant_feedback'] != null)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                            child: Text(
-                              'Reviewer Note: ${_existing!['applicant_feedback']}',
-                              style: const TextStyle(
-                                  color: Colors.deepOrange,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                      ],
-                    )),
-                  ],
-                  const SizedBox(height: 18),
-                  _field(_business, 'Business name'),
-                  DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      value: _category,
-                      decoration:
-                          const InputDecoration(labelText: 'Business category'),
-                      items: _affiliateCategories
-                          .map((v) => DropdownMenuItem(
-                              value: v,
-                              child: Text(v, overflow: TextOverflow.ellipsis)))
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => _category = v ?? _category)),
-                  _field(_municipality, 'Municipality / city'),
-                  _field(_province, 'Province / region'),
-                  const SizedBox(height: 4),
-                  Text('Business location',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _placeSearch,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => _searchPlaces(),
-                    decoration: const InputDecoration(
-                      labelText: 'Search a Philippine city or landmark',
-                      border: OutlineInputBorder(
-                          borderRadius: AppSpacing.roundedMd),
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _searching ? null : _searchPlaces,
-                        icon: const Icon(Icons.search),
-                        label: Text(_searching ? 'Searching...' : 'Search map'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _useCurrentLocation,
-                        icon: const Icon(Icons.my_location),
-                        label: const Text('Use my location'),
-                      ),
-                    ],
-                  ),
-                  if (_places.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    ..._places.map((place) => ListTile(
-                          dense: true,
-                          title: Text(place['name']?.toString() ?? 'Place'),
-                          subtitle: Text(place['subtitle']?.toString() ?? '',
-                              maxLines: 2, overflow: TextOverflow.ellipsis),
-                          onTap: () {
-                            final lat = (place['lat'] as num?)?.toDouble();
-                            final lng = (place['lng'] as num?)?.toDouble();
-                            if (lat == null || lng == null) return;
-                            setState(() {
-                              _pin =
-                                  null; // Search navigates; it does not claim the business is at the result center.
-                              _places = const [];
-                              if (place['type'] == 'city' ||
-                                  place['type'] == 'municipality') {
-                                _municipality.text =
-                                    place['name']?.toString() ??
-                                        _municipality.text;
-                              }
-                              if (place['type'] == 'province') {
-                                _province.text =
-                                    place['name']?.toString() ?? _province.text;
-                              }
-                            });
-                            _moveMap(LatLng(lat, lng), 12);
-                          },
-                        )),
-                  ],
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: AppSpacing.roundedMd,
-                    child: SizedBox(
-                      height: 240,
-                      child: Stack(children: [
-                        FlutterMap(
-                          mapController: _mapController,
-                          options: MapOptions(
-                            initialCenter: _mapCenter,
-                            initialZoom: _mapZoom,
-                            minZoom: 5,
-                            maxZoom: 19,
-                            onTap: (_, point) => setState(() {
-                              _pin = point;
-                              _error = null;
-                            }),
-                          ),
-                          children: [
-                            buildBaseTileLayer(),
-                            if (_pin != null)
-                              MarkerLayer(markers: [
-                                Marker(
-                                  point: _pin!,
-                                  width: 44,
-                                  height: 44,
-                                  child: const Icon(Icons.location_pin,
-                                      size: 42, color: AppColors.primary),
-                                )
-                              ]),
-                          ],
-                        ),
-                        const Positioned(
-                          right: 4,
-                          bottom: 4,
-                          child: ColoredBox(
-                            color: Colors.white,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text('© OpenStreetMap contributors',
-                                  style: TextStyle(fontSize: 10)),
-                            ),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _pin == null
-                        ? 'Pan or zoom, then tap to place your business pin.'
-                        : 'Pin: ${_pin!.latitude.toStringAsFixed(6)}, ${_pin!.longitude.toStringAsFixed(6)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  _field(_contact, 'Contact person'),
-                  _field(_email, 'Contact email',
-                      type: TextInputType.emailAddress),
-                  _field(_phone, 'Contact phone', type: TextInputType.phone),
-                  const SizedBox(height: 12),
-                  Text('How would you like to participate?',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  ..._affiliateGoals.entries.map((entry) => CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(entry.value),
-                        value: _goals.contains(entry.key),
-                        onChanged: (selected) => setState(() => selected == true
-                            ? _goals.add(entry.key)
-                            : _goals.remove(entry.key)),
-                      )),
-                  _field(_details, 'Proposal details (optional)',
-                      required: false, maxLines: 4),
-                  if (_error != null)
-                    Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(_error!,
-                            style: const TextStyle(color: Colors.red))),
-                  if (_success != null)
-                    Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(_success!,
-                            style: const TextStyle(color: AppColors.primary))),
-                  const SizedBox(height: 8),
-                  PrimaryButton(
-                      label: _submitting
-                          ? 'Submitting…'
-                          : status == 'received' || status == 'in_review'
-                              ? 'Application Under Review'
-                              : 'Submit Application',
-                      onPressed: _submitting ||
-                              status == 'received' ||
-                              status == 'in_review'
-                          ? null
-                          : _submit),
-                  const SizedBox(height: 12),
-                  Text(
-                      'Submitting an application does not guarantee approval. Voucher offers and merchant spending remain subject to separate review.',
-                      style: Theme.of(context).textTheme.bodySmall),
-                ],
+  Future<void> _chooseCategory(PixelGrid grid) async {
+    await showPixelDialog<void>(
+      context: context,
+      title: 'Business category',
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final value in _affiliateCategories) ...[
+              PixelButton(
+                label: value,
+                variant: value == _category
+                    ? PixelButtonVariant.primary
+                    : PixelButtonVariant.secondary,
+                onPressed: () {
+                  setState(() => _category = value);
+                  Navigator.of(context).pop();
+                },
               ),
-            ),
+              SizedBox(height: grid.px(2)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _field(TextEditingController controller, String label,
-          {TextInputType? type, bool required = true, int maxLines = 1}) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: TextFormField(
-          controller: controller,
-          keyboardType: type,
-          maxLines: maxLines,
-          decoration: InputDecoration(
-              labelText: label,
-              border:
-                  const OutlineInputBorder(borderRadius: AppSpacing.roundedMd)),
-          validator: !required
-              ? null
-              : (value) => value == null || value.trim().length < 2
-                  ? 'Enter $label'
-                  : null,
+  @override
+  Widget build(BuildContext context) {
+    final status = _existing?['status']?.toString();
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Merchant Affiliate',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                  ),
+                  Expanded(
+                    child: _loading
+                        ? const Center(
+                            child: PixelLoader(label: 'Loading application'))
+                        : Form(
+                            key: _formKey,
+                            child: ListView(
+                              padding: EdgeInsets.fromLTRB(
+                                grid.px(4),
+                                grid.px(4),
+                                grid.px(4),
+                                grid.px(8) +
+                                    MediaQuery.paddingOf(context).bottom,
+                              ),
+                              children: [
+                                _intro(context, grid),
+                                if (status != null) ...[
+                                  SizedBox(height: grid.px(3)),
+                                  _statusCard(context, grid, status),
+                                ],
+                                SizedBox(height: grid.px(3)),
+                                PixelTextField(
+                                  controller: _business,
+                                  label: 'Business name',
+                                  validator: _required('Business name'),
+                                ),
+                                SizedBox(height: grid.px(2)),
+                                _categoryField(context, grid),
+                                SizedBox(height: grid.px(2)),
+                                PixelTextField(
+                                  controller: _municipality,
+                                  label: 'Municipality / city',
+                                  validator: _required('Municipality / city'),
+                                ),
+                                SizedBox(height: grid.px(2)),
+                                PixelTextField(
+                                  controller: _province,
+                                  label: 'Province / region',
+                                  validator: _required('Province / region'),
+                                ),
+                                SizedBox(height: grid.px(3)),
+                                _location(context, grid),
+                                SizedBox(height: grid.px(3)),
+                                PixelTextField(
+                                  controller: _contact,
+                                  label: 'Contact person',
+                                  validator: _required('Contact person'),
+                                ),
+                                SizedBox(height: grid.px(2)),
+                                PixelTextField(
+                                  controller: _email,
+                                  label: 'Contact email',
+                                  keyboardType: TextInputType.emailAddress,
+                                  validator: _required('Contact email'),
+                                ),
+                                SizedBox(height: grid.px(2)),
+                                PixelTextField(
+                                  controller: _phone,
+                                  label: 'Contact phone',
+                                  keyboardType: TextInputType.phone,
+                                  validator: _required('Contact phone'),
+                                ),
+                                SizedBox(height: grid.px(3)),
+                                Text('How would you like to participate?',
+                                    style: PixelType.title(context)),
+                                SizedBox(height: grid.px(1)),
+                                for (final entry in _affiliateGoals.entries)
+                                  PixelCheckbox(
+                                    key: ValueKey(
+                                        'affiliate_goal_${entry.key}'),
+                                    value: _goals.contains(entry.key),
+                                    label: entry.value,
+                                    onChanged: (selected) => setState(
+                                        () => selected == true
+                                            ? _goals.add(entry.key)
+                                            : _goals.remove(entry.key)),
+                                  ),
+                                SizedBox(height: grid.px(2)),
+                                PixelTextField(
+                                  controller: _details,
+                                  label: 'Proposal details (optional)',
+                                  maxLines: 4,
+                                ),
+                                if (_error != null) ...[
+                                  SizedBox(height: grid.px(2)),
+                                  PixelPanel(
+                                    style: PixelBoxStyle.red,
+                                    child: Text(
+                                      _error!,
+                                      style: PixelType.body(
+                                        context,
+                                        color: PixelPalette.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                if (_success != null) ...[
+                                  SizedBox(height: grid.px(2)),
+                                  PixelPanel(
+                                    style: PixelBoxStyle.green,
+                                    child: Text(
+                                      _success!,
+                                      style: PixelType.body(
+                                        context,
+                                        color: PixelPalette.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                SizedBox(height: grid.px(3)),
+                                PixelButton(
+                                  key: const ValueKey('affiliate_submit'),
+                                  label: _submitting
+                                      ? 'Submitting'
+                                      : status == 'received' ||
+                                              status == 'in_review'
+                                          ? 'Application Under Review'
+                                          : 'Submit Application',
+                                  expand: true,
+                                  loading: _submitting,
+                                  onPressed: _submitting ||
+                                          status == 'received' ||
+                                          status == 'in_review'
+                                      ? null
+                                      : _submit,
+                                ),
+                                SizedBox(height: grid.px(2)),
+                                Text(
+                                  'Submitting an application does not guarantee approval. Voucher offers and merchant spending remain subject to separate review.',
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.slate,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _intro(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Partner with local tourism',
+            style: PixelType.title(context, color: PixelPalette.paper),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Local businesses can apply to participate in destination quests, vouchers, map discovery, and seasonal events. Applications are reviewed by the team.',
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusCard(BuildContext context, PixelGrid grid, String status) {
+    final note = _existing?['applicant_feedback'];
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('Application status',
+                    style: PixelType.title(context)),
+              ),
+              PixelChip(status.replaceAll('_', ' ').toUpperCase()),
+            ],
+          ),
+          if (note != null) ...[
+            SizedBox(height: grid.px(2)),
+            Text(
+              'Reviewer note: $note',
+              style: PixelType.body(context, color: PixelPalette.redDeep),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _categoryField(BuildContext context, PixelGrid grid) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'BUSINESS CATEGORY',
+          style: PixelType.small(context, color: PixelPalette.slate),
         ),
-      );
+        SizedBox(height: grid.px(1)),
+        GestureDetector(
+          key: const ValueKey('affiliate_category'),
+          onTap: () => _chooseCategory(grid),
+          child: PixelPanel(
+            style: PixelBoxStyle.slot,
+            sunken: true,
+            padding: 2,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(_category, style: PixelType.body(context)),
+                ),
+                Text('CHANGE',
+                    style: PixelType.small(
+                      context,
+                      color: PixelPalette.greenDark,
+                    )),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _location(BuildContext context, PixelGrid grid) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Business location', style: PixelType.title(context)),
+        SizedBox(height: grid.px(2)),
+        Focus(
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent &&
+                event.logicalKey == LogicalKeyboardKey.enter) {
+              _searchPlaces();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: PixelTextField(
+            controller: _placeSearch,
+            label: 'Search a Philippine city or landmark',
+            textInputAction: TextInputAction.search,
+          ),
+        ),
+        SizedBox(height: grid.px(2)),
+        Wrap(
+          spacing: grid.px(2),
+          runSpacing: grid.px(2),
+          children: [
+            PixelButton(
+              key: const ValueKey('affiliate_search_map'),
+              label: _searching ? 'Searching' : 'Search map',
+              variant: PixelButtonVariant.secondary,
+              loading: _searching,
+              onPressed: _searching ? null : _searchPlaces,
+            ),
+            PixelButton(
+              key: const ValueKey('affiliate_use_location'),
+              label: 'Use my location',
+              variant: PixelButtonVariant.secondary,
+              onPressed: _useCurrentLocation,
+            ),
+          ],
+        ),
+        if (_places.isNotEmpty) ...[
+          SizedBox(height: grid.px(2)),
+          for (final place in _places) ...[
+            GestureDetector(
+              onTap: () {
+                final lat = (place['lat'] as num?)?.toDouble();
+                final lng = (place['lng'] as num?)?.toDouble();
+                if (lat == null || lng == null) return;
+                setState(() {
+                  _pin = null;
+                  _places = const [];
+                  if (place['type'] == 'city' ||
+                      place['type'] == 'municipality') {
+                    _municipality.text =
+                        place['name']?.toString() ?? _municipality.text;
+                  }
+                  if (place['type'] == 'province') {
+                    _province.text =
+                        place['name']?.toString() ?? _province.text;
+                  }
+                });
+                _moveMap(LatLng(lat, lng), 12);
+              },
+              child: PixelPanel(
+                style: PixelBoxStyle.parchment,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      place['name']?.toString() ?? 'Place',
+                      style: PixelType.title(context),
+                    ),
+                    if ((place['subtitle']?.toString() ?? '').isNotEmpty) ...[
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        place['subtitle'].toString(),
+                        style: PixelType.body(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: grid.px(2)),
+          ],
+        ],
+        SizedBox(height: grid.px(2)),
+        SizedBox(
+          height: grid.px(120),
+          child: Stack(
+            children: [
+              ClipRect(
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _mapCenter,
+                    initialZoom: _mapZoom,
+                    minZoom: 5,
+                    maxZoom: 19,
+                    onTap: (_, point) => setState(() {
+                      _pin = point;
+                      _error = null;
+                    }),
+                  ),
+                  children: [
+                    buildBaseTileLayer(),
+                    if (_pin != null)
+                      MarkerLayer(markers: [
+                        Marker(
+                          point: _pin!,
+                          width: grid.px(24),
+                          height: grid.px(24),
+                          child: const Center(
+                            child: PixelSprite(
+                              DesignerArt.questMarker,
+                              scale: 3,
+                            ),
+                          ),
+                        )
+                      ]),
+                  ],
+                ),
+              ),
+              Positioned(
+                right: grid.px(1),
+                bottom: grid.px(1),
+                child: PixelPanel(
+                  style: PixelBoxStyle.parchment.copyWith(shadowPx: 0),
+                  padding: 1,
+                  child: Text(
+                    '© OpenStreetMap contributors',
+                    style: PixelType.small(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: grid.px(2)),
+        Text(
+          _pin == null
+              ? 'Pan or zoom, then tap to place your business pin.'
+              : 'Pin: ${_pin!.latitude.toStringAsFixed(6)}, ${_pin!.longitude.toStringAsFixed(6)}',
+          style: PixelType.body(context, color: PixelPalette.slate),
+        ),
+      ],
+    );
+  }
+
+  String? Function(String?) _required(String label) {
+    return (value) => value == null || value.trim().length < 2
+        ? 'Enter $label'
+        : null;
+  }
 }

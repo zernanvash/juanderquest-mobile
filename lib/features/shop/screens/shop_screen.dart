@@ -1,25 +1,28 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/async_state_view.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/metric_tile.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../models/voucher_model.dart';
-import '../providers/voucher_provider.dart';
-import '../models/cosmetic_item.dart';
-import '../providers/cosmetics_provider.dart';
+import '../../cosmetics/widgets/passport_preview.dart';
 import '../../cosmetics/widgets/profile_banner.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
-import '../../../core/widgets/designer_guide.dart';
 import '../../wallet/screens/wallet_connect_screen.dart';
-import '../../cosmetics/widgets/passport_preview.dart';
-import 'package:go_router/go_router.dart';
+import '../models/cosmetic_item.dart';
+import '../models/shop_teaser.dart';
+import '../models/voucher_model.dart';
+import '../providers/cosmetics_provider.dart';
+import '../providers/voucher_provider.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
@@ -29,7 +32,23 @@ class ShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopScreenState extends ConsumerState<ShopScreen> {
+  static const _tabs = <(int, String)>[
+    (0, 'Cosmetics'),
+    (1, 'Vouchers'),
+    (2, 'Coming soon'),
+    (3, 'My items'),
+  ];
+
+  static const _filters = <(String, String)>[
+    ('all', 'All'),
+    ('banner', 'Banners'),
+    ('frame', 'Frames'),
+    ('title', 'Titles'),
+    ('name_color', 'Name colours'),
+  ];
+
   int _selectedTab = 0; // Cosmetics, Vouchers, Coming soon, My items
+  String _filter = 'all';
   bool? _liveGrid; // null: follow the system animation setting (Plan 69)
 
   @override
@@ -52,121 +71,86 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     required VoucherModel voucher,
     required int userPoints,
   }) {
-    showDialog(
+    showPixelDialog<void>(
       context: context,
-      builder: (dialogCtx) => Consumer(
-        builder: (context, ref, _) {
+      title: 'Redeem voucher',
+      content: Consumer(
+        builder: (dialogContext, ref, _) {
           final isRedeeming = ref.watch(voucherProvider).isRedeeming;
-
-          return Dialog(
-            shape: const RoundedRectangleBorder(
-                borderRadius: AppSpacing.roundedLg),
-            backgroundColor: AppColors.surfaceContainerLowest,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'You are about to redeem "${voucher.offerTitle}" from ${voucher.merchantName}.',
+                style: PixelType.body(context, color: PixelPalette.slate),
+              ),
+              SizedBox(height: PixelGrid.of(context).px(2)),
+              PixelPanel(
+                style: PixelBoxStyle.slot,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: PixelGrid.of(context).px(2),
+                  runSpacing: PixelGrid.of(context).px(1),
+                  children: [
+                    Text('Cost deduction',
+                        style: PixelType.body(context)),
+                    Text(
+                      '-${voucher.costPoints} pts',
+                      style: PixelType.numbers(
+                        context,
+                        color: PixelPalette.redDeep,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: PixelGrid.of(context).px(3)),
+              Wrap(
+                spacing: PixelGrid.of(context).px(2),
+                runSpacing: PixelGrid.of(context).px(2),
+                alignment: WrapAlignment.end,
                 children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: const BoxDecoration(
-                      color: AppColors.crowdQuietBg,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.confirmation_number_rounded,
-                        color: AppColors.primary, size: 28),
+                  PixelButton(
+                    label: 'Cancel',
+                    variant: PixelButtonVariant.secondary,
+                    onPressed: isRedeeming
+                        ? null
+                        : () => Navigator.of(dialogContext).pop(),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Redeem Voucher?',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.headlineSmall.copyWith(
-                      color: AppColors.woodBrown,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'You are about to redeem "${voucher.offerTitle}" from ${voucher.merchantName}.',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.bodyMedium
-                        .copyWith(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: const BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: AppSpacing.roundedMd,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Cost Deduction:', style: AppTypography.bodySmall),
-                        Text(
-                          '-${voucher.costPoints} PTS',
-                          style: const TextStyle(
-                            color: AppColors.danger,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SecondaryButton(
-                          label: 'Cancel',
-                          onPressed: isRedeeming
-                              ? null
-                              : () => Navigator.of(dialogCtx).pop(),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: PrimaryButton(
-                          label: 'Confirm',
-                          isLoading: isRedeeming,
-                          onPressed: isRedeeming
-                              ? null
-                              : () async {
-                                  final result = await ref
-                                      .read(voucherProvider.notifier)
-                                      .redeemVoucher(voucher);
+                  PixelButton(
+                    key: const ValueKey('shop_voucher_confirm'),
+                    label: 'Confirm',
+                    loading: isRedeeming,
+                    onPressed: isRedeeming
+                        ? null
+                        : () async {
+                            final result = await ref
+                                .read(voucherProvider.notifier)
+                                .redeemVoucher(voucher);
 
-                                  if (dialogCtx.mounted) {
-                                    Navigator.of(dialogCtx).pop();
-                                  }
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
 
-                                  if (context.mounted) {
-                                    if (result.success &&
-                                        result.redeemed != null) {
-                                      _showRedeemedVoucherModal(
-                                          context, result.redeemed!);
-                                    } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(result.error ??
-                                              ref.read(voucherProvider).error ??
-                                              'Redemption failed.'),
-                                          backgroundColor: AppColors.danger,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                        ),
-                      ),
-                    ],
+                            if (context.mounted) {
+                              if (result.success && result.redeemed != null) {
+                                _showRedeemedVoucherModal(
+                                    context, result.redeemed!);
+                              } else {
+                                showPixelToast(
+                                  context,
+                                  result.error ??
+                                      ref.read(voucherProvider).error ??
+                                      'Redemption failed.',
+                                );
+                              }
+                            }
+                          },
                   ),
                 ],
               ),
-            ),
+            ],
           );
         },
       ),
@@ -175,180 +159,129 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
   void _showRedeemedVoucherModal(
       BuildContext context, RedeemedVoucherModel redeemed) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (modalCtx) {
-        return Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          decoration: const BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: const BoxDecoration(
-                  color: AppColors.borderLowContrast,
-                  borderRadius: AppSpacing.roundedPill,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: AppColors.crowdQuietBg,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_rounded,
-                    color: AppColors.primary, size: 36),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Voucher Ready to Use!',
-                style: AppTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.woodBrown,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                redeemed.offerTitle,
-                textAlign: TextAlign.center,
-                style: AppTypography.labelLarge
-                    .copyWith(fontWeight: FontWeight.w600, fontSize: 15),
-              ),
-              Text(
-                redeemed.merchantName,
-                style: AppTypography.bodySmall
-                    .copyWith(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Code Box
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: AppSpacing.roundedLg,
-                  border: Border.all(color: AppColors.sunGold, width: 1.5),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      'MERCHANT REDEMPTION CODE',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textMuted,
-                        letterSpacing: 1,
-                      ),
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: PixelPanel(
+              style: PixelBoxStyle.parchment,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Voucher Ready to Use!',
+                    textAlign: TextAlign.center,
+                    style: PixelType.title(modalCtx),
+                  ),
+                  SizedBox(height: PixelGrid.of(modalCtx).px(1)),
+                  Text(
+                    redeemed.offerTitle,
+                    textAlign: TextAlign.center,
+                    style: PixelType.body(modalCtx),
+                  ),
+                  Text(
+                    redeemed.merchantName,
+                    textAlign: TextAlign.center,
+                    style: PixelType.body(
+                      modalCtx,
+                      color: PixelPalette.slate,
                     ),
-                    const SizedBox(height: 8),
-                    SelectableText(
-                      redeemed.code,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 3,
-                        color: AppColors.woodBrown,
-                        fontFamily: 'monospace',
-                      ),
+                  ),
+                  SizedBox(height: PixelGrid.of(modalCtx).px(3)),
+                  PixelPanel(
+                    style: PixelBoxStyle.gold,
+                    child: Column(
+                      children: [
+                        Text(
+                          'MERCHANT REDEMPTION CODE',
+                          style: PixelType.small(modalCtx),
+                        ),
+                        SizedBox(height: PixelGrid.of(modalCtx).px(1)),
+                        SelectableText(
+                          redeemed.code,
+                          textAlign: TextAlign.center,
+                          style: PixelType.title(modalCtx),
+                        ),
+                        SizedBox(height: PixelGrid.of(modalCtx).px(1)),
+                        GestureDetector(
+                          key: const ValueKey('shop_copy_code'),
+                          onTap: () {
+                            Clipboard.setData(
+                                ClipboardData(text: redeemed.code));
+                            showPixelToast(
+                                context, 'Voucher code copied to clipboard!');
+                          },
+                          child: Text(
+                            'COPY CODE',
+                            style: PixelType.small(
+                              modalCtx,
+                              color: PixelPalette.greenDeep,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: redeemed.code));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('Voucher code copied to clipboard!'),
-                              duration: Duration(seconds: 1)),
-                        );
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                  ),
+                  SizedBox(height: PixelGrid.of(modalCtx).px(3)),
+                  UiSpecContainer(
+                    spec: const UiSpec(
+                      title: 'In-Person Store Cashier Barcode & QR Box',
+                      figmaLayer: '#Voucher_QR_Redemption_Box',
+                      dimensions: 'Width: 100%, Height: ~80dp, Padding: 12dp',
+                      dataBinding: 'redeemedVoucher.code / expirationTimestamp',
+                      stateNotes:
+                          'Displays 1D barcode stripes & QR scan box for retail cashier terminal',
+                      uxNotes:
+                          'Ensure screen backlight brightness is sufficient for optical scanners.',
+                      deferred: true,
+                    ),
+                    child: PixelPanel(
+                      style: PixelBoxStyle.slot.copyWith(
+                        fill: PixelPalette.white,
+                      ),
+                      child: Column(
                         children: [
-                          const Icon(Icons.copy_rounded,
-                              size: 14, color: AppColors.primary),
-                          const SizedBox(width: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(
+                              24,
+                              (index) => Container(
+                                width: index % 3 == 0
+                                    ? 3
+                                    : (index % 2 == 0 ? 2 : 1),
+                                height: 38,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 1.5),
+                                color: PixelPalette.ink,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: PixelGrid.of(modalCtx).px(1)),
                           Text(
-                            'Copy Code',
-                            style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold),
+                            'Present this barcode/code to the store cashier',
+                            textAlign: TextAlign.center,
+                            style: PixelType.small(
+                              modalCtx,
+                              color: PixelPalette.slate,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppSpacing.md),
-
-              // Simulated QR / Barcode Display
-              UiSpecContainer(
-                spec: const UiSpec(
-                  title: 'In-Person Store Cashier Barcode & QR Box',
-                  figmaLayer: '#Voucher_QR_Redemption_Box',
-                  dimensions: 'Width: 100%, Height: ~80dp, Padding: 12dp',
-                  dataBinding: 'redeemedVoucher.code / expirationTimestamp',
-                  stateNotes:
-                      'Displays 1D barcode stripes & QR scan box for retail cashier terminal',
-                  uxNotes:
-                      'Ensure screen backlight brightness is sufficient for optical scanners.',
-                  deferred: true,
-                ),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: AppSpacing.roundedMd,
-                    border: Border.all(color: AppColors.borderLowContrast),
                   ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          24,
-                          (index) => Container(
-                            width:
-                                index % 3 == 0 ? 3 : (index % 2 == 0 ? 2 : 1),
-                            height: 38,
-                            margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Present this barcode/code to the store cashier',
-                        style: AppTypography.bodySmall
-                            .copyWith(fontSize: 10, color: AppColors.textMuted),
-                      ),
-                    ],
+                  SizedBox(height: PixelGrid.of(modalCtx).px(3)),
+                  PixelButton(
+                    label: 'Done',
+                    expand: true,
+                    onPressed: () => Navigator.of(modalCtx).pop(),
                   ),
-                ),
+                ],
               ),
-
-              const SizedBox(height: AppSpacing.lg),
-
-              PrimaryButton(
-                label: 'Done',
-                onPressed: () => Navigator.of(modalCtx).pop(),
-              ),
-
-              const SizedBox(height: AppSpacing.md),
-            ],
+            ),
           ),
         );
       },
@@ -361,277 +294,355 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     final points = user?.points ?? user?.demoPoints ?? 1250;
     final voucherState = ref.watch(voucherProvider);
     final cosmeticsState = ref.watch(cosmeticsProvider);
-
-    return JdqScaffold(
-      scrollable: true,
-      appBar: AppBar(
-        title: const Text('Rewards & Vouchers'),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Traveler Shop',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                    actions: [
+                      PixelChip('$points mJDQ', style: PixelBoxStyle.gold),
+                    ],
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      children: [
+                        _header(context, grid, points),
+                        SizedBox(height: grid.px(3)),
+                        _tabRow(context, grid),
+                        SizedBox(height: grid.px(3)),
+                        if (_selectedTab == 0)
+                          _cosmetics(context, grid, cosmeticsState, points)
+                        else if (_selectedTab == 1)
+                          _vouchers(context, grid, voucherState, points)
+                        else if (_selectedTab == 2)
+                          _teasers(context, grid, cosmeticsState)
+                        else
+                          _myItems(context, grid, cosmeticsState,
+                              voucherState, user?.displayName ?? 'Traveler',
+                              user?.avatarUrl),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
-      body: Column(
+    );
+  }
+
+  Widget _header(BuildContext context, PixelGrid grid, int points) {
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: AppSpacing.sm),
-
-          // Balance Card
-          UiSpecContainer(
-            spec: const UiSpec(
-              title: 'Available Reward Points Balance',
-              figmaLayer: '#Shop_Points_Balance_Card',
-              dimensions: 'Full width, Height: ~80dp, Padding: 16dp',
-              dataBinding: 'authProvider.user.points (or demoPoints fallback)',
-              stateNotes:
-                  'Dynamic points balance -> Updates instantly on voucher redemption',
-              uxNotes: 'Sun Gold icon with wood brown typography.',
-            ),
-            child: MetricTile(
-              label: 'Available Reward Balance',
-              value: '$points PTS',
-              icon: Icons.stars_rounded,
-              iconColor: AppColors.sunGold,
-              backgroundColor: AppColors.surfaceContainerLowest,
-            ),
+          Text(
+            'MAKE YOUR PROFILE YOURS',
+            style: PixelType.small(context, color: PixelPalette.sun),
           ),
-
-          const SizedBox(height: AppSpacing.lg),
-
-          // Tab Selector
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final entry in const [
-              (0, 'Cosmetics'),
-              (1, 'Vouchers'),
-              (2, 'Coming soon'),
-              (3, 'My items')
-            ])
-              ChoiceChip(
-                  label: Text(entry.$2),
-                  selected: _selectedTab == entry.$1,
-                  onSelected: (_) => setState(() => _selectedTab = entry.$1)),
-          ]),
-
-          const SizedBox(height: AppSpacing.lg),
-
-          if (_selectedTab == 0) ...[
-            _buildCosmeticsSection(cosmeticsState, points,
-                user?.displayName ?? 'Traveler', user?.avatarUrl),
-          ] else if (_selectedTab == 1) ...[
-            // Partner Merchants List
-            AsyncStateView(
-              isLoading: voucherState.isLoading,
-              errorMessage: voucherState.error,
-              isEmpty: voucherState.vouchers.isEmpty,
-              emptyMessage: 'No Active Vouchers',
-              emptySubtitle: 'Check back soon for new partner merchant offers.',
-              emptyIcon: Icons.storefront_rounded,
-              onRetry: () => ref.read(voucherProvider.notifier).fetchVouchers(),
-              content: Column(
-                children: voucherState.vouchers.map((voucher) {
-                  return _buildVoucherCard(
-                    context: context,
-                    voucher: voucher,
-                    userPoints: points,
-                  );
-                }).toList(),
-              ),
-            ),
-          ] else if (_selectedTab == 2) ...[
-            _buildTeasers(cosmeticsState),
-          ] else ...[
-            _buildOwnedCosmetics(cosmeticsState,
-                user?.displayName ?? 'Traveler', user?.avatarUrl),
-            const SizedBox(height: AppSpacing.lg),
-            // My Redeemed Vouchers Wallet
-            if (voucherState.redeemedVouchers.isEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
-                  borderRadius: AppSpacing.roundedLg,
-                  border: Border.all(color: AppColors.borderLowContrast),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(Icons.confirmation_number_outlined,
-                        size: 48, color: AppColors.textMuted),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'No Redeemed Vouchers Yet',
-                      style: AppTypography.labelLarge
-                          .copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Complete quests to earn points and explore rewards from participating local merchants.',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    SecondaryButton(
-                      label: 'Browse Merchant Offers',
-                      onPressed: () => setState(() => _selectedTab = 1),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              Column(
-                children: voucherState.redeemedVouchers.map((redeemed) {
-                  return _buildRedeemedCard(context, redeemed);
-                }).toList(),
-              ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Traveler shop',
+            style: PixelType.title(context, color: PixelPalette.paper),
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            'Collect Pangasinan-inspired cosmetics, partner offers, and upcoming experiences.',
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              PixelChip('$points points', style: PixelBoxStyle.gold),
+              if (ref.watch(authProvider).user?.hasBoundWallet != true)
+                const PixelChip('No wallet',
+                    style: PixelBoxStyle.parchment),
             ],
-          ],
-
-          const SizedBox(height: AppSpacing.sectionGap),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCosmeticsSection(
-      CosmeticsState state, int points, String name, String? avatar) {
-    if (state.isLoading && state.items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (state.error != null && state.items.isEmpty) {
-      return AsyncStateView(
-          isLoading: false,
-          errorMessage: state.error,
-          isEmpty: false,
-          emptyMessage: '',
-          content: const SizedBox.shrink(),
-          onRetry: () => ref.read(cosmeticsProvider.notifier).load());
-    }
-    if (state.items.isEmpty) {
-      return const Center(child: Text('No cosmetics are available yet.'));
-    }
-    // Plan 69: banners animate in the list. Off by default only when the system asks to
-    // remove animations; the switch is the traveler's explicit choice.
-    final live = _liveGrid ?? !MediaQuery.of(context).disableAnimations;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 6,
-          children: [
-            Text('Choose a look · $points points',
-                style: AppTypography.labelLarge.copyWith(
-                    fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
-            FilterChip(
-                key: const ValueKey('shop_live_animations'),
-                avatar: const Icon(Icons.auto_awesome, size: 16),
-                label:
-                    Text(live ? 'Live animations: On' : 'Live animations: Off'),
-                selected: live,
-                onSelected: (on) => setState(() => _liveGrid = on)),
-          ]),
-      const SizedBox(height: AppSpacing.md),
-      ...state.items.map((item) {
-        final banner = item.kind == 'banner';
-        final details = Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(children: [
-            if (!banner) ...[
-              _cosmeticSwatch(item, name, avatar),
-              const SizedBox(width: AppSpacing.md),
-            ],
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(item.name,
-                      style: AppTypography.labelLarge
-                          .copyWith(fontWeight: FontWeight.bold)),
-                  Text('${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.textSecondary)),
-                  Text(_cosmeticPrice(item),
-                      style: AppTypography.bodySmall.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: item.owned
-                              ? AppColors.primary
-                              : AppColors.woodBrown)),
-                ])),
-            if (item.equipped)
-              const Icon(Icons.check_circle, color: AppColors.primary),
-          ]),
-        );
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          color: AppColors.surfaceContainerLowest,
-          child: InkWell(
-            onTap: () => _showCosmeticPreview(item, points, name, avatar),
-            child: banner
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                        ProfileBanner(
-                            asset: item.asset,
-                            seed: item.seed,
-                            height: 112,
-                            animate: live,
-                            forceMotion: _liveGrid == true,
-                            child: item.asset['style'] == 'procedural'
-                                ? const Align(
-                                    alignment: Alignment.bottomLeft,
-                                    child: Padding(
-                                        padding: EdgeInsets.all(8),
-                                        child: Text('Procedural · animated',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700))))
-                                : null),
-                        details,
-                      ])
-                : details,
+  Widget _tabRow(BuildContext context, PixelGrid grid) {
+    return Wrap(
+      spacing: grid.px(2),
+      runSpacing: grid.px(2),
+      children: [
+        for (final tab in _tabs)
+          GestureDetector(
+            key: ValueKey('shop_tab_${tab.$1}'),
+            onTap: () {
+              pixelTick(context);
+              setState(() => _selectedTab = tab.$1);
+            },
+            child: PixelPanel(
+              style: (_selectedTab == tab.$1
+                      ? PixelBoxStyle.green
+                      : PixelBoxStyle.parchment)
+                  .copyWith(corner: 1, shadowPx: 1),
+              padding: 1,
+              child: Text(
+                tab.$2.toUpperCase(),
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                style: PixelType.small(
+                  context,
+                  color: _selectedTab == tab.$1
+                      ? PixelPalette.white
+                      : PixelPalette.ink,
+                ),
+              ),
+            ),
           ),
-        );
-      })
-    ]);
+      ],
+    );
   }
 
-  /// Small swatch for list rows; frames, titles and name colours use the traveler's own look.
-  Widget _cosmeticSwatch(CosmeticItem item, String name, String? avatar) {
+  Widget _cosmetics(
+    BuildContext context,
+    PixelGrid grid,
+    CosmeticsState state,
+    int points,
+  ) {
+    if (state.isLoading && state.items.isEmpty) {
+      return const Center(child: PixelLoader(label: 'Loading shop'));
+    }
+    if (state.error != null && state.items.isEmpty) {
+      return _errorPanel(context, grid, state.error!, () {
+        ref.read(cosmeticsProvider.notifier).load();
+      });
+    }
+    if (state.items.isEmpty) {
+      return const PixelEmptyState(
+        key: ValueKey('shop_cosmetics_empty'),
+        title: 'No cosmetics yet',
+        message: 'Check back soon for new looks.',
+      );
+    }
+    final live = _liveGrid ?? !MediaQuery.of(context).disableAnimations;
+    final visibleItems = state.items
+        .where((item) => _filter == 'all' || item.kind == _filter)
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: grid.px(1),
+          runSpacing: grid.px(1),
+          children: [
+            for (final filter in _filters)
+              GestureDetector(
+                key: ValueKey('shop_filter_${filter.$1}'),
+                onTap: () {
+                  pixelTick(context);
+                  setState(() => _filter = filter.$1);
+                },
+                child: PixelPanel(
+                  style: (_filter == filter.$1
+                          ? PixelBoxStyle.gold
+                          : PixelBoxStyle.slot)
+                      .copyWith(corner: 1, shadowPx: 0),
+                  padding: 1,
+                  child: Text(
+                    filter.$2.toUpperCase(),
+                    style: PixelType.small(context),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        SizedBox(height: grid.px(2)),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                live ? 'Live animations: On' : 'Live animations: Off',
+                style: PixelType.body(context),
+              ),
+            ),
+            PixelSwitch(
+              key: const ValueKey('shop_live_animations'),
+              value: live,
+              semanticLabel: 'Live animations',
+              onChanged: (on) => setState(() => _liveGrid = on),
+            ),
+          ],
+        ),
+        SizedBox(height: grid.px(2)),
+        for (var i = 0; i < visibleItems.length; i++) ...[
+          if (i > 0) SizedBox(height: grid.px(2)),
+          _cosmeticCard(context, grid, visibleItems[i], points, live),
+        ],
+      ],
+    );
+  }
+
+  Widget _cosmeticCard(
+    BuildContext context,
+    PixelGrid grid,
+    CosmeticItem item,
+    int points,
+    bool live,
+  ) {
+    final banner = item.kind == 'banner';
+    final details = Padding(
+      padding: EdgeInsets.all(grid.px(2)),
+      child: Row(
+        children: [
+          if (!banner) ...[
+            _cosmeticSwatch(context, grid, item),
+            SizedBox(width: grid.px(2)),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.name, style: PixelType.title(context)),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  '${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
+                  style: PixelType.body(
+                    context,
+                    color: PixelPalette.slate,
+                  ),
+                ),
+                Text(
+                  _cosmeticPrice(item),
+                  style: PixelType.numbers(
+                    context,
+                    color: item.owned
+                        ? PixelPalette.greenDark
+                        : PixelPalette.woodMid,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (item.equipped)
+            const PixelChip('Equipped', style: PixelBoxStyle.green,
+                textColor: PixelPalette.white),
+        ],
+      ),
+    );
+    return GestureDetector(
+      key: ValueKey('shop_cosmetic_${item.id}'),
+      onTap: () => _showCosmeticPreview(item, points),
+      child: PixelPanel(
+        style: PixelBoxStyle.parchment,
+        padding: 2,
+        child: banner
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: grid.px(52),
+                    child: ClipRect(
+                      child: ProfileBanner(
+                        asset: item.asset,
+                        seed: item.seed,
+                        height: grid.px(52),
+                        animate: live,
+                        forceMotion: _liveGrid == true,
+                        child: item.asset['style'] == 'procedural'
+                            ? Align(
+                                alignment: Alignment.bottomLeft,
+                                child: Padding(
+                                  padding: EdgeInsets.all(grid.px(1)),
+                                  child: Text(
+                                    'Procedural · animated',
+                                    style: PixelType.small(
+                                      context,
+                                      color: PixelPalette.white,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                  details,
+                ],
+              )
+            : details,
+      ),
+    );
+  }
+
+  /// Small swatch for list rows; frames, titles and name colours use the
+  /// traveler's own look.
+  Widget _cosmeticSwatch(
+      BuildContext context, PixelGrid grid, CosmeticItem item) {
+    final user = ref.read(authProvider).user;
+    final name = user?.displayName ?? 'Traveler';
     if (item.kind == 'banner') {
       return SizedBox(
-          width: 58,
-          height: 46,
-          child: ClipRRect(
-              borderRadius: BorderRadius.circular(9),
-              child: ProfileBanner(
-                  asset: item.asset,
-                  seed: item.seed,
-                  height: 46,
-                  animate: false)));
+        width: grid.px(24),
+        height: grid.px(20),
+        child: ClipRect(
+          child: ProfileBanner(
+            asset: item.asset,
+            seed: item.seed,
+            height: grid.px(20),
+            animate: false,
+          ),
+        ),
+      );
     }
     if (item.kind == 'frame') {
       return CosmeticAvatar(
-          name: name, imageUrl: avatar, frame: item.asset, size: 40);
+          name: name,
+          imageUrl: user?.avatarUrl,
+          frame: item.asset,
+          size: grid.px(20));
     }
-    return Container(
-        width: 96,
-        constraints: const BoxConstraints(minHeight: 44),
-        padding: const EdgeInsets.all(6),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLow,
-            border: Border.all(color: AppColors.borderLowContrast),
-            borderRadius: BorderRadius.circular(9)),
+    return SizedBox(
+      width: grid.px(40),
+      child: PixelPanel(
+        style: PixelBoxStyle.slot,
+        padding: 1,
         child: item.kind == 'name_color'
-            ? Text(name,
+            ? Text(
+                name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    color: _assetColor(item.asset['color']),
-                    fontWeight: FontWeight.w900))
-            : Text(item.asset['text']?.toString() ?? 'Title',
+                style: PixelType.body(
+                  context,
+                  color: _assetColor(item.asset['color']) ?? PixelPalette.ink,
+                ),
+              )
+            : Text(
+                item.asset['text']?.toString() ?? 'Title',
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.bold)));
+                style: PixelType.small(context),
+              ),
+      ),
+    );
   }
 
   String _cosmeticPrice(CosmeticItem item) {
@@ -658,399 +669,488 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     }
   }
 
-  void _showCosmeticPreview(
-      CosmeticItem item, int points, String name, String? avatar) {
+  void _showCosmeticPreview(CosmeticItem item, int points) {
     final cosmetics = ref.read(cosmeticsProvider);
+    final user = ref.read(authProvider).user;
+    final name = user?.displayName ?? 'Traveler';
+    final avatar = user?.avatarUrl;
     final equipped = equippedLoadout(cosmetics.loadout,
         [...cosmetics.items, ...cosmetics.owned.map((o) => o.item)]);
     showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (sheetContext) => SafeArea(
-            child: Container(
-                constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(sheetContext).size.height * .92),
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: const BoxDecoration(
-                    color: AppColors.surfaceContainerLowest,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(24))),
-                child: SingleChildScrollView(
-                    child: PassportPreview(
-                        selected: item,
-                        equipped: equipped,
-                        name: name,
-                        avatarUrl: avatar,
-                        actions: [
-                      if (item.buyable && item.pricePoints != null)
-                        PrimaryButton(
-                            label: points < item.pricePoints!
-                                ? 'Need ${item.pricePoints! - points} more points'
-                                : 'Buy for ${item.pricePoints} points',
-                            onPressed: points < item.pricePoints!
-                                ? null
-                                : () async {
-                                    if (!await _walletReady(item.name)) return;
-                                    final error = await ref
-                                        .read(cosmeticsProvider.notifier)
-                                        .purchase(item);
-                                    if (sheetContext.mounted) {
-                                      Navigator.of(sheetContext).pop();
-                                    }
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(SnackBar(
-                                              content: Text(error ??
-                                                  '${item.name} purchased.')));
-                                    }
-                                  }),
-                      if (item.owned)
-                        PrimaryButton(
-                            label: item.equipped ? 'Unequip' : 'Equip now',
-                            onPressed: () async {
-                              final error = await ref
-                                  .read(cosmeticsProvider.notifier)
-                                  .equip(item, clear: item.equipped);
-                              if (sheetContext.mounted) {
-                                Navigator.of(sheetContext).pop();
-                              }
-                              if (mounted && error != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(error)));
-                              }
-                            }),
-                      if (!item.owned && !item.buyable)
-                        Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text(_cosmeticPrice(item),
-                                style: AppTypography.bodyMedium
-                                    .copyWith(color: AppColors.textSecondary))),
-                      if (item.owned)
-                        TextButton(
-                            key: const ValueKey('passport_view_profile'),
-                            onPressed: () {
-                              Navigator.of(sheetContext).pop();
-                              context.go('/profile');
-                            },
-                            child: const Text('View on my profile →')),
-                      const SizedBox(height: AppSpacing.sm),
-                      SecondaryButton(
-                          label: 'Close preview',
-                          onPressed: () => Navigator.of(sheetContext).pop()),
-                    ])))));
-  }
-
-  Widget _buildTeasers(CosmeticsState state) {
-    if (state.isLoading && state.teasers.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (state.teasers.isEmpty) {
-      return const Center(child: Text('More shop features are coming soon.'));
-    }
-    return Column(
-        children: state.teasers
-            .map((t) => Card(
-                color: AppColors.surfaceContainerLowest,
-                child: ListTile(
-                    leading: const Icon(Icons.auto_awesome,
-                        color: AppColors.sunGold),
-                    title: Text(t.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(t.description),
-                    trailing: Text(t.etaText ?? 'Coming soon',
-                        style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary)))))
-            .toList());
-  }
-
-  Widget _buildOwnedCosmetics(
-      CosmeticsState state, String name, String? avatar) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (state.owned.isEmpty)
-        const Text('No cosmetics owned yet. Browse the shop to get started.'),
-      ...state.owned.map((owned) => Card(
-          color: AppColors.surfaceContainerLowest,
-          child: ListTile(
-              leading: _cosmeticSwatch(
-                  owned.item,
-                  ref.read(authProvider).user?.displayName ?? 'Traveler',
-                  ref.read(authProvider).user?.avatarUrl),
-              title: Text(owned.item.name),
-              subtitle: Text(owned.source == 'achievement'
-                  ? 'Achievement unlock'
-                  : owned.source == 'grant'
-                      ? 'Admin grant'
-                      : 'Purchased'),
-              trailing: TextButton(
-                  onPressed: () =>
-                      _showCosmeticPreview(owned.item, 0, name, avatar),
-                  child: Text(owned.item.equipped ? 'Equipped' : 'Equip')))))
-    ]);
-  }
-
-  Widget _buildRedeemedCard(
-      BuildContext context, RedeemedVoucherModel redeemed) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.sunGold, width: 1.2),
-        boxShadow: AppSpacing.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: const BoxDecoration(
-                  color: AppColors.crowdQuietBg,
-                  borderRadius: AppSpacing.roundedPill,
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          child: PixelPanel(
+            style: PixelBoxStyle.parchment,
+            child: Column(
+              children: [
+                PassportPreview(
+                  selected: item,
+                  equipped: equipped,
+                  name: name,
+                  avatarUrl: avatar,
+                  actions: [
+                    if (item.buyable && item.pricePoints != null)
+                      PixelButton(
+                        key: const ValueKey('shop_buy_cosmetic'),
+                        label: points < item.pricePoints!
+                            ? 'Need ${item.pricePoints! - points} more points'
+                            : 'Buy for ${item.pricePoints} points',
+                        expand: true,
+                        onPressed: points < item.pricePoints!
+                            ? null
+                            : () async {
+                                if (!await _walletReady(item.name)) return;
+                                final error = await ref
+                                    .read(cosmeticsProvider.notifier)
+                                    .purchase(item);
+                                if (sheetContext.mounted) {
+                                  Navigator.of(sheetContext).pop();
+                                }
+                                if (mounted) {
+                                  showPixelToast(context,
+                                      error ?? '${item.name} purchased.');
+                                }
+                              },
+                      ),
+                    if (item.owned)
+                      PixelButton(
+                        key: const ValueKey('shop_equip_cosmetic'),
+                        label: item.equipped ? 'Unequip' : 'Equip now',
+                        expand: true,
+                        onPressed: () async {
+                          final error = await ref
+                              .read(cosmeticsProvider.notifier)
+                              .equip(item, clear: item.equipped);
+                          if (sheetContext.mounted) {
+                            Navigator.of(sheetContext).pop();
+                          }
+                          if (mounted && error != null) {
+                            showPixelToast(context, error);
+                          }
+                        },
+                      ),
+                    if (!item.owned && !item.buyable)
+                      Text(
+                        _cosmeticPrice(item),
+                        style: PixelType.body(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                    if (item.owned)
+                      GestureDetector(
+                        key: const ValueKey('passport_view_profile'),
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          context.go('/profile');
+                        },
+                        child: Padding(
+                          padding: EdgeInsets.all(
+                              PixelGrid.of(context).px(2)),
+                          child: Text(
+                            'View on my profile',
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.greenDark,
+                            ),
+                          ),
+                        ),
+                      ),
+                    PixelButton(
+                      label: 'Close preview',
+                      variant: PixelButtonVariant.secondary,
+                      expand: true,
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                    ),
+                  ],
                 ),
-                child: const Text(
-                  'ACTIVE VOUCHER',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryDark,
-                  ),
-                ),
-              ),
-              Text(
-                'Expires in 30 days',
-                style: AppTypography.bodySmall
-                    .copyWith(fontSize: 11, color: AppColors.textMuted),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            redeemed.offerTitle,
-            style: AppTypography.headlineSmall.copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.woodBrown,
+              ],
             ),
           ),
-          Text(
-            redeemed.merchantName,
-            style: AppTypography.bodySmall
-                .copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: AppSpacing.roundedMd,
-                  border: Border.all(color: AppColors.borderLowContrast),
-                ),
-                child: Text(
-                  redeemed.code,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-              PrimaryButton(
-                label: 'Show Barcode',
-                icon: Icons.qr_code_rounded,
-                onPressed: () => _showRedeemedVoucherModal(context, redeemed),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildVoucherCard({
-    required BuildContext context,
-    required VoucherModel voucher,
-    required int userPoints,
-  }) {
-    final canAfford = userPoints >= voucher.costPoints;
+  Widget _vouchers(
+    BuildContext context,
+    PixelGrid grid,
+    VoucherState state,
+    int points,
+  ) {
+    if (state.isLoading && state.vouchers.isEmpty) {
+      return const Center(child: PixelLoader(label: 'Loading vouchers'));
+    }
+    if (state.error != null && state.vouchers.isEmpty) {
+      return _errorPanel(context, grid, state.error!, () {
+        ref.read(voucherProvider.notifier).fetchVouchers();
+      });
+    }
+    if (state.vouchers.isEmpty) {
+      return PixelEmptyState(
+        key: const ValueKey('shop_vouchers_empty'),
+        title: 'No active vouchers',
+        message: 'Check back soon for new partner merchant offers.',
+        action: PixelButton(
+          label: 'Refresh',
+          variant: PixelButtonVariant.secondary,
+          onPressed: () =>
+              ref.read(voucherProvider.notifier).fetchVouchers(),
+        ),
+      );
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < state.vouchers.length; i++) ...[
+          if (i > 0) SizedBox(height: grid.px(2)),
+          _voucherCard(context, grid, state.vouchers[i], points),
+        ],
+      ],
+    );
+  }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.borderLowContrast),
-        boxShadow: AppSpacing.cardShadow,
-      ),
+  Widget _voucherCard(
+    BuildContext context,
+    PixelGrid grid,
+    VoucherModel voucher,
+    int userPoints,
+  ) {
+    final canAfford = userPoints >= voucher.costPoints;
+    return PixelPanel(
+      key: ValueKey('shop_voucher_${voucher.id}'),
+      style: PixelBoxStyle.parchment,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (voucher.availability == 'preview') ...[
-            Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                    color: AppColors.sunGold.withOpacity(.18),
-                    borderRadius: AppSpacing.roundedMd),
-                child: const Text('Sample offer · partner coming soon',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.woodBrown))),
-            const SizedBox(height: AppSpacing.sm),
+            PixelPanel(
+              style: PixelBoxStyle.gold.copyWith(shadowPx: 0),
+              padding: 1,
+              child: Text(
+                'SAMPLE OFFER · PARTNER COMING SOON',
+                textAlign: TextAlign.center,
+                style: PixelType.small(context),
+              ),
+            ),
+            SizedBox(height: grid.px(2)),
           ],
           Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 4,
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: const BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: AppSpacing.roundedPill,
-                ),
-                child: Text(
-                  voucher.category.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: canAfford
-                      ? AppColors.sunGold.withOpacity(0.2)
-                      : AppColors.surfaceContainerLow,
-                  borderRadius: AppSpacing.roundedPill,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.stars_rounded,
-                        color: AppColors.sunGold, size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${voucher.costPoints} PTS',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: canAfford
-                            ? AppColors.woodBrown
-                            : AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
+              PixelChip(voucher.category.replaceAll('_', ' ').toUpperCase(),
+                  style: PixelBoxStyle.slot),
+              PixelChip(
+                '${voucher.costPoints} pts',
+                style: canAfford
+                    ? PixelBoxStyle.gold
+                    : PixelBoxStyle.slot,
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          SizedBox(height: grid.px(2)),
+          Text(voucher.offerTitle, style: PixelType.title(context)),
+          SizedBox(height: grid.px(1)),
           Text(
-            voucher.offerTitle,
-            style: AppTypography.headlineSmall.copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.woodBrown,
-            ),
+            voucher.merchantName,
+            style: PixelType.body(context, color: PixelPalette.slate),
           ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.storefront_rounded,
-                  size: 14, color: AppColors.textMuted),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  voucher.merchantName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.bodySmall
-                      .copyWith(color: AppColors.textSecondary),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              const Icon(Icons.location_on_rounded,
-                  size: 14, color: AppColors.textMuted),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  voucher.location,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.bodySmall
-                      .copyWith(color: AppColors.textMuted, fontSize: 11),
-                ),
-              ),
-            ],
+          Text(
+            voucher.location,
+            style: PixelType.small(context, color: PixelPalette.slate),
           ),
           if (voucher.description.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
+            SizedBox(height: grid.px(2)),
             Text(
               voucher.description,
-              style: AppTypography.bodySmall
-                  .copyWith(color: AppColors.textSecondary),
+              style: PixelType.body(context, color: PixelPalette.slate),
             ),
           ],
-          const SizedBox(height: AppSpacing.md),
-          if (!voucher.redeemable) ...[
+          SizedBox(height: grid.px(3)),
+          if (!voucher.redeemable)
             Text(
-                'Planned offer · ${voucher.costPoints} points · not redeemable yet',
-                style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.bold)),
-          ] else
-            SizedBox(
-              width: double.infinity,
-              child: PrimaryButton(
-                label: canAfford
-                    ? 'Redeem Voucher'
-                    : 'Insufficient Points (${voucher.costPoints - userPoints} needed)',
-                onPressed: canAfford && voucher.redeemable
-                    ? () async {
-                        if (!await _walletReady(voucher.offerTitle) ||
-                            !context.mounted) {
-                          return;
-                        }
-                        _showVoucherConfirmationDialog(
-                          context: context,
-                          voucher: voucher,
-                          userPoints: userPoints,
-                        );
-                      }
-                    : null,
+              'Planned offer · ${voucher.costPoints} points · not redeemable yet',
+              style: PixelType.body(
+                context,
+                color: PixelPalette.slate,
               ),
+            )
+          else
+            PixelButton(
+              key: ValueKey('shop_redeem_${voucher.id}'),
+              label: canAfford
+                  ? 'Redeem Voucher'
+                  : 'Need ${voucher.costPoints - userPoints} more points',
+              expand: true,
+              onPressed: canAfford && voucher.redeemable
+                  ? () async {
+                      if (!await _walletReady(voucher.offerTitle) ||
+                          !context.mounted) {
+                        return;
+                      }
+                      _showVoucherConfirmationDialog(
+                        context: context,
+                        voucher: voucher,
+                        userPoints: userPoints,
+                      );
+                    }
+                  : null,
             ),
         ],
       ),
     );
   }
+
+  Widget _teasers(
+      BuildContext context, PixelGrid grid, CosmeticsState state) {
+    if (state.isLoading && state.teasers.isEmpty) {
+      return const Center(child: PixelLoader(label: 'Loading teasers'));
+    }
+    if (state.teasers.isEmpty) {
+      return const PixelEmptyState(
+        key: ValueKey('shop_teasers_empty'),
+        title: 'More is coming',
+        message: 'More shop features are coming soon.',
+      );
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < state.teasers.length; i++) ...[
+          if (i > 0) SizedBox(height: grid.px(2)),
+          _teaserCard(context, grid, state.teasers[i]),
+        ],
+      ],
+    );
+  }
+
+  Widget _teaserCard(BuildContext context, PixelGrid grid, ShopTeaser teaser) {
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PixelChip(teaser.etaText ?? 'Coming soon',
+              style: PixelBoxStyle.gold),
+          SizedBox(height: grid.px(2)),
+          Text(teaser.title, style: PixelType.title(context)),
+          SizedBox(height: grid.px(1)),
+          Text(
+            teaser.description,
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _myItems(
+    BuildContext context,
+    PixelGrid grid,
+    CosmeticsState state,
+    VoucherState voucherState,
+    String name,
+    String? avatar,
+  ) {
+    if (state.isLoading && state.owned.isEmpty) {
+      return const Center(child: PixelLoader(label: 'Loading your items'));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (state.owned.isEmpty)
+          const PixelEmptyState(
+            key: ValueKey('shop_owned_empty'),
+            title: 'No cosmetics owned',
+            message: 'Browse the shop to get started.',
+          )
+        else
+          for (final kind in const [
+            'banner',
+            'frame',
+            'title',
+            'name_color'
+          ]) ...[
+            if (state.owned.any((owned) => owned.item.kind == kind)) ...[
+              Text(
+                _kindLabel(kind),
+                style: PixelType.title(context),
+              ),
+              SizedBox(height: grid.px(2)),
+              for (final owned
+                  in state.owned.where((o) => o.item.kind == kind)) ...[
+                GestureDetector(
+                  key: ValueKey('shop_owned_${owned.item.id}'),
+                  onTap: () => _showCosmeticPreview(owned.item, 0),
+                  child: PixelPanel(
+                    style: PixelBoxStyle.parchment,
+                    child: Row(
+                      children: [
+                        _cosmeticSwatch(context, grid, owned.item),
+                        SizedBox(width: grid.px(2)),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(owned.item.name,
+                                  style: PixelType.title(context)),
+                              Text(
+                                owned.source == 'achievement'
+                                    ? 'Achievement unlock'
+                                    : owned.source == 'grant'
+                                        ? 'Admin grant'
+                                        : 'Purchased',
+                                style: PixelType.body(
+                                  context,
+                                  color: PixelPalette.slate,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: grid.px(1)),
+                        PixelButton(
+                          key: ValueKey(
+                              'shop_owned_equip_${owned.item.id}'),
+                          label: owned.item.equipped ? 'Unequip' : 'Equip',
+                          variant: PixelButtonVariant.secondary,
+                          onPressed: () async {
+                            final error = await ref
+                                .read(cosmeticsProvider.notifier)
+                                .equip(owned.item,
+                                    clear: owned.item.equipped);
+                            if (error != null && context.mounted) {
+                              showPixelToast(context, error);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: grid.px(2)),
+              ],
+            ],
+          ],
+        SizedBox(height: grid.px(3)),
+        Text('Redeemed vouchers', style: PixelType.title(context)),
+        SizedBox(height: grid.px(2)),
+        if (voucherState.redeemedVouchers.isEmpty)
+          PixelEmptyState(
+            key: const ValueKey('shop_redeemed_empty'),
+            title: 'No redeemed vouchers yet',
+            message:
+                'Complete quests to earn points and explore rewards from participating local merchants.',
+            action: PixelButton(
+              label: 'Browse merchant offers',
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => setState(() => _selectedTab = 1),
+            ),
+          )
+        else
+          for (final redeemed in voucherState.redeemedVouchers) ...[
+            _redeemedCard(context, grid, redeemed),
+            SizedBox(height: grid.px(2)),
+          ],
+      ],
+    );
+  }
+
+  Widget _redeemedCard(
+      BuildContext context, PixelGrid grid, RedeemedVoucherModel redeemed) {
+    return PixelPanel(
+      key: ValueKey('shop_redeemed_${redeemed.code}'),
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const PixelChip('Active voucher', style: PixelBoxStyle.green,
+                  textColor: PixelPalette.white),
+              Text(
+                'Expires in 30 days',
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(redeemed.offerTitle, style: PixelType.title(context)),
+          Text(
+            redeemed.merchantName,
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(2),
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              PixelPanel(
+                style: PixelBoxStyle.slot,
+                padding: 1,
+                child: Text(
+                  redeemed.code,
+                  style: PixelType.numbers(context),
+                ),
+              ),
+              PixelButton(
+                key: ValueKey('shop_show_barcode_${redeemed.code}'),
+                label: 'Show Barcode',
+                variant: PixelButtonVariant.secondary,
+                onPressed: () =>
+                    _showRedeemedVoucherModal(context, redeemed),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorPanel(
+    BuildContext context,
+    PixelGrid grid,
+    String message,
+    VoidCallback retry,
+  ) {
+    return PixelPanel(
+      style: PixelBoxStyle.red,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Could not load the shop',
+            style: PixelType.title(context, color: PixelPalette.white),
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            message,
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+          SizedBox(height: grid.px(3)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: PixelButton(
+              key: const ValueKey('shop_error_retry'),
+              label: 'Retry',
+              onPressed: retry,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _kindLabel(String kind) => switch (kind) {
+        'banner' => 'Banners',
+        'frame' => 'Avatar frames',
+        'title' => 'Titles',
+        _ => 'Name colours',
+      };
 }

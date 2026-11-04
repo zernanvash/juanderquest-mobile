@@ -4,11 +4,15 @@ import 'package:go_router/go_router.dart';
 import 'package:reown_appkit/reown_appkit.dart'
     hide PrimaryButton, SecondaryButton;
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/wallet_signature_service.dart';
 
@@ -16,24 +20,35 @@ import '../../auth/services/wallet_signature_service.dart';
 /// Returns true when the traveler chose to connect and a wallet is now linked.
 Future<bool> showConnectWalletPromptDialog(BuildContext context,
     {required String itemTitle}) async {
-  final connect = await showDialog<bool>(
+  final connect = await showPixelDialog<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    title: 'Connect a wallet',
+    content: Column(
       key: const ValueKey('connect_wallet_prompt'),
-      icon: const Icon(Icons.account_balance_wallet_outlined),
-      title: const Text('Connect a wallet to continue'),
-      content: Text(
-          'You can explore, earn EXP and browse the shop without a wallet. To get "$itemTitle", link a Web3 wallet to your account. Your progress stays the same.'),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Not now')),
-        FilledButton(
-            key: const ValueKey('connect_wallet_prompt_yes'),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Connect wallet')),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'You can explore, earn EXP and browse the shop without a wallet. To get "$itemTitle", link a Web3 wallet to your account. Your progress stays the same.',
+          style: PixelType.body(
+            context,
+            color: PixelPalette.slate,
+          ),
+        ),
       ],
     ),
+    actions: [
+      PixelButton(
+        label: 'Not now',
+        variant: PixelButtonVariant.secondary,
+        onPressed: () => Navigator.of(context).pop(false),
+      ),
+      PixelButton(
+        key: const ValueKey('connect_wallet_prompt_yes'),
+        label: 'Connect wallet',
+        onPressed: () => Navigator.of(context).pop(true),
+      ),
+    ],
   );
   if (connect != true || !context.mounted) return false;
   return await context.push<bool>('/wallet/connect') ?? false;
@@ -106,8 +121,8 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
           await notifier.bindWallet(address: address, signature: signature);
       if (!mounted) return;
       if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Wallet linked. You can finish your purchase now.')));
+        showPixelToast(
+            context, 'Wallet linked. You can finish your purchase now.');
         context.pop(true);
         return;
       }
@@ -126,63 +141,153 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    return JdqScaffold(
-      appBar: AppBar(title: const Text('Connect wallet')),
-      scrollable: true,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: AppSpacing.md),
-          if (user != null)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.person_outline_rounded),
-                title: Text(user.displayName,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text(user.email,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: Text('${user.points} pts',
-                    style: AppTypography.labelLarge
-                        .copyWith(color: AppColors.woodBrown)),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Connect Wallet',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(4),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      children: [
+                        PixelPanel(
+                          style: PixelBoxStyle.wood,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'A linked wallet',
+                                style: PixelType.title(
+                                  context,
+                                  color: PixelPalette.paper,
+                                ),
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Text(
+                                'Redeem partner vouchers, buy cosmetics, and claim test rewards and badges on Polygon Amoy. Testnet only, no real money. Your account, EXP and points stay exactly as they are.',
+                                style: PixelType.body(
+                                  context,
+                                  color: PixelPalette.cream,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: grid.px(3)),
+                        if (user != null)
+                          PixelPanel(
+                            style: PixelBoxStyle.parchment,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        user.displayName,
+                                        maxLines: 2,
+                                        style: PixelType.title(context),
+                                      ),
+                                      SizedBox(height: grid.px(1)),
+                                      Text(
+                                        user.email,
+                                        maxLines: 2,
+                                        style: PixelType.body(
+                                          context,
+                                          color: PixelPalette.slate,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(width: grid.px(2)),
+                                PixelChip('${user.points} pts'),
+                              ],
+                            ),
+                          ),
+                        SizedBox(height: grid.px(3)),
+                        if (user?.hasBoundWallet == true)
+                          PixelPanel(
+                            key: const ValueKey('wallet_connect_already'),
+                            style: PixelBoxStyle.green,
+                            child: Text(
+                              'This account already has a wallet linked.',
+                              textAlign: TextAlign.center,
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.white,
+                              ),
+                            ),
+                          )
+                        else ...[
+                          if (_modal != null)
+                            PixelPanel(
+                              style: PixelBoxStyle.parchment,
+                              padding: 2,
+                              child: AppKitModalConnectButton(
+                                appKit: _modal!,
+                                context: context,
+                              ),
+                            ),
+                          SizedBox(height: grid.px(3)),
+                          PixelButton(
+                            key: const ValueKey('wallet_connect_bind'),
+                            label: 'Link this wallet',
+                            expand: true,
+                            loading: _busy,
+                            onPressed: _busy || _modal == null ? null : _bind,
+                          ),
+                        ],
+                        if (_error != null) ...[
+                          SizedBox(height: grid.px(3)),
+                          PixelPanel(
+                            style: PixelBoxStyle.red,
+                            child: Text(
+                              _error!,
+                              key: const ValueKey('wallet_connect_error'),
+                              textAlign: TextAlign.center,
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                        SizedBox(height: grid.px(3)),
+                        PixelButton(
+                          label: 'Not now',
+                          variant: PixelButtonVariant.secondary,
+                          expand: true,
+                          onPressed: _busy ? null : () => context.pop(false),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-              'A linked wallet lets you redeem partner vouchers, buy cosmetics, and claim test rewards and badges on Polygon Amoy (testnet, no real money). Your account, EXP and points stay exactly as they are.',
-              style: AppTypography.bodyMedium
-                  .copyWith(color: AppColors.textSecondary)),
-          const SizedBox(height: AppSpacing.lg),
-          if (user?.hasBoundWallet == true)
-            Text('This account already has a wallet linked.',
-                key: const ValueKey('wallet_connect_already'),
-                textAlign: TextAlign.center,
-                style: AppTypography.bodyMedium
-                    .copyWith(color: AppColors.primary))
-          else ...[
-            if (_modal != null)
-              AppKitModalConnectButton(appKit: _modal!, context: context),
-            const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
-              key: const ValueKey('wallet_connect_bind'),
-              label: 'Link this wallet',
-              icon: Icons.link_rounded,
-              isLoading: _busy,
-              onPressed: _busy || _modal == null ? null : _bind,
-            ),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text(_error!,
-                key: const ValueKey('wallet_connect_error'),
-                textAlign: TextAlign.center,
-                style:
-                    AppTypography.bodySmall.copyWith(color: AppColors.danger)),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          TextButton(
-              onPressed: _busy ? null : () => context.pop(false),
-              child: const Text('Not now')),
-        ],
+          );
+        },
       ),
     );
   }
