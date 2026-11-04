@@ -60,6 +60,7 @@ import 'package:juanderquest_app/features/ar_experience/screens/ar_quest_screen.
 import 'package:juanderquest_app/features/ar_experience/widgets/ar_overlay.dart';
 import 'package:juanderquest_app/features/quests/screens/qr_scan_screen.dart';
 import 'package:juanderquest_app/features/auth/screens/forgot_password_screen.dart';
+import 'package:juanderquest_app/features/auth/screens/login_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/interests_screen.dart';
 import 'package:juanderquest_app/features/spots/widgets/spot_community_section.dart';
 import 'package:juanderquest_app/features/app_update/domain/update_classification.dart';
@@ -1070,6 +1071,12 @@ void main() {
       });
 
       testWidgets(
+          'LoginScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(tester, const LoginScreen(), size, 2.0);
+      });
+
+      testWidgets(
           'InterestsScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
         await testScreenOverflow(tester, const InterestsScreen(), size, 2.0);
@@ -1190,6 +1197,22 @@ void main() {
         tester,
         const Scaffold(body: Center(child: UpdateDialog(versionInfo: info))),
         const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('UpdateDialog does not overflow in small landscape',
+        (tester) async {
+      const info = AppVersionInfo(
+        versionCode: 151,
+        versionName: '1.0.1',
+        downloadUrl: 'https://api.juanderquest.app/api/v1/app/download',
+        changelog: 'New release notes and features.',
+      );
+      await testScreenOverflow(
+        tester,
+        const Scaffold(body: Center(child: UpdateDialog(versionInfo: info))),
+        const Size(568, 320),
         2.0,
       );
     });

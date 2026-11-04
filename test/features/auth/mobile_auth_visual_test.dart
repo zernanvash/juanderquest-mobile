@@ -28,7 +28,7 @@ void main() {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith((ref) => _SignedOut())],
         child: MaterialApp(
-          theme: AppTheme.lightTheme,
+          theme: AppTheme.pixel,
           home: const LoginScreen(),
         ),
       ));
@@ -38,7 +38,7 @@ void main() {
       expect(find.text('LGU Admin'), findsNothing);
       expect(find.textContaining('SELECT DEMO'), findsNothing);
       await tester.scrollUntilVisible(
-        find.text('Sign in with email'),
+        find.byKey(const ValueKey('auth_sign_in')),
         180,
         scrollable: find.byType(Scrollable).first,
       );
@@ -63,15 +63,15 @@ void main() {
     });
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => _SignedOut())],
-      child: MaterialApp(theme: AppTheme.lightTheme, home: const LoginScreen()),
+      child: MaterialApp(theme: AppTheme.pixel, home: const LoginScreen()),
     ));
     await tester.pump();
-    await tester.tap(find.text('Create account'));
+    await tester.tap(find.byKey(const ValueKey('tab_signup')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('auth_display_name')), findsOneWidget);
     expect(find.byKey(const ValueKey('auth_age_eligibility')), findsOneWidget);
     expect(find.byKey(const ValueKey('auth_terms')), findsOneWidget);
-    expect(find.text('Create traveler account'), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth_create_account')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:reown_appkit/reown_appkit.dart'
     hide PrimaryButton, SecondaryButton;
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_input.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../services/wallet_signature_service.dart';
 
@@ -219,94 +220,134 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Sign in with your wallet'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                      'Connect your wallet, then approve a sign-in message. This does not send a transaction or move tokens.'),
-                  const SizedBox(height: AppSpacing.md),
-                  AppKitModalConnectButton(appKit: modal, context: context),
-                  if (walletError != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(walletError!,
-                        style: const TextStyle(color: AppColors.danger)),
-                  ],
-                ],
+          builder: (context, setDialogState) => Theme(
+            data: AppTheme.pixel,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: PixelPanel(
+                  style: PixelBoxStyle.parchment,
+                  padding: 3,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ShadowText(
+                          'SIGN IN WITH YOUR WALLET',
+                          style: PixelType.title(context),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Connect your wallet, then approve a sign-in message. This does not send a transaction or move tokens.',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        AppKitModalConnectButton(
+                            appKit: modal, context: context),
+                        if (walletError != null) ...[
+                          const SizedBox(height: 12),
+                          PixelPanel(
+                            style: PixelBoxStyle.red,
+                            padding: 2,
+                            child: Text(
+                              walletError!,
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            PixelButton(
+                              variant: PixelButtonVariant.secondary,
+                              onPressed: signing
+                                  ? null
+                                  : () => Navigator.of(dialogContext).pop(),
+                              label: 'Cancel',
+                            ),
+                            const SizedBox(width: 8),
+                            PixelButton(
+                              loading: signing,
+                              onPressed: signing
+                                  ? null
+                                  : () async {
+                                      final address = WalletSignatureService
+                                          .connectedAddress(modal);
+                                      if (address == null) {
+                                        setDialogState(() => walletError =
+                                            'Connect an EVM wallet first.');
+                                        return;
+                                      }
+                                      setDialogState(() {
+                                        signing = true;
+                                        walletError = null;
+                                      });
+                                      try {
+                                        final challenge = await ref
+                                            .read(authProvider.notifier)
+                                            .requestWalletChallenge(address);
+                                        if (challenge == null) {
+                                          throw StateError(
+                                              'The sign-in challenge could not be loaded. Check your connection.');
+                                        }
+                                        final signature =
+                                            await WalletSignatureService
+                                                .signChallenge(
+                                                    modal, challenge);
+                                        final result = await ref
+                                            .read(authProvider.notifier)
+                                            .loginWithWallet(
+                                                address: address,
+                                                signature: signature);
+                                        if (result is WalletLoginFailed) {
+                                          if (dialogContext.mounted) {
+                                            setDialogState(() {
+                                              signing = false;
+                                              walletError = result.message;
+                                            });
+                                          }
+                                        } else {
+                                          if (dialogContext.mounted) {
+                                            Navigator.of(dialogContext).pop();
+                                          }
+                                          if (result
+                                                  is WalletLoginNeedsAccount &&
+                                              mounted) {
+                                            _askForAccountDetails(result);
+                                          }
+                                        }
+                                      } catch (error) {
+                                        if (dialogContext.mounted) {
+                                          setDialogState(() {
+                                            signing = false;
+                                            walletError = error is StateError
+                                                ? error.message
+                                                : 'Wallet signing was cancelled or failed.';
+                                          });
+                                        }
+                                      }
+                                    },
+                              label: 'Continue',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed:
-                    signing ? null : () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: signing
-                    ? null
-                    : () async {
-                        final address =
-                            WalletSignatureService.connectedAddress(modal);
-                        if (address == null) {
-                          setDialogState(() =>
-                              walletError = 'Connect an EVM wallet first.');
-                          return;
-                        }
-                        setDialogState(() {
-                          signing = true;
-                          walletError = null;
-                        });
-                        try {
-                          final challenge = await ref
-                              .read(authProvider.notifier)
-                              .requestWalletChallenge(address);
-                          if (challenge == null) {
-                            throw StateError(
-                                'The sign-in challenge could not be loaded. Check your connection.');
-                          }
-                          final signature =
-                              await WalletSignatureService.signChallenge(
-                                  modal, challenge);
-                          final result = await ref
-                              .read(authProvider.notifier)
-                              .loginWithWallet(
-                                  address: address, signature: signature);
-                          if (result is WalletLoginFailed) {
-                            if (dialogContext.mounted) {
-                              setDialogState(() {
-                                signing = false;
-                                walletError = result.message;
-                              });
-                            }
-                          } else {
-                            if (dialogContext.mounted) {
-                              Navigator.of(dialogContext).pop();
-                            }
-                            if (result is WalletLoginNeedsAccount && mounted) {
-                              _askForAccountDetails(result);
-                            }
-                          }
-                        } catch (error) {
-                          if (dialogContext.mounted) {
-                            setDialogState(() {
-                              signing = false;
-                              walletError = error is StateError
-                                  ? error.message
-                                  : 'Wallet signing was cancelled or failed.';
-                            });
-                          }
-                        }
-                      },
-                child: signing
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Continue'),
-              ),
-            ],
           ),
         ),
       );
@@ -334,328 +375,386 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return JdqScaffold(
-      scrollable: true,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: AppSpacing.xl),
-          Center(
-              child: Image.asset(
-            'assets/images/logo.png',
-            height: 88,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Text('JuanDerQuest',
-                style: AppTypography.headlineLarge.copyWith(
-                    color: AppColors.woodBrown, fontWeight: FontWeight.bold)),
-          )),
-          const SizedBox(height: AppSpacing.lg),
-          Text(
-            switch (_step) {
-              _AuthStep.signIn => 'Welcome back',
-              _AuthStep.signUp => 'Create your traveler account',
-              _AuthStep.verifyEmail => 'Verify your email',
-              _AuthStep.completeWallet => 'Complete your account'
-            },
-            textAlign: TextAlign.center,
-            style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.woodBrown, fontWeight: FontWeight.bold),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Scaffold(
+        backgroundColor: PixelPalette.paperDim,
+        body: DitherBackground(
+          top: PixelPalette.paperDim,
+          bottom: PixelPalette.paper,
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: PixelPanel(
+                    style: PixelBoxStyle.parchment,
+                    padding: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            height: 72,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => ShadowText(
+                              'JUANDERQUEST',
+                              style: PixelType.title(context,
+                                  color: PixelPalette.ink),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ShadowText(
+                          switch (_step) {
+                            _AuthStep.signIn => 'WELCOME BACK',
+                            _AuthStep.signUp => 'CREATE TRAVELER ACCOUNT',
+                            _AuthStep.verifyEmail => 'VERIFY YOUR EMAIL',
+                            _AuthStep.completeWallet => 'COMPLETE YOUR ACCOUNT'
+                          },
+                          textAlign: TextAlign.center,
+                          style: PixelType.title(context,
+                              color: PixelPalette.ink),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          switch (_step) {
+                            _AuthStep.signIn =>
+                              'Sign in to continue your journey.',
+                            _AuthStep.signUp =>
+                              'A few details, then you’re ready to explore.',
+                            _AuthStep.verifyEmail =>
+                              'Enter the code we sent to ${_email.text.trim()}.',
+                            _AuthStep.completeWallet =>
+                              'Add an email and password so you can always get back in, even without your wallet.'
+                          },
+                          textAlign: TextAlign.center,
+                          style: PixelType.body(context,
+                              color: PixelPalette.slate),
+                        ),
+                        const SizedBox(height: 20),
+                        if (_step == _AuthStep.completeWallet &&
+                            _pendingWallet != null) ...[
+                          Center(
+                            child: PixelChip(
+                              'Wallet ${_shortAddress(_pendingWallet!.walletAddress)} verified',
+                              key: const ValueKey('auth_wallet_verified'),
+                              style: PixelBoxStyle.green,
+                              textColor: PixelPalette.white,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          PixelTextField(
+                            key: const ValueKey('auth_wallet_name'),
+                            controller: _name,
+                            label: 'Name',
+                            hint: 'Your Name',
+                            textCapitalization: TextCapitalization.words,
+                            autofillHints: const [AutofillHints.name],
+                          ),
+                          const SizedBox(height: 12),
+                          PixelTextField(
+                            key: const ValueKey('auth_wallet_email'),
+                            controller: _email,
+                            label: 'Email address',
+                            hint: 'traveler@example.com',
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.email],
+                          ),
+                          const SizedBox(height: 12),
+                          PixelTextField(
+                            key: const ValueKey('auth_wallet_password'),
+                            controller: _password,
+                            label: 'Password (8+ characters)',
+                            hint: '••••••••',
+                            obscureText: !_passwordVisible,
+                            autofillHints: const [AutofillHints.newPassword],
+                            helperText:
+                                'Already registered? Use that account\'s password to link this wallet.',
+                          ),
+                          const SizedBox(height: 8),
+                          PixelCheckbox(
+                            key: const ValueKey('auth_wallet_age'),
+                            value: _ageEligible,
+                            label: 'I meet the age eligibility requirement.',
+                            onChanged: _busy
+                                ? (_) {}
+                                : (v) => setState(() => _ageEligible = v),
+                          ),
+                          const SizedBox(height: 6),
+                          PixelCheckbox(
+                            key: const ValueKey('auth_wallet_terms'),
+                            value: _termsAccepted,
+                            label:
+                                'I agree to the terms of service and privacy notice.',
+                            onChanged: _busy
+                                ? (_) {}
+                                : (v) => setState(() => _termsAccepted = v),
+                          ),
+                          const SizedBox(height: 16),
+                          PixelButton(
+                            key: const ValueKey('auth_complete_wallet'),
+                            expand: true,
+                            label: 'Finish and continue',
+                            loading: _busy,
+                            onPressed: _busy ? null : _completeWallet,
+                          ),
+                          const SizedBox(height: 8),
+                          PixelButton(
+                            expand: true,
+                            variant: PixelButtonVariant.secondary,
+                            onPressed: _busy
+                                ? null
+                                : () {
+                                    _pendingWallet = null;
+                                    _setStep(_AuthStep.signIn);
+                                  },
+                            label: 'Cancel',
+                          ),
+                        ] else if (_step != _AuthStep.verifyEmail) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: PixelButton(
+                                  key: const ValueKey('tab_signin'),
+                                  expand: true,
+                                  label: 'Sign in',
+                                  variant: _step == _AuthStep.signIn
+                                      ? PixelButtonVariant.primary
+                                      : PixelButtonVariant.secondary,
+                                  onPressed: _busy
+                                      ? null
+                                      : () => _setStep(_AuthStep.signIn),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: PixelButton(
+                                  key: const ValueKey('tab_signup'),
+                                  expand: true,
+                                  label: 'Create account',
+                                  variant: _step == _AuthStep.signUp
+                                      ? PixelButtonVariant.primary
+                                      : PixelButtonVariant.secondary,
+                                  onPressed: _busy
+                                      ? null
+                                      : () => _setStep(_AuthStep.signUp),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (_step == _AuthStep.signUp) ...[
+                            PixelTextField(
+                              key: const ValueKey('auth_display_name'),
+                              controller: _name,
+                              label: 'Name',
+                              hint: 'Your Name',
+                              textCapitalization: TextCapitalization.words,
+                              autofillHints: const [AutofillHints.name],
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          PixelTextField(
+                            key: const ValueKey('auth_email'),
+                            controller: _email,
+                            label: 'Email address',
+                            hint: 'traveler@example.com',
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.email],
+                          ),
+                          const SizedBox(height: 12),
+                          PixelTextField(
+                            key: const ValueKey('auth_password'),
+                            controller: _password,
+                            label: _step == _AuthStep.signUp
+                                ? 'Password (8+ characters)'
+                                : 'Password',
+                            hint: '••••••••',
+                            obscureText: !_passwordVisible,
+                            autofillHints: [
+                              _step == _AuthStep.signUp
+                                  ? AutofillHints.newPassword
+                                  : AutofillHints.password
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: () => setState(
+                                  () => _passwordVisible = !_passwordVisible),
+                              child: Text(
+                                _passwordVisible
+                                    ? 'HIDE PASSWORD'
+                                    : 'SHOW PASSWORD',
+                                style: PixelType.small(context,
+                                    color: PixelPalette.slate),
+                              ),
+                            ),
+                          ),
+                          if (_step == _AuthStep.signIn)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                key: const ValueKey('auth_forgot_password'),
+                                onPressed: _busy
+                                    ? null
+                                    : () => context.push(
+                                        '/forgot-password?email=${Uri.encodeQueryComponent(_email.text.trim())}'),
+                                child: Text(
+                                  'Forgot password?',
+                                  style: PixelType.small(context,
+                                      color: PixelPalette.slate),
+                                ),
+                              ),
+                            ),
+                          if (_step == _AuthStep.signUp) ...[
+                            const SizedBox(height: 8),
+                            PixelCheckbox(
+                              key: const ValueKey('auth_age_eligibility'),
+                              value: _ageEligible,
+                              label: 'I meet the age eligibility requirement.',
+                              onChanged: _busy
+                                  ? (_) {}
+                                  : (v) => setState(() => _ageEligible = v),
+                            ),
+                            const SizedBox(height: 6),
+                            PixelCheckbox(
+                              key: const ValueKey('auth_terms'),
+                              value: _termsAccepted,
+                              label:
+                                  'I agree to the terms of service and privacy notice.',
+                              onChanged: _busy
+                                  ? (_) {}
+                                  : (v) => setState(() => _termsAccepted = v),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          PixelButton(
+                            key: ValueKey(_step == _AuthStep.signIn
+                                ? 'auth_sign_in'
+                                : 'auth_create_account'),
+                            expand: true,
+                            label: _step == _AuthStep.signIn
+                                ? 'Sign in with email'
+                                : 'Create traveler account',
+                            loading: _busy,
+                            onPressed: _busy
+                                ? null
+                                : (_step == _AuthStep.signIn
+                                    ? _signIn
+                                    : _register),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              const Expanded(
+                                  child: ColoredBox(
+                                      color: PixelPalette.stone,
+                                      child: SizedBox(height: 2))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12),
+                                child: Text(
+                                  'OR',
+                                  style: PixelType.small(context,
+                                      color: PixelPalette.slate),
+                                ),
+                              ),
+                              const Expanded(
+                                  child: ColoredBox(
+                                      color: PixelPalette.stone,
+                                      child: SizedBox(height: 2))),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          PixelButton(
+                            key: const ValueKey('auth_wallet_sign_in'),
+                            expand: true,
+                            variant: PixelButtonVariant.secondary,
+                            onPressed: _busy ? null : _startWalletSignIn,
+                            label: 'Continue with wallet',
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Wallet sign-in verifies ownership with a signature. It never sends a transaction.',
+                            textAlign: TextAlign.center,
+                            style: PixelType.small(context,
+                                color: PixelPalette.slate),
+                          ),
+                        ] else ...[
+                          PixelTextField(
+                            key: const ValueKey('auth_email_otp'),
+                            controller: _otp,
+                            label: '6-digit email code',
+                            hint: '123456',
+                            keyboardType: TextInputType.number,
+                            autofillHints: const [AutofillHints.oneTimeCode],
+                          ),
+                          const SizedBox(height: 16),
+                          PixelButton(
+                            key: const ValueKey('auth_verify_email'),
+                            expand: true,
+                            label: 'Verify and continue',
+                            loading: _busy,
+                            onPressed: _busy ? null : _verifyEmail,
+                          ),
+                          const SizedBox(height: 8),
+                          PixelButton(
+                            expand: true,
+                            variant: PixelButtonVariant.secondary,
+                            onPressed: _busy
+                                ? null
+                                : () => _setStep(_AuthStep.signUp),
+                            label: 'Back to account details',
+                          ),
+                        ],
+                        if (_notice != null) ...[
+                          const SizedBox(height: 16),
+                          PixelPanel(
+                            style: PixelBoxStyle.gold,
+                            padding: 2,
+                            child: Text(
+                              _notice!,
+                              key: const ValueKey('auth_notice'),
+                              textAlign: TextAlign.center,
+                              style: PixelType.body(context,
+                                  color: PixelPalette.ink),
+                            ),
+                          ),
+                        ],
+                        if (_error != null) ...[
+                          const SizedBox(height: 16),
+                          PixelPanel(
+                            style: PixelBoxStyle.red,
+                            padding: 2,
+                            child: Text(
+                              _error!,
+                              key: const ValueKey('auth_error'),
+                              textAlign: TextAlign.center,
+                              style: PixelType.body(context,
+                                  color: PixelPalette.white),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        Text(
+                          'Admin tools are managed in the web dashboard. Your account can still explore here.',
+                          textAlign: TextAlign.center,
+                          style: PixelType.small(context,
+                              color: PixelPalette.slate),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            switch (_step) {
-              _AuthStep.signIn => 'Sign in to continue your journey.',
-              _AuthStep.signUp =>
-                'A few details, then you’re ready to explore.',
-              _AuthStep.verifyEmail =>
-                'Enter the code we sent to ${_email.text.trim()}.',
-              _AuthStep.completeWallet =>
-                'Add an email and password so you can always get back in, even without your wallet.'
-            },
-            textAlign: TextAlign.center,
-            style: AppTypography.bodySmall
-                .copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          if (_step == _AuthStep.completeWallet && _pendingWallet != null) ...[
-            Center(
-              child: Chip(
-                key: const ValueKey('auth_wallet_verified'),
-                avatar: const Icon(Icons.verified_rounded,
-                    color: AppColors.primary, size: 18),
-                label: Text(
-                    'Wallet ${_shortAddress(_pendingWallet!.walletAddress)} verified'),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              key: const ValueKey('auth_wallet_name'),
-              controller: _name,
-              textCapitalization: TextCapitalization.words,
-              autofillHints: const [AutofillHints.name],
-              decoration: const InputDecoration(
-                  labelText: 'Name',
-                  prefixIcon: Icon(Icons.person_outline_rounded),
-                  border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              key: const ValueKey('auth_wallet_email'),
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(
-                  labelText: 'Email address',
-                  prefixIcon: Icon(Icons.email_outlined),
-                  border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              key: const ValueKey('auth_wallet_password'),
-              controller: _password,
-              obscureText: !_passwordVisible,
-              autofillHints: const [AutofillHints.newPassword],
-              decoration: InputDecoration(
-                labelText: 'Password (8+ characters)',
-                helperText: 'Already registered? Use that account\'s password to link this wallet.',
-                helperMaxLines: 3,
-                prefixIcon: const Icon(Icons.lock_outline_rounded),
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  tooltip: _passwordVisible ? 'Hide password' : 'Show password',
-                  onPressed: () =>
-                      setState(() => _passwordVisible = !_passwordVisible),
-                  icon: Icon(_passwordVisible
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            CheckboxListTile(
-              key: const ValueKey('auth_wallet_age'),
-              contentPadding: EdgeInsets.zero,
-              value: _ageEligible,
-              onChanged: _busy
-                  ? null
-                  : (value) => setState(() => _ageEligible = value ?? false),
-              title: const Text('I meet the age eligibility requirement.',
-                  style: TextStyle(fontSize: 13)),
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-            CheckboxListTile(
-              key: const ValueKey('auth_wallet_terms'),
-              contentPadding: EdgeInsets.zero,
-              value: _termsAccepted,
-              onChanged: _busy
-                  ? null
-                  : (value) => setState(() => _termsAccepted = value ?? false),
-              title: const Text(
-                  'I agree to the terms of service and privacy notice.',
-                  style: TextStyle(fontSize: 13)),
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-            PrimaryButton(
-              key: const ValueKey('auth_complete_wallet'),
-              label: 'Finish and continue',
-              isLoading: _busy,
-              onPressed: _busy ? null : _completeWallet,
-            ),
-            TextButton(
-                onPressed: _busy
-                    ? null
-                    : () {
-                        _pendingWallet = null;
-                        _setStep(_AuthStep.signIn);
-                      },
-                child: const Text('Cancel')),
-          ] else if (_step != _AuthStep.verifyEmail) ...[
-            SegmentedButton<_AuthStep>(
-              segments: const [
-                ButtonSegment(value: _AuthStep.signIn, label: Text('Sign in')),
-                ButtonSegment(
-                    value: _AuthStep.signUp, label: Text('Create account')),
-              ],
-              selected: {_step},
-              onSelectionChanged:
-                  _busy ? null : (selection) => _setStep(selection.first),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            if (_step == _AuthStep.signUp) ...[
-              TextField(
-                key: const ValueKey('auth_display_name'),
-                controller: _name,
-                textCapitalization: TextCapitalization.words,
-                autofillHints: const [AutofillHints.name],
-                decoration: const InputDecoration(
-                    labelText: 'Name',
-                    prefixIcon: Icon(Icons.person_outline_rounded),
-                    border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            TextField(
-              key: const ValueKey('auth_email'),
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(
-                  labelText: 'Email address',
-                  prefixIcon: Icon(Icons.email_outlined),
-                  border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              key: const ValueKey('auth_password'),
-              controller: _password,
-              obscureText: !_passwordVisible,
-              autofillHints: [
-                _step == _AuthStep.signUp
-                    ? AutofillHints.newPassword
-                    : AutofillHints.password
-              ],
-              decoration: InputDecoration(
-                labelText: _step == _AuthStep.signUp
-                    ? 'Password (8+ characters)'
-                    : 'Password',
-                prefixIcon: const Icon(Icons.lock_outline_rounded),
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  tooltip: _passwordVisible ? 'Hide password' : 'Show password',
-                  onPressed: () =>
-                      setState(() => _passwordVisible = !_passwordVisible),
-                  icon: Icon(_passwordVisible
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined),
-                ),
-              ),
-            ),
-            if (_step == _AuthStep.signIn)
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  key: const ValueKey('auth_forgot_password'),
-                  onPressed: _busy
-                      ? null
-                      : () => context.push(
-                          '/forgot-password?email=${Uri.encodeQueryComponent(_email.text.trim())}'),
-                  child: const Text('Forgot password?'),
-                ),
-              ),
-            if (_step == _AuthStep.signUp) ...[
-              const SizedBox(height: AppSpacing.sm),
-              CheckboxListTile(
-                key: const ValueKey('auth_age_eligibility'),
-                contentPadding: EdgeInsets.zero,
-                value: _ageEligible,
-                onChanged: _busy
-                    ? null
-                    : (value) => setState(() => _ageEligible = value ?? false),
-                title: const Text('I meet the age eligibility requirement.',
-                    style: TextStyle(fontSize: 13)),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-              CheckboxListTile(
-                key: const ValueKey('auth_terms'),
-                contentPadding: EdgeInsets.zero,
-                value: _termsAccepted,
-                onChanged: _busy
-                    ? null
-                    : (value) =>
-                        setState(() => _termsAccepted = value ?? false),
-                title: const Text(
-                    'I agree to the terms of service and privacy notice.',
-                    style: TextStyle(fontSize: 13)),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            ],
-            PrimaryButton(
-              key: ValueKey(_step == _AuthStep.signIn
-                  ? 'auth_sign_in'
-                  : 'auth_create_account'),
-              label: _step == _AuthStep.signIn
-                  ? 'Sign in with email'
-                  : 'Create traveler account',
-              isLoading: _busy,
-              onPressed: _busy
-                  ? null
-                  : (_step == _AuthStep.signIn ? _signIn : _register),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(children: [
-              const Expanded(child: Divider()),
-              Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  child: Text('OR',
-                      style: AppTypography.labelSmall
-                          .copyWith(color: AppColors.textMuted))),
-              const Expanded(child: Divider())
-            ]),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              key: const ValueKey('auth_wallet_sign_in'),
-              onPressed: _busy ? null : _startWalletSignIn,
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: const Text('Continue with wallet'),
-              style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                  shape: const RoundedRectangleBorder(
-                      borderRadius: AppSpacing.roundedPill)),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-                'Wallet sign-in verifies ownership with a signature. It never sends a transaction.',
-                textAlign: TextAlign.center,
-                style: AppTypography.bodySmall
-                    .copyWith(color: AppColors.textMuted)),
-          ] else ...[
-            TextField(
-              key: const ValueKey('auth_email_otp'),
-              controller: _otp,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              autofillHints: const [AutofillHints.oneTimeCode],
-              decoration: const InputDecoration(
-                  labelText: '6-digit email code',
-                  prefixIcon: Icon(Icons.mark_email_read_outlined),
-                  border: OutlineInputBorder()),
-            ),
-            PrimaryButton(
-              key: const ValueKey('auth_verify_email'),
-              label: 'Verify and continue',
-              isLoading: _busy,
-              onPressed: _busy ? null : _verifyEmail,
-            ),
-            TextButton(
-                onPressed: _busy ? null : () => _setStep(_AuthStep.signUp),
-                child: const Text('Back to account details')),
-          ],
-          if (_notice != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text(_notice!,
-                key: const ValueKey('auth_notice'),
-                textAlign: TextAlign.center,
-                style:
-                    AppTypography.bodySmall.copyWith(color: AppColors.primary)),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text(_error!,
-                key: const ValueKey('auth_error'),
-                textAlign: TextAlign.center,
-                style:
-                    AppTypography.bodySmall.copyWith(color: AppColors.danger)),
-          ],
-          const SizedBox(height: AppSpacing.xl),
-          Text(
-              'Admin tools are managed in the web dashboard. Your account can still explore here.',
-              textAlign: TextAlign.center,
-              style:
-                  AppTypography.bodySmall.copyWith(color: AppColors.textMuted)),
-          const SizedBox(height: AppSpacing.lg),
-        ],
+        ),
       ),
     );
   }
