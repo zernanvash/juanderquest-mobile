@@ -60,7 +60,7 @@ class TheaterAboutSection extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: PixelChip(
-                      item.toUpperCase(),
+                      item,
                       style: PixelBoxStyle.green,
                       textColor: PixelPalette.white,
                     ),
@@ -85,7 +85,7 @@ class TheaterAboutSection extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: PixelChip(
-                      item.toUpperCase(),
+                      item,
                       style: PixelBoxStyle.gold,
                       textColor: PixelPalette.ink,
                     ),
@@ -142,7 +142,7 @@ class TheaterAboutSection extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: PixelChip(
-                      item.toUpperCase(),
+                      item,
                       style: PixelBoxStyle.parchment,
                       textColor: PixelPalette.ink,
                     ),
@@ -162,7 +162,7 @@ class TheaterAboutSection extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: PixelChip(
-                      '#${tag.replaceAll('_', ' ').toUpperCase()}',
+                      '#${tag.replaceAll('_', ' ')}',
                       style: PixelBoxStyle.stone.copyWith(
                         fill: PixelPalette.slate,
                         outline: PixelPalette.mist,

@@ -59,7 +59,7 @@ class ExploreFeaturedCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    spot.municipality.toUpperCase(),
+                    spot.municipality,
                     style: PixelType.small(context, color: PixelPalette.sunLight),
                   ),
                 ],
@@ -81,7 +81,7 @@ class ExploreFeaturedCard extends StatelessWidget {
                       color: PixelPalette.slate,
                       alignment: Alignment.center,
                       child: Text(
-                        'PHOTO UNAVAILABLE',
+                        'Photo unavailable',
                         style: PixelType.small(context, color: PixelPalette.mist),
                       ),
                     ),

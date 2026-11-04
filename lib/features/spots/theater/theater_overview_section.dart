@@ -33,7 +33,7 @@ class TheaterOverviewSection extends StatelessWidget {
         children: [
           // Chapter Title
           Text(
-            'OVERVIEW',
+            'Overview',
             style: PixelType.title(context, color: PixelPalette.paper),
           ),
           SizedBox(height: grid.px(2)),
@@ -44,7 +44,7 @@ class TheaterOverviewSection extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: PixelChip(
-                'PEAK VISITING HOURS DETECTED',
+                'Peak visiting hours detected',
                 style: PixelBoxStyle.red,
                 textColor: PixelPalette.white,
               ),
@@ -60,7 +60,7 @@ class TheaterOverviewSection extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: PixelChip(
-                'LOW CROWD PRESSURE',
+                'Low crowd pressure',
                 style: PixelBoxStyle.green,
                 textColor: PixelPalette.white,
               ),
@@ -76,7 +76,7 @@ class TheaterOverviewSection extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: PixelChip(
-                'MODERATE CROWD',
+                'Moderate crowd',
                 style: PixelBoxStyle.stone,
                 textColor: PixelPalette.paper,
               ),
@@ -92,14 +92,14 @@ class TheaterOverviewSection extends StatelessWidget {
               children: [
                 if (spot.sourceName.isNotEmpty)
                   Text(
-                    'SHARED BY ${spot.sourceName.toUpperCase()}',
+                    'Shared by ${spot.sourceName}',
                     style: PixelType.small(context, color: PixelPalette.mist),
                   ),
                 if (isAuthor)
                   const FittedBox(
                     fit: BoxFit.scaleDown,
                     child: PixelChip(
-                      'YOU POSTED THIS SPOT',
+                      'You posted this spot',
                       style: PixelBoxStyle.gold,
                       textColor: PixelPalette.ink,
                     ),
@@ -114,7 +114,7 @@ class TheaterOverviewSection extends StatelessWidget {
             children: [
               Expanded(
                 child: PixelButton(
-                  label: 'ADD PHOTO',
+                  label: 'Add photo',
                   variant: PixelButtonVariant.secondary,
                   expand: true,
                   onPressed: () => context.push('/map/add-spot'),
@@ -125,7 +125,7 @@ class TheaterOverviewSection extends StatelessWidget {
                 Expanded(
                   child: PixelButton(
                     key: const ValueKey('spot_create_quest_btn'),
-                    label: 'CREATE A QUEST HERE',
+                    label: 'Create a quest here',
                     variant: PixelButtonVariant.primary,
                     expand: true,
                     onPressed: () => context.push(
@@ -153,7 +153,7 @@ class TheaterOverviewSection extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: PixelChip(
-                        'DESTINATION QUEST',
+                        'Destination quest',
                         style: PixelBoxStyle.gold,
                         textColor: PixelPalette.ink,
                       ),

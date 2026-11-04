@@ -659,7 +659,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12),
                                 child: Text(
-                                  'OR',
+                                  'or',
                                   style: PixelType.small(context,
                                       color: PixelPalette.slate),
                                 ),

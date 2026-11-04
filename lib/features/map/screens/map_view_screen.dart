@@ -1494,14 +1494,14 @@ class _AreaBanner extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  area.name.toUpperCase(),
+                  area.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: PixelType.body(context, color: PixelPalette.ink)
                       .copyWith(fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  '${area.levelLabel.toUpperCase()} · $places ${places == 1 ? 'PLACE' : 'PLACES'}',
+                  '${area.levelLabel} · $places ${places == 1 ? 'place' : 'places'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: PixelType.small(context, color: PixelPalette.slate),
@@ -1510,7 +1510,7 @@ class _AreaBanner extends StatelessWidget {
             ),
           ),
           PixelButton(
-            label: 'LIST',
+            label: 'List',
             variant: PixelButtonVariant.secondary,
             onPressed: onList,
           ),

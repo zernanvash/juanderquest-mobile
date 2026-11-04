@@ -30,7 +30,7 @@ class TheaterNearbySection extends StatelessWidget {
         children: [
           // Section Title
           Text(
-            'NEARBY HIDDEN GEMS',
+            'Nearby hidden gems',
             style: PixelType.title(context, color: PixelPalette.paper),
           ),
           SizedBox(height: grid.px(1)),

@@ -38,7 +38,7 @@ class _CelebrationButtonState extends State<CelebrationButton> {
       widthFactor: widget.expand ? null : 1,
       heightFactor: 1,
       child: ShadowText(
-        widget.label.toUpperCase(),
+        widget.label,
         style: PixelType.body(context, color: widget.textColor).copyWith(
           fontWeight: FontWeight.w700,
         ),

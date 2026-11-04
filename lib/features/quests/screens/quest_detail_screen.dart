@@ -125,7 +125,13 @@ class _NotFound extends StatelessWidget {
               child: SecondaryButton(
                 label: 'Back',
                 icon: Icons.arrow_back_rounded,
-                onPressed: () => context.pop(),
+                onPressed: () {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                } else {
+                  context.go('/dashboard');
+                }
+              },
               ),
             ),
           ],
@@ -915,7 +921,13 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
               semanticLabel: 'Back',
               iconHeight: 24,
               style: PixelBoxStyle.parchment,
-              onPressed: () => context.pop(),
+              onPressed: () {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                } else {
+                  context.go('/dashboard');
+                }
+              },
             ),
           ),
           Positioned(

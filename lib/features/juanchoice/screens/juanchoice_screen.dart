@@ -61,9 +61,9 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                 children: [
                   PixelAppBar(
                     title: 'JuanChoice',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack: () => canPop
+                        ? Navigator.of(context).maybePop()
+                        : context.go('/dashboard'),
                   ),
                   Expanded(
                     child: RefreshIndicator(
@@ -528,9 +528,9 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                 children: [
                   PixelAppBar(
                     title: 'JuanChoice',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack: () => canPop
+                        ? Navigator.of(context).maybePop()
+                        : context.go('/dashboard'),
                   ),
                   Expanded(
                     child: RefreshIndicator(

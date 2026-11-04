@@ -34,7 +34,7 @@ class CulturalQuizResultScreen extends StatelessWidget {
               bottom: PixelPalette.parchment,
               child: Column(
                 children: [
-                  const PixelAppBar(title: 'Quiz Results'),
+                  const PixelAppBar(title: 'Quiz results'),
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
@@ -99,7 +99,7 @@ class CulturalQuizResultScreen extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: grid.px(3)),
-                        Text('Review & Explanations',
+                        Text('Review & explanations',
                             style: PixelType.title(context)),
                         SizedBox(height: grid.px(2)),
                         for (final entry in result.breakdown.asMap().entries) ...[

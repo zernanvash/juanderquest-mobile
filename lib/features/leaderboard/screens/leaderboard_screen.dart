@@ -90,14 +90,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                         SizedBox(height: grid.px(3)),
                         if (scouts.length >= 3) _podium(context, grid, scouts),
                         SizedBox(height: grid.px(3)),
-                        Text('Scout Rankings', style: PixelType.title(context)),
+                        Text('Scout rankings', style: PixelType.title(context)),
                         SizedBox(height: grid.px(2)),
                         for (final scout in scouts) ...[
                           _scoutRow(context, grid, scout),
                           SizedBox(height: grid.px(1)),
                         ],
                         SizedBox(height: grid.px(3)),
-                        Text('Top Municipalities by Check-in Volume',
+                        Text('Top municipalities by check-in volume',
                             style: PixelType.title(context)),
                         SizedBox(height: grid.px(2)),
                         for (final muni in _municipalActivity) ...[
@@ -218,7 +218,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   ),
                 ),
                 Text(
-                  '${scout['tier']} · ${scout['quests']} Quests Completed',
+                  '${scout['tier']} · ${scout['quests']} quests completed',
                   style: PixelType.body(
                     context,
                     color: isUser ? PixelPalette.cream : PixelPalette.slate,

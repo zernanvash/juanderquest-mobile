@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../../shop/models/cosmetic_item.dart';
 import 'cosmetic_avatar.dart';
 import 'display_name.dart';
@@ -32,8 +34,7 @@ Map<String, CosmeticItem> equippedLoadout(
   return out;
 }
 
-/// Plan 69: the shop preview looks like the traveler's profile header. The previewed item
-/// takes its slot; the traveler's other equipped cosmetics stay on.
+/// Plan 69 & 75i: pixel-styled live passport preview for cosmetics.
 class PassportPreview extends StatefulWidget {
   const PassportPreview({
     super.key,
@@ -67,6 +68,7 @@ class _PassportPreviewState extends State<PassportPreview> {
 
   @override
   Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
     final loadout = {...widget.equipped, widget.selected.kind: widget.selected};
     final banner = loadout['banner'];
     final procedural = banner?.asset['style'] == 'procedural';
@@ -78,133 +80,165 @@ class _PassportPreviewState extends State<PassportPreview> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(children: [
-          Expanded(
-              child: Text('✨ LIVE PASSPORT PREVIEW',
-                  style: AppTypography.labelSmall.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                      color: AppColors.primary))),
-          if (banner != null)
-            TextButton.icon(
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Live passport preview',
+                style: PixelType.title(context),
+              ),
+            ),
+            if (banner != null)
+              GestureDetector(
                 key: const ValueKey('passport_motion_toggle'),
-                onPressed: () => setState(() => _animated = !_animated),
-                icon:
-                    Icon(_animated ? Icons.pause : Icons.play_arrow, size: 16),
-                label: Text(_animated ? 'Animated' : 'Still')),
-        ]),
-        const SizedBox(height: AppSpacing.sm),
-        // Profile header, as on the profile screen: banner, avatar overlapping its edge,
-        // name below so the artwork stays visible.
-        ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: ColoredBox(
-            color: Colors.white,
-            child: Stack(clipBehavior: Clip.none, children: [
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Stack(children: [
-                  ProfileBanner(
-                      asset: banner?.asset,
-                      seed: banner?.seed,
-                      height: bannerHeight,
-                      animate: _animated,
-                      forceMotion: true),
-                  Positioned(
-                      top: 10,
-                      right: 10,
-                      child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(.4),
-                              borderRadius: AppSpacing.roundedPill),
-                          child: const Text('YOUR PASSPORT',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800)))),
-                  if (procedural && banner?.seed != null)
-                    Positioned(
-                        bottom: 6,
-                        right: 10,
-                        child: Text(
+                onTap: () {
+                  pixelTick(context);
+                  setState(() => _animated = !_animated);
+                },
+                child: PixelPanel(
+                  style: PixelBoxStyle.slot,
+                  padding: 1,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: grid.px(2),
+                      vertical: grid.px(1),
+                    ),
+                    child: Text(
+                      _animated ? 'Animated' : 'Still',
+                      style: PixelType.small(context),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        SizedBox(height: grid.px(2)),
+        // Profile header in square pixel panels: banner with square avatar frame.
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
+          padding: 1,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Stack(
+                    children: [
+                      ClipRect(
+                        child: ProfileBanner(
+                          asset: banner?.asset,
+                          seed: banner?.seed,
+                          height: bannerHeight,
+                          animate: _animated,
+                          forceMotion: true,
+                        ),
+                      ),
+                      Positioned(
+                        top: grid.px(2),
+                        right: grid.px(2),
+                        child: const PixelChip(
+                          'Your passport',
+                          style: PixelBoxStyle.slot,
+                          textColor: PixelPalette.white,
+                        ),
+                      ),
+                      if (procedural && banner?.seed != null)
+                        Positioned(
+                          bottom: grid.px(1),
+                          right: grid.px(2),
+                          child: Text(
                             'seed #${(banner!.seed! & 0xffffffff).toRadixString(16).padLeft(8, '0')}',
-                            style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                                fontFamily: 'monospace'))),
-                ]),
-                Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        16, avatarSize / 2 + 8, 16, 14),
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.paperDim,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      grid.px(3),
+                      avatarSize / 2 + grid.px(2),
+                      grid.px(3),
+                      grid.px(3),
+                    ),
                     child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          DisplayName(
-                              name: widget.name,
-                              title:
-                                  loadout['title']?.asset['text']?.toString(),
-                              color:
-                                  _color(loadout['name_color']?.asset['color']),
-                              style: AppTypography.headlineSmall.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.woodBrown)),
-                          const SizedBox(height: 4),
-                          Text('Traveler · Pangasinan',
-                              style: AppTypography.bodySmall
-                                  .copyWith(color: AppColors.textSecondary)),
-                        ])),
-              ]),
-              Positioned(
-                  left: 14,
-                  top: bannerHeight - avatarSize / 2,
-                  child: Container(
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          border: Border.all(color: Colors.white, width: 4),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x33000000), blurRadius: 8)
-                          ]),
-                      child: CosmeticAvatar(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DisplayName(
                           name: widget.name,
-                          imageUrl: widget.avatarUrl,
-                          frame: loadout['frame']?.asset,
-                          size: avatarSize - 8))),
-            ]),
+                          title: loadout['title']?.asset['text']?.toString(),
+                          color: _color(loadout['name_color']?.asset['color']),
+                          style: PixelType.title(context),
+                        ),
+                        SizedBox(height: grid.px(1)),
+                        Text(
+                          'Traveler · Pangasinan',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Positioned(
+                left: grid.px(3),
+                top: bannerHeight - avatarSize / 2,
+                child: PixelPanel(
+                  style: PixelBoxStyle.gold,
+                  padding: 1,
+                  child: CosmeticAvatar(
+                    name: widget.name,
+                    imageUrl: widget.avatarUrl,
+                    frame: loadout['frame']?.asset,
+                    size: avatarSize - 8,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final kind in _slotLabels.keys)
-            if (loadout[kind] != null)
-              Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                      color: kind == widget.selected.kind
-                          ? const Color(0xFFFFD166)
-                          : AppColors.surfaceContainerLow,
-                      borderRadius: AppSpacing.roundedPill),
-                  child: Text(
-                      '${kind == widget.selected.kind ? 'Previewing' : 'Equipped'} ${_slotLabels[kind]}: ${loadout[kind]!.name}',
-                      style: const TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w700))),
-        ]),
-        const SizedBox(height: AppSpacing.md),
-        Text(widget.selected.name,
-            style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
-        const SizedBox(height: 4),
+        SizedBox(height: grid.px(2)),
+        Wrap(
+          spacing: grid.px(1),
+          runSpacing: grid.px(1),
+          children: [
+            for (final kind in _slotLabels.keys)
+              if (loadout[kind] != null)
+                PixelChip(
+                  '${kind == widget.selected.kind ? 'Previewing' : 'Equipped'} ${_slotLabels[kind]}: ${loadout[kind]!.name}',
+                  style: kind == widget.selected.kind
+                      ? PixelBoxStyle.gold
+                      : PixelBoxStyle.slot,
+                ),
+          ],
+        ),
+        SizedBox(height: grid.px(3)),
         Text(
-            '${widget.selected.kind.replaceAll('_', ' ')} · ${widget.selected.rarity}${procedural && widget.selected.kind == 'banner' ? ' · procedural, animated' : ''}',
-            style: AppTypography.bodySmall
-                .copyWith(color: AppColors.textSecondary)),
+          widget.selected.name,
+          style: PixelType.title(context),
+        ),
+        SizedBox(height: grid.px(1)),
+        Text(
+          '${widget.selected.kind.replaceAll('_', ' ')} · ${widget.selected.rarity}${procedural && widget.selected.kind == 'banner' ? ' · procedural, animated' : ''}',
+          style: PixelType.body(
+            context,
+            color: PixelPalette.slate,
+          ),
+        ),
         if (widget.selected.description.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(widget.selected.description, style: AppTypography.bodySmall),
+          SizedBox(height: grid.px(1)),
+          Text(
+            widget.selected.description,
+            style: PixelType.body(context),
+          ),
         ],
-        const SizedBox(height: AppSpacing.md),
+        SizedBox(height: grid.px(3)),
         ...widget.actions,
       ],
     );

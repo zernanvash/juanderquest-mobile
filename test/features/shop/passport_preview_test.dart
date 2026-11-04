@@ -67,7 +67,7 @@ void main() {
         tester,
         PassportPreview(
             selected: _banner, equipped: {'frame': _frame}, name: 'Juan'));
-    expect(find.text('YOUR PASSPORT'), findsOneWidget);
+    expect(find.text('Your passport'), findsOneWidget);
     expect(find.text('Juan'), findsOneWidget);
     expect(find.text('Previewing Banner: Capiz Heritage'), findsOneWidget);
     expect(find.text('Equipped Frame: Bamboo Ring'), findsOneWidget);

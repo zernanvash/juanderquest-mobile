@@ -3,6 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../procedural/procedural_banner_painter.dart';
 
 class ProfileBanner extends StatefulWidget {
@@ -95,6 +98,34 @@ class _ProfileBannerState extends State<ProfileBanner>
   @override
   Widget build(BuildContext context) {
     final asset = widget.asset;
+    final pattern = (asset?['pattern'] ?? 'none').toString();
+
+    // Fallback for Capiz Heritage or missing art: dithered sand-to-wood texture with item name.
+    if (pattern == 'capiz') {
+      final label = asset?['name']?.toString() ?? 'Capiz Heritage';
+      return SizedBox(
+        height: widget.height,
+        width: double.infinity,
+        child: DitherBackground(
+          top: PixelPalette.woodLight,
+          bottom: PixelPalette.wood,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: PixelType.title(context, color: PixelPalette.paper),
+                ),
+              ),
+              if (widget.child != null) widget.child!,
+            ],
+          ),
+        ),
+      );
+    }
+
     final colors = ((asset?['colors'] as List?) ?? const ['#3f6653', '#95d5b2'])
         .map((e) => _color(e.toString()))
         .toList();

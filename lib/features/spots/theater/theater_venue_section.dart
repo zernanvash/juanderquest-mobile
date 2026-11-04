@@ -51,7 +51,7 @@ class TheaterVenueSection extends StatelessWidget {
           if (spot.distanceKm != null) ...[
             SizedBox(height: grid.px(1)),
             Text(
-              '${spot.distanceKm!.toStringAsFixed(1)} KM AWAY',
+              '${spot.distanceKm!.toStringAsFixed(1)} km away',
               style: PixelType.small(context, color: PixelPalette.sun),
             ),
           ],

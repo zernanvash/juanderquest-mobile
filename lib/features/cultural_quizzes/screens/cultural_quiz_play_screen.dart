@@ -289,7 +289,7 @@ class _CulturalQuizPlayScreenState
             child: isLast
                 ? PixelButton(
                     key: const ValueKey('quiz_submit'),
-                    label: _isSubmitting ? 'Submitting' : 'Submit Quiz',
+                    label: _isSubmitting ? 'Submitting' : 'Submit quiz',
                     expand: true,
                     loading: _isSubmitting,
                     onPressed: _isSubmitting ? null : _submitQuiz,

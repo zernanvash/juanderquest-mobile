@@ -46,7 +46,7 @@ class QuestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (status == 'COMPLETED') return _completedCard(context);
+    if (status.toUpperCase() == 'COMPLETED') return _completedCard(context);
     final grid = PixelGrid.of(context);
     final card = PixelPanel(
       child: Column(
@@ -308,7 +308,7 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (style, textColor) = switch (status) {
+    final (style, textColor) = switch (status.toUpperCase()) {
       'COMPLETED' => (PixelBoxStyle.green, PixelPalette.white),
       'PENDING REVIEW' => (PixelBoxStyle.gold, PixelPalette.ink),
       'REJECTED' => (PixelBoxStyle.red, PixelPalette.white),
