@@ -39,9 +39,7 @@ List<TutorialStep> firstRunSteps({
 /// Pixel lab: a pretend Home screen with one tutorial style running on top,
 /// so the owner can compare the styles on the phone.
 class TutorialPreviewScreen extends ConsumerStatefulWidget {
-  final TutorialStyle style;
-
-  const TutorialPreviewScreen({super.key, required this.style});
+  const TutorialPreviewScreen({super.key});
 
   @override
   ConsumerState<TutorialPreviewScreen> createState() =>
@@ -75,7 +73,7 @@ class _TutorialPreviewScreenState extends ConsumerState<TutorialPreviewScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         PixelAppBar(
-                          title: widget.style.label,
+                          title: 'First-run tutorial',
                           onBack: () => Navigator.of(context).maybePop(),
                         ),
                         Expanded(
@@ -133,7 +131,6 @@ class _TutorialPreviewScreenState extends ConsumerState<TutorialPreviewScreen> {
                   Positioned.fill(
                     child: PixelTutorialOverlay(
                       key: ValueKey(_run),
-                      style: widget.style,
                       steps: firstRunSteps(
                           hero: _hero, nextStop: _nextStop, hotbar: _hotbar),
                       onDone: () => setState(() => _showing = false),

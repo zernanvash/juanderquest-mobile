@@ -16,7 +16,6 @@ import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
-import '../onboarding/pixel_tutorial.dart';
 import 'tutorial_preview.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
@@ -823,29 +822,27 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
     );
   }
 
-  /// First-run tutorial styles for the owner to choose from (2026-11-04).
+  /// First-run tutorial (owner's pick 2026-11-04).
   Widget _tutorials(BuildContext context, PixelGrid grid) {
     return _section(
       context,
-      'First-run tutorial · pick one',
+      'First-run tutorial',
       Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Each one plays the same 4 lines over a pretend Home screen. '
+            'Plays the 4 lines over a pretend Home screen. '
             'Tap to finish a line, tap again for the next.',
             style: PixelType.body(context),
           ),
-          for (final style in TutorialStyle.values) ...[
-            SizedBox(height: grid.px(2)),
-            PixelButton(
-              key: ValueKey('lab-tutorial-${style.name}'),
-              label: style.label,
-              expand: true,
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => TutorialPreviewScreen(style: style))),
-            ),
-          ],
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            key: const ValueKey('lab-tutorial'),
+            label: 'Play tutorial',
+            expand: true,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const TutorialPreviewScreen())),
+          ),
         ],
       ),
     );
