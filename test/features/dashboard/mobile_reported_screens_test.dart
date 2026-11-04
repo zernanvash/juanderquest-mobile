@@ -133,8 +133,8 @@ void main() {
     await render(tester, const SubmissionHistoryScreen(),
         scale: 1,
         submissionState: SubmissionState(error: 'Failed to fetch submissions.'));
-    expect(find.text('Connection Issue'), findsOneWidget);
-    expect(find.text('No Submissions Yet'), findsNothing);
+    expect(find.text('Could not load history'), findsOneWidget);
+    expect(find.text('NO SUBMISSIONS YET'), findsNothing);
   });
   testWidgets('recent activity title is readable at 320px, 2x text',
       (tester) async {

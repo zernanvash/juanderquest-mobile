@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
 import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +15,8 @@ import 'package:juanderquest_app/features/quests/pixel/daily_mission.dart';
 import 'package:juanderquest_app/features/shop/models/voucher_model.dart';
 import 'package:juanderquest_app/features/shop/providers/voucher_provider.dart';
 import 'package:juanderquest_app/features/submissions/models/submission_model.dart';
+import 'package:juanderquest_app/features/submissions/screens/submission_history_screen.dart';
+import 'package:juanderquest_app/features/spots/screens/saved_spots_screen.dart';
 import 'package:juanderquest_app/features/submissions/providers/submission_provider.dart';
 import 'package:juanderquest_app/features/vote/models/governance_config_model.dart';
 import 'package:juanderquest_app/features/vote/models/governance_proposal_model.dart';
@@ -1228,5 +1230,116 @@ void main() {
       await testScreenOverflow(
           tester, const PixelLabScreen(), const Size(568, 320), 2.0);
     });
-  });
+    testWidgets('ProfileScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ProfileScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('SubmissionHistoryScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [
+            submissionProvider.overrideWith(
+              (ref) => InertSubmissionNotifier(
+                ref.watch(apiClientProvider),
+                [
+                  SubmissionModel(
+                    id: 'sub-1',
+                    questTitle: 'Hundred Islands Eco Trek',
+                    category: 'eco',
+                    status: 'approved',
+                    rewardPoints: 50,
+                    createdAt: '2026-11-02T09:30:00Z',
+                  ),
+                  SubmissionModel(
+                    id: 'sub-2',
+                    questTitle: 'Patar Beach Cleanup',
+                    category: 'eco',
+                    status: 'rejected',
+                    rewardPoints: 40,
+                    rejectionReason: 'Photo does not show the checkpoint.',
+                    createdAt: '2026-11-01T08:00:00Z',
+                  ),
+                ],
+              ),
+            ),
+          ],
+          child: const SubmissionHistoryScreen(),
+        ),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('SubmissionHistoryScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [
+            submissionProvider.overrideWith(
+              (ref) => InertSubmissionNotifier(
+                ref.watch(apiClientProvider),
+                [
+                  SubmissionModel(
+                    id: 'sub-1',
+                    questTitle: 'Hundred Islands Eco Trek',
+                    category: 'eco',
+                    status: 'pending',
+                    rewardPoints: 50,
+                    createdAt: '2026-11-02T09:30:00Z',
+                  ),
+                ],
+              ),
+            ),
+          ],
+          child: const SubmissionHistoryScreen(),
+        ),
+        const Size(568, 320),
+        2.0,
+      );
+    });
+
+    testWidgets('SavedSpotsScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [
+            spotDiscoveryProvider.overrideWith(
+              (ref) => InertSpotDiscoveryNotifier(
+                ref,
+                [dummySpot.copyWith(saved: true)],
+              ),
+            ),
+          ],
+          child: const SavedSpotsScreen(),
+        ),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('SavedSpotsScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [
+            spotDiscoveryProvider.overrideWith(
+              (ref) => InertSpotDiscoveryNotifier(
+                ref,
+                [dummySpot.copyWith(saved: true)],
+              ),
+            ),
+          ],
+          child: const SavedSpotsScreen(),
+        ),
+        const Size(568, 320),
+        2.0,
+      );
+    });  });
 }
