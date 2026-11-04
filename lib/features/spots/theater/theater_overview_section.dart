@@ -142,12 +142,7 @@ class TheaterOverviewSection extends StatelessWidget {
           if (spot.questId != null) ...[
             SizedBox(height: grid.px(3)),
             PixelPanel(
-              style: PixelBoxStyle.inkDialogue.copyWith(
-                fill: PixelPalette.ink,
-                outline: PixelPalette.sun,
-                corner: 1,
-                shadowPx: 0,
-              ),
+              style: PixelBoxStyle.tooltip,
               padding: 2,
               child: Padding(
                 padding: EdgeInsets.all(grid.px(2)),
@@ -164,14 +159,20 @@ class TheaterOverviewSection extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: grid.px(1)),
-                    Text(
-                      'CHECK-IN & EARN +250 mJDQ',
-                      style: PixelType.body(context, color: PixelPalette.sun),
+                    PixelStatRow(
+                      'Bounty',
+                      '+250 mJDQ',
+                      labelColor: PixelPalette.paperDim,
+                      valueColor: PixelPalette.gold,
+                      style: PixelType.body(context),
                     ),
                     SizedBox(height: grid.px(1)),
-                    Text(
-                      'Visit this destination in person to verify your quest and earn available rewards.',
-                      style: PixelType.small(context, color: PixelPalette.paperDim),
+                    PixelText.rich(
+                      'Visit this destination in person to verify your quest and earn {gold:+250 mJDQ}!',
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.paperDim,
+                      ),
                     ),
                     SizedBox(height: grid.px(2)),
                     SizedBox(

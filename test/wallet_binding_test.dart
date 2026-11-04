@@ -104,7 +104,7 @@ void main() {
 
       expect(find.text('Web3 & Blockchain Identity'), findsOneWidget);
       expect(find.text('Off-Chain Demo Account'), findsOneWidget);
-      expect(find.text('Link Web3 / EVM Wallet'.toUpperCase()), findsOneWidget);
+      expect(find.text('Link Web3 / EVM Wallet'), findsOneWidget);
     });
 
     testWidgets('renders verified wallet badge and address when traveler has bound wallet', (tester) async {
@@ -138,7 +138,7 @@ void main() {
       expect(find.text('Web3 & Blockchain Identity'), findsOneWidget);
       expect(find.text('Web3 Passport Linked'), findsOneWidget);
       expect(find.text('0x71C8...0E40'), findsOneWidget);
-      expect(find.text('Unlink Wallet'.toUpperCase()), findsOneWidget);
+      expect(find.text('Unlink Wallet'), findsOneWidget);
     });
   });
 }

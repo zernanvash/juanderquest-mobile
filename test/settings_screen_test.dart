@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:juanderquest_app/core/pixel/pixel_grid.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
@@ -78,8 +79,9 @@ void main() {
     // Plan 47: the AR calibration/test studio is gone; travelers never calibrate.
     expect(find.text('Augmented Reality Studio', skipOffstage: false),
         findsNothing);
+    expect(find.text('Text size', skipOffstage: false), findsOneWidget);
     expect(
-        find.text('LOG OUT OF ACCOUNT', skipOffstage: false), findsOneWidget);
+        find.text('Log Out of Account', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('SettingsScreen renders in landscape without overflow',
@@ -152,6 +154,44 @@ void main() {
     expect(store.resets, 1);
     expect(container.read(homeTipsControllerProvider).showing, isTrue);
     expect(find.text('HOME'), findsOneWidget);
+  });
+
+  testWidgets('Text size dialog switches text scale setting', (tester) async {
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authProvider.overrideWith(
+            (ref) => InertAuthNotifier(
+              ref.watch(apiClientProvider),
+              ref.watch(authRefreshProvider.notifier),
+              dummyUser,
+            ),
+          ),
+        ],
+        child: Consumer(builder: (context, ref, _) {
+          container = ProviderScope.containerOf(context);
+          return const MaterialApp(
+            home: SettingsScreen(),
+          );
+        }),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tile = find.byKey(const ValueKey('settings_text_size'));
+    await tester.scrollUntilVisible(tile, 200);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Text size'), findsWidgets);
+    final smallerBtn = find.byKey(const ValueKey('settings_text_size_smaller'));
+    expect(smallerBtn, findsOneWidget);
+    await tester.tap(smallerBtn);
+    await tester.pumpAndSettle();
+
+    expect(container.read(pixelSettingsProvider).textSize,
+        PixelTextSize.smaller);
   });
 }
 

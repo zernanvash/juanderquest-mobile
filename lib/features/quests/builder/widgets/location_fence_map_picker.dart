@@ -149,12 +149,16 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Perimeter Radius',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                  const Flexible(
+                    child: Text(
+                      'Perimeter Radius',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   Text(
@@ -185,9 +189,14 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                   Text('30 m',
                       style:
                           TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                  Text('100 m (recommended)',
-                      style:
-                          TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  Flexible(
+                    child: Text('100 m (recommended)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 10, color: AppColors.textMuted)),
+                  ),
                   Text('500 m',
                       style:
                           TextStyle(fontSize: 10, color: AppColors.textMuted)),

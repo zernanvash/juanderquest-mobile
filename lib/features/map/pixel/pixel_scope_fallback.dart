@@ -12,7 +12,7 @@ class PixelScopeFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (context.dependOnInheritedWidgetOfExactType<PixelScope>() != null) {
+    if (PixelScope.maybeOf(context) != null) {
       return child;
     }
     if (context.findAncestorWidgetOfExactType<UncontrolledProviderScope>() != null) {

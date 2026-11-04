@@ -107,7 +107,7 @@ class _PixelButtonState extends State<PixelButton> {
             fit: BoxFit.scaleDown,
             alignment: Alignment.center,
             child: ShadowText(
-              widget.label.toUpperCase(),
+              widget.label,
               style: PixelType.body(context, color: textColor).copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -537,7 +537,7 @@ class PixelSegmented extends StatelessWidget {
                     child: Center(
                       widthFactor: 1,
                       child: Text(
-                        items[i].toUpperCase(),
+                        items[i],
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,

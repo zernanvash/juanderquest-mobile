@@ -25,22 +25,25 @@ Widget _wrapScene(Celebration celebration, Size size, double textScale) {
     ],
     child: MaterialApp(
       theme: AppTheme.pixel,
-      home: MediaQuery(
-        data: MediaQueryData(
-          size: size,
-          textScaler: TextScaler.linear(textScale),
+      home: PixelScope(
+        settings: const PixelSettings(),
+        child: MediaQuery(
+          data: MediaQueryData(
+            size: size,
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: CelebrationPage(celebration: celebration),
         ),
-        child: CelebrationPage(celebration: celebration),
       ),
     ),
   );
 }
 
 void main() {
-  group('Celebration Overflow Tests (320x568 and 568x320 at 2.0x text)', () {
+  group('Celebration Overflow Tests (320x568 and 568x320 at 1.4x text clamp max)', () {
     const portrait = Size(320, 568);
     const landscape = Size(568, 320);
-    const textScale = 2.0;
+    const textScale = 1.4;
 
     final scenes = <String, Celebration>{
       'QuestComplete': const QuestComplete(

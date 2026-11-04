@@ -116,11 +116,11 @@ class _HiddenGemAd extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: PixelType.small(
                   context,
-                  color: PixelPalette.greenBright,
+                  color: PixelPalette.greenDark,
                 ),
               ),
               SizedBox(height: grid.px(1)),
-              Text(
+              PixelText.rich(
                 gem.reason,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

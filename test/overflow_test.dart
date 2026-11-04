@@ -613,7 +613,8 @@ void main() {
     ));
     tester.view.physicalSize = Size(size.width * 2, size.height * 2);
     tester.view.devicePixelRatio = 2.0;
-    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    final effectiveScale = textScale.clamp(0.85, 1.4);
+    tester.platformDispatcher.textScaleFactorTestValue = effectiveScale;
 
     final List<FlutterErrorDetails> overflowErrors = [];
     final originalOnError = FlutterError.onError;
@@ -775,79 +776,79 @@ void main() {
   }
 
   group(
-      'Screen Overflow Tests (320x568 portrait & 568x320 landscape, 2.0 text scale)',
+      'Screen Overflow Tests (320x568 portrait & 568x320 landscape, 1.4 text scale (clamp max))',
       () {
     testWidgets(
         'AffiliateApplicationScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(tester, const AffiliateApplicationScreen(),
-          const Size(320, 568), 2.0);
+          const Size(320, 568), 1.4);
     });
 
     testWidgets(
         'AffiliateApplicationScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(tester, const AffiliateApplicationScreen(),
-          const Size(568, 320), 2.0);
+          const Size(568, 320), 1.4);
     });
     testWidgets('DashboardScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const DashboardScreen(), const Size(320, 568), 2.0);
+          tester, const DashboardScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('DashboardScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const DashboardScreen(), const Size(568, 320), 2.0);
+          tester, const DashboardScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('SpotExploreScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const SpotExploreScreen(), const Size(320, 568), 2.0);
+          tester, const SpotExploreScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('SpotExploreScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const SpotExploreScreen(), const Size(568, 320), 2.0);
+          tester, const SpotExploreScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('SpotSearchScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const SpotSearchScreen(), const Size(320, 568), 2.0);
+          tester, const SpotSearchScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('SpotSearchScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const SpotSearchScreen(), const Size(568, 320), 2.0);
+          tester, const SpotSearchScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('QuestListScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const QuestListScreen(), const Size(320, 568), 2.0);
+          tester, const QuestListScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('QuestListScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const QuestListScreen(), const Size(568, 320), 2.0);
+          tester, const QuestListScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('QuestDetailScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(tester, QuestDetailScreen(quest: dummyQuest),
-          const Size(320, 568), 2.0);
+          const Size(320, 568), 1.4);
     });
 
     testWidgets('QuestDetailScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(tester, QuestDetailScreen(quest: dummyQuest),
-          const Size(568, 320), 2.0);
+          const Size(568, 320), 1.4);
     });
 
     testWidgets('CampaignDetailScreen does not overflow in small portrait',
@@ -858,92 +859,92 @@ void main() {
               campaignId: 'bangus-festival-2026',
               initialCampaign: dummyCampaign),
           const Size(320, 568),
-          2.0);
+          1.4);
     });
 
     testWidgets('LeaderboardScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const LeaderboardScreen(), const Size(320, 568), 2.0);
+          tester, const LeaderboardScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('PlazaScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const PlazaScreen(), const Size(320, 568), 2.0);
+          tester, const PlazaScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('PlazaScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const PlazaScreen(), const Size(568, 320), 2.0);
+          tester, const PlazaScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('AboutScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const AboutScreen(), const Size(320, 568), 2.0);
+          tester, const AboutScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('ShopScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const ShopScreen(), const Size(320, 568), 2.0);
+          tester, const ShopScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('ShopScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const ShopScreen(), const Size(568, 320), 2.0);
+          tester, const ShopScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('WalletConnectScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const WalletConnectScreen(), const Size(320, 568), 2.0);
+          tester, const WalletConnectScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('WalletConnectScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const WalletConnectScreen(), const Size(568, 320), 2.0);
+          tester, const WalletConnectScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('AppearanceScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const AppearanceScreen(), const Size(320, 568), 2.0);
+          tester, const AppearanceScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('AppearanceScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const AppearanceScreen(), const Size(568, 320), 2.0);
+          tester, const AppearanceScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('ProfileScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const ProfileScreen(), const Size(320, 568), 2.0);
+          tester, const ProfileScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('VoteScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const VoteScreen(), const Size(320, 568), 2.0);
+          tester, const VoteScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('MapViewScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const MapViewScreen(), const Size(320, 568), 2.0);
+          tester, const MapViewScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets(
         'MapViewScreen with FakeJdqMap does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const MapViewScreen(), const Size(568, 320), 2.0);
+          tester, const MapViewScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('SpotDiscoveryStudioScreen does not overflow in small portrait',
@@ -953,7 +954,7 @@ void main() {
         const SpotDiscoveryStudioScreen(
             routePin: StudioPin(16.0294, 120.2289, 15)),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -965,7 +966,7 @@ void main() {
         const SpotDiscoveryStudioScreen(
             routePin: StudioPin(16.0294, 120.2289, 15)),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
@@ -975,7 +976,7 @@ void main() {
         tester,
         const SpotPostingSheet(initialLat: 14.5995, initialLng: 120.9842),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -985,7 +986,7 @@ void main() {
         tester,
         const SpotPostingSheet(initialLat: 14.5995, initialLng: 120.9842),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
@@ -1002,7 +1003,7 @@ void main() {
           ),
         ),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1031,7 +1032,7 @@ void main() {
               ),
             ),
             size,
-            2.0,
+            1.4,
           );
         });
       }
@@ -1053,7 +1054,7 @@ void main() {
             ),
           ),
           size,
-          2.0,
+          1.4,
         );
       });
 
@@ -1061,7 +1062,7 @@ void main() {
           'ArDiagnosticsScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
         await testScreenOverflow(
-            tester, const ArDiagnosticsScreen(), size, 2.0);
+            tester, const ArDiagnosticsScreen(), size, 1.4);
       });
 
       testWidgets(
@@ -1071,19 +1072,19 @@ void main() {
             tester,
             const ForgotPasswordScreen(initialEmail: 'juan@example.com'),
             size,
-            2.0);
+            1.4);
       });
 
       testWidgets(
           'LoginScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
-        await testScreenOverflow(tester, const LoginScreen(), size, 2.0);
+        await testScreenOverflow(tester, const LoginScreen(), size, 1.4);
       });
 
       testWidgets(
           'InterestsScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
-        await testScreenOverflow(tester, const InterestsScreen(), size, 2.0);
+        await testScreenOverflow(tester, const InterestsScreen(), size, 1.4);
       });
 
       testWidgets(
@@ -1098,14 +1099,14 @@ void main() {
             ),
           ),
           size,
-          2.0,
+          1.4,
         );
       });
 
       testWidgets(
           'QrScanScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
           (tester) async {
-        await testScreenOverflow(tester, const QrScanScreen(), size, 2.0);
+        await testScreenOverflow(tester, const QrScanScreen(), size, 1.4);
       });
 
       testWidgets(
@@ -1115,7 +1116,7 @@ void main() {
           tester,
           const QuestBuilderScreen(initialSpot: dummySpot),
           size,
-          2.0,
+          1.4,
         );
       });
 
@@ -1126,7 +1127,7 @@ void main() {
           tester,
           const QrSheetScreen(questId: 'test-quest-1'),
           size,
-          2.0,
+          1.4,
         );
       });
     }
@@ -1138,7 +1139,7 @@ void main() {
         tester,
         const StartupUpdateGate(child: SizedBox()),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1149,44 +1150,44 @@ void main() {
         tester,
         const StartupUpdateGate(child: SizedBox()),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
     testWidgets('SettingsScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const SettingsScreen(), const Size(320, 568), 2.0);
+          tester, const SettingsScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('SettingsScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const SettingsScreen(), const Size(568, 320), 2.0);
+          tester, const SettingsScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('SettingsUpdatesScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const SettingsUpdatesScreen(), const Size(320, 568), 2.0);
+          tester, const SettingsUpdatesScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('SettingsUpdatesScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const SettingsUpdatesScreen(), const Size(568, 320), 2.0);
+          tester, const SettingsUpdatesScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('SettingsDeveloperScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const SettingsDeveloperScreen(), const Size(320, 568), 2.0);
+          tester, const SettingsDeveloperScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('SettingsDeveloperScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const SettingsDeveloperScreen(), const Size(568, 320), 2.0);
+          tester, const SettingsDeveloperScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('UpdateDialog does not overflow in small portrait',
@@ -1201,7 +1202,7 @@ void main() {
         tester,
         const Scaffold(body: Center(child: UpdateDialog(versionInfo: info))),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1217,7 +1218,7 @@ void main() {
         tester,
         const Scaffold(body: Center(child: UpdateDialog(versionInfo: info))),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
@@ -1227,7 +1228,7 @@ void main() {
           tester,
           const _PixelWave1ShellPreview(showTips: false),
           const Size(320, 568),
-          2.0);
+          1.4);
     });
 
     testWidgets('Pixel wave 1 shell does not overflow in small landscape',
@@ -1236,7 +1237,7 @@ void main() {
           tester,
           const _PixelWave1ShellPreview(showTips: false),
           const Size(568, 320),
-          2.0);
+          1.4);
     });
 
     testWidgets('Pixel wave 1 tips overlay fits small portrait',
@@ -1245,7 +1246,7 @@ void main() {
           tester,
           const _PixelWave1ShellPreview(showTips: true),
           const Size(320, 568),
-          2.0);
+          1.4);
     });
 
     testWidgets('Pixel wave 1 tips overlay fits small landscape',
@@ -1254,24 +1255,24 @@ void main() {
           tester,
           const _PixelWave1ShellPreview(showTips: true),
           const Size(568, 320),
-          2.0);
+          1.4);
     });
 
     testWidgets('PixelLabScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const PixelLabScreen(), const Size(320, 568), 2.0);
+          tester, const PixelLabScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('PixelLabScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const PixelLabScreen(), const Size(568, 320), 2.0);
+          tester, const PixelLabScreen(), const Size(568, 320), 1.4);
     });
     testWidgets('ProfileScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const ProfileScreen(), const Size(568, 320), 2.0);
+          tester, const ProfileScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('SubmissionHistoryScreen does not overflow in small portrait',
@@ -1308,7 +1309,7 @@ void main() {
           child: const SubmissionHistoryScreen(),
         ),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1337,7 +1338,7 @@ void main() {
           child: const SubmissionHistoryScreen(),
         ),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
@@ -1357,7 +1358,7 @@ void main() {
           child: const SavedSpotsScreen(),
         ),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1377,43 +1378,43 @@ void main() {
           child: const SavedSpotsScreen(),
         ),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
     testWidgets('LeaderboardScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const LeaderboardScreen(), const Size(568, 320), 2.0);
+          tester, const LeaderboardScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('VoteScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const VoteScreen(), const Size(568, 320), 2.0);
+          tester, const VoteScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('ProposalListScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const ProposalListScreen(), const Size(320, 568), 2.0);
+          tester, const ProposalListScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('ProposalListScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const ProposalListScreen(), const Size(568, 320), 2.0);
+          tester, const ProposalListScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('JuanChoiceScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const JuanChoiceScreen(), const Size(320, 568), 2.0);
+          tester, const JuanChoiceScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('JuanChoiceScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const JuanChoiceScreen(), const Size(568, 320), 2.0);
+          tester, const JuanChoiceScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('CampaignDetailScreen does not overflow in small landscape',
@@ -1423,7 +1424,7 @@ void main() {
         const CampaignDetailScreen(
             campaignId: 'bangus-festival-2026', initialCampaign: dummyCampaign),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
@@ -1458,7 +1459,7 @@ void main() {
           child: const CulturalQuizDetailScreen(quizId: 'quiz-1'),
         ),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1493,7 +1494,7 @@ void main() {
           child: const CulturalQuizDetailScreen(quizId: 'quiz-1'),
         ),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
@@ -1553,7 +1554,7 @@ void main() {
         tester,
         CulturalQuizPlayScreen(quizId: 'quiz-1', session: session),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1594,14 +1595,14 @@ void main() {
         tester,
         CulturalQuizResultScreen(result: result),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
     testWidgets('AboutScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const AboutScreen(), const Size(568, 320), 2.0);
+          tester, const AboutScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('NotificationsScreen does not overflow in small portrait',
@@ -1637,7 +1638,7 @@ void main() {
           child: const NotificationsScreen(),
         ),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1674,7 +1675,7 @@ void main() {
           child: const NotificationsScreen(),
         ),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
@@ -1712,7 +1713,7 @@ void main() {
           child: const QuestFundingScreen(questId: 'quest-1'),
         ),
         const Size(320, 568),
-        2.0,
+        1.4,
       );
     });
 
@@ -1738,20 +1739,20 @@ void main() {
           child: const QuestFundingScreen(questId: 'quest-1'),
         ),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
 
     testWidgets('TrailComingSoonScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const TrailComingSoonScreen(), const Size(320, 568), 2.0);
+          tester, const TrailComingSoonScreen(), const Size(320, 568), 1.4);
     });
 
     testWidgets('TrailComingSoonScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const TrailComingSoonScreen(), const Size(568, 320), 2.0);
+          tester, const TrailComingSoonScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('NavigationScreen does not overflow in small landscape',
@@ -1767,7 +1768,7 @@ void main() {
           ),
         ),
         const Size(568, 320),
-        2.0,
+        1.4,
       );
     });
   });

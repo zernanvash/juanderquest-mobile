@@ -146,7 +146,7 @@ class ExploreSpotCard extends StatelessWidget {
                   SizedBox(height: grid.px(1)),
 
                   // 2-line Description
-                  Text(
+                  PixelText.rich(
                     spot.description,
                     style: PixelType.body(context, color: PixelPalette.slate),
                     maxLines: 2,

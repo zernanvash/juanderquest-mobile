@@ -337,11 +337,11 @@ class _HeroCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: grid.px(1)),
-                Text(
-                  'Level $level · $points Explorer XP',
-                  maxLines: 2,
+                PixelText.rich(
+                  'Level {green:$level} · {gold:$points Explorer XP}',
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: PixelType.small(context, color: PixelPalette.sun),
+                  style: PixelType.small(context, color: PixelPalette.paperDim),
                 ),
                 SizedBox(height: grid.px(2)),
                 PixelProgressBar(
@@ -350,14 +350,12 @@ class _HeroCard extends StatelessWidget {
                   color: PixelPalette.greenBright,
                 ),
                 SizedBox(height: grid.px(1)),
-                Text(
-                  '$points / ${level * 50} XP to next level',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: PixelType.small(
-                    context,
-                    color: PixelPalette.paperDim,
-                  ),
+                PixelStatRow(
+                  'Progress',
+                  '$points / ${level * 50} XP',
+                  labelColor: PixelPalette.paperDim,
+                  valueColor: PixelPalette.sun,
+                  style: PixelType.small(context),
                 ),
               ],
             ),
@@ -444,7 +442,8 @@ class _ImpactTiles extends StatelessWidget {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             stat.$2,
-                            style: PixelType.title(context),
+                            style: PixelType.title(context,
+                                color: PixelPalette.sun),
                           ),
                         ),
                       ),

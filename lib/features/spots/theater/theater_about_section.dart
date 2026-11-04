@@ -37,10 +37,10 @@ class TheaterAboutSection extends StatelessWidget {
           SizedBox(height: grid.px(2)),
 
           // Full Description
-          Text(
+          PixelText.rich(
             descriptionText,
             style: PixelType.body(context, color: PixelPalette.paper).copyWith(
-              height: 1.5,
+              height: 1.4,
             ),
           ),
 
@@ -103,41 +103,19 @@ class TheaterAboutSection extends StatelessWidget {
             ),
             SizedBox(height: grid.px(1)),
             PixelPanel(
-              style: PixelBoxStyle.inkDialogue.copyWith(
-                fill: PixelPalette.ink,
-                outline: PixelPalette.slate,
-                corner: 0,
-                shadowPx: 0,
-              ),
-              padding: 1,
+              style: PixelBoxStyle.tooltip,
+              padding: 2,
               child: Padding(
                 padding: EdgeInsets.all(grid.px(2)),
                 child: Column(
                   children: [
                     for (final entry in spot.hours.entries) ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.key.toUpperCase(),
-                            style: PixelType.small(
-                              context,
-                              color: PixelPalette.sun,
-                            ),
-                          ),
-                          SizedBox(width: grid.px(2)),
-                          Flexible(
-                            child: Text(
-                              entry.value,
-                              textAlign: TextAlign.end,
-                              style: PixelType.small(
-                                context,
-                                color: PixelPalette.paper,
-                              ),
-                            ),
-                          ),
-                        ],
+                      PixelStatRow(
+                        entry.key,
+                        entry.value,
+                        labelColor: PixelPalette.sun,
+                        valueColor: PixelPalette.paper,
+                        style: PixelType.small(context),
                       ),
                       if (entry.key != spot.hours.keys.last)
                         SizedBox(height: grid.px(1)),

@@ -153,10 +153,10 @@ class QuestCard extends StatelessWidget {
             quest.locationName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: PixelType.small(context, color: PixelPalette.greenBright),
+            style: PixelType.small(context, color: PixelPalette.greenDark),
           ),
           SizedBox(height: grid.px(1)),
-          Text(
+          PixelText.rich(
             quest.description,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

@@ -208,7 +208,7 @@ class _PixelDialogueState extends State<PixelDialogue> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '* ${widget.speaker.toUpperCase()}',
+                        '* ${widget.speaker}',
                         style: PixelType.small(
                           context,
                           color: PixelPalette.sun,
@@ -309,7 +309,7 @@ Future<T?> showPixelDialog<T>({
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       ShadowText(
-                        title.toUpperCase(),
+                        title,
                         style: PixelType.title(dialogContext),
                       ),
                       if (message != null) ...[
@@ -482,7 +482,7 @@ class PixelEmptyState extends StatelessWidget {
               SizedBox(height: grid.px(3)),
             ],
             Text(
-              title.toUpperCase(),
+              title,
               textAlign: TextAlign.center,
               style: PixelType.title(context),
             ),

@@ -179,7 +179,7 @@ class _PixelHotbarState extends State<PixelHotbar> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      item.label.toUpperCase(),
+                      item.label,
                       maxLines: 1,
                       softWrap: false,
                       style: PixelType.small(

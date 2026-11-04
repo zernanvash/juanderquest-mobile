@@ -321,10 +321,10 @@ void main() {
       expect(find.text('UPDATE AVAILABLE!'), findsOneWidget);
       expect(find.text("WHAT'S NEW:"), findsOneWidget);
       expect(find.text('Awesome pixel redesign features added.'), findsOneWidget);
-      expect(find.text('LATER'), findsOneWidget);
-      expect(find.text('UPDATE NOW'), findsOneWidget);
+      expect(find.text('Later'), findsOneWidget);
+      expect(find.text('Update Now'), findsOneWidget);
 
-      await tester.tap(find.text('LATER'));
+      await tester.tap(find.text('Later'));
       await tester.pumpAndSettle();
       expect(popped, isTrue);
     });
@@ -355,7 +355,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('UPDATE NOW'));
+      await tester.tap(find.text('Update Now'));
       await tester.pumpAndSettle();
       expect(notifier.downloadCalls, 1);
     });
@@ -389,7 +389,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Downloading update: 65%'), findsOneWidget);
-      expect(find.text('DOWNLOADING...'), findsOneWidget);
+      expect(find.text('Downloading...'), findsOneWidget);
     });
 
     testWidgets('renders ready to install state and taps Install Now',
@@ -419,10 +419,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Package downloaded and ready to install.'), findsOneWidget);
-      expect(find.text('INSTALL NOW'), findsOneWidget);
+      expect(find.text('Install Now'), findsOneWidget);
       expect(find.text('Re-download update package'), findsOneWidget);
 
-      await tester.tap(find.text('INSTALL NOW'));
+      await tester.tap(find.text('Install Now'));
       await tester.pumpAndSettle();
       expect(notifier.downloadCalls, 1);
 
@@ -489,8 +489,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('LATER'), findsNothing);
-      expect(find.text('UPDATE NOW'), findsOneWidget);
+      expect(find.text('Later'), findsNothing);
+      expect(find.text('Update Now'), findsOneWidget);
     });
   });
 

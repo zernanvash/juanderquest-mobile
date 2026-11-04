@@ -48,20 +48,26 @@ class TaskSettingsPanel extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
-              children: [
-                Icon(Icons.location_on_rounded,
-                    size: 16, color: AppColors.primary),
-                SizedBox(width: 6),
-                Text(
-                  'Check-in Location & Radius',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.woodBrown,
+            const Expanded(
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_rounded,
+                      size: 16, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Check-in Location & Radius',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.woodBrown,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             TextButton.icon(
               style: TextButton.styleFrom(

@@ -243,20 +243,33 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                   style: PixelType.body(context, color: PixelPalette.slate),
                 )
               else ...[
-                Text(
-                  '${data.previous!.periodLabel} · ${data.previous!.validBallots} valid ballots',
-                  style: PixelType.body(context, color: PixelPalette.slate),
+                PixelStatRow(
+                  'Round',
+                  '${data.previous!.periodLabel} (${data.previous!.validBallots} ballots)',
+                  style: PixelType.small(context),
+                  labelColor: PixelPalette.slate,
+                  valueColor: PixelPalette.ink,
                 ),
-                for (final standing in data.previous!.standings)
-                  Text(
-                    '${data.previous!.coWinnerIds.contains(standing.candidateId) ? '* ' : ''}${standing.spotName}: ${standing.votes} votes',
+                SizedBox(height: grid.px(1)),
+                for (final standing in data.previous!.standings) ...[
+                  PixelStatRow(
+                    '${data.previous!.coWinnerIds.contains(standing.candidateId) ? '* ' : ''}${standing.spotName}',
+                    '${standing.votes} votes',
                     style: PixelType.body(context),
+                    labelColor: data.previous!.coWinnerIds
+                            .contains(standing.candidateId)
+                        ? PixelPalette.greenDark
+                        : PixelPalette.ink,
+                    valueColor: PixelPalette.gold,
                   ),
+                  SizedBox(height: grid.px(1)),
+                ],
                 if (data.previous!.coWinnerIds.isEmpty)
                   Text(
                     'No winner this round.',
                     style: PixelType.body(context, color: PixelPalette.slate),
                   ),
+                SizedBox(height: grid.px(1)),
                 Text(
                   'Community support is popularity, not a visitor rating.',
                   style: PixelType.body(context, color: PixelPalette.slate),
@@ -277,18 +290,21 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
         children: [
           Text('Your community journey', style: PixelType.title(context)),
           SizedBox(height: grid.px(1)),
-          Text(
-            '${summary.currentStreak} round streak · longest ${summary.longestStreak}',
+          PixelText.rich(
+            'Streak: {green:${summary.currentStreak} rounds} · Longest: {gold:${summary.longestStreak}}',
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
-          if (summary.nextMilestone != null)
-            Text(
-              '${summary.nextMilestone! - summary.currentStreak} more official round(s) to your next badge',
+          if (summary.nextMilestone != null) ...[
+            SizedBox(height: grid.px(1)),
+            PixelText.rich(
+              '{sun:${summary.nextMilestone! - summary.currentStreak}} more official round(s) to next badge',
               style: PixelType.body(context, color: PixelPalette.slate),
             ),
-          Text(
-            '${summary.verifiedVisits} verified visits · ${summary.uniqueDestinations} destinations · ${summary.municipalities} municipalities',
-            style: PixelType.body(context, color: PixelPalette.slate),
+          ],
+          SizedBox(height: grid.px(1)),
+          PixelText.rich(
+            '{gold:${summary.verifiedVisits}} verified visits · {green:${summary.uniqueDestinations}} destinations · {blue:${summary.municipalities}} municipalities',
+            style: PixelType.small(context, color: PixelPalette.slate),
           ),
           if (summary.challenges.isNotEmpty) ...[
             SizedBox(height: grid.px(2)),
@@ -674,9 +690,12 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                   style: PixelType.title(context),
                 ),
                 SizedBox(height: grid.px(1)),
-                Text(
-                  '${standing.votes} provisional votes',
-                  style: PixelType.body(context, color: PixelPalette.slate),
+                PixelStatRow(
+                  'Provisional votes',
+                  '${standing.votes}',
+                  style: PixelType.body(context),
+                  labelColor: PixelPalette.slate,
+                  valueColor: PixelPalette.gold,
                 ),
                 if (authenticated &&
                     overview?.current?.id == data.campaign.id &&

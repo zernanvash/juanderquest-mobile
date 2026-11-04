@@ -61,7 +61,7 @@ void main() {
     await tester.pumpWidget(_harness(() async => const [_gem]));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('VIEW THIS GEM'));
+    await tester.tap(find.text('View this gem'));
     await tester.pumpAndSettle();
 
     expect(find.text('detail:spot-antong-falls'), findsOneWidget);

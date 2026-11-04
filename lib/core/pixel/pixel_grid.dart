@@ -6,50 +6,94 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+enum PixelTextSize {
+  followPhone,
+  smaller,
+  larger;
+
+  double get multiplier => switch (this) {
+        PixelTextSize.followPhone => 1.0,
+        PixelTextSize.smaller => 0.9,
+        PixelTextSize.larger => 1.15,
+      };
+
+  String get label => switch (this) {
+        PixelTextSize.followPhone => 'Follow phone',
+        PixelTextSize.smaller => 'Smaller',
+        PixelTextSize.larger => 'Larger',
+      };
+}
+
 @immutable
 class PixelSettings {
   const PixelSettings({
-    this.artPx = defaultArtPx,
+    double? artPx,
     this.font = defaultFont,
     this.haptics = true,
-  });
+    this.textSize = PixelTextSize.followPhone,
+  }) : _artPx = artPx;
 
   static const double defaultArtPx = 2;
-  static const String defaultFont = 'Silkscreen';
+  static const String defaultFont = 'Monocraft';
 
-  static const artSizes = <double>[2, 2.5, 3, 4];
+  static const artSizes = <double>[1.5, 2, 2.5, 3, 4];
 
   static const fonts = <String, String>{
-    'Silkscreen': 'Chunky, all caps — default',
-    'Monocraft': 'Minecraft-like, uniform, monospaced',
+    'Monocraft': 'Minecraft-like, uniform — default',
+    'Silkscreen': 'Chunky, all caps',
     'PixelifySans': 'Readable pixel sans, proportional',
     'VT323': 'Terminal / Undertale-ish',
     'PressStart2P': '8-bit arcade (NES)',
   };
 
-  final double artPx;
+  final double? _artPx;
+  double get artPx => _artPx ?? defaultArtPx;
+  double? get customArtPx => _artPx;
+
   final String font;
   final bool haptics;
+  final PixelTextSize textSize;
+
+  double resolveArtPx([double shortestSide = 400]) {
+    final art = _artPx;
+    if (art != null && artSizes.contains(art)) return art;
+    return shortestSide < 400 ? 1.5 : 2.0;
+  }
 
   double fontScale() => switch (font) {
-        'PressStart2P' => 0.72,
-        'Monocraft' => 1.18,
-        'VT323' => 1.55,
-        'PixelifySans' => 1.23,
+        'PressStart2P' => 0.61,
+        'Silkscreen' => 0.85,
+        'VT323' => 1.31,
+        'PixelifySans' => 1.04,
+        'Monocraft' => 1.0,
         _ => 1.0,
       };
 
-  PixelSettings copyWith({double? artPx, String? font, bool? haptics}) =>
+  TextScaler effectiveTextScaler(MediaQueryData media) {
+    final phoneScale = media.textScaler.scale(1.0);
+    final scaled = phoneScale * textSize.multiplier;
+    final clamped = scaled.clamp(0.85, 1.4);
+    return TextScaler.linear(clamped);
+  }
+
+  PixelSettings copyWith({
+    double? artPx,
+    String? font,
+    bool? haptics,
+    PixelTextSize? textSize,
+  }) =>
       PixelSettings(
-        artPx: artPx ?? this.artPx,
+        artPx: artPx ?? _artPx,
         font: font ?? this.font,
         haptics: haptics ?? this.haptics,
+        textSize: textSize ?? this.textSize,
       );
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'artPx': artPx,
+        'artPx': _artPx,
         'font': font,
         'haptics': haptics,
+        'textSize': textSize.name,
       };
 
   static PixelSettings? fromJson(String raw) {
@@ -59,10 +103,21 @@ class PixelSettings {
       final art = (decoded['artPx'] as num?)?.toDouble();
       final font = decoded['font'];
       final haptics = decoded['haptics'];
+      final textSizeName = decoded['textSize'];
+      PixelTextSize parsedTextSize = PixelTextSize.followPhone;
+      if (textSizeName is String) {
+        for (final v in PixelTextSize.values) {
+          if (v.name == textSizeName) {
+            parsedTextSize = v;
+            break;
+          }
+        }
+      }
       return PixelSettings(
-        artPx: art != null && artSizes.contains(art) ? art : defaultArtPx,
+        artPx: art != null && artSizes.contains(art) ? art : null,
         font: font is String && fonts.containsKey(font) ? font : defaultFont,
         haptics: haptics is bool ? haptics : true,
+        textSize: parsedTextSize,
       );
     } catch (_) {
       return null;
@@ -72,28 +127,75 @@ class PixelSettings {
   @override
   bool operator ==(Object other) =>
       other is PixelSettings &&
-      other.artPx == artPx &&
+      other._artPx == _artPx &&
       other.font == font &&
-      other.haptics == haptics;
+      other.haptics == haptics &&
+      other.textSize == textSize;
 
   @override
-  int get hashCode => Object.hash(artPx, font, haptics);
+  int get hashCode => Object.hash(_artPx, font, haptics, textSize);
 }
 
-class PixelScope extends InheritedWidget {
-  const PixelScope({super.key, required this.settings, required super.child});
+class PixelScope extends StatelessWidget {
+  const PixelScope({
+    super.key,
+    required this.settings,
+    required this.child,
+  });
 
   final PixelSettings settings;
+  final Widget child;
 
   static PixelSettings of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<PixelScope>();
-    if (scope != null) return scope.settings;
-    return ProviderScope.containerOf(context, listen: false)
-        .read(pixelSettingsProvider);
+    final inherited =
+        context.dependOnInheritedWidgetOfExactType<_InheritedPixelScope>();
+    if (inherited != null) return inherited.settings;
+    try {
+      return ProviderScope.containerOf(context, listen: false)
+          .read(pixelSettingsProvider);
+    } catch (_) {
+      return const PixelSettings();
+    }
+  }
+
+  static PixelSettings? maybeOf(BuildContext context) {
+    final inherited =
+        context.dependOnInheritedWidgetOfExactType<_InheritedPixelScope>();
+    return inherited?.settings;
   }
 
   @override
-  bool updateShouldNotify(PixelScope oldWidget) =>
+  Widget build(BuildContext context) {
+    final media = MediaQuery.maybeOf(context);
+    final clampedScaler =
+        media != null ? settings.effectiveTextScaler(media) : null;
+
+    Widget result = _InheritedPixelScope(
+      settings: settings,
+      child: child,
+    );
+
+    if (media != null && clampedScaler != null) {
+      result = MediaQuery(
+        data: media.copyWith(textScaler: clampedScaler),
+        child: result,
+      );
+    }
+
+    return result;
+  }
+}
+
+class _InheritedPixelScope extends InheritedWidget {
+  const _InheritedPixelScope({
+    required this.settings,
+    required super.child,
+  });
+
+  final PixelSettings settings;
+
+  @override
+  bool updateShouldNotify(_InheritedPixelScope oldWidget) =>
       oldWidget.settings != settings;
 }
 
@@ -106,10 +208,16 @@ class PixelGrid {
   final int devicePerArt;
   final double unit;
 
-  static PixelGrid of(BuildContext context) => PixelGrid(
-        MediaQuery.devicePixelRatioOf(context),
-        PixelScope.of(context).artPx,
-      );
+  static PixelGrid of(BuildContext context) {
+    final media = MediaQuery.maybeOf(context);
+    final shortest = media?.size.shortestSide ?? 400.0;
+    final dpr = media?.devicePixelRatio ?? 1.0;
+    final settings = PixelScope.of(context);
+    return PixelGrid(
+      dpr,
+      settings.resolveArtPx(shortest),
+    );
+  }
 
   double snap(double v) => (v * dpr).roundToDouble() / dpr;
 
@@ -161,9 +269,7 @@ final pixelSettingsProvider =
 class PixelSettingsNotifier extends Notifier<PixelSettings> {
   @override
   PixelSettings build() {
-    if (!kReleaseMode) {
-      Future<void>.microtask(_restore);
-    }
+    Future<void>.microtask(_restore);
     return const PixelSettings();
   }
 
@@ -179,6 +285,11 @@ class PixelSettingsNotifier extends Notifier<PixelSettings> {
   void setArtPx(double value) {
     if (kReleaseMode || !PixelSettings.artSizes.contains(value)) return;
     state = state.copyWith(artPx: value);
+    unawaited(_persist());
+  }
+
+  void setTextSize(PixelTextSize value) {
+    state = state.copyWith(textSize: value);
     unawaited(_persist());
   }
 
@@ -201,7 +312,6 @@ class PixelSettingsNotifier extends Notifier<PixelSettings> {
   }
 
   Future<void> _persist() async {
-    if (kReleaseMode) return;
     await ref.read(pixelSettingsStoreProvider).write(state);
   }
 }
