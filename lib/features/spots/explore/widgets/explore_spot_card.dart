@@ -41,7 +41,8 @@ class ExploreSpotCard extends StatelessWidget {
     final grid = PixelGrid.of(context);
     final hasPhoto = spot.imageUrl != null && spot.imageUrl!.trim().isNotEmpty;
     final cardWidth = MediaQuery.sizeOf(context).width;
-    final cacheWidth = (cardWidth * MediaQuery.devicePixelRatioOf(context)).round();
+    final cacheWidth =
+        (cardWidth * MediaQuery.devicePixelRatioOf(context)).round();
     final recommendationReason = getTopRecommendationReason(spot);
     final hasSourceName = spot.sourceName.trim().isNotEmpty;
     final hasQuest = spot.questId != null && spot.questId!.trim().isNotEmpty;
@@ -69,7 +70,8 @@ class ExploreSpotCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'SHARED BY ${spot.sourceName.trim().toUpperCase()}',
-                      style: PixelType.small(context, color: PixelPalette.slate),
+                      style:
+                          PixelType.small(context, color: PixelPalette.slate),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -80,12 +82,14 @@ class ExploreSpotCard extends StatelessWidget {
                   button: true,
                   label: 'Report problem with ${spot.name}',
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    constraints:
+                        const BoxConstraints(minWidth: 48, minHeight: 48),
                     child: Center(
                       child: PixelIconButton(
                         icon: ExploreArt.flag,
                         semanticLabel: 'Report problem',
-                        style: PixelBoxStyle.parchment.copyWith(corner: 0, shadowPx: 0),
+                        style: PixelBoxStyle.parchment
+                            .copyWith(corner: 0, shadowPx: 0),
                         iconHeight: 16,
                         onPressed: onReport,
                       ),
@@ -123,7 +127,8 @@ class ExploreSpotCard extends StatelessWidget {
                     children: [
                       Text(
                         '${spot.municipality.toUpperCase()} · ${categoryLabel(spot.category).toUpperCase()}',
-                        style: PixelType.small(context, color: PixelPalette.stone),
+                        style:
+                            PixelType.small(context, color: PixelPalette.stone),
                       ),
                       if (recommendationReason != null)
                         FittedBox(
@@ -132,7 +137,8 @@ class ExploreSpotCard extends StatelessWidget {
                           child: PixelChip(
                             recommendationReason.toUpperCase(),
                             style: _recommendationStyle(recommendationReason),
-                            textColor: _recommendationTextColor(recommendationReason),
+                            textColor:
+                                _recommendationTextColor(recommendationReason),
                           ),
                         ),
                     ],
@@ -160,7 +166,8 @@ class ExploreSpotCard extends StatelessWidget {
               },
               child: hasPhoto
                   ? PixelPanel(
-                      style: PixelBoxStyle.slot.copyWith(corner: 0, shadowPx: 0),
+                      style:
+                          PixelBoxStyle.slot.copyWith(corner: 0, shadowPx: 0),
                       padding: 1,
                       child: AspectRatio(
                         aspectRatio: 16 / 10,
@@ -169,7 +176,8 @@ class ExploreSpotCard extends StatelessWidget {
                           fit: BoxFit.cover,
                           filterQuality: FilterQuality.medium,
                           cacheWidth: cacheWidth > 0 ? cacheWidth : null,
-                          errorBuilder: (_, __, ___) => _errorPhotoFallback(context),
+                          errorBuilder: (_, __, ___) =>
+                              _errorPhotoFallback(context),
                         ),
                       ),
                     )
@@ -189,13 +197,17 @@ class ExploreSpotCard extends StatelessWidget {
                   child: Center(
                     child: PixelButton(
                       label: '$likeCount',
-                      icon: isLiked ? DesignerArt.heartLiked : DesignerArt.heartUnliked,
+                      icon: isLiked
+                          ? DesignerArt.heartLiked
+                          : DesignerArt.heartUnliked,
                       iconScale: 2,
-                      variant: isLiked ? PixelButtonVariant.danger : PixelButtonVariant.secondary,
-                      style: isLiked
-                          ? PixelBoxStyle.red
-                          : PixelBoxStyle.parchment,
-                      textColor: isLiked ? PixelPalette.white : PixelPalette.ink,
+                      variant: isLiked
+                          ? PixelButtonVariant.danger
+                          : PixelButtonVariant.secondary,
+                      style:
+                          isLiked ? PixelBoxStyle.red : PixelBoxStyle.parchment,
+                      textColor:
+                          isLiked ? PixelPalette.white : PixelPalette.ink,
                       onPressed: onToggleLike,
                     ),
                   ),
@@ -206,9 +218,14 @@ class ExploreSpotCard extends StatelessWidget {
                   constraints: const BoxConstraints(minHeight: 48),
                   child: Center(
                     child: PixelIconButton(
-                      icon: isSaved ? ExploreArt.bookmarkSaved : ExploreArt.bookmarkUnsaved,
-                      semanticLabel: isSaved ? 'Remove bookmark' : 'Save bookmark',
-                      style: isSaved ? PixelBoxStyle.gold : PixelBoxStyle.parchment,
+                      icon: isSaved
+                          ? ExploreArt.bookmarkSaved
+                          : ExploreArt.bookmarkUnsaved,
+                      semanticLabel:
+                          isSaved ? 'Remove bookmark' : 'Save bookmark',
+                      style: isSaved
+                          ? PixelBoxStyle.gold
+                          : PixelBoxStyle.parchment,
                       iconHeight: 20,
                       onPressed: onToggleSave,
                     ),
@@ -258,30 +275,33 @@ class ExploreSpotCard extends StatelessWidget {
       child: Container(
         height: 64,
         color: PixelPalette.slate,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.6,
-                child: FittedBox(
-                  fit: BoxFit.cover,
-                  child: PixelSprite(strip, scale: 4),
+        child: ClipRect(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.6,
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: PixelSprite(strip, scale: 4),
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              right: grid.px(2),
-              bottom: grid.px(2),
-              child: PixelPanel(
-                style: PixelBoxStyle.inkDialogue.copyWith(corner: 0, shadowPx: 0),
-                padding: 1,
-                child: Text(
-                  '${categoryLabel(spot.category).toUpperCase()} · EXPLORE ›',
-                  style: PixelType.small(context, color: PixelPalette.paper),
+              Positioned(
+                right: grid.px(2),
+                bottom: grid.px(2),
+                child: PixelPanel(
+                  style: PixelBoxStyle.inkDialogue
+                      .copyWith(corner: 0, shadowPx: 0),
+                  padding: 1,
+                  child: Text(
+                    '${categoryLabel(spot.category).toUpperCase()} · EXPLORE ›',
+                    style: PixelType.small(context, color: PixelPalette.paper),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
