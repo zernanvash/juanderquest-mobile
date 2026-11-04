@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/widgets/primary_button.dart';
-import '../../../core/widgets/designer_guide.dart';
-import '../providers/juanchoice_provider.dart';
+
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../providers/juanchoice_provider.dart';
 
 class JuanChoiceScreen extends ConsumerStatefulWidget {
   const JuanChoiceScreen({super.key});
@@ -12,11 +20,20 @@ class JuanChoiceScreen extends ConsumerStatefulWidget {
   ConsumerState<JuanChoiceScreen> createState() => _JuanChoiceScreenState();
 }
 
-class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen> with WidgetsBindingObserver {
+class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
+    with WidgetsBindingObserver {
   @override
-  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
   @override
-  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) ref.invalidate(choiceOverviewProvider);
@@ -29,119 +46,373 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen> with Widget
     final supporterQuest = ref.watch(choiceSupporterQuestProvider);
     final engagement = authenticated ? ref.watch(choiceEngagementProvider) : null;
     final claimState = ref.watch(choiceSupporterClaimProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('JuanChoice')),
-      body: SafeArea(child: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(choiceOverviewProvider),
-        child: ListView(padding: const EdgeInsets.all(16), children: [
-          const Text('Community spotlight votes are free and separate from governance voting.'),
-          const SizedBox(height: 12),
-          overview.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Community voting is temporarily unavailable.'),
-                SecondaryButton(label: 'Retry', onPressed: () => ref.invalidate(choiceOverviewProvider)),
-              ]))),
-            data: (data) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (data.current != null) Card(child: ListTile(
-                title: Text(data.current!.theme),
-                subtitle: Text('Voting closes ${_manilaDate(data.current!.closesAt)} PHT'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/choice/${data.current!.id}'),
-              )) else Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Next community vote', style: Theme.of(context).textTheme.titleMedium),
-                  Text(data.nextOpensAt == null ? 'The next date has not been confirmed yet.'
-                      : 'Opens ${_manilaDate(data.nextOpensAt!)} PHT'),
-                  if (data.nextClosesAt != null) Text('Closes ${_manilaDate(data.nextClosesAt!)} PHT'),
-                  if (data.nextTheme != null) Text(data.nextTheme!),
-                ],
-              ))),
-              if (data.notice != null) Padding(padding: const EdgeInsets.all(8), child: Text(data.notice!)),
-              const SizedBox(height: 8),
-              Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Previous results', style: Theme.of(context).textTheme.titleMedium),
-                  if (data.previous == null) const Text('Results will appear after the first community round.')
-                  else ...[
-                    Text('${data.previous!.periodLabel} · ${data.previous!.validBallots} valid ballots'),
-                    for (final standing in data.previous!.standings) Text(
-                      '${data.previous!.coWinnerIds.contains(standing.candidateId) ? '★ ' : ''}${standing.spotName}: ${standing.votes} votes'),
-                    if (data.previous!.coWinnerIds.isEmpty) const Text('No winner this round.'),
-                    const Text('Community support is popularity, not a visitor rating.'),
-                  ],
-                ],
-              ))),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          if (authenticated) engagement!.when(
-            loading: () => const LinearProgressIndicator(),
-            error: (_, __) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Your community journey could not be loaded.'),
-                SecondaryButton(label: 'Retry journey', onPressed: () => ref.invalidate(choiceEngagementProvider)),
-              ]))),
-            data: (summary) => Card(
-              child: Padding(padding: const EdgeInsets.all(12), child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
                 children: [
-                  Text('Your community journey', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text('${summary.currentStreak} round streak · longest ${summary.longestStreak}'),
-                  if (summary.nextMilestone != null)
-                    Text('${summary.nextMilestone! - summary.currentStreak} more official round(s) to your next badge'),
-                  Text('${summary.verifiedVisits} verified visits · ${summary.uniqueDestinations} destinations · ${summary.municipalities} municipalities'),
-                  if (summary.challenges.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    for (final challenge in summary.challenges.take(2))
-                      Text('${challenge.complete ? '✓' : '•'} ${challenge.title}: ${challenge.progress}/${challenge.target}'),
-                  ],
+                  PixelAppBar(
+                    title: 'JuanChoice',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: PixelPalette.green,
+                      backgroundColor: PixelPalette.parchment,
+                      onRefresh: () async =>
+                          ref.invalidate(choiceOverviewProvider),
+                      child: ListView(
+                        padding: EdgeInsets.fromLTRB(
+                          grid.px(4),
+                          grid.px(3),
+                          grid.px(4),
+                          grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                        ),
+                        children: [
+                          _hero(context, grid),
+                          SizedBox(height: grid.px(3)),
+                          overview.when(
+                            loading: () => const Center(
+                                child: PixelLoader(label: 'Loading votes')),
+                            error: (_, __) => _errorCard(
+                              context,
+                              grid,
+                              'Community voting is temporarily unavailable.',
+                              'Retry',
+                              () => ref.invalidate(choiceOverviewProvider),
+                            ),
+                            data: (data) => _overview(context, grid, data),
+                          ),
+                          SizedBox(height: grid.px(3)),
+                          if (authenticated)
+                            engagement!.when(
+                              loading: () => const Center(
+                                  child: PixelLoader(label: 'Loading journey')),
+                              error: (_, __) => _errorCard(
+                                context,
+                                grid,
+                                'Your community journey could not be loaded.',
+                                'Retry journey',
+                                () => ref
+                                    .invalidate(choiceEngagementProvider),
+                              ),
+                              data: (summary) =>
+                                  _journey(context, grid, summary),
+                            ),
+                          SizedBox(height: grid.px(3)),
+                          supporterQuest.when(
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => _errorCard(
+                              context,
+                              grid,
+                              'Visit rewards could not be checked.',
+                              'Retry visit rewards',
+                              () => ref
+                                  .invalidate(choiceSupporterQuestProvider),
+                            ),
+                            data: (quest) => quest == null
+                                ? const SizedBox.shrink()
+                                : _supporterQuest(
+                                    context, grid, quest, authenticated, claimState),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
-              )),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          supporterQuest.when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Visit rewards could not be checked.'),
-                SecondaryButton(label: 'Retry visit rewards', onPressed: () => ref.invalidate(choiceSupporterQuestProvider)),
-              ]))),
-            data: (quest) => quest == null ? const SizedBox.shrink() : Card(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: Padding(padding: const EdgeInsets.all(12),child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,children:[
-                  const Text('Visit the community winner',style:TextStyle(fontWeight:FontWeight.bold)),
-                  Text(quest.spotName),
-                  Text(quest.questDescription,maxLines:3,overflow:TextOverflow.ellipsis),
-                  Text('+${quest.explorerXp} Explorer XP · expires ${quest.expiresAt.toLocal()}'),
-                  const SizedBox(height:8),
-                  if (quest.claimed) const Text('Visit reward claimed') else ...[
-                    SecondaryButton(label:'Open destination quest',icon:Icons.directions_walk_rounded,
-                      onPressed:()=>context.push('/quests/${quest.questId}')),
-                    const SizedBox(height:8),
-                    if (authenticated) PrimaryButton(label:'Claim verified visit reward',isLoading:claimState.isLoading,
-                      onPressed:()=>ref.read(choiceSupporterClaimProvider.notifier).claim(quest.campaignId))
-                    else PrimaryButton(label:'Sign in to claim after your visit',
-                      onPressed:()=>context.go('/?redirect=${Uri.encodeComponent('/choice')}')),
-                    if (claimState.hasError) Padding(padding:const EdgeInsets.only(top:8),
-                      child:Text('${claimState.error}',style:TextStyle(color:Theme.of(context).colorScheme.error))),
-                  ],
-                ],
-              )),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ]),
-      )),
+          );
+        },
+      ),
     );
   }
 
-  String _manilaDate(DateTime value) => value.toUtc().add(const Duration(hours: 8))
-      .toIso8601String().substring(0, 16).replaceFirst('T', ' ');
+  Widget _hero(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Community Choice',
+            style: PixelType.title(context, color: PixelPalette.paper),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Community spotlight votes are free and separate from governance voting.',
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _overview(BuildContext context, PixelGrid grid, dynamic data) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (data.current != null)
+          GestureDetector(
+            key: const ValueKey('choice_current'),
+            onTap: () => context.push('/choice/${data.current!.id}'),
+            child: PixelPanel(
+              style: PixelBoxStyle.parchment,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(data.current!.theme,
+                            style: PixelType.title(context)),
+                        SizedBox(height: grid.px(1)),
+                        Text(
+                          'Voting closes ${_manilaDate(data.current!.closesAt)} PHT',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: grid.px(2)),
+                  Text('>',
+                      style: PixelType.title(
+                        context,
+                        color: PixelPalette.woodMid,
+                      )),
+                ],
+              ),
+            ),
+          )
+        else
+          PixelPanel(
+            style: PixelBoxStyle.parchment,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Next community vote', style: PixelType.title(context)),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  data.nextOpensAt == null
+                      ? 'The next date has not been confirmed yet.'
+                      : 'Opens ${_manilaDate(data.nextOpensAt!)} PHT',
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                ),
+                if (data.nextClosesAt != null)
+                  Text(
+                    'Closes ${_manilaDate(data.nextClosesAt!)} PHT',
+                    style: PixelType.body(context, color: PixelPalette.slate),
+                  ),
+                if (data.nextTheme != null)
+                  Text(data.nextTheme!,
+                      style: PixelType.body(context, color: PixelPalette.slate)),
+              ],
+            ),
+          ),
+        if (data.notice != null) ...[
+          SizedBox(height: grid.px(2)),
+          PixelPanel(
+            style: PixelBoxStyle.gold,
+            child: Text(data.notice!, style: PixelType.body(context)),
+          ),
+        ],
+        SizedBox(height: grid.px(3)),
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Previous results', style: PixelType.title(context)),
+              SizedBox(height: grid.px(1)),
+              if (data.previous == null)
+                Text(
+                  'Results will appear after the first community round.',
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                )
+              else ...[
+                Text(
+                  '${data.previous!.periodLabel} · ${data.previous!.validBallots} valid ballots',
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                ),
+                for (final standing in data.previous!.standings)
+                  Text(
+                    '${data.previous!.coWinnerIds.contains(standing.candidateId) ? '* ' : ''}${standing.spotName}: ${standing.votes} votes',
+                    style: PixelType.body(context),
+                  ),
+                if (data.previous!.coWinnerIds.isEmpty)
+                  Text(
+                    'No winner this round.',
+                    style: PixelType.body(context, color: PixelPalette.slate),
+                  ),
+                Text(
+                  'Community support is popularity, not a visitor rating.',
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _journey(BuildContext context, PixelGrid grid, dynamic summary) {
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Your community journey', style: PixelType.title(context)),
+          SizedBox(height: grid.px(1)),
+          Text(
+            '${summary.currentStreak} round streak · longest ${summary.longestStreak}',
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+          if (summary.nextMilestone != null)
+            Text(
+              '${summary.nextMilestone! - summary.currentStreak} more official round(s) to your next badge',
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+          Text(
+            '${summary.verifiedVisits} verified visits · ${summary.uniqueDestinations} destinations · ${summary.municipalities} municipalities',
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+          if (summary.challenges.isNotEmpty) ...[
+            SizedBox(height: grid.px(2)),
+            for (final challenge in summary.challenges.take(2))
+              Text(
+                '${challenge.complete ? 'Done' : 'Next'}: ${challenge.title}: ${challenge.progress}/${challenge.target}',
+                style: PixelType.body(context),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _supporterQuest(
+    BuildContext context,
+    PixelGrid grid,
+    dynamic quest,
+    bool authenticated,
+    AsyncValue<dynamic> claimState,
+  ) {
+    return PixelPanel(
+      style: PixelBoxStyle.green,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Visit the community winner',
+            style: PixelType.title(context, color: PixelPalette.white),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(quest.spotName,
+              style: PixelType.title(context, color: PixelPalette.cream)),
+          Text(
+            quest.questDescription,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+          Text(
+            '+${quest.explorerXp} Explorer XP · expires ${quest.expiresAt.toLocal()}',
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+          SizedBox(height: grid.px(2)),
+          if (quest.claimed)
+            Text(
+              'Visit reward claimed',
+              style: PixelType.body(context, color: PixelPalette.cream),
+            )
+          else ...[
+            PixelButton(
+              key: const ValueKey('choice_open_quest'),
+              label: 'Open destination quest',
+              variant: PixelButtonVariant.secondary,
+              expand: true,
+              onPressed: () => context.push('/quests/${quest.questId}'),
+            ),
+            SizedBox(height: grid.px(2)),
+            if (authenticated)
+              PixelButton(
+                key: const ValueKey('choice_claim_reward'),
+                label: 'Claim verified visit reward',
+                expand: true,
+                loading: claimState.isLoading,
+                onPressed: () => ref
+                    .read(choiceSupporterClaimProvider.notifier)
+                    .claim(quest.campaignId),
+              )
+            else
+              PixelButton(
+                label: 'Sign in to claim after your visit',
+                expand: true,
+                onPressed: () => context.go(
+                    '/?redirect=${Uri.encodeComponent('/choice')}'),
+              ),
+            if (claimState.hasError) ...[
+              SizedBox(height: grid.px(2)),
+              Text(
+                '${claimState.error}',
+                style: PixelType.body(context, color: PixelPalette.redLight),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _errorCard(
+    BuildContext context,
+    PixelGrid grid,
+    String message,
+    String retryLabel,
+    VoidCallback retry,
+  ) {
+    return PixelPanel(
+      style: PixelBoxStyle.red,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: PixelType.body(context, color: PixelPalette.white),
+          ),
+          SizedBox(height: grid.px(2)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: PixelButton(
+              label: retryLabel,
+              variant: PixelButtonVariant.secondary,
+              onPressed: retry,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _manilaDate(DateTime value) => value
+      .toUtc()
+      .add(const Duration(hours: 8))
+      .toIso8601String()
+      .substring(0, 16)
+      .replaceFirst('T', ' ');
 }
 
 class JuanChoiceDetailScreen extends ConsumerStatefulWidget {
@@ -153,7 +424,8 @@ class JuanChoiceDetailScreen extends ConsumerStatefulWidget {
   /// candidate is highlighted and scrolled into view.
   final String? focusCandidateId;
   @override
-  ConsumerState<JuanChoiceDetailScreen> createState() => _JuanChoiceDetailScreenState();
+  ConsumerState<JuanChoiceDetailScreen> createState() =>
+      _JuanChoiceDetailScreenState();
 }
 
 class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
@@ -177,11 +449,13 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
           duration: const Duration(milliseconds: 350), alignment: 0.2);
     });
   }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -191,16 +465,28 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
   }
 
   Future<void> _confirm(String candidateId, String name, int version) async {
-    final accepted = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
-      title: const Text('Confirm JuanChoice vote'),
-      content: Text('Vote for $name? This free promotional vote gives the same participation reward regardless of the winner. No mJDQ is spent.'),
+    final accepted = await showPixelDialog<bool>(
+      context: context,
+      title: 'Confirm JuanChoice vote',
+      message:
+          'Vote for $name? This free promotional vote gives the same participation reward regardless of the winner. No mJDQ is spent.',
       actions: [
-        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Confirm vote')),
+        PixelButton(
+          label: 'Cancel',
+          variant: PixelButtonVariant.secondary,
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+        PixelButton(
+          key: const ValueKey('choice_confirm_vote'),
+          label: 'Confirm vote',
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
       ],
-    ));
+    );
     if (accepted == true && mounted) {
-      await ref.read(choiceVoteProvider.notifier).submit(widget.campaignId, candidateId, version);
+      await ref
+          .read(choiceVoteProvider.notifier)
+          .submit(widget.campaignId, candidateId, version);
     }
   }
 
@@ -211,71 +497,222 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
     final overview = ref.watch(choiceOverviewProvider).asData?.value;
     final vote = ref.watch(choiceVoteProvider);
     final authenticated = ref.watch(authProvider).isAuthenticated;
-    return Scaffold(appBar: AppBar(title: const Text('JuanChoice')),
-      body: SafeArea(child: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(choiceOverviewProvider);
-          ref.invalidate(choiceDetailProvider(widget.campaignId));
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'JuanChoice',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: PixelPalette.green,
+                      backgroundColor: PixelPalette.parchment,
+                      onRefresh: () async {
+                        ref.invalidate(choiceOverviewProvider);
+                        ref.invalidate(
+                            choiceDetailProvider(widget.campaignId));
+                      },
+                      child: ListView(
+                        padding: EdgeInsets.fromLTRB(
+                          grid.px(4),
+                          grid.px(3),
+                          grid.px(4),
+                          grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                        ),
+                        children: [
+                          detail.when(
+                            loading: () => const Center(
+                                child: PixelLoader(label: 'Loading ballot')),
+                            error: (error, stackTrace) => PixelPanel(
+                              style: PixelBoxStyle.red,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Campaign unavailable. Please try again.',
+                                    style: PixelType.body(
+                                      context,
+                                      color: PixelPalette.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: grid.px(2)),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: PixelButton(
+                                      label: 'Retry',
+                                      variant:
+                                          PixelButtonVariant.secondary,
+                                      onPressed: () {
+                                        ref.invalidate(
+                                            choiceOverviewProvider);
+                                        ref.invalidate(choiceDetailProvider(
+                                            widget.campaignId));
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            data: (data) => _ballot(
+                              context,
+                              grid,
+                              data,
+                              overview,
+                              vote,
+                              authenticated,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
         },
-        child: ListView(padding: const EdgeInsets.all(16), children: [
-          detail.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stackTrace) => Column(children: [
-              const Text('Campaign unavailable. Please try again.'),
-              PrimaryButton(label: 'Retry', onPressed: () {
-                ref.invalidate(choiceOverviewProvider);
-                ref.invalidate(choiceDetailProvider(widget.campaignId));
-              }),
-            ]),
-            data: (data) => UiSpecContainer(
-              spec: const UiSpec(title: 'JuanChoice ballot', figmaLayer: 'Community Choice',
-                dimensions: 'Full width, responsive vertical list',
-                dataBinding: '/juanchoice/campaigns/:id, /me, /ballot',
-                stateNotes: 'Loading, closed, confirmed, conflict and retry',
-                uxNotes: 'Free promotional voting distinct from governance', deferred: false),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(data.campaign.theme, style: Theme.of(context).textTheme.headlineSmall),
-                Text('${data.campaign.region} · ${overview?.isCampaignOpen(data.campaign) == true ? 'Voting open' : data.campaign.status}'),
-                Text('Closes ${data.campaign.closesAt.toLocal()}'),
-                if (data.ballot != null) Text('Your ballot: version ${data.ballot!.version}'),
-                if (authenticated && data.eligibility?.reason == 'ACCOUNT_TOO_NEW')
-                  Text('Voting unlocks after ${data.eligibility!.eligibleAt?.toLocal() ?? 'your account is 72 hours old'} or after one approved destination visit.'),
-                if (authenticated && data.eligibility == null && overview?.isCampaignOpen(data.campaign) == true)
-                  const Text('Voting eligibility could not be confirmed. Pull to retry.'),
-                if (vote.receipt != null) const Text('Ballot recorded. Participation reward per round: +25 Civic XP and +1 stamp; 0 mJDQ issued.'),
-                if (vote.error != null) Text(vote.error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                if (!authenticated && overview?.isCampaignOpen(data.campaign) == true) PrimaryButton(
-                  label: 'Sign in to vote',
-                  onPressed: () => context.go('/?redirect=${Uri.encodeComponent('/choice/${widget.campaignId}')}'),
+      ),
+    );
+  }
+
+  Widget _ballot(
+    BuildContext context,
+    PixelGrid grid,
+    dynamic data,
+    dynamic overview,
+    dynamic vote,
+    bool authenticated,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PixelPanel(
+          style: PixelBoxStyle.wood,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                data.campaign.theme,
+                style: PixelType.title(context, color: PixelPalette.paper),
+              ),
+              SizedBox(height: grid.px(1)),
+              Text(
+                '${data.campaign.region} · ${overview?.isCampaignOpen(data.campaign) == true ? 'Voting open' : data.campaign.status}',
+                style: PixelType.body(context, color: PixelPalette.cream),
+              ),
+              Text(
+                'Closes ${data.campaign.closesAt.toLocal()}',
+                style: PixelType.body(context, color: PixelPalette.cream),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: grid.px(3)),
+        if (data.ballot != null)
+          Text(
+            'Your ballot: version ${data.ballot!.version}',
+            style: PixelType.body(context),
+          ),
+        if (authenticated && data.eligibility?.reason == 'ACCOUNT_TOO_NEW')
+          Text(
+            'Voting unlocks after ${data.eligibility!.eligibleAt?.toLocal() ?? 'your account is 72 hours old'} or after one approved destination visit.',
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+        if (authenticated &&
+            data.eligibility == null &&
+            overview?.isCampaignOpen(data.campaign) == true)
+          Text(
+            'Voting eligibility could not be confirmed. Pull to retry.',
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+        if (vote.receipt != null)
+          Text(
+            'Ballot recorded. Participation reward per round: +25 Civic XP and +1 stamp; 0 mJDQ issued.',
+            style: PixelType.body(context, color: PixelPalette.greenDark),
+          ),
+        if (vote.error != null)
+          Text(
+            vote.error!,
+            style: PixelType.body(context, color: PixelPalette.redDeep),
+          ),
+        if (!authenticated && overview?.isCampaignOpen(data.campaign) == true)
+          PixelButton(
+            key: const ValueKey('choice_sign_in'),
+            label: 'Sign in to vote',
+            expand: true,
+            onPressed: () => context.go(
+                '/?redirect=${Uri.encodeComponent('/choice/${widget.campaignId}')}'),
+          ),
+        SizedBox(height: grid.px(2)),
+        for (final standing in data.standings) ...[
+          PixelPanel(
+            key: standing.candidateId == widget.focusCandidateId
+                ? _focusKey
+                : ValueKey('choice_candidate_${standing.candidateId}'),
+            style: standing.candidateId == widget.focusCandidateId
+                ? PixelBoxStyle.gold
+                : PixelBoxStyle.parchment,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  standing.spotName,
+                  maxLines: 2,
+                  style: PixelType.title(context),
                 ),
-                for (final standing in data.standings) Card(
-                  key: standing.candidateId == widget.focusCandidateId ? _focusKey : null,
-                  shape: standing.candidateId == widget.focusCandidateId
-                      ? RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2))
-                      : null,
-                  child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(standing.spotName),
-                    Text('${standing.votes} provisional votes'),
-                    if (authenticated && overview?.current?.id == data.campaign.id &&
-                        overview?.isCampaignOpen(data.campaign) == true &&
-                        data.eligibility?.canVoteNow == true) PrimaryButton(
-                      label: vote.pending ? 'Submitting…' : data.ballot == null ? 'Vote for this place' : 'Change vote',
-                      onPressed: vote.pending ? null : () => _confirm(standing.candidateId,
-                        standing.spotName, data.ballot?.version ?? 0)),
-                  ]),
-                )),
-                if (overview == null || !overview.votingEnabled) const Text('Voting is temporarily unavailable.')
-                else if (!overview.isCampaignOpen(data.campaign))
-                  const Text('Voting is closed or not yet open. No ballot can be queued offline.'),
-              ]),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  '${standing.votes} provisional votes',
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                ),
+                if (authenticated &&
+                    overview?.current?.id == data.campaign.id &&
+                    overview?.isCampaignOpen(data.campaign) == true &&
+                    data.eligibility?.canVoteNow == true) ...[
+                  SizedBox(height: grid.px(2)),
+                  PixelButton(
+                    label: vote.pending
+                        ? 'Submitting'
+                        : data.ballot == null
+                            ? 'Vote for this place'
+                            : 'Change vote',
+                    expand: true,
+                    loading: vote.pending,
+                    onPressed: vote.pending
+                        ? null
+                        : () => _confirm(standing.candidateId,
+                            standing.spotName, data.ballot?.version ?? 0),
+                  ),
+                ],
+              ],
             ),
           ),
-        ]),
-      )),
+          SizedBox(height: grid.px(2)),
+        ],
+        if (overview == null || !overview.votingEnabled)
+          Text(
+            'Voting is temporarily unavailable.',
+            style: PixelType.body(context, color: PixelPalette.slate),
+          )
+        else if (!overview.isCampaignOpen(data.campaign))
+          Text(
+            'Voting is closed or not yet open. No ballot can be queued offline.',
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+      ],
     );
   }
 }

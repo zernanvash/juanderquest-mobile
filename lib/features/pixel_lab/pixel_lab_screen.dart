@@ -16,6 +16,7 @@ import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
+import 'tutorial_preview.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
   const PixelLabScreen({super.key});
@@ -99,6 +100,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           _sprites(context, grid, settings),
                           SizedBox(height: grid.px(3)),
                           _celebrations(context, grid),
+                          SizedBox(height: grid.px(3)),
+                          _tutorials(context, grid),
                           SizedBox(height: grid.px(6)),
                         ],
                       ),
@@ -282,14 +285,14 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
           ),
           SizedBox(height: grid.px(2)),
           PixelButton(
-            label: 'Replay Home tips',
+            label: 'Replay first-run tutorial',
             variant: PixelButtonVariant.secondary,
             onPressed: () async {
               await ref
                   .read(homeTipsControllerProvider.notifier)
                   .resetForReplay();
               if (context.mounted) {
-                showPixelToast(context, 'HOME TIPS WILL SHOW AGAIN');
+                showPixelToast(context, 'THE TUTORIAL SHOWS AGAIN ON HOME');
               }
             },
           ),
@@ -813,6 +816,32 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
           Text(
             'ART PIXEL ${_sizeLabel(settings.artPx)} · SPRITES KEEP THEIR OWN PIXEL SIZE.',
             style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// First-run tutorial (owner's pick 2026-11-04).
+  Widget _tutorials(BuildContext context, PixelGrid grid) {
+    return _section(
+      context,
+      'First-run tutorial',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Plays the 4 lines over a pretend Home screen. '
+            'Tap to finish a line, tap again for the next.',
+            style: PixelType.body(context),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            key: const ValueKey('lab-tutorial'),
+            label: 'Play tutorial',
+            expand: true,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const TutorialPreviewScreen())),
           ),
         ],
       ),

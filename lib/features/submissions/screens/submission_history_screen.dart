@@ -1,12 +1,15 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/async_state_view.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/submission_status_badge.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../models/submission_model.dart';
 import '../providers/submission_provider.dart';
 
@@ -14,10 +17,12 @@ class SubmissionHistoryScreen extends ConsumerStatefulWidget {
   const SubmissionHistoryScreen({super.key});
 
   @override
-  ConsumerState<SubmissionHistoryScreen> createState() => _SubmissionHistoryScreenState();
+  ConsumerState<SubmissionHistoryScreen> createState() =>
+      _SubmissionHistoryScreenState();
 }
 
-class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScreen> {
+class _SubmissionHistoryScreenState
+    extends ConsumerState<SubmissionHistoryScreen> {
   @override
   void initState() {
     super.initState();
@@ -26,119 +31,248 @@ class _SubmissionHistoryScreenState extends ConsumerState<SubmissionHistoryScree
     });
   }
 
+  Future<void> _reload() =>
+      ref.read(submissionProvider.notifier).fetchSubmissions(force: true);
+
   @override
   Widget build(BuildContext context) {
     final subState = ref.watch(submissionProvider);
-
-    return JdqScaffold(
-      appBar: AppBar(
-        title: const Text('Submission History'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await ref.read(submissionProvider.notifier).fetchSubmissions(force: true);
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Proof History',
+                    onBack: canPop ? () => Navigator.of(context).maybePop() : null,
+                    actions: [
+                      PixelButton(
+                        key: const ValueKey('submissions_refresh'),
+                        label: 'Refresh',
+                        variant: PixelButtonVariant.secondary,
+                        onPressed: () => _reload(),
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: PixelPalette.green,
+                      backgroundColor: PixelPalette.parchment,
+                      onRefresh: _reload,
+                      child: _body(context, grid, subState),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
         },
-        color: AppColors.primary,
-        child: AsyncStateView(
-          isLoading: subState.isLoading,
-          errorMessage: subState.error,
-          isEmpty: subState.submissions.isEmpty,
-          emptyMessage: 'No Submissions Yet',
-          emptySubtitle: 'Complete quests or submit destination spots to earn reward points.',
-          emptyIcon: Icons.history_rounded,
-          onRetry: () => ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
-          content: ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.gutter),
-            itemCount: subState.submissions.length,
-            itemBuilder: (context, index) {
-              final sub = subState.submissions[index];
-              return _buildSubmissionCard(sub);
-            },
-          ),
-        ),
       ),
     );
   }
 
-  Widget _buildSubmissionCard(SubmissionModel sub) {
-    final isApproved = sub.status == 'approved';
-    final pointsPrefix = isApproved ? '+${sub.rewardPoints}' : '${sub.rewardPoints}';
-    final pointsLabel = isApproved ? 'Points awarded' : 'Points potential';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.borderLowContrast),
-        boxShadow: AppSpacing.cardShadow,
+  Widget _body(
+    BuildContext context,
+    PixelGrid grid,
+    SubmissionState state,
+  ) {
+    if (state.isLoading && state.submissions.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: grid.px(24)),
+          const Center(child: PixelLoader(label: 'Loading submissions')),
+        ],
+      );
+    }
+    if (state.error != null && state.submissions.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(grid.px(4)),
+        children: [
+          PixelPanel(
+            style: PixelBoxStyle.red,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Could not load history',
+                  style: PixelType.title(context, color: PixelPalette.white),
+                ),
+                SizedBox(height: grid.px(2)),
+                Text(
+                  state.error!,
+                  style: PixelType.body(context, color: PixelPalette.cream),
+                ),
+                SizedBox(height: grid.px(3)),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: PixelButton(
+                    key: const ValueKey('submissions_error_retry'),
+                    label: 'Retry',
+                    onPressed: () => _reload(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    if (state.submissions.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: grid.px(14)),
+          PixelEmptyState(
+            key: const ValueKey('submissions_empty'),
+            title: 'No submissions yet',
+            message:
+                'Complete quests or submit destination spots to earn reward points.',
+            action: PixelButton(
+              label: 'Refresh',
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => _reload(),
+            ),
+          ),
+        ],
+      );
+    }
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        grid.px(4),
+        grid.px(3),
+        grid.px(4),
+        grid.px(8) + MediaQuery.paddingOf(context).bottom,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              alignment: WrapAlignment.spaceBetween,
+      itemCount: state.submissions.length + 1,
+      separatorBuilder: (_, __) => SizedBox(height: grid.px(2)),
+      itemBuilder: (context, index) {
+        if (index == 0) return _intro(context, grid, state.submissions.length);
+        return _card(context, grid, state.submissions[index - 1]);
+      },
+    );
+  }
+
+  Widget _intro(BuildContext context, PixelGrid grid, int count) {
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sub.questTitle,
-                  style: AppTypography.headlineSmall.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  'Submissions & proof',
+                  style: PixelType.title(context, color: PixelPalette.paper),
                 ),
-                SubmissionStatusBadge(status: sub.status),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const Icon(Icons.stars_rounded, color: AppColors.sunGold, size: 16),
+                SizedBox(height: grid.px(1)),
                 Text(
-                  '$pointsPrefix $pointsLabel',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.woodBrown,
-                  ),
-                ),
-                Text(
-                  '· Submitted ${sub.submittedAt.split('T').first}',
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+                  'Track the status of your quest proofs.',
+                  style: PixelType.body(context, color: PixelPalette.cream),
                 ),
               ],
             ),
-            if (sub.rejectionReason != null && sub.rejectionReason!.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.md),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: const BoxDecoration(
-                  color: AppColors.dangerBg,
-                  borderRadius: AppSpacing.roundedMd,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.danger),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Reason: ${sub.rejectionReason}',
-                        style: AppTypography.bodySmall.copyWith(color: AppColors.danger),
-                      ),
-                    ),
-                  ],
-                ),
+          ),
+          SizedBox(width: grid.px(2)),
+          PixelChip('$count total', style: PixelBoxStyle.gold),
+        ],
+      ),
+    );
+  }
+
+  Widget _card(BuildContext context, PixelGrid grid, SubmissionModel sub) {
+    final approved = sub.status == 'approved';
+    final rejected = sub.status == 'rejected';
+    final style = approved
+        ? PixelBoxStyle.parchment
+        : rejected
+            ? PixelBoxStyle.parchment
+            : PixelBoxStyle.parchment;
+    final statusStyle = approved
+        ? PixelBoxStyle.green
+        : rejected
+            ? PixelBoxStyle.red
+            : PixelBoxStyle.gold;
+    final statusText = approved
+        ? PixelPalette.white
+        : rejected
+            ? PixelPalette.white
+            : PixelPalette.ink;
+    final pointsLabel = approved
+        ? '+${sub.rewardPoints} points earned'
+        : rejected
+            ? 'No points awarded'
+            : '${sub.rewardPoints} points pending';
+    return PixelPanel(
+      key: ValueKey('submission_${sub.id}'),
+      style: style,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                sub.questTitle,
+                style: PixelType.title(context),
+              ),
+              PixelChip(
+                sub.status.toUpperCase(),
+                style: statusStyle,
+                textColor: statusText,
               ),
             ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              Text(
+                sub.category.replaceAll('_', ' ').toUpperCase(),
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+              Text(
+                sub.submittedAt.split('T').first,
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            pointsLabel,
+            style: PixelType.numbers(
+              context,
+              color: approved ? PixelPalette.greenDark : PixelPalette.woodMid,
+            ),
+          ),
+          if (sub.rejectionReason != null &&
+              sub.rejectionReason!.isNotEmpty) ...[
+            SizedBox(height: grid.px(2)),
+            PixelPanel(
+              style: PixelBoxStyle.red.copyWith(shadowPx: 0),
+              padding: 2,
+              child: Text(
+                'Reason: ${sub.rejectionReason}',
+                style: PixelType.body(context, color: PixelPalette.white),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

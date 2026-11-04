@@ -20,6 +20,7 @@ import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
+import 'package:juanderquest_app/features/onboarding/pixel_tutorial.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
@@ -435,13 +436,14 @@ class _TipsHarnessState extends ConsumerState<_TipsHarness> {
           ),
           if (tips.showing)
             Positioned.fill(
-              child: PixelHomeTipsOverlay(
-                keys: keys,
-                step: tips.step,
-                onSkip: () =>
-                    ref.read(homeTipsControllerProvider.notifier).skip(),
-                onNext: () =>
-                    ref.read(homeTipsControllerProvider.notifier).next(),
+              child: PixelTutorialOverlay(
+                steps: firstRunSteps(
+                  hero: keys.hero,
+                  nextStop: keys.nextStop,
+                  hotbar: keys.hotbar,
+                ),
+                onDone: () =>
+                    ref.read(homeTipsControllerProvider.notifier).finish(),
               ),
             ),
         ],
@@ -750,39 +752,44 @@ void main() {
     );
   });
 
-  testWidgets('tips show once, SKIP stores the flag', (tester) async {
+  testWidgets('tutorial shows once, SKIP stores the flag', (tester) async {
     final store = _MemoryHomeTipsStore(false);
     await _pumpTips(tester, store);
-    expect(find.byType(PixelHomeTipsOverlay), findsOneWidget);
-    expect(find.text('TIP 1 OF 3'), findsOneWidget);
-    expect(find.text(homeTipTexts[0]), findsOneWidget);
-    await tester.tap(find.text('SKIP'));
+    expect(find.byType(PixelTutorialOverlay), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tutorial-skip')));
     await tester.pump();
-    expect(find.byType(PixelHomeTipsOverlay), findsNothing);
+    expect(find.byType(PixelTutorialOverlay), findsNothing);
     expect(store.seenValue, isTrue);
   });
 
-  testWidgets('tips stay hidden when the flag is already set', (tester) async {
+  testWidgets('tutorial stays hidden when the flag is already set',
+      (tester) async {
     final store = _MemoryHomeTipsStore(true);
     await _pumpTips(tester, store);
-    expect(find.byType(PixelHomeTipsOverlay), findsNothing);
+    expect(find.byType(PixelTutorialOverlay), findsNothing);
   });
 
-  testWidgets('tips step 1 to 3 and finish with GOT IT', (tester) async {
+  testWidgets('tutorial walks all lines and stores the flag at the end',
+      (tester) async {
     final store = _MemoryHomeTipsStore(false);
     await _pumpTips(tester, store);
-    expect(find.text('TIP 1 OF 3'), findsOneWidget);
-    await tester.tap(find.text('NEXT >'));
+    await tester.tap(find.byKey(const ValueKey('tutorial-choice-0')));
     await tester.pump();
-    expect(find.text('TIP 2 OF 3'), findsOneWidget);
-    expect(find.text(homeTipTexts[1]), findsOneWidget);
-    await tester.tap(find.text('NEXT >'));
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byType(PixelTutorialOverlay));
+      await tester.pump();
+    }
+    expect(find.byType(PixelTutorialOverlay), findsNothing);
+    expect(store.seenValue, isTrue);
+  });
+
+  testWidgets('"No, I\'ll explore" ends it and stores the flag',
+      (tester) async {
+    final store = _MemoryHomeTipsStore(false);
+    await _pumpTips(tester, store);
+    await tester.tap(find.byKey(const ValueKey('tutorial-choice-1')));
     await tester.pump();
-    expect(find.text('TIP 3 OF 3'), findsOneWidget);
-    expect(find.text(homeTipTexts[2]), findsOneWidget);
-    await tester.tap(find.text('GOT IT'));
-    await tester.pump();
-    expect(find.byType(PixelHomeTipsOverlay), findsNothing);
+    expect(find.byType(PixelTutorialOverlay), findsNothing);
     expect(store.seenValue, isTrue);
   });
 

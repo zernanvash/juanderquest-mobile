@@ -60,6 +60,7 @@ class ShadowText extends StatelessWidget {
     this.textAlign,
     this.maxLines,
     this.overflow,
+    this.softWrap,
   });
 
   final String text;
@@ -68,6 +69,7 @@ class ShadowText extends StatelessWidget {
   final TextAlign? textAlign;
   final int? maxLines;
   final TextOverflow? overflow;
+  final bool? softWrap;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +94,7 @@ class ShadowText extends StatelessWidget {
       textAlign: textAlign,
       maxLines: maxLines,
       overflow: overflow,
+      softWrap: softWrap,
     );
   }
 }

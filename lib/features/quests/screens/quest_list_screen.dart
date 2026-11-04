@@ -342,7 +342,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
           SizedBox(height: grid.px(1)),
           Text(
             'Visit a place, verify it on site, earn points and badges.',
-            style: PixelType.small(context, color: PixelPalette.paperDim),
+            style: PixelType.body(context, color: PixelPalette.paperDim),
           ),
           SizedBox(height: grid.px(3)),
           PixelSegmented(
@@ -702,13 +702,8 @@ class _CampaignFallback extends StatelessWidget {
   const _CampaignFallback();
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: PixelPalette.paperDim,
-        child: Center(
-          child: Text(
-            'No banner',
-            style: PixelType.small(context, color: PixelPalette.stone),
-          ),
-        ),
+  Widget build(BuildContext context) => const DitherBackground(
+        top: PixelPalette.paperDim,
+        bottom: PixelPalette.paper,
       );
 }

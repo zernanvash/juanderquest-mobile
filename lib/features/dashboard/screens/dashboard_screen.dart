@@ -360,7 +360,7 @@ class _HeroCard extends StatelessWidget {
                 ),
                 SizedBox(height: grid.px(1)),
                 Text(
-                  '${(progress * 50).round()} / 50 XP to next level',
+                  '$points / ${level * 50} XP to next level',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: PixelType.small(
@@ -771,14 +771,9 @@ class _PixelImageFallback extends StatelessWidget {
   const _PixelImageFallback();
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: PixelPalette.paperDim,
-        child: Center(
-          child: Text(
-            'No photo',
-            style: PixelType.small(context, color: PixelPalette.stone),
-          ),
-        ),
+  Widget build(BuildContext context) => const DitherBackground(
+        top: PixelPalette.paperDim,
+        bottom: PixelPalette.paper,
       );
 }
 

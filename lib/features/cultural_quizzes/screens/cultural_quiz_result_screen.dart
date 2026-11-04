@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
+
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../models/cultural_quiz_model.dart';
 
 class CulturalQuizResultScreen extends StatelessWidget {
@@ -18,195 +22,175 @@ class CulturalQuizResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final passed = result.passed;
-
-    return JdqScaffold(
-      appBar: AppBar(title: const Text('Quiz Results')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          children: [
-            // Score Banner
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: passed ? AppColors.success.withValues(alpha: 0.12) : AppColors.danger.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: passed ? AppColors.success : AppColors.danger,
-                  width: 1.5,
-                ),
-              ),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
               child: Column(
                 children: [
-                  Icon(
-                    passed ? Icons.military_tech_rounded : Icons.sentiment_dissatisfied_rounded,
-                    size: 64,
-                    color: passed ? AppColors.success : AppColors.danger,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    passed ? 'Quiz Passed!' : 'Quiz Incomplete',
-                    style: AppTypography.headlineMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: passed ? AppColors.success : AppColors.danger,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Score: ${result.score} of ${result.totalQuestions} correct (Passing: 4/5)',
-                    style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  if (passed && result.xpAwarded > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.sunGold.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.sunGold),
+                  const PixelAppBar(title: 'Quiz Results'),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.stars_rounded, color: AppColors.secondary, size: 22),
-                          const SizedBox(width: 8),
-                          Text(
-                            '+${result.xpAwarded} Explorer XP Awarded',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (passed && result.alreadyCompletedPrior)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Learning Replay: XP was previously claimed for this destination.',
-                        style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  else if (!passed && result.cooldownUntil != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Retry cooldown is active for 24 hours until:\n${result.cooldownUntil}',
-                        style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Review & Explanations Header
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Review & Explanations',
-                style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // Breakdown item cards
-            ...result.breakdown.asMap().entries.map((entry) {
-              final idx = entry.key + 1;
-              final item = entry.value;
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: item.isCorrect ? AppColors.success.withValues(alpha: 0.4) : AppColors.danger.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          item.isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                          color: item.isCorrect ? AppColors.success : AppColors.danger,
-                          size: 20,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            '$idx. ${item.questionText}',
-                            style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                        PixelPanel(
+                          style: passed
+                              ? PixelBoxStyle.green
+                              : PixelBoxStyle.red,
+                          child: Column(
+                            children: [
+                              Text(
+                                passed ? 'Quiz Passed!' : 'Quiz Incomplete',
+                                textAlign: TextAlign.center,
+                                style: PixelType.title(
+                                  context,
+                                  color: PixelPalette.white,
+                                ),
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Text(
+                                'Score: ${result.score} of ${result.totalQuestions} correct (Passing: 4/5)',
+                                textAlign: TextAlign.center,
+                                style: PixelType.body(
+                                  context,
+                                  color: PixelPalette.cream,
+                                ),
+                              ),
+                              if (passed && result.xpAwarded > 0) ...[
+                                SizedBox(height: grid.px(2)),
+                                PixelChip(
+                                  '+${result.xpAwarded} Explorer XP Awarded',
+                                  style: PixelBoxStyle.gold,
+                                ),
+                              ] else if (passed && result.alreadyCompletedPrior) ...[
+                                SizedBox(height: grid.px(2)),
+                                Text(
+                                  'Learning Replay: XP was previously claimed for this destination.',
+                                  textAlign: TextAlign.center,
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.cream,
+                                  ),
+                                ),
+                              ] else if (!passed &&
+                                  result.cooldownUntil != null) ...[
+                                SizedBox(height: grid.px(2)),
+                                Text(
+                                  'Retry cooldown is active for 24 hours until:\n${result.cooldownUntil}',
+                                  textAlign: TextAlign.center,
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.cream,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
+                        ),
+                        SizedBox(height: grid.px(3)),
+                        Text('Review & Explanations',
+                            style: PixelType.title(context)),
+                        SizedBox(height: grid.px(2)),
+                        for (final entry in result.breakdown.asMap().entries) ...[
+                          _breakdown(context, grid, entry.key + 1, entry.value),
+                          SizedBox(height: grid.px(2)),
+                        ],
+                        SizedBox(height: grid.px(2)),
+                        PixelButton(
+                          key: const ValueKey('quiz_result_explore'),
+                          label: 'Return to Explore',
+                          expand: true,
+                          onPressed: () => context.go('/explore'),
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerHigh.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Explanation:',
-                            style: AppTypography.labelSmall.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item.explanation,
-                            style: AppTypography.bodySmall,
-                          ),
-                          if (item.sourceUrl != null && item.sourceUrl!.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Source: ${item.sourceUrl}',
-                              style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-
-            const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
-              label: 'Return to Explore',
-              onPressed: () {
-                context.go('/explore');
-              },
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _breakdown(
+    BuildContext context,
+    PixelGrid grid,
+    int index,
+    CulturalQuizGradeBreakdownItem item,
+  ) {
+    return PixelPanel(
+      style: item.isCorrect ? PixelBoxStyle.parchment : PixelBoxStyle.red,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PixelChip(
+                item.isCorrect ? 'Correct' : 'Wrong',
+                style:
+                    item.isCorrect ? PixelBoxStyle.green : PixelBoxStyle.gold,
+                textColor:
+                    item.isCorrect ? PixelPalette.white : PixelPalette.ink,
+              ),
+              SizedBox(width: grid.px(2)),
+              Expanded(
+                child: Text(
+                  '$index. ${item.questionText}',
+                  style: PixelType.title(
+                    context,
+                    color:
+                        item.isCorrect ? PixelPalette.ink : PixelPalette.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            'Explanation:',
+            style: PixelType.small(
+              context,
+              color: item.isCorrect
+                  ? PixelPalette.slate
+                  : PixelPalette.cream,
+            ),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            item.explanation,
+            style: PixelType.body(
+              context,
+              color:
+                  item.isCorrect ? PixelPalette.slate : PixelPalette.white,
+            ),
+          ),
+          if (item.sourceUrl != null && item.sourceUrl!.isNotEmpty) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Source: ${item.sourceUrl}',
+              style: PixelType.small(
+                context,
+                color: item.isCorrect
+                    ? PixelPalette.greenDark
+                    : PixelPalette.sun,
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

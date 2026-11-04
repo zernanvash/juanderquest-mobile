@@ -372,7 +372,7 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
                             SizedBox(height: grid.px(2)),
                             Text(
                               _initError!,
-                              style: PixelType.small(
+                              style: PixelType.body(
                                 context,
                                 color: PixelPalette.slate,
                               ),
