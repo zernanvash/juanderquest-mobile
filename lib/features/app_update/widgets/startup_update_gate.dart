@@ -58,14 +58,12 @@ class _StartupLoadingView extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const PixelPanel(
-                    style: PixelBoxStyle.gold,
-                    padding: 3,
-                    child: Icon(
-                      Icons.explore_rounded,
-                      size: 44,
-                      color: PixelPalette.ink,
-                    ),
+                  // The real logo (owner 2026-11-04: "the logo is not visible").
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 200,
+                    filterQuality: FilterQuality.medium,
+                    semanticLabel: 'JuanDerQuest',
                   ),
                   const SizedBox(height: 24),
                   ShadowText(
@@ -108,7 +106,7 @@ class _StartupLoadingView extends StatelessWidget {
                     padding: 1,
                     child: Text(
                       '${versionLabel(state.installedVersionName)} (Build ${state.installedVersionCode})',
-                      style: PixelType.small(context, color: PixelPalette.paperDim),
+                      style: PixelType.small(context, color: PixelPalette.ink),
                     ),
                   ),
                 ],

@@ -703,11 +703,6 @@ void main() {
   testWidgets('dashboard keeps every navigation target', (tester) async {
     await _expectDashboardTap(
       tester,
-      find.byTooltip('Search destinations'),
-      '/explore',
-    );
-    await _expectDashboardTap(
-      tester,
       find.byTooltip('Notifications'),
       '/notifications',
     );

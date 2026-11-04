@@ -98,15 +98,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     title: 'Your journey',
                     actions: [
                       Tooltip(
-                        message: 'Search destinations',
-                        child: PixelIconButton(
-                          icon: DesignerArt.search,
-                          semanticLabel: 'Search destinations',
-                          iconHeight: 36,
-                          onPressed: () => context.go('/explore'),
-                        ),
-                      ),
-                      Tooltip(
                         message: 'Notifications',
                         child: PixelIconButton(
                           icon: DesignerArt.notifBell,

@@ -150,8 +150,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Notifications',
-                    onBack:
-                        canPop ? () => Navigator.of(context).maybePop() : null,
+                    // Always a way back: without history, return to Home.
+                    onBack: () => canPop
+                        ? Navigator.of(context).maybePop()
+                        : context.go('/dashboard'),
                   ),
                   Expanded(
                     child: ListView(

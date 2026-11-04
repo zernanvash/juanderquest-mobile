@@ -83,6 +83,19 @@ class _MainShellState extends ConsumerState<MainShell> {
           return;
         }
 
+        // A detail page (notifications, a spot, a quest…) goes back to where
+        // it came from; with no history, to its main page. Only main pages
+        // fall through to "switch to Home" and "press back again to exit".
+        if (!onMainPage) {
+          final router = GoRouter.of(context);
+          if (router.canPop()) {
+            router.pop();
+          } else {
+            widget.navigationShell.goBranch(currentIndex, initialLocation: true);
+          }
+          return;
+        }
+
         if (currentIndex != 0) {
           widget.navigationShell.goBranch(0);
           return;
