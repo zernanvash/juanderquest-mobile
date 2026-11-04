@@ -1,18 +1,21 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/async_state_view.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/jdq_section_header.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_input.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../models/governance_proposal_model.dart';
+import '../pixel/wave3_art.dart';
 import '../providers/governance_provider.dart';
-import '../../../core/widgets/designer_guide.dart';
 
 class VoteScreen extends ConsumerStatefulWidget {
   const VoteScreen({super.key});
@@ -43,154 +46,134 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
     super.dispose();
   }
 
-
-
-  void _showSubmitLocationModal(BuildContext context) {
+  Future<void> _showSubmitLocationModal(BuildContext context) async {
     _titleController.clear();
     _locationController.clear();
     _descriptionController.clear();
     _selectedCategory = 'eco';
 
-    showModalBottomSheet(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          top: 20,
-          left: 20,
-          right: 20,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: const BoxDecoration(
-                    color: AppColors.borderLowContrast,
-                    borderRadius: AppSpacing.roundedPill,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  const Icon(Icons.add_location_alt_rounded, color: AppColors.primary, size: 24),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Suggest New Location',
-                      style: AppTypography.headlineSmall.copyWith(
-                        color: AppColors.woodBrown,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final grid = PixelGrid.of(context);
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              grid.px(3),
+              grid.px(3),
+              grid.px(3),
+              grid.px(3) + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              child: PixelPanel(
+                style: PixelBoxStyle.parchment,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Suggest New Location',
+                        style: PixelType.title(context)),
+                    SizedBox(height: grid.px(1)),
+                    Text(
+                      'Suggest a destination for community review. The current pilot reviews Pangasinan locations.',
+                      style:
+                          PixelType.body(context, color: PixelPalette.slate),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Suggest a destination for community review. The current pilot reviews Pangasinan locations.',
-                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Destination Spot Title',
-                  hintText: 'e.g. Patar White Beach Eco Trail',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              TextFormField(
-                controller: _locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Municipality / Location',
-                  hintText: 'e.g. Municipality, province',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: const InputDecoration(labelText: 'Category'),
-                items: const [
-                  DropdownMenuItem(value: 'eco', child: Text('Eco-Tourism')),
-                  DropdownMenuItem(value: 'cultural', child: Text('Cultural Heritage')),
-                  DropdownMenuItem(value: 'food_trade', child: Text('Food & Culinary')),
-                ],
-                onChanged: (val) => setState(() => _selectedCategory = val ?? 'eco'),
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description & Significance',
-                  hintText: 'Describe why this destination should be featured...',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-
-              PrimaryButton(
-                label: 'Submit Proposal to Screening',
-                onPressed: () async {
-                  if (_titleController.text.trim().isEmpty || _locationController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please fill out the destination title and location.')),
-                    );
-                    return;
-                  }
-
-                  final title = _titleController.text.trim();
-                  final location = _locationController.text.trim();
-                  final desc = _descriptionController.text.trim().isEmpty
-                      ? 'Community-suggested destination.'
-                      : _descriptionController.text.trim();
-
-                  final messenger = ScaffoldMessenger.of(context);
-                  Navigator.pop(ctx);
-
-                  final success = await ref.read(governanceProvider.notifier).createAndSubmitProposal(
-                        title: title,
-                        locationName: location,
-                        category: _selectedCategory,
-                        description: desc,
-                      );
-
-                  if (!mounted) return;
-                  final err = ref.read(governanceProvider).error;
-
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        success
-                            ? 'Proposal "$title" submitted for admin screening!'
-                            : 'Submission failed: ${err ?? "Unknown error."}',
-                      ),
-                      backgroundColor: success ? AppColors.success : AppColors.danger,
+                    SizedBox(height: grid.px(3)),
+                    PixelTextField(
+                      key: const ValueKey('suggest_title'),
+                      controller: _titleController,
+                      label: 'Destination Spot Title',
+                      hint: 'e.g. Patar White Beach Eco Trail',
                     ),
-                  );
-                },
-                icon: Icons.send_rounded,
+                    SizedBox(height: grid.px(2)),
+                    PixelTextField(
+                      key: const ValueKey('suggest_location'),
+                      controller: _locationController,
+                      label: 'Municipality / Location',
+                      hint: 'e.g. Municipality, province',
+                    ),
+                    SizedBox(height: grid.px(2)),
+                    Text('CATEGORY',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        )),
+                    SizedBox(height: grid.px(1)),
+                    PixelSegmented(
+                      items: const ['Eco-Tourism', 'Cultural', 'Food'],
+                      selectedIndex: _selectedCategory == 'eco'
+                          ? 0
+                          : _selectedCategory == 'cultural'
+                              ? 1
+                              : 2,
+                      onChanged: (index) => setSheetState(() {
+                        _selectedCategory = switch (index) {
+                          0 => 'eco',
+                          1 => 'cultural',
+                          _ => 'food_trade',
+                        };
+                      }),
+                    ),
+                    SizedBox(height: grid.px(2)),
+                    PixelTextField(
+                      key: const ValueKey('suggest_description'),
+                      controller: _descriptionController,
+                      label: 'Description & Significance',
+                      hint: 'Describe why this destination should be featured',
+                      maxLines: 3,
+                    ),
+                    SizedBox(height: grid.px(3)),
+                    PixelButton(
+                      key: const ValueKey('suggest_submit'),
+                      label: 'Submit Proposal to Screening',
+                      expand: true,
+                      onPressed: () async {
+                        if (_titleController.text.trim().isEmpty ||
+                            _locationController.text.trim().isEmpty) {
+                          showPixelToast(
+                            context,
+                            'Please fill out the destination title and location.',
+                          );
+                          return;
+                        }
+
+                        final title = _titleController.text.trim();
+                        final location = _locationController.text.trim();
+                        final desc =
+                            _descriptionController.text.trim().isEmpty
+                                ? 'Community-suggested destination.'
+                                : _descriptionController.text.trim();
+
+                        Navigator.of(sheetContext).pop();
+
+                        final success = await ref
+                            .read(governanceProvider.notifier)
+                            .createAndSubmitProposal(
+                              title: title,
+                              locationName: location,
+                              category: _selectedCategory,
+                              description: desc,
+                            );
+
+                        if (!mounted || !context.mounted) return;
+                        final err = ref.read(governanceProvider).error;
+                        showPixelToast(
+                          context,
+                          success
+                              ? 'Proposal "$title" submitted for admin screening!'
+                              : 'Submission failed: ${err ?? "Unknown error."}',
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -198,238 +181,215 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
   @override
   Widget build(BuildContext context) {
     final govState = ref.watch(governanceProvider);
-
-    return JdqScaffold(
-      scrollable: true,
-      appBar: AppBar(
-        title: const Text('Community Governance'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_location_alt_rounded, color: AppColors.primary),
-            tooltip: 'Suggest Location',
-            onPressed: () => _showSubmitLocationModal(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.list_alt_rounded, color: AppColors.woodBrown),
-            tooltip: 'View All Proposals',
-            onPressed: () => context.push('/vote/proposals'),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await ref.read(governanceProvider.notifier).loadGovernanceData();
-          await ref.read(walletProvider.notifier).fetchWallet();
-        },
-        color: AppColors.primary,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: AppSpacing.md),
-
-            // Retirement Notice Banner
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: AppSpacing.roundedMd,
-                border: Border.all(color: const Color(0xFFF59E0B)),
-              ),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.info_outline_rounded, color: Color(0xFFB45309), size: 20),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          'Voting System Retired',
-                          style: AppTypography.labelLarge.copyWith(
-                            color: const Color(0xFF92400E),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  PixelAppBar(
+                    title: 'Community Governance',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                    actions: [
+                      PixelIconButton(
+                        icon: Wave3Art.plus,
+                        semanticLabel: 'Suggest Location',
+                        onPressed: () => _showSubmitLocationModal(context),
+                      ),
+                      PixelIconButton(
+                        icon: Wave3Art.list,
+                        semanticLabel: 'View All Proposals',
+                        onPressed: () => context.push('/vote/proposals'),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Destination approval and proposal voting have been retired. All destination posts are published immediately. Community voting is now conducted exclusively in JuanChoice.',
-                    style: AppTypography.bodySmall.copyWith(color: const Color(0xFF78350F)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            PrimaryButton(
-              label: 'Go to JuanChoice Voting',
-              onPressed: () => context.push('/choice'),
-              icon: Icons.how_to_vote_rounded,
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            const JdqSectionHeader(
-              title: 'Historical Proposals (Archive)',
-              subtitle: 'Past governance proposals recorded for transparency and auditability.',
-            ),
-
-            AsyncStateView(
-              isLoading: govState.isLoading,
-              errorMessage: govState.error,
-              isEmpty: govState.proposals.isEmpty,
-              emptyMessage: 'No Active Proposals',
-              emptySubtitle: 'Be the first to suggest a new destination spot!',
-              emptyIcon: Icons.how_to_vote_rounded,
-              onRetry: () => ref.read(governanceProvider.notifier).loadGovernanceData(),
-              content: Column(
-                children: govState.proposals.map((prop) {
-                  return _buildProposalCard(prop);
-                }).toList(),
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.sectionGap),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProposalCard(GovernanceProposalModel prop) {
-    final yesPercent = (prop.yesVotes + prop.noVotes) > 0
-        ? (prop.yesVotes / (prop.yesVotes + prop.noVotes)) * 100
-        : 50.0;
-
-    return UiSpecContainer(
-      spec: const UiSpec(
-        title: 'DAO Governance Proposal Card',
-        figmaLayer: '#DAO_Proposal_Card_Item',
-        dimensions: 'Full width, Height: auto (~180dp), Radius: 16dp',
-        dataBinding: 'api/v1/proposals (title, category, yesVotes, noVotes, status)',
-        stateNotes: 'Active (Green/Red split meter) -> Passed -> Rejected -> Voting confirmation dialog',
-        uxNotes: 'Includes Quorum progress bar and yes/no vote buttons with mJDQ fee deduction.',
-        deferred: true,
-      ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.md),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: AppSpacing.roundedLg,
-          border: Border.all(color: AppColors.borderLowContrast),
-          boxShadow: AppSpacing.cardShadow,
-        ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  borderRadius: AppSpacing.roundedPill,
-                ),
-                child: Text(
-                  prop.category.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.onPrimaryContainer,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                prop.status.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            prop.title,
-            style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            prop.locationName,
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            prop.description,
-            style: AppTypography.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Voting Bar Progress
-          ClipRRect(
-            borderRadius: AppSpacing.roundedPill,
-            child: LinearProgressIndicator(
-              value: yesPercent / 100,
-              minHeight: 8,
-              backgroundColor: AppColors.dangerBg,
-              color: AppColors.success,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  'Yes: ${prop.yesVotes} (${yesPercent.toInt()}%)',
-                  style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  'No: ${prop.noVotes} (${(100 - yesPercent).toInt()}%)',
-                  style: const TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-
-            const SizedBox(height: AppSpacing.lg),
-
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceContainerHigh,
-                borderRadius: AppSpacing.roundedMd,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.archive_outlined, size: 16, color: AppColors.textSecondary),
-                  const SizedBox(width: 6),
                   Expanded(
-                    child: Text(
-                      'Archived Proposal · Voting Closed',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.bold,
+                    child: RefreshIndicator(
+                      color: PixelPalette.green,
+                      backgroundColor: PixelPalette.parchment,
+                      onRefresh: () async {
+                        await ref
+                            .read(governanceProvider.notifier)
+                            .loadGovernanceData();
+                        await ref
+                            .read(walletProvider.notifier)
+                            .fetchWallet();
+                      },
+                      child: ListView(
+                        padding: EdgeInsets.fromLTRB(
+                          grid.px(4),
+                          grid.px(3),
+                          grid.px(4),
+                          grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                        ),
+                        children: [
+                          _retired(context, grid),
+                          SizedBox(height: grid.px(3)),
+                          PixelButton(
+                            key: const ValueKey('vote_choice'),
+                            label: 'Go to JuanChoice Voting',
+                            expand: true,
+                            onPressed: () => context.push('/choice'),
+                          ),
+                          SizedBox(height: grid.px(3)),
+                          Text('Historical Proposals (Archive)',
+                              style: PixelType.title(context)),
+                          SizedBox(height: grid.px(1)),
+                          Text(
+                            'Past governance proposals recorded for transparency and auditability.',
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.slate,
+                            ),
+                          ),
+                          SizedBox(height: grid.px(3)),
+                          if (govState.isLoading)
+                            const Center(
+                                child:
+                                    PixelLoader(label: 'Loading proposals'))
+                          else if (govState.error != null &&
+                              govState.proposals.isEmpty)
+                            PixelPanel(
+                              style: PixelBoxStyle.red,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    govState.error!,
+                                    style: PixelType.body(
+                                      context,
+                                      color: PixelPalette.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: grid.px(2)),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: PixelButton(
+                                      key: const ValueKey('vote_retry'),
+                                      label: 'Retry',
+                                      onPressed: () => ref
+                                          .read(governanceProvider.notifier)
+                                          .loadGovernanceData(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (govState.proposals.isEmpty)
+                            const PixelEmptyState(
+                              key: ValueKey('vote_empty'),
+                              title: 'No Active Proposals',
+                              message:
+                                  'Be the first to suggest a new destination spot!',
+                            )
+                          else
+                            for (final proposal in govState.proposals) ...[
+                              _proposal(context, grid, proposal),
+                              SizedBox(height: grid.px(2)),
+                            ],
+                        ],
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _retired(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.gold,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Voting System Retired', style: PixelType.title(context)),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Destination approval and proposal voting have been retired. All destination posts are published immediately. Community voting is now conducted exclusively in JuanChoice.',
+            style: PixelType.body(context, color: PixelPalette.goldDeep),
+          ),
         ],
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _proposal(
+      BuildContext context, PixelGrid grid, GovernanceProposalModel prop) {
+    final total = prop.yesVotes + prop.noVotes;
+    final yesPercent = total > 0 ? prop.yesVotes / total : 0.5;
+    return PixelPanel(
+      key: ValueKey('proposal_${prop.id}'),
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              PixelChip(prop.category.toUpperCase()),
+              PixelChip(prop.status.toUpperCase(),
+                  style: PixelBoxStyle.slot),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(prop.title, style: PixelType.title(context)),
+          SizedBox(height: grid.px(1)),
+          Text(
+            prop.locationName,
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            prop.description,
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelProgressBar(value: yesPercent),
+          SizedBox(height: grid.px(1)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              Text(
+                'Yes: ${prop.yesVotes} (${(yesPercent * 100).toInt()}%)',
+                style: PixelType.small(
+                  context,
+                  color: PixelPalette.greenDark,
+                ),
+              ),
+              Text(
+                'No: ${prop.noVotes} (${(100 - yesPercent * 100).toInt()}%)',
+                style: PixelType.small(context, color: PixelPalette.redDeep),
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelPanel(
+            style: PixelBoxStyle.slot,
+            padding: 2,
+            child: Text(
+              'Archived Proposal · Voting Closed',
+              textAlign: TextAlign.center,
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

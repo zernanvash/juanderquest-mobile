@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 
 class LeaderboardScreen extends ConsumerStatefulWidget {
   const LeaderboardScreen({super.key});
@@ -36,332 +40,226 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   ];
 
   final List<Map<String, dynamic>> _municipalActivity = const [
-    {'name': 'Alaminos City (Hundred Islands)', 'completions': 1420, 'badge': '🏖️ Top Eco Spot'},
-    {'name': 'Bolinao (Cape & Falls)', 'completions': 1180, 'badge': '🌅 Sunset Trail'},
-    {'name': 'Dagupan City (Culinary Hub)', 'completions': 980, 'badge': '🐟 Bangus Capital'},
-    {'name': 'Manaoag (Minor Basilica)', 'completions': 890, 'badge': '🏛️ Heritage Trail'},
-    {'name': 'Lingayen (Capitol & Gulf)', 'completions': 740, 'badge': '🏛️ Provincial Seat'},
+    {'name': 'Alaminos City (Hundred Islands)', 'completions': 1420, 'badge': 'Top Eco Spot'},
+    {'name': 'Bolinao (Cape & Falls)', 'completions': 1180, 'badge': 'Sunset Trail'},
+    {'name': 'Dagupan City (Culinary Hub)', 'completions': 980, 'badge': 'Bangus Capital'},
+    {'name': 'Manaoag (Minor Basilica)', 'completions': 890, 'badge': 'Heritage Trail'},
+    {'name': 'Lingayen (Capitol & Gulf)', 'completions': 740, 'badge': 'Provincial Seat'},
   ];
 
   @override
   Widget build(BuildContext context) {
     final scouts = _activeTab == 0 ? _sprintScouts : _allTimeScouts;
-
-    return JdqScaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.woodBrown),
-          onPressed: () => context.pop(),
-          tooltip: 'Back',
-        ),
-        title: const FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            'Leaderboard',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.woodBrown,
-            ),
-          ),
-        ),
-      ),
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        children: [
-          // Header Hero Banner
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF2D6A4F), Color(0xFF1B4332)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: AppSpacing.roundedXl,
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: AppColors.sunGold,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.military_tech_rounded, size: 28, color: AppColors.woodBrown),
-                ),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Explorer Leaderboard',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        'Illustrative preview using pilot places. Scores are not live.',
-                        style: TextStyle(fontSize: 11, color: Color(0xFFE2F0E8), height: 1.3),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Tab Switcher (Sprint vs All-Time)
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedXl,
-              border: Border.all(color: AppColors.borderLowContrast),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _activeTab = 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _activeTab == 0 ? AppColors.primary : Colors.transparent,
-                        borderRadius: AppSpacing.roundedLg,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '⚡ 30-Day Sprint',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: _activeTab == 0 ? Colors.white : AppColors.woodBrown,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _activeTab = 1),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _activeTab == 1 ? AppColors.primary : Colors.transparent,
-                        borderRadius: AppSpacing.roundedLg,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '👑 All-Time Legends',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: _activeTab == 1 ? Colors.white : AppColors.woodBrown,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Top 3 Podium Cards
-          if (scouts.length >= 3)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: AppSpacing.roundedXl,
-                border: Border.all(color: AppColors.borderLowContrast),
-                boxShadow: AppSpacing.cardShadow,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.end,
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
                 children: [
-                  // #2 Silver
-                  _buildPodiumItem(scouts[1], '#2', const Color(0xFFC0C0C0), 75),
-                  // #1 Gold
-                  _buildPodiumItem(scouts[0], '👑 #1', AppColors.sunGold, 95),
-                  // #3 Bronze
-                  _buildPodiumItem(scouts[2], '#3', const Color(0xFFCD7F32), 65),
+                  PixelAppBar(
+                    title: 'Leaderboard',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                  ),
+                  Expanded(
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      children: [
+                        _hero(context, grid),
+                        SizedBox(height: grid.px(3)),
+                        PixelSegmented(
+                          items: const ['30-Day Sprint', 'All-Time'],
+                          selectedIndex: _activeTab,
+                          onChanged: (index) =>
+                              setState(() => _activeTab = index),
+                        ),
+                        SizedBox(height: grid.px(3)),
+                        if (scouts.length >= 3) _podium(context, grid, scouts),
+                        SizedBox(height: grid.px(3)),
+                        Text('Scout Rankings', style: PixelType.title(context)),
+                        SizedBox(height: grid.px(2)),
+                        for (final scout in scouts) ...[
+                          _scoutRow(context, grid, scout),
+                          SizedBox(height: grid.px(1)),
+                        ],
+                        SizedBox(height: grid.px(3)),
+                        Text('Top Municipalities by Check-in Volume',
+                            style: PixelType.title(context)),
+                        SizedBox(height: grid.px(2)),
+                        for (final muni in _municipalActivity) ...[
+                          _municipalCard(context, grid, muni),
+                          SizedBox(height: grid.px(1)),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
 
-          const SizedBox(height: 14),
-
-          // Scout Rankings List
-          const Text(
-            'Scout Rankings',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+  Widget _hero(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Explorer Leaderboard',
+            style: PixelType.title(context, color: PixelPalette.paper),
           ),
-          const SizedBox(height: 8),
-
-          ...scouts.map((s) => _buildScoutRow(s)),
-
-          const SizedBox(height: 16),
-
-          // Top Municipal Activity Section
-          const Text(
-            'Top Municipalities by Check-in Volume',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Illustrative preview using pilot places. Scores are not live.',
+            style: PixelType.body(context, color: PixelPalette.cream),
           ),
-          const SizedBox(height: 8),
-
-          ..._municipalActivity.map((muni) => _buildMunicipalCard(muni)),
-          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _buildPodiumItem(Map<String, dynamic> scout, String rankLabel, Color color, double height) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: color.withOpacity(0.2),
-          child: Text(
-            scout['avatar'],
-            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.woodBrown, fontSize: 14),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          scout['name'].toString().split(' ')[0],
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-        ),
-        Text(
-          '${scout['points']} pts',
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          width: 70,
-          height: height,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.25),
-            borderRadius: AppSpacing.roundedMd,
-            border: Border.all(color: color),
-          ),
-          child: Center(
-            child: Text(
-              rankLabel,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.woodBrown),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildScoutRow(Map<String, dynamic> scout) {
-    final isUser = scout['isUser'] == true;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isUser ? const Color(0xFFE2F0E8) : AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: isUser ? AppColors.primary : AppColors.borderLowContrast),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: scout['rank'] <= 3 ? AppColors.sunGold.withOpacity(0.25) : AppColors.surfaceContainerLow,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
+  Widget _podium(
+      BuildContext context, PixelGrid grid, List<Map<String, dynamic>> scouts) {
+    Widget item(int index, String label, PixelBoxStyle style, int height) {
+      final scout = scouts[index];
+      return Expanded(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PixelPanel(
+              style: PixelBoxStyle.slot,
+              padding: 1,
               child: Text(
-                '${scout['rank']}',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: scout['rank'] <= 3 ? AppColors.woodBrown : AppColors.textMuted,
+                scout['avatar'].toString(),
+                style: PixelType.title(context),
+              ),
+            ),
+            SizedBox(height: grid.px(1)),
+            Text(
+              scout['name'].toString().split(' ')[0],
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: PixelType.body(context),
+            ),
+            Text(
+              '${scout['points']} pts',
+              style: PixelType.small(context, color: PixelPalette.greenDark),
+            ),
+            SizedBox(height: grid.px(1)),
+            SizedBox(
+              height: grid.px(height.toDouble()),
+              child: PixelPanel(
+                style: style,
+                child: Center(
+                  child: Text(label, style: PixelType.title(context)),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
+          ],
+        ),
+      );
+    }
+
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          item(1, '#2', PixelBoxStyle.stone, 30),
+          SizedBox(width: grid.px(1)),
+          item(0, '#1', PixelBoxStyle.gold, 38),
+          SizedBox(width: grid.px(1)),
+          item(2, '#3', PixelBoxStyle.wood, 25),
+        ],
+      ),
+    );
+  }
+
+  Widget _scoutRow(
+      BuildContext context, PixelGrid grid, Map<String, dynamic> scout) {
+    final isUser = scout['isUser'] == true;
+    return PixelPanel(
+      style: isUser ? PixelBoxStyle.green : PixelBoxStyle.parchment,
+      child: Row(
+        children: [
+          PixelChip('#${scout['rank']}',
+              style: scout['rank'] <= 3
+                  ? PixelBoxStyle.gold
+                  : PixelBoxStyle.slot),
+          SizedBox(width: grid.px(2)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  scout['name'],
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isUser ? FontWeight.w900 : FontWeight.bold,
-                    color: AppColors.woodBrown,
+                  scout['name'].toString(),
+                  maxLines: 2,
+                  style: PixelType.title(
+                    context,
+                    color: isUser ? PixelPalette.white : PixelPalette.ink,
                   ),
                 ),
                 Text(
-                  '${scout['tier']} • ${scout['quests']} Quests Completed',
-                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                  '${scout['tier']} · ${scout['quests']} Quests Completed',
+                  style: PixelType.body(
+                    context,
+                    color: isUser ? PixelPalette.cream : PixelPalette.slate,
+                  ),
                 ),
               ],
             ),
           ),
+          SizedBox(width: grid.px(2)),
           Text(
             '${scout['points']} mJDQ',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.primary),
+            style: PixelType.numbers(
+              context,
+              color: isUser ? PixelPalette.white : PixelPalette.greenDark,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMunicipalCard(Map<String, dynamic> muni) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.borderLowContrast),
-      ),
+  Widget _municipalCard(
+      BuildContext context, PixelGrid grid, Map<String, dynamic> muni) {
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                muni['name'],
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-              ),
-              Text(
-                muni['badge'],
-                style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: const BoxDecoration(
-              color: AppColors.primaryContainer,
-              borderRadius: AppSpacing.roundedPill,
-            ),
-            child: Text(
-              '${muni['completions']} visits',
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onPrimaryContainer),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(muni['name'].toString(), style: PixelType.title(context)),
+                Text(
+                  muni['badge'].toString(),
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                ),
+              ],
             ),
           ),
+          SizedBox(width: grid.px(2)),
+          PixelChip('${muni['completions']} visits'),
         ],
       ),
     );

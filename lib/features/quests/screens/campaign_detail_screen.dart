@@ -1,12 +1,14 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../models/campaign_model.dart';
 import '../providers/campaign_provider.dart';
 
@@ -52,6 +54,9 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     }
   }
 
+  Future<void> _reload() =>
+      ref.read(campaignProvider.notifier).fetchCampaigns(forceRefresh: true);
+
   @override
   Widget build(BuildContext context) {
     final campaignState = ref.watch(campaignProvider);
@@ -61,306 +66,243 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     for (final item in campaignState.campaigns) {
       if (item.id == widget.campaignId) campaign = item;
     }
-    if (campaign == null) {
-      return JdqScaffold(
-        appBar: AppBar(title: const Text('Event Campaign')),
-        body: Center(child: Text(!campaignState.hasLoaded || campaignState.isLoading
-            ? 'Loading campaign...'
-            : campaignState.failure != null
-                ? 'Campaigns are unavailable. Check your connection.'
-                : 'Campaign not found.')),
-      );
-    }
-
-    final timeLeft = _calculateTimeRemaining(campaign.eventDate);
-
-    return JdqScaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.woodBrown),
-          onPressed: () => context.pop(),
-          tooltip: 'Back',
-        ),
-        title: const FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            'Event Campaign',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.woodBrown,
-            ),
-          ),
-        ),
-      ),
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        children: [
-          // Banner Image (Facebook-Style Edge-to-Edge Container)
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: AppSpacing.roundedXl,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Image.network(
-                    campaign.bannerImageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: AppColors.surfaceContainerLow,
-                      child: const Center(
-                        child: Icon(Icons.festival_rounded, color: AppColors.textMuted, size: 48),
-                      ),
-                    ),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Event Campaign',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
                   ),
-                ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 200),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.sunGold,
-                        borderRadius: AppSpacing.roundedPill,
-                      ),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.emoji_events_rounded, size: 14, color: AppColors.woodBrown),
-                            SizedBox(width: 4),
-                            Text(
-                              'Event preview',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  Expanded(
+                    child: campaign == null
+                        ? _missing(context, grid, campaignState)
+                        : _campaign(context, grid, campaign),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Metadata Chips (Municipality + Host)
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
-                  borderRadius: AppSpacing.roundedPill,
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.location_on_rounded, size: 12, color: AppColors.primary),
-                      const SizedBox(width: 3),
-                      Text(
-                        campaign.municipality,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ),
-              const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-              Text(
-                'Organized by ${campaign.hostName}',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Title
-          Text(
-            campaign.title,
-            style: AppTypography.headlineMedium.copyWith(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.woodBrown,
-              height: 1.25,
             ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Countdown Timer Card
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.timer_outlined, size: 15, color: Color(0xFFE65100)),
-                      SizedBox(width: 6),
-                      Text(
-                        'EVENT COUNTDOWN',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFFE65100),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildTimeBox('${timeLeft['days']}', 'DAYS'),
-                      const SizedBox(width: 8),
-                      _buildTimeBox('${timeLeft['hours']}', 'HOURS'),
-                      const SizedBox(width: 8),
-                      _buildTimeBox('${timeLeft['minutes']}', 'MINS'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // This legacy flow has no durable escrow or registration yet.
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Registration and rewards under development',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown)),
-                SizedBox(height: 6),
-                Text('This event is a preview. No tickets, capacity, or funds are reserved.',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Description & Story
-          const Text(
-            'About this Event Campaign',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            campaign.description,
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.45, fontSize: 13),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Pre-Quest Requirements
-          if (campaign.preQuestRequirements.isNotEmpty) ...[
-            const Text(
-              'Campaign Checkpoint Requirements',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-            ),
-            const SizedBox(height: 8),
-            ...campaign.preQuestRequirements.map((req) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
-                  borderRadius: AppSpacing.roundedMd,
-                  border: Border.all(color: AppColors.borderLowContrast),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 18,
-                      height: 18,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE2F0E8),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.check_rounded, size: 12, color: AppColors.primary),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        req,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.woodBrown),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            const SizedBox(height: 14),
-          ],
-
-          // Action Button (Pre-Register / Attend)
-          const PrimaryButton(
-            label: 'Registration under development',
-            onPressed: null,
-          ),
-          const SizedBox(height: 16),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildTimeBox(String value, String unit) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: AppSpacing.roundedMd,
+  Widget _missing(
+      BuildContext context, PixelGrid grid, CampaignState state) {
+    if (!state.hasLoaded || state.isLoading) {
+      return const Center(child: PixelLoader(label: 'Loading campaign'));
+    }
+    if (state.failure != null) {
+      return ListView(
+        padding: EdgeInsets.all(grid.px(4)),
+        children: [
+          PixelPanel(
+            style: PixelBoxStyle.red,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Campaigns are unavailable.',
+                  style: PixelType.title(context, color: PixelPalette.white),
+                ),
+                SizedBox(height: grid.px(2)),
+                Text(
+                  'Check your connection.',
+                  style: PixelType.body(context, color: PixelPalette.cream),
+                ),
+                SizedBox(height: grid.px(3)),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: PixelButton(
+                    key: const ValueKey('campaign_retry'),
+                    label: 'Retry',
+                    onPressed: () => _reload(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    return Center(
+      child: Text('Campaign not found.', style: PixelType.body(context)),
+    );
+  }
+
+  Widget _campaign(
+      BuildContext context, PixelGrid grid, CampaignModel campaign) {
+    final timeLeft = _calculateTimeRemaining(campaign.eventDate);
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        grid.px(4),
+        grid.px(3),
+        grid.px(4),
+        grid.px(8) + MediaQuery.paddingOf(context).bottom,
       ),
+      children: [
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
+          padding: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: grid.px(90),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRect(
+                        child: Image.network(
+                          campaign.bannerImageUrl,
+                          fit: BoxFit.cover,
+                          filterQuality: FilterQuality.medium,
+                          errorBuilder: (_, __, ___) => const DitherBackground(
+                            top: PixelPalette.sunLight,
+                            bottom: PixelPalette.woodMid,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: grid.px(1),
+                      right: grid.px(1),
+                      child: const PixelChip('Event preview'),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: grid.px(2)),
+              Wrap(
+                spacing: grid.px(2),
+                runSpacing: grid.px(1),
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  PixelChip(campaign.municipality,
+                      style: PixelBoxStyle.green,
+                      textColor: PixelPalette.white),
+                  Text(
+                    'Organized by ${campaign.hostName}',
+                    style: PixelType.body(context, color: PixelPalette.slate),
+                  ),
+                ],
+              ),
+              SizedBox(height: grid.px(2)),
+              Text(campaign.title, style: PixelType.title(context)),
+            ],
+          ),
+        ),
+        SizedBox(height: grid.px(3)),
+        PixelPanel(
+          style: PixelBoxStyle.wood,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'EVENT COUNTDOWN',
+                style: PixelType.small(context, color: PixelPalette.sun),
+              ),
+              SizedBox(height: grid.px(2)),
+              Wrap(
+                spacing: grid.px(2),
+                runSpacing: grid.px(2),
+                children: [
+                  _timeBox(context, grid, '${timeLeft['days']}', 'DAYS'),
+                  _timeBox(context, grid, '${timeLeft['hours']}', 'HOURS'),
+                  _timeBox(context, grid, '${timeLeft['minutes']}', 'MINS'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: grid.px(3)),
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Registration and rewards under development',
+                style: PixelType.title(context),
+              ),
+              SizedBox(height: grid.px(1)),
+              Text(
+                'This event is a preview. No tickets, capacity, or funds are reserved.',
+                style: PixelType.body(context, color: PixelPalette.slate),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: grid.px(3)),
+        Text('About this Event Campaign',
+            style: PixelType.title(context)),
+        SizedBox(height: grid.px(1)),
+        Text(
+          campaign.description,
+          style: PixelType.body(context, color: PixelPalette.slate),
+        ),
+        if (campaign.preQuestRequirements.isNotEmpty) ...[
+          SizedBox(height: grid.px(3)),
+          Text('Campaign Checkpoint Requirements',
+              style: PixelType.title(context)),
+          SizedBox(height: grid.px(2)),
+          for (final requirement in campaign.preQuestRequirements) ...[
+            PixelPanel(
+              style: PixelBoxStyle.parchment,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const PixelChip('Check', style: PixelBoxStyle.green,
+                      textColor: PixelPalette.white),
+                  SizedBox(width: grid.px(2)),
+                  Expanded(
+                    child: Text(
+                      requirement,
+                      style: PixelType.body(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: grid.px(2)),
+          ],
+        ],
+        SizedBox(height: grid.px(2)),
+        const PixelButton(
+          key: ValueKey('campaign_register_disabled'),
+          label: 'Registration under development',
+          expand: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _timeBox(
+      BuildContext context, PixelGrid grid, String value, String unit) {
+    return PixelPanel(
+      style: PixelBoxStyle.slot,
       child: Column(
         children: [
           Text(
             value.padLeft(2, '0'),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.woodBrown),
+            style: PixelType.title(context, color: PixelPalette.wood),
           ),
           Text(
             unit,
-            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+            style: PixelType.small(context, color: PixelPalette.slate),
           ),
         ],
       ),
