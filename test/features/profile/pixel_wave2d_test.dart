@@ -1,10 +1,11 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/core/network/api_failure.dart';
+import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/cosmetics/screens/appearance_screen.dart';
@@ -433,10 +434,10 @@ void main() {
       await _pump(tester, const ProfileScreen(), user: _user);
       await tester.tap(find.byKey(const ValueKey('profile_unlink_wallet')));
       await tester.pump();
-      expect(find.text('UNLINK WEB3 WALLET?'), findsOneWidget);
-      await tester.tap(find.text('CANCEL'));
+      expect(find.text('Unlink Web3 wallet?'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
       await tester.pump();
-      expect(find.text('UNLINK WEB3 WALLET?'), findsNothing);
+      expect(find.text('Unlink Web3 wallet?'), findsNothing);
     });
 
     testWidgets('guest profile shows follow', (tester) async {
@@ -446,7 +447,7 @@ void main() {
       expect(find.text('@maya'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('profile_follow')));
       await tester.pump();
-      expect(find.text('FOLLOWING'), findsOneWidget);
+      expect(find.text('Following'), findsOneWidget);
     });
   });
   group('ShopScreen', () {
@@ -556,7 +557,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('shop_cosmetic_frame-1')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('BUY FOR 300 POINTS'), findsOneWidget);
+      expect(find.text('Buy for 300 points'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('shop_buy_cosmetic')));
       await tester.pump(const Duration(milliseconds: 300));
       expect(fixture.purchases, greaterThanOrEqualTo(1));
@@ -622,7 +623,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('appearance_banner_choose')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('Choose Banner'.toUpperCase()), findsOneWidget);
+      expect(find.text('Choose Banner'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('appearance_pick_none')));
       await tester.pump();
       expect(fixture.equips, greaterThanOrEqualTo(1));
@@ -669,7 +670,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('Juan Dela Cruz'), findsOneWidget);
-      await tester.tap(find.text('NOT NOW'));
+      await tester.tap(find.text('Not now'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('OPEN'), findsOneWidget);
@@ -771,7 +772,7 @@ void main() {
       await _pump(tester, const SavedSpotsScreen(),
           spots: const SpotDiscoveryState(isInitialLoading: false));
       expect(find.byKey(const ValueKey('saved_empty')), findsOneWidget);
-      await tester.tap(find.text('EXPLORE PLACES'));
+      await tester.tap(find.text('Explore places'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('route:/explore'), findsOneWidget);
@@ -823,7 +824,7 @@ void main() {
           apiClient: stubClient());
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Partner with local tourism'), findsOneWidget);
-      expect(find.text('Submit Application'.toUpperCase()), findsOneWidget);
+      expect(find.text('Submit Application'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('affiliate_submit')));
       await tester.pump();
       expect(find.text('Enter Business name'), findsOneWidget);
@@ -852,8 +853,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('affiliate_category')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('DINING'), findsOneWidget);
-      await tester.tap(find.text('DINING'));
+      expect(find.widgetWithText(PixelButton, 'dining'), findsOneWidget);
+      await tester.tap(find.widgetWithText(PixelButton, 'dining'));
       await tester.pump();
       expect(find.text('dining'), findsOneWidget);
     });

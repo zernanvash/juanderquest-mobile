@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/pixel/pixel_grid.dart';
 import '../core/services/push_listener.dart';
 import '../core/theme/app_theme.dart';
 import '../core/widgets/device_guard.dart';
@@ -14,6 +15,7 @@ class JuanderQuestApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final pixelSettings = ref.watch(pixelSettingsProvider);
 
     return LifecycleCoordinator(
       child: MaterialApp.router(
@@ -21,9 +23,12 @@ class JuanderQuestApp extends ConsumerWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: router,
-        builder: (context, child) => DeviceGuard(
-          child: StartupUpdateGate(
-            child: PushListener(child: child ?? const SizedBox()),
+        builder: (context, child) => PixelScope(
+          settings: pixelSettings,
+          child: DeviceGuard(
+            child: StartupUpdateGate(
+              child: PushListener(child: child ?? const SizedBox()),
+            ),
           ),
         ),
       ),

@@ -92,6 +92,16 @@ class PixelBoxStyle {
     bevel: false,
   );
 
+  static final tooltip = PixelBoxStyle(
+    fill: PixelPalette.ink.withValues(alpha: 0.92),
+    highlight: PixelPalette.ink.withValues(alpha: 0.92),
+    shade: PixelPalette.ink.withValues(alpha: 0.92),
+    outline: PixelPalette.mist,
+    corner: 0,
+    shadowPx: 0,
+    bevel: false,
+  );
+
   static const slot = PixelBoxStyle(
     fill: PixelPalette.paperDim,
     highlight: PixelPalette.white,

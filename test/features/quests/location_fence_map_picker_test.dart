@@ -41,10 +41,10 @@ void main() {
     scroll.jumpTo(0);
     await tester.pump();
 
-    expect(find.text('MOVE PIN'), findsOneWidget);
+    expect(find.text('Move pin'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('fence_map_move_pin')));
     await tester.pump();
-    expect(find.text('DONE'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
     final ignore = tester.widget<IgnorePointer>(find
         .ancestor(
             of: find.byType(FlutterMap), matching: find.byType(IgnorePointer))

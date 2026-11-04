@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -561,10 +561,10 @@ void main() {
       await _pump(tester, const LeaderboardScreen());
       expect(find.text('Explorer Leaderboard'), findsOneWidget);
       expect(find.text('Zernan Vash'), findsOneWidget);
-      await tester.tap(find.text('ALL-TIME'));
+      await tester.tap(find.text('All-Time'));
       await tester.pump();
       expect(find.text('28500 mJDQ'), findsOneWidget);
-      await tester.tap(find.text('30-DAY SPRINT'));
+      await tester.tap(find.text('30-Day Sprint'));
       await tester.pump();
       expect(find.text('4850 mJDQ'), findsOneWidget);
     });
@@ -646,7 +646,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       expect(find.text('Community voting is temporarily unavailable.'),
           findsOneWidget);
-      await tester.tap(find.text('RETRY'));
+      await tester.tap(find.text('Retry'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
       expect(attempts, greaterThanOrEqualTo(2));
@@ -691,8 +691,8 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 50));
       expect(find.text('Hidden Cove'), findsOneWidget);
-      expect(find.text('SIGN IN TO VOTE'), findsOneWidget);
-      expect(find.text('VOTE FOR THIS PLACE'), findsNothing);
+      expect(find.text('Sign in to vote'), findsOneWidget);
+      expect(find.text('Vote for this place'), findsNothing);
     });
 
     testWidgets('eligible signed-in traveler opens the confirm dialog',
@@ -728,9 +728,9 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 50));
       expect(find.text('Pangasinan · Voting open'), findsOneWidget);
-      await tester.tap(find.text('VOTE FOR THIS PLACE'));
+      await tester.tap(find.text('Vote for this place'));
       await tester.pump();
-      expect(find.text('CONFIRM JUANCHOICE VOTE'), findsOneWidget);
+      expect(find.text('Confirm JuanChoice vote'), findsOneWidget);
       expect(find.byKey(const ValueKey('choice_confirm_vote')), findsOneWidget);
     });
 
@@ -763,7 +763,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       expect(find.text('Campaign unavailable. Please try again.'),
           findsOneWidget);
-      await tester.tap(find.text('RETRY'));
+      await tester.tap(find.text('Retry'));
       await tester.pump(const Duration(milliseconds: 50));
       expect(attempts, greaterThanOrEqualTo(2));
     });
@@ -854,7 +854,7 @@ void main() {
       expect(find.text('Patar White Beach Eco Trail'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('proposal_yes_p1')));
       await tester.pump();
-      expect(find.text('CONFIRM VOTE (YES)'), findsOneWidget);
+      expect(find.text('Confirm Vote (YES)'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('proposal_cast_yes')));
       await tester.pump(const Duration(milliseconds: 100));
       expect(fixture.casts, 1);
@@ -921,10 +921,10 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('plaza_cheer_a1')));
       await tester.pump();
       expect(feed.cheers, 1);
-      await tester.tap(find.text('FOLLOWING').last);
+      await tester.tap(find.text('Following').last);
       await tester.pump();
       expect(feed.setScopeValue, 'following');
-      await tester.tap(find.text('ALL TIME'));
+      await tester.tap(find.text('All Time'));
       await tester.pump();
     });
 

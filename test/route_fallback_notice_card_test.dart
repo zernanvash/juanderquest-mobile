@@ -43,8 +43,8 @@ void main() {
     expect(find.text('Road routing is unavailable.'), findsOneWidget);
     expect(
         find.textContaining('3.2 km straight-line distance'), findsOneWidget);
-    expect(find.text('GOOGLE MAPS'), findsOneWidget);
-    expect(find.text('WAZE'), findsOneWidget);
+    expect(find.text('Google Maps'), findsOneWidget);
+    expect(find.text('Waze'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

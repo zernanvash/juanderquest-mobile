@@ -105,7 +105,7 @@ class _PixelTextFieldState extends State<PixelTextField> {
           children: [
             if (widget.label != null) ...[
               Text(
-                widget.label!.toUpperCase(),
+                widget.label!,
                 style: PixelType.small(context, color: PixelPalette.slate),
               ),
               SizedBox(height: grid.px(1)),

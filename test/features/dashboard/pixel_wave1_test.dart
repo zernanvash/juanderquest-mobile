@@ -641,7 +641,12 @@ void main() {
   testWidgets('dashboard shows the real data state', (tester) async {
     await _pumpDashboard(tester);
     expect(find.text('Welcome back, Juan'), findsOneWidget);
-    expect(find.text('Level 3 · 125 Explorer XP'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((w) =>
+          w is RichText &&
+          w.text.toPlainText().contains('Level 3 · 125 Explorer XP')),
+      findsOneWidget,
+    );
     expect(find.text('3 days'), findsOneWidget);
     expect(find.text('Hundred Islands Eco Trek'), findsOneWidget);
     expect(find.text('Mangatarem Community Forest and River Cleanup'),
@@ -694,8 +699,8 @@ void main() {
     expect(find.text('JuanChoice status is unavailable.'), findsOneWidget);
     expect(find.text('Quest list is unavailable.'), findsOneWidget);
     expect(find.text('Recent activity is unavailable.'), findsOneWidget);
-    expect(find.text('RETRY'), findsWidgets);
-    await tester.tap(find.text('RETRY').first);
+    expect(find.text('Retry'), findsWidgets);
+    await tester.tap(find.text('Retry').first);
     await tester.pump();
     expect(tester.takeException(), isNull);
   });
@@ -734,7 +739,7 @@ void main() {
     );
     await _expectDashboardTap(
       tester,
-      find.text('CONTINUE'),
+      find.text('Continue'),
       '/quests',
       scroll: true,
     );

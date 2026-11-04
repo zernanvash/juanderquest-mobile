@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
@@ -50,7 +50,7 @@ void main() {
     ], child: const MaterialApp(home: JuanChoiceScreen())));
     await tester.pumpAndSettle();
     expect(find.text('Visit the community winner'),findsOneWidget);
-    expect(find.text('OPEN DESTINATION QUEST'),findsOneWidget);
+    expect(find.text('Open destination quest'),findsOneWidget);
     expect(find.textContaining('AR'),findsNothing);
   });
 
@@ -73,11 +73,11 @@ void main() {
       data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
       child: child!), home: const JuanChoiceScreen())));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('RETRY VISIT REWARDS'), 180);
-    await tester.ensureVisible(find.text('RETRY VISIT REWARDS'));
+    await tester.scrollUntilVisible(find.text('Retry visit rewards'), 180);
+    await tester.ensureVisible(find.text('Retry visit rewards'));
     await tester.pumpAndSettle();
     expect(find.text('Visit rewards could not be checked.'), findsOneWidget);
-    await tester.tap(find.text('RETRY VISIT REWARDS'));
+    await tester.tap(find.text('Retry visit rewards'));
     await tester.pumpAndSettle();
     expect(attempts, 2);
     expect(find.text('Visit rewards could not be checked.'), findsNothing);
@@ -102,7 +102,7 @@ void main() {
     ], child: const MaterialApp(home: JuanChoiceScreen())));
     await tester.pumpAndSettle();
     expect(find.text('Your community journey could not be loaded.'), findsOneWidget);
-    await tester.tap(find.text('RETRY JOURNEY'));
+    await tester.tap(find.text('Retry journey'));
     await tester.pumpAndSettle();
     expect(attempts, 2);
     expect(find.text('Your community journey'), findsOneWidget);
@@ -119,8 +119,8 @@ void main() {
     ], child: const MaterialApp(home: JuanChoiceDetailScreen(campaignId: 'campaign-id'))));
     await tester.pumpAndSettle();
     expect(find.text('Hidden Cove'), findsOneWidget);
-    expect(find.text('SIGN IN TO VOTE'), findsOneWidget);
-    expect(find.text('VOTE FOR THIS PLACE'), findsNothing);
+    expect(find.text('Sign in to vote'), findsOneWidget);
+    expect(find.text('Vote for this place'), findsNothing);
   });
 
   test('older ballot-only API responses cannot authorize a vote', () {
@@ -149,11 +149,11 @@ void main() {
     ], child: const MaterialApp(home: JuanChoiceDetailScreen(campaignId: 'campaign-id'))));
     await tester.pumpAndSettle();
     expect(find.text('Campaign unavailable. Please try again.'), findsOneWidget);
-    await tester.tap(find.text('RETRY'));
+    await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(overviewAttempts, 2);
     expect(detailAttempts, 2);
-    expect(find.text('VOTE FOR THIS PLACE'), findsOneWidget);
+    expect(find.text('Vote for this place'), findsOneWidget);
   });
 
   testWidgets('new account sees eligibility date, not a vote action at 320px and 2x text', (tester) async {
@@ -196,7 +196,7 @@ void main() {
           eligibleAt: null, canVoteNow: true))),
     ], child: const MaterialApp(home: JuanChoiceDetailScreen(campaignId: 'campaign-id'))));
     await tester.pumpAndSettle();
-    expect(find.text('VOTE FOR THIS PLACE'), findsOneWidget);
+    expect(find.text('Vote for this place'), findsOneWidget);
     expect(find.text('Pangasinan · Voting open'), findsOneWidget);
   });
 

@@ -7,6 +7,7 @@ import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
@@ -97,6 +98,16 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                           ]),
                           _SettingsGroup(title: 'APP', tiles: [
+                            _SettingsTile(
+                              key: const ValueKey('settings_text_size'),
+                              icon: 'T',
+                              title: 'Text size',
+                              subtitle: ref
+                                  .watch(pixelSettingsProvider)
+                                  .textSize
+                                  .label,
+                              onTap: () => _showTextSizeDialog(context, ref),
+                            ),
                             // Owner 2026-11-04: run the first-run tutorial again on Home.
                             _SettingsTile(
                               key: const ValueKey('settings_replay_tutorial'),
@@ -222,6 +233,48 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showTextSizeDialog(BuildContext context, WidgetRef ref) {
+    final current = ref.read(pixelSettingsProvider).textSize;
+    showPixelDialog(
+      context: context,
+      title: 'Text size',
+      message:
+          'Choose how text scales across the app. Follow phone adapts automatically to your system font setting.',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final option in PixelTextSize.values) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: PixelButton(
+                key: ValueKey('settings_text_size_${option.name}'),
+                label: option == current
+                    ? '* ${option.label}'
+                    : option.label,
+                variant: option == current
+                    ? PixelButtonVariant.primary
+                    : PixelButtonVariant.secondary,
+                expand: true,
+                onPressed: () {
+                  ref.read(pixelSettingsProvider.notifier).setTextSize(option);
+                  Navigator.of(context, rootNavigator: true).pop();
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        PixelButton(
+          label: 'Close',
+          variant: PixelButtonVariant.secondary,
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+        ),
+      ],
     );
   }
 }

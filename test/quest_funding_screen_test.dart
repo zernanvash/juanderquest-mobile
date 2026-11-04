@@ -72,8 +72,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Set up this round'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('CREATE DRAFT FUNDING PLAN'));
-    await tester.tap(find.text('CREATE DRAFT FUNDING PLAN'));
+    await tester.ensureVisible(find.text('Create draft funding plan'));
+    await tester.tap(find.text('Create draft funding plan'));
     await tester.pumpAndSettle();
 
     expect(submittedBody['mode'], 'budget');

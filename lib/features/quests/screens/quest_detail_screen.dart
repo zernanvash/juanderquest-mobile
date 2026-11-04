@@ -1000,9 +1000,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                 PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
           ),
           SizedBox(height: grid.px(1)),
-          Text(
+          PixelText.rich(
             quest.description,
-            style: PixelType.small(context, color: PixelPalette.slate),
+            style: PixelType.body(context, color: PixelPalette.slate),
           ),
           if (quest.campaignId != null) ...[
             SizedBox(height: grid.px(2)),
@@ -1077,7 +1077,10 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       value,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: PixelType.title(context),
+      style: PixelType.title(
+        context,
+        color: label == 'Reward bounty' ? PixelPalette.gold : PixelPalette.ink,
+      ),
     );
     return SizedBox(
       width: width,
@@ -1352,9 +1355,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                             .copyWith(fontWeight: FontWeight.w700),
                       ),
                       SizedBox(height: grid.px(1)),
-                      Text(
+                      PixelText.rich(
                         step.description,
-                        maxLines: 3,
+                        maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                         style: PixelType.small(
                           context,
@@ -1364,12 +1367,12 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                       if (step.rejectionReason != null &&
                           step.rejectionReason!.isNotEmpty) ...[
                         SizedBox(height: grid.px(1)),
-                        Text(
-                          'Feedback: ${step.rejectionReason}',
-                          style: PixelType.small(
-                            context,
-                            color: PixelPalette.alert,
-                          ),
+                        PixelStatRow(
+                          'Feedback',
+                          step.rejectionReason!,
+                          labelColor: PixelPalette.alert,
+                          valueColor: PixelPalette.alert,
+                          style: PixelType.small(context),
                         ),
                       ],
                     ],

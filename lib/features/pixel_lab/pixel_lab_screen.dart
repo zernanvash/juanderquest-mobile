@@ -13,6 +13,7 @@ import '../../core/pixel/pixel_grid.dart';
 import '../../core/pixel/pixel_input.dart';
 import '../../core/pixel/pixel_nav.dart';
 import '../../core/pixel/pixel_text.dart';
+import '../../core/pixel/pixel_theme.dart';
 import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
@@ -82,6 +83,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                             SizedBox(height: grid.px(3)),
                             _kit(context, grid, settings, notifier),
                           ],
+                          SizedBox(height: grid.px(3)),
+                          _readableText(context, grid, settings),
                           SizedBox(height: grid.px(3)),
                           _palette(context, grid),
                           SizedBox(height: grid.px(3)),
@@ -296,6 +299,182 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
               }
             },
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _readableText(
+    BuildContext context,
+    PixelGrid grid,
+    PixelSettings settings,
+  ) {
+    return _section(
+      context,
+      'Readable text (Hypixel style)',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'COMPARE TYPE READABILITY ACROSS ALL BUNDLED FONTS AT CURRENT TEXT SCALE',
+            style: PixelType.small(context, color: PixelPalette.slate),
+          ),
+          SizedBox(height: grid.px(2)),
+          for (final family in PixelFonts.families) ...[
+            PixelPanel(
+              style: settings.font == family
+                  ? PixelBoxStyle.gold
+                  : PixelBoxStyle.parchment,
+              padding: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          family,
+                          style: TextStyle(
+                            fontFamily: family,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: PixelPalette.ink,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (settings.font == family)
+                        const PixelChip(
+                          'Active',
+                          style: PixelBoxStyle.green,
+                          textColor: PixelPalette.white,
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: grid.px(2)),
+                  // Hypixel-style tooltip box
+                  PixelPanel(
+                    style: PixelBoxStyle.tooltip,
+                    padding: 2,
+                    child: Padding(
+                      padding: EdgeInsets.all(grid.px(2)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'Mayor Cole ',
+                                  style: TextStyle(
+                                    fontFamily: family,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: PixelPalette.gold,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '(Mining Festival)',
+                                  style: TextStyle(
+                                    fontFamily: family,
+                                    fontSize: 11,
+                                    color: PixelPalette.paperDim,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: grid.px(1)),
+                          Divider(height: grid.px(1), color: PixelPalette.stone),
+                          SizedBox(height: grid.px(1)),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'Purse: ',
+                                  style: TextStyle(
+                                    fontFamily: family,
+                                    fontSize: 12,
+                                    color: PixelPalette.stone,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '810,005 coins',
+                                  style: TextStyle(
+                                    fontFamily: family,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: PixelPalette.gold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: grid.px(1)),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'Votes: ',
+                                  style: TextStyle(
+                                    fontFamily: family,
+                                    fontSize: 12,
+                                    color: PixelPalette.stone,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '42,109 (61%)',
+                                  style: TextStyle(
+                                    fontFamily: family,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: PixelPalette.greenBright,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: grid.px(1)),
+                          Divider(height: grid.px(1), color: PixelPalette.stone),
+                          SizedBox(height: grid.px(1)),
+                          Text(
+                            'Click to cast your vote for Cole!',
+                            style: TextStyle(
+                              fontFamily: family,
+                              fontSize: 11,
+                              color: PixelPalette.sun,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: grid.px(2)),
+                  // Sample readable paragraph
+                  PixelPanel(
+                    style: PixelBoxStyle.slot,
+                    sunken: true,
+                    padding: 2,
+                    child: Padding(
+                      padding: EdgeInsets.all(grid.px(1)),
+                      child: Text(
+                        'Hundred Islands National Park spans 124 pristine islands off Alaminos. '
+                        'Explore Gov. Island, scout Quezon Beach, and earn +40 mJDQ while discovering Pangasinan heritage.',
+                        style: TextStyle(
+                          fontFamily: family,
+                          fontSize: 12,
+                          height: 1.3,
+                          color: PixelPalette.paper,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: grid.px(2)),
+          ],
         ],
       ),
     );

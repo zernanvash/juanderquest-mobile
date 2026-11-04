@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/core/pixel/pixel_grid.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
@@ -118,6 +119,8 @@ Widget _buildOverflowApp({required SpotModel spot}) {
     ],
     child: MaterialApp.router(
       theme: AppTheme.pixel,
+      builder: (context, child) =>
+          PixelScope(settings: const PixelSettings(), child: child!),
       routerConfig: router,
     ),
   );

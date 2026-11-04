@@ -645,7 +645,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, '');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('EVENTS · 1'));
+    await tester.tap(find.text('Events · 1'));
     await tester.pumpAndSettle();
     expect(find.text('Bangus Festival 2026'), findsOneWidget);
   });
@@ -676,7 +676,7 @@ void main() {
   testWidgets('quest list marks the daily mission quest', (tester) async {
     await _pumpList(tester, mission: true);
     expect(find.text('Daily mission · Complete a quest step'), findsOneWidget);
-    expect(find.text('PLAY >'), findsOneWidget);
+    expect(find.text('Play >'), findsOneWidget);
   });
 
   testWidgets('daily mission pill stays hidden when signed out or unavailable',
@@ -727,9 +727,9 @@ void main() {
   testWidgets('quest list campaign card opens the campaign route',
       (tester) async {
     await _pumpList(tester);
-    await tester.tap(find.text('EVENTS · 1'));
+    await tester.tap(find.text('Events · 1'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('VIEW EVENT >'));
+    await tester.tap(find.text('View event >'));
     await tester.pumpAndSettle();
     expect(find.text('route:/quests/campaigns/c1'), findsOneWidget);
   });
@@ -962,11 +962,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('CULTURAL HERITAGE'));
+    await tester.tap(find.text('Cultural Heritage'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('100 PTS'));
+    await tester.tap(find.text('100 pts'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('ANY ORDER'));
+    await tester.tap(find.text('Any order'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('builder_publish_btn')));
     await tester.pumpAndSettle();

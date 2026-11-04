@@ -300,14 +300,14 @@ void main() {
       expect(find.byKey(const Key('quest_title_input')), findsOneWidget);
 
       // Task 0 is created by default as Location Geofence. Let's switch Task 0 to AR:
-      await tester.tap(find.text('AR FINDER').last);
+      await tester.tap(find.text('AR finder').last);
       await tester.pumpAndSettle();
 
       // Tap "Add Task" to add Task 1: QR Task with host_scans
       await tester.tap(find.byKey(const Key('builder_add_task_btn')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('QR CODE').last);
+      await tester.tap(find.text('QR code').last);
       await tester.pumpAndSettle();
 
       // Switch to host scans traveler
@@ -319,7 +319,7 @@ void main() {
       await tester.tap(find.byKey(const Key('builder_add_task_btn')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('PHOTO').last);
+      await tester.tap(find.text('Photo').last);
       await tester.pumpAndSettle();
 
       // Verify Save Draft button has minimumSize 48 and sits in bottom bar

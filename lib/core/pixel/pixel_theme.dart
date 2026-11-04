@@ -44,9 +44,9 @@ abstract final class PixelTheme {
     bool bold = false,
   }) =>
       TextStyle(
-        fontFamily: 'Silkscreen',
+        fontFamily: 'Monocraft',
         fontSize: size,
-        height: 1.4,
+        height: 1.25,
         letterSpacing: 0,
         color: color,
         fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
@@ -56,7 +56,7 @@ abstract final class PixelTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      fontFamily: 'Silkscreen',
+      fontFamily: 'Monocraft',
       scaffoldBackgroundColor: PixelPalette.paper,
       primaryColor: PixelPalette.green,
       colorScheme: const ColorScheme.light(

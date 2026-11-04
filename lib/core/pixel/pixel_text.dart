@@ -6,17 +6,16 @@ import 'pixel_grid.dart';
 abstract final class PixelType {
   static TextStyle _base(
     BuildContext context,
-    int artUnits, {
+    double size, {
     Color color = PixelPalette.ink,
     bool bold = false,
     FontFeature? feature,
   }) {
-    final grid = PixelGrid.of(context);
     final settings = PixelScope.of(context);
     return TextStyle(
       fontFamily: settings.font,
-      fontSize: artUnits * grid.unit * settings.fontScale(),
-      height: 1.4,
+      fontSize: size * settings.fontScale(),
+      height: 1.25,
       color: color,
       fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
       letterSpacing: 0,
@@ -26,25 +25,25 @@ abstract final class PixelType {
 
   static TextStyle display(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 16, color: color, bold: true);
+      _base(context, 20, color: color, bold: true);
 
   static TextStyle title(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 12, color: color, bold: true);
+      _base(context, 16, color: color, bold: true);
 
   static TextStyle body(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 8, color: color);
+      _base(context, 13, color: color);
 
   static TextStyle small(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 4, color: color);
+      _base(context, 11, color: color);
 
   static TextStyle numbers(BuildContext context,
           {Color color = PixelPalette.ink}) =>
       _base(
         context,
-        8,
+        13,
         color: color,
         bold: true,
         feature: const FontFeature.tabularFigures(),
@@ -95,6 +94,162 @@ class ShadowText extends StatelessWidget {
       maxLines: maxLines,
       overflow: overflow,
       softWrap: softWrap,
+    );
+  }
+}
+
+/// Helper for readable pixel text with optional color tokens like
+/// `{gold:+40 mJDQ}` or `{green:Patar Beach}`.
+class PixelText extends StatelessWidget {
+  const PixelText(
+    this.text, {
+    super.key,
+    this.style,
+    this.textAlign,
+    this.maxLines,
+    this.overflow,
+    this.softWrap,
+  }) : isRich = false;
+
+  const PixelText.rich(
+    this.text, {
+    super.key,
+    this.style,
+    this.textAlign,
+    this.maxLines,
+    this.overflow,
+    this.softWrap,
+  }) : isRich = true;
+
+  final String text;
+  final TextStyle? style;
+  final TextAlign? textAlign;
+  final int? maxLines;
+  final TextOverflow? overflow;
+  final bool? softWrap;
+  final bool isRich;
+
+  static Color tokenColor(String token, [Color defaultColor = PixelPalette.ink]) {
+    return switch (token.toLowerCase()) {
+      'gold' => PixelPalette.gold,
+      'green' => PixelPalette.greenBright,
+      'blue' => PixelPalette.blueMid,
+      'red' => PixelPalette.red,
+      'grey' || 'gray' => PixelPalette.stone,
+      'sun' => PixelPalette.sun,
+      'paper' => PixelPalette.paper,
+      'paperdim' => PixelPalette.paperDim,
+      'white' => PixelPalette.white,
+      'slate' => PixelPalette.slate,
+      'mist' => PixelPalette.mist,
+      'amber' => PixelPalette.amber,
+      'alert' => PixelPalette.alert,
+      _ => defaultColor,
+    };
+  }
+
+  static List<InlineSpan> parseSpans(String text, TextStyle baseStyle) {
+    final spans = <InlineSpan>[];
+    final regex = RegExp(r'\{([a-zA-Z0-9]+):([^\}]+)\}');
+    var lastIndex = 0;
+    for (final match in regex.allMatches(text)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: baseStyle,
+        ));
+      }
+      final token = match.group(1)!;
+      final content = match.group(2)!;
+      final color = tokenColor(token, baseStyle.color ?? PixelPalette.ink);
+      spans.add(TextSpan(
+        text: content,
+        style: baseStyle.copyWith(color: color),
+      ));
+      lastIndex = match.end;
+    }
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: baseStyle,
+      ));
+    }
+    return spans;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = style ?? PixelType.body(context);
+    if (!isRich || !text.contains('{')) {
+      return Text(
+        text,
+        style: baseStyle,
+        textAlign: textAlign,
+        maxLines: maxLines,
+        overflow: overflow,
+        softWrap: softWrap,
+      );
+    }
+    return Text.rich(
+      TextSpan(children: parseSpans(text, baseStyle)),
+      textAlign: textAlign,
+      maxLines: maxLines,
+      overflow: overflow,
+      softWrap: softWrap,
+    );
+  }
+}
+
+/// Scoreboard-style label: value stat row (Hypixel style).
+class PixelStatRow extends StatelessWidget {
+  const PixelStatRow(
+    this.label,
+    this.value, {
+    super.key,
+    this.labelColor,
+    this.valueColor,
+    this.style,
+    this.trailing,
+  });
+
+  final String label;
+  final String value;
+  final Color? labelColor;
+  final Color? valueColor;
+  final TextStyle? style;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = style ?? PixelType.body(context);
+    final lColor = labelColor ?? PixelPalette.stone;
+    final vColor = valueColor ?? PixelPalette.sun;
+    final separator = label.endsWith(':') ? ' ' : ': ';
+    final content = Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label$separator',
+            style: base.copyWith(color: lColor),
+          ),
+          TextSpan(
+            text: value,
+            style: base.copyWith(
+              color: vColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (trailing == null) return content;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: content),
+        trailing!,
+      ],
     );
   }
 }
