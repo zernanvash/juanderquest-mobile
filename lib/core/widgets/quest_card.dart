@@ -6,6 +6,7 @@ import '../../features/quests/pixel/saved_quest_heart.dart';
 import '../pixel/generated/designer_art.g.dart';
 import '../pixel/generated/pixel_palette.g.dart';
 import '../pixel/pixel_art.dart';
+import '../pixel/pixel_background.dart';
 import '../pixel/pixel_box.dart';
 import '../pixel/pixel_controls.dart';
 import '../pixel/pixel_grid.dart';
@@ -278,8 +279,9 @@ class QuestCard extends StatelessWidget {
 
   Widget _imagePlaceholder(BuildContext context) {
     final grid = PixelGrid.of(context);
-    return ColoredBox(
-      color: PixelPalette.paperDim,
+    return DitherBackground(
+      top: PixelPalette.paperDim,
+      bottom: PixelPalette.paper,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
