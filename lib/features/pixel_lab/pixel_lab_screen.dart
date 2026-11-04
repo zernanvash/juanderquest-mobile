@@ -16,6 +16,7 @@ import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
+import 'home_options.dart';
 import 'tutorial_preview.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
@@ -83,6 +84,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                             _kit(context, grid, settings, notifier),
                           ],
                           SizedBox(height: grid.px(3)),
+                          _homeOptions(context, grid),
+                          SizedBox(height: grid.px(3)),
                           _palette(context, grid),
                           SizedBox(height: grid.px(3)),
                           _panels(context, grid),
@@ -113,6 +116,14 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
           },
         ),
       ),
+    );
+  }
+
+  Widget _homeOptions(BuildContext context, PixelGrid grid) {
+    return _section(
+      context,
+      'Home layout · pick one',
+      const HomeOptionsSection(),
     );
   }
 
