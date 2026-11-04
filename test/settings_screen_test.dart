@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
+import 'package:juanderquest_app/features/dashboard/home_tips.dart';
+import 'package:go_router/go_router.dart';
 
 class InertAuthNotifier extends AuthNotifier {
   InertAuthNotifier(super.apiClient, super.refreshNotifier, UserModel user) {
@@ -104,4 +106,55 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Explorer Settings'), findsOneWidget);
   });
+
+  testWidgets('Replay tutorial shows the first-run tutorial on Home again',
+      (tester) async {
+    final store = _MemoryTipsStore();
+    late ProviderContainer container;
+    final router = GoRouter(initialLocation: '/settings', routes: [
+      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+      GoRoute(
+          path: '/dashboard',
+          builder: (_, __) => const Text('HOME', textDirection: TextDirection.ltr)),
+    ]);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          homeTipsStoreProvider.overrideWithValue(store),
+          authProvider.overrideWith(
+            (ref) => InertAuthNotifier(
+              ref.watch(apiClientProvider),
+              ref.watch(authRefreshProvider.notifier),
+              dummyUser,
+            ),
+          ),
+        ],
+        child: Consumer(builder: (context, ref, _) {
+          container = ProviderScope.containerOf(context);
+          return MaterialApp.router(routerConfig: router);
+        }),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final tile = find.byKey(const ValueKey('settings_replay_tutorial'));
+    await tester.scrollUntilVisible(tile, 200);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    expect(store.resets, 1);
+    expect(container.read(homeTipsControllerProvider).showing, isTrue);
+    expect(find.text('HOME'), findsOneWidget);
+  });
+}
+
+class _MemoryTipsStore implements HomeTipsStore {
+  int resets = 0;
+
+  @override
+  Future<bool> seen() async => true;
+
+  @override
+  Future<void> markSeen() async {}
+
+  @override
+  Future<void> reset() async => resets++;
 }

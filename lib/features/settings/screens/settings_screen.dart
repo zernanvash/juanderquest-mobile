@@ -13,6 +13,7 @@ import '../../../core/services/push_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../../core/app_release.dart';
+import '../../dashboard/home_tips.dart';
 
 /// Settings home: short categories that open their own pages, so a new
 /// setting adds a row here instead of growing one long screen.
@@ -141,6 +142,19 @@ class SettingsScreen extends ConsumerWidget {
           ]),
 
           _SettingsGroup(title: 'App', tiles: [
+            // Owner 2026-11-04: run the first-run tutorial again on Home.
+            _SettingsTile(
+              key: const ValueKey('settings_replay_tutorial'),
+              icon: Icons.school_rounded,
+              title: 'Replay tutorial',
+              subtitle: 'Juan shows you around Home again',
+              onTap: () async {
+                await ref
+                    .read(homeTipsControllerProvider.notifier)
+                    .resetForReplay();
+                if (context.mounted) context.go('/dashboard');
+              },
+            ),
             _SettingsTile(
               key: const ValueKey('settings_updates'),
               icon: Icons.system_update_rounded,
