@@ -71,6 +71,7 @@ import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
 import 'package:juanderquest_app/core/pixel/pixel_nav.dart';
 import 'package:juanderquest_app/core/pixel/placeholder_art.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
+import 'package:juanderquest_app/features/onboarding/pixel_tutorial.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
@@ -338,11 +339,13 @@ class _PixelWave1ShellPreview extends StatelessWidget {
             ),
             if (showTips)
               Positioned.fill(
-                child: PixelHomeTipsOverlay(
-                  keys: keys,
-                  step: 0,
-                  onSkip: () {},
-                  onNext: () {},
+                child: PixelTutorialOverlay(
+                  steps: firstRunSteps(
+                    hero: keys.hero,
+                    nextStop: keys.nextStop,
+                    hotbar: keys.hotbar,
+                  ),
+                  onDone: () {},
                 ),
               ),
           ],

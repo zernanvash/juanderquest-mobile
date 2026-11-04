@@ -9,6 +9,7 @@ import '../core/pixel/pixel_nav.dart';
 import '../core/pixel/placeholder_art.dart';
 import '../features/companion/widgets/companion_card.dart';
 import '../features/dashboard/home_tips.dart';
+import '../features/onboarding/pixel_tutorial.dart';
 import '../features/juanchoice/providers/juanchoice_provider.dart';
 import '../features/quests/providers/campaign_provider.dart';
 import '../features/quests/providers/quest_provider.dart';
@@ -121,13 +122,14 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
           if (showTips)
             Positioned.fill(
-              child: PixelHomeTipsOverlay(
-                keys: tipsKeys,
-                step: tips.step,
-                onSkip: () =>
-                    ref.read(homeTipsControllerProvider.notifier).skip(),
-                onNext: () =>
-                    ref.read(homeTipsControllerProvider.notifier).next(),
+              child: PixelTutorialOverlay(
+                steps: firstRunSteps(
+                  hero: tipsKeys.hero,
+                  nextStop: tipsKeys.nextStop,
+                  hotbar: tipsKeys.hotbar,
+                ),
+                onDone: () =>
+                    ref.read(homeTipsControllerProvider.notifier).finish(),
               ),
             ),
         ],

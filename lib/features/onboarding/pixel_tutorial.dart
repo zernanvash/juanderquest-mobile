@@ -289,16 +289,6 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
 
   Widget _buttonChoices(BuildContext context, PixelGrid grid) {
     if (!_lineDone) return const SizedBox.shrink();
-    if (_current.choices.isEmpty) {
-      return Align(
-        alignment: Alignment.centerRight,
-        child: PixelButton(
-          key: const ValueKey('tutorial-next'),
-          label: _step >= widget.steps.length - 1 ? 'Got it' : 'Next >',
-          onPressed: _next,
-        ),
-      );
-    }
     return Wrap(
       alignment: WrapAlignment.end,
       spacing: grid.px(2),
@@ -404,3 +394,28 @@ class _ArrowPainter extends CustomPainter {
   bool shouldRepaint(_ArrowPainter old) =>
       old.down != down || old.unit != unit || old.color != color;
 }
+
+/// The first-run tutorial lines (owner 2026-11-04), shared by every style.
+List<TutorialStep> firstRunSteps({
+  GlobalKey? hero,
+  GlobalKey? nextStop,
+  GlobalKey? hotbar,
+}) =>
+    [
+      const TutorialStep(
+        "Hey, I'm Juan! First time in Pangasinan?",
+        choices: ['Yes, show me', "No, I'll explore"],
+      ),
+      TutorialStep(
+        'This card is your travel log. Visit places and finish quests to level up.',
+        target: hero,
+      ),
+      TutorialStep(
+        'Tap here for your next adventure: places near you, the map, or a quest.',
+        target: nextStop,
+      ),
+      TutorialStep(
+        'This bar jumps between Home, Map, Quests, JuanChoice and your Profile. Have fun!',
+        target: hotbar,
+      ),
+    ];

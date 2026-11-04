@@ -11,31 +11,6 @@ import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
 import '../onboarding/pixel_tutorial.dart';
 
-/// The first-run tutorial lines (owner 2026-11-04), shared by every style.
-List<TutorialStep> firstRunSteps({
-  GlobalKey? hero,
-  GlobalKey? nextStop,
-  GlobalKey? hotbar,
-}) =>
-    [
-      const TutorialStep(
-        "Hey, I'm Juan! First time in Pangasinan?",
-        choices: ['Yes, show me', "No, I'll explore"],
-      ),
-      TutorialStep(
-        'This card is your travel log. Visit places and finish quests to level up.',
-        target: hero,
-      ),
-      TutorialStep(
-        'Tap here for your next adventure: places near you, the map, or a quest.',
-        target: nextStop,
-      ),
-      TutorialStep(
-        'This bar jumps between Home, Map, Quests, JuanChoice and your Profile. Have fun!',
-        target: hotbar,
-      ),
-    ];
-
 /// Pixel lab: a pretend Home screen with one tutorial style running on top,
 /// so the owner can compare the styles on the phone.
 class TutorialPreviewScreen extends ConsumerStatefulWidget {

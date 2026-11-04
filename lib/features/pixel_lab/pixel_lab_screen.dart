@@ -285,14 +285,14 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
           ),
           SizedBox(height: grid.px(2)),
           PixelButton(
-            label: 'Replay Home tips',
+            label: 'Replay first-run tutorial',
             variant: PixelButtonVariant.secondary,
             onPressed: () async {
               await ref
                   .read(homeTipsControllerProvider.notifier)
                   .resetForReplay();
               if (context.mounted) {
-                showPixelToast(context, 'HOME TIPS WILL SHOW AGAIN');
+                showPixelToast(context, 'THE TUTORIAL SHOWS AGAIN ON HOME');
               }
             },
           ),
