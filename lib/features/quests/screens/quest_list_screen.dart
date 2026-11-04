@@ -218,7 +218,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
         campaignState.campaigns.where(_campaignMatches).toList();
     _filteredCount =
         _activeTabIndex == 0 ? filteredQuests.length : filteredCampaigns.length;
-    if (_visibleCount > _filteredCount) {
+    // Never shrink the page below its size: quests arrive after the first
+    // build (0 while loading), and a 0 here would hide them for good.
+    if (_visibleCount > _filteredCount && _filteredCount >= 10) {
       _visibleCount = _filteredCount;
     }
 

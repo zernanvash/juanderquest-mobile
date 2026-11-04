@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:juanderquest_app/core/widgets/quest_card.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
@@ -41,6 +42,9 @@ class _QuestFixture extends QuestNotifier {
 
   @override
   Future<void> fetchQuests({String? category}) async {}
+
+  /// Lets a test deliver quests after the first build, like the network does.
+  void emit(QuestState next) => state = next;
 }
 
 class _CampaignFixture extends CampaignNotifier {
@@ -690,6 +694,19 @@ void main() {
 
     await _pumpList(tester, mission: false);
     expect(find.text('Daily mission · Complete a quest step'), findsNothing);
+  });
+
+  testWidgets('quests that arrive after the first build are shown',
+      (tester) async {
+    await _pumpList(tester, quests: const []);
+    final container =
+        ProviderScope.containerOf(tester.element(find.byType(QuestListScreen)));
+    (container.read(questProvider.notifier) as _QuestFixture).emit(QuestState(
+      quests: [for (var i = 0; i < 14; i++) _quest('q$i', 'Trail $i')],
+      isLoading: false,
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byType(QuestCard), findsWidgets);
   });
 
   testWidgets('quest list TOP button jumps to the top', (tester) async {
