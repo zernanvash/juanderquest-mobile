@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -39,8 +38,6 @@ import '../engine/jdq_map.dart';
 import '../engine/jdq_map_canvas.dart';
 import '../engine/maplibre_jdq_map.dart';
 import '../pixel/map_marker_art.dart';
-import '../pixel/pixel_map_mode.dart';
-import '../pixel/pixel_map_shader.dart';
 import '../utils/admin_areas.dart';
 import '../utils/map_cluster.dart';
 import '../utils/map_focus.dart';
@@ -70,13 +67,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   bool _basicMap = false;
   bool _fellBack = false;
   String _pinSignature = '';
-  bool _savedSatellite = false;
   bool _deepLinkHandled = false;
 
-  final PixelMapShaderController _shaderController = PixelMapShaderController();
-
-  bool get _native =>
-      !_basicMap && ref.read(pixelMapModeProvider) != PixelMapMode.pixel;
+  bool get _native => !_basicMap;
 
   @override
   void initState() {
@@ -105,18 +98,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       if (mounted) setState(() => _clusterZoom = _nativeMap.camera.zoom);
     };
 
-    _loadShader();
     _initSelection();
-  }
-
-  void _loadShader() {
-    PixelMapShader.load().then((program) {
-      if (mounted && program != null) {
-        setState(() {
-          _shaderController.init(program);
-        });
-      }
-    });
   }
 
   JdqCamera get _camera {
@@ -142,8 +124,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
   void _fit(LatLngBounds bounds, EdgeInsets padding, {double? maxZoom}) {
     if (_native) {
-      unawaited(_nativeMap.fitBounds(
-          bounds.southWest, bounds.northEast, padding));
+      unawaited(
+          _nativeMap.fitBounds(bounds.southWest, bounds.northEast, padding));
     } else {
       _mapController.fitCamera(CameraFit.bounds(
           bounds: bounds,
@@ -152,9 +134,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     }
   }
 
-  Widget _canvas(Widget raster,
-      {bool satellite = false, bool isPixel = false}) {
-    if (isPixel) return raster;
+  Widget _canvas(Widget raster, {bool satellite = false}) {
     if (_basicMap && !_fellBack) return raster;
     return JdqMapCanvas(
       map: _nativeMap,
@@ -199,7 +179,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
   @override
   void dispose() {
-    _shaderController.dispose();
     _nativeMap.dispose();
     _clusterRefreshTimer?.cancel();
     _areaRefreshTimer?.cancel();
@@ -210,8 +189,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
   void _scheduleAreaRefresh() {
     _areaRefreshTimer?.cancel();
-    _areaRefreshTimer =
-        Timer(const Duration(milliseconds: 450), _refreshAreas);
+    _areaRefreshTimer = Timer(const Duration(milliseconds: 450), _refreshAreas);
   }
 
   Future<void> _refreshAreas() async {
@@ -316,8 +294,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     _centerTimer = Timer(const Duration(milliseconds: 800), () {
       if (!mounted) return;
       final camera = _camera;
-      ref.read(lastMapCenterProvider.notifier).state =
-          StudioPin(camera.center.latitude, camera.center.longitude, camera.zoom);
+      ref.read(lastMapCenterProvider.notifier).state = StudioPin(
+          camera.center.latitude, camera.center.longitude, camera.zoom);
     });
   }
 
@@ -374,9 +352,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
         items.add(MapClusterListItem(
           id: id,
           title: spot.name,
-          subtitle: spot.address.trim().isNotEmpty
-              ? spot.address
-              : spot.municipality,
+          subtitle:
+              spot.address.trim().isNotEmpty ? spot.address : spot.municipality,
           icon: Icons.place_rounded,
         ));
       }
@@ -783,35 +760,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     );
   }
 
-  void _switchMode(PixelMapMode targetMode) {
-    final currentMode = ref.read(pixelMapModeProvider);
-    if (currentMode == targetMode) return;
-
-    final cam = _camera;
-
-    if (targetMode == PixelMapMode.pixel) {
-      _savedSatellite = ref.read(satelliteModeProvider);
-      ref.read(satelliteModeProvider.notifier).state = false;
-      ref.read(pixelMapModeProvider.notifier).setMode(PixelMapMode.pixel);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          try {
-            _mapController.move(cam.center, cam.zoom);
-          } catch (_) {}
-        }
-      });
-    } else {
-      ref.read(satelliteModeProvider.notifier).state = _savedSatellite;
-      ref.read(pixelMapModeProvider.notifier).setMode(PixelMapMode.real);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _native) {
-          unawaited(
-              _nativeMap.easeTo(cam.center, cam.zoom, reducedMotion: true));
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen(questProvider, (_, __) {
@@ -821,15 +769,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       if (!_deepLinkHandled) _handleDeepLink();
     });
 
-    final mode = ref.watch(pixelMapModeProvider);
-    final isPixel = mode == PixelMapMode.pixel;
-    final shaderSupported = ref.watch(shaderFilterSupportedProvider);
-
-    final satellite = !isPixel && satelliteOn(ref);
+    final satellite = satelliteOn(ref);
     ref.listen<bool>(
         satelliteModeProvider,
         (_, on) => unawaited(
-            _nativeMap.setSatellite(!isPixel && on && MapConfig.satelliteAvailable())));
+            _nativeMap.setSatellite(on && MapConfig.satelliteAvailable())));
 
     final questState = ref.watch(questProvider);
     final spotState = ref.watch(spotDiscoveryProvider);
@@ -929,7 +873,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     _focusPlace(quest.gpsLat, quest.gpsLng, 14.0);
                   },
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    constraints:
+                        const BoxConstraints(minWidth: 48, minHeight: 48),
                     child: const Center(
                       child: PixelSprite(DesignerArt.questMarker, scale: 2),
                     ),
@@ -965,7 +910,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                   _focusPlace(spot.gpsLat, spot.gpsLng, 14.0);
                 },
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                  constraints:
+                      const BoxConstraints(minWidth: 48, minHeight: 48),
                   child: const Center(
                     child: PixelSprite(MapMarkerArt.spotPin, scale: 2),
                   ),
@@ -1030,25 +976,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       }
     }
 
-    // Configure shader uniforms if pixel mode is active
-    if (isPixel && _shaderController.isReady) {
-      final dpr = MediaQuery.devicePixelRatioOf(context);
-      final artPx = PixelScope.of(context).artPx;
-      final uCell = PixelMapShader.computeUCell(
-        artPx: artPx,
-        dpr: dpr,
-        cellArt: 2,
-      );
-      _shaderController.updateUniforms(uCell: uCell, uSpread: 0.12);
-    }
-
-    Widget tileLayer = buildBaseTileLayer(satellite: satellite);
-    if (isPixel && _shaderController.isReady && shaderSupported) {
-      tileLayer = ImageFiltered(
-        imageFilter: ui.ImageFilter.shader(_shaderController.shader!),
-        child: tileLayer,
-      );
-    }
+    final Widget tileLayer = buildBaseTileLayer(satellite: satellite);
 
     final rasterMap = FlutterMap(
       mapController: _mapController,
@@ -1096,26 +1024,25 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               ),
           ]),
         MarkerLayer(markers: markers),
-        if (!isPixel)
-          RichAttributionWidget(
-            showFlutterMapAttribution: false,
-            alignment: AttributionAlignment.bottomRight,
-            attributions: [
-              if (satellite)
-                const TextSourceAttribution(MapConfig.satelliteAttribution),
-              TextSourceAttribution(
-                'OpenStreetMap contributors',
-                onTap: () async {
-                  try {
-                    await launchUrl(
-                      Uri.parse('https://www.openstreetmap.org/copyright'),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  } catch (_) {}
-                },
-              ),
-            ],
-          ),
+        RichAttributionWidget(
+          showFlutterMapAttribution: false,
+          alignment: AttributionAlignment.bottomRight,
+          attributions: [
+            if (satellite)
+              const TextSourceAttribution(MapConfig.satelliteAttribution),
+            TextSourceAttribution(
+              'OpenStreetMap contributors',
+              onTap: () async {
+                try {
+                  await launchUrl(
+                    Uri.parse('https://www.openstreetmap.org/copyright'),
+                    mode: LaunchMode.externalApplication,
+                  );
+                } catch (_) {}
+              },
+            ),
+          ],
+        ),
       ],
     );
 
@@ -1139,7 +1066,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
         ),
         body: Stack(
           children: [
-            _canvas(rasterMap, satellite: satellite, isPixel: isPixel),
+            _canvas(rasterMap, satellite: satellite),
 
             // Top-Left Floating Header & Filter Panel
             Positioned(
@@ -1155,8 +1082,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                   children: [
                     Text(
                       '${quests.length} QUESTS • ${spots.length} SPOTS ACTIVE',
-                      style: PixelType.small(context,
-                              color: PixelPalette.stone)
+                      style: PixelType.small(context, color: PixelPalette.stone)
                           .copyWith(fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1233,17 +1159,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               right: 12,
               child: Column(
                 children: [
-                  // Real / Pixel Map Mode Toggle
-                  if (shaderSupported) ...[
-                    _PixelMapModeToggle(
-                      mode: mode,
-                      onToggle: () => _switchMode(isPixel
-                          ? PixelMapMode.real
-                          : PixelMapMode.pixel),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-
                   // Orientation reset button
                   if (_native &&
                       mapNeedsOrientationReset(
@@ -1253,14 +1168,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     MapOrientationButton(
                       bearing: _nativeMap.camera.bearing,
                       tilt: _nativeMap.camera.tilt,
-                      onPressed: () =>
-                          unawaited(_nativeMap.resetOrientation()),
+                      onPressed: () => unawaited(_nativeMap.resetOrientation()),
                     ),
                     const SizedBox(height: 8),
                   ],
 
-                  // Satellite toggle: hidden in pixel mode
-                  if (!isPixel && MapConfig.satelliteAvailable()) ...[
+                  // Satellite toggle
+                  if (MapConfig.satelliteAvailable()) ...[
                     Tooltip(
                       message: satellite ? 'Show map' : 'Show satellite',
                       child: PixelIconButton(
@@ -1271,9 +1185,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                             ? PixelBoxStyle.gold
                             : PixelBoxStyle.parchment,
                         onPressed: () {
-                          ref
-                              .read(satelliteModeProvider.notifier)
-                              .state = !satellite;
+                          ref.read(satelliteModeProvider.notifier).state =
+                              !satellite;
                         },
                       ),
                     ),
@@ -1414,32 +1327,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 right: 12,
                 child: _buildMarkerInspectorCard(),
               ),
-
-            // Pixel Mode Attribution Chip
-            if (isPixel)
-              Positioned(
-                bottom: 8,
-                right: 8,
-                child: GestureDetector(
-                  onTap: () async {
-                    try {
-                      await launchUrl(
-                        Uri.parse('https://www.openstreetmap.org/copyright'),
-                        mode: LaunchMode.externalApplication,
-                      );
-                    } catch (_) {}
-                  },
-                  child: PixelPanel(
-                    style: PixelBoxStyle.slot,
-                    padding: 1,
-                    child: Text(
-                      '© OpenStreetMap contributors',
-                      style: PixelType.small(context,
-                          color: PixelPalette.paperDim),
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -1571,91 +1458,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 ),
               ],
             ),
-            SizedBox(height: grid.px(0.5)),
-            Center(
-              child: Text(
-                '© OpenStreetMap contributors',
-                style: PixelType.small(context, color: PixelPalette.stone),
-              ),
-            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PixelMapModeToggle extends StatelessWidget {
-  const _PixelMapModeToggle({
-    required this.mode,
-    required this.onToggle,
-  });
-
-  final PixelMapMode mode;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    final isPixel = mode == PixelMapMode.pixel;
-
-    return Tooltip(
-      message: isPixel ? 'Switch to Real map' : 'Switch to Pixel map',
-      child: Semantics(
-        button: true,
-        label: isPixel ? 'Switch to Real map' : 'Switch to Pixel map',
-        child: GestureDetector(
-          onTap: () {
-            pixelTick(context);
-            onToggle();
-          },
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            child: PixelPanel(
-              style: PixelBoxStyle.parchment,
-              padding: 1,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PixelPanel(
-                    style: !isPixel ? PixelBoxStyle.gold : PixelBoxStyle.slot,
-                    sunken: isPixel,
-                    padding: 1,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: grid.px(1)),
-                      child: Text(
-                        'REAL',
-                        style: PixelType.small(
-                          context,
-                          color: !isPixel
-                              ? PixelPalette.ink
-                              : PixelPalette.slate,
-                        ).copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: grid.px(0.5)),
-                  PixelPanel(
-                    style: isPixel ? PixelBoxStyle.gold : PixelBoxStyle.slot,
-                    sunken: !isPixel,
-                    padding: 1,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: grid.px(1)),
-                      child: Text(
-                        'PIXEL',
-                        style: PixelType.small(
-                          context,
-                          color: isPixel
-                              ? PixelPalette.ink
-                              : PixelPalette.slate,
-                        ).copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       ),
     );

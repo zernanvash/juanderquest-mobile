@@ -18,8 +18,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/wallet_signature_service.dart';
-import '../../cosmetics/widgets/cosmetic_avatar.dart';
-import '../../cosmetics/widgets/profile_banner.dart';
 import '../providers/profile_stats_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -47,30 +45,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Map<String, dynamic>.from(item['asset'] as Map);
   }
 
-  int? _cosmeticSeed(Map<String, dynamic>? cosmetics, String slot) {
-    final item = cosmetics?[slot];
-    if (item is! Map) return null;
-    return (item['seed'] as num?)?.toInt();
-  }
-
   Widget _buildAvatarWidget(
-      String? avatarUrl, String displayName, Map<String, dynamic>? cosmetics) {
+    BuildContext context,
+    PixelGrid grid,
+    String? avatarUrl,
+    String displayName,
+  ) {
     final isValidUrl = avatarUrl != null &&
         avatarUrl.isNotEmpty &&
         !avatarUrl.endsWith('.svg') &&
         (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
-
-    if (isValidUrl) {
-      return CosmeticAvatar(
-          name: displayName,
-          imageUrl: avatarUrl,
-          size: 84,
-          frame: _cosmeticAsset(cosmetics, 'frame'));
-    }
-
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'J';
-    return CosmeticAvatar(
-        name: initial, size: 84, frame: _cosmeticAsset(cosmetics, 'frame'));
+    return SizedBox(
+      width: grid.px(42),
+      height: grid.px(42),
+      child: ClipRect(
+        child: isValidUrl
+            ? Image.network(
+                avatarUrl,
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, __, ___) => _avatarFallback(context, initial),
+              )
+            : _avatarFallback(context, initial),
+      ),
+    );
+  }
+
+  Widget _avatarFallback(BuildContext context, String initial) {
+    return DitherBackground(
+      top: PixelPalette.greenMid,
+      bottom: PixelPalette.greenDeep,
+      child: Center(
+        child: Text(
+          initial,
+          style: PixelType.title(context, color: PixelPalette.paper),
+        ),
+      ),
+    );
   }
 
   @override
@@ -140,26 +152,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [
-                        _identity(context, grid, isMine, displayName,
-                            displayHandle, currentUser, cosmetics, titleAsset,
-                            nameColorAsset, level, pointsBalance),
+                        _identity(
+                            context,
+                            grid,
+                            isMine,
+                            displayName,
+                            displayHandle,
+                            currentUser,
+                            cosmetics,
+                            titleAsset,
+                            nameColorAsset,
+                            level,
+                            pointsBalance),
                         SizedBox(height: grid.px(4)),
                         if (isMine) ...[
-                          _sectionTitle(
-                              context, 'Web3 & Blockchain Identity',
+                          _sectionTitle(context, 'Web3 & Blockchain Identity',
                               'Link any EVM or Web3 wallet to preserve your passport across devices.'),
                           SizedBox(height: grid.px(2)),
                           _walletCard(context, grid, currentUser),
                           SizedBox(height: grid.px(4)),
-                          _sectionTitle(
-                              context, 'Traveler Statistics',
+                          _sectionTitle(context, 'Traveler Statistics',
                               'Your quest completions, submissions, and reward points balance.'),
                           SizedBox(height: grid.px(2)),
                           _stats(context, grid, stats, pointsBalance),
                           SizedBox(height: grid.px(4)),
                         ],
-                        _sectionTitle(
-                            context, 'Community & Ecosystem',
+                        _sectionTitle(context, 'Community & Ecosystem',
                             'Compete in regional sprints and explore research pillars.'),
                         SizedBox(height: grid.px(2)),
                         _links(context, grid, isMine),
@@ -198,13 +216,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (isMine)
             SizedBox(
               height: grid.px(36),
-              child: ClipRect(
-                child: ProfileBanner(
-                  height: grid.px(36),
-                  asset: _cosmeticAsset(cosmetics, 'banner'),
-                  seed: _cosmeticSeed(cosmetics, 'banner'),
-                  animate: true,
-                ),
+              child: const DitherBackground(
+                top: PixelPalette.greenMid,
+                bottom: PixelPalette.greenDeep,
               ),
             ),
           if (isMine) SizedBox(height: grid.px(2)),
@@ -215,9 +229,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 style: PixelBoxStyle.gold,
                 padding: 1,
                 child: _buildAvatarWidget(
+                  context,
+                  grid,
                   isMine ? currentUser?.avatarUrl : null,
                   displayName,
-                  cosmetics,
                 ),
               ),
               SizedBox(width: grid.px(2)),
@@ -228,7 +243,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(
                       displayName,
                       maxLines: 2,
-                      style: PixelType.title(context).copyWith(color: nameColor),
+                      style:
+                          PixelType.title(context).copyWith(color: nameColor),
                     ),
                     SizedBox(height: grid.px(1)),
                     Text(
@@ -360,8 +376,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _walletCard(
-      BuildContext context, PixelGrid grid, UserModel? user) {
+  Widget _walletCard(BuildContext context, PixelGrid grid, UserModel? user) {
     if (user == null) return const SizedBox.shrink();
     final hasWallet = user.hasBoundWallet;
 
@@ -400,8 +415,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               SizedBox(width: grid.px(2)),
               PixelChip(
                 hasWallet ? 'VERIFIED' : 'OFF-CHAIN',
-                style:
-                    hasWallet ? PixelBoxStyle.green : PixelBoxStyle.gold,
+                style: hasWallet ? PixelBoxStyle.green : PixelBoxStyle.gold,
                 textColor: hasWallet ? PixelPalette.white : PixelPalette.ink,
               ),
             ],
@@ -491,8 +505,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     SizedBox(height: grid.px(1)),
                     Text(
                       subtitle,
-                      style:
-                          PixelType.body(context, color: PixelPalette.slate),
+                      style: PixelType.body(context, color: PixelPalette.slate),
                     ),
                   ],
                 ),
@@ -525,7 +538,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             key: const ValueKey('profile_leaderboard')),
         if (isMine) ...[
           SizedBox(height: grid.px(2)),
-          row('Explorer Settings',
+          row(
+              'Explorer Settings',
               'Configure preferences, AR calibration, and app updates.',
               '/settings',
               key: const ValueKey('profile_settings')),
@@ -609,8 +623,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       SizedBox(height: grid.px(2)),
                       Text(
                         modalError!,
-                        style:
-                            PixelType.body(context, color: PixelPalette.red),
+                        style: PixelType.body(context, color: PixelPalette.red),
                       ),
                     ],
                     SizedBox(height: grid.px(3)),
@@ -622,11 +635,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onPressed: isSubmitting
                           ? null
                           : () async {
-                              final addr = WalletSignatureService
-                                  .connectedAddress(modal);
+                              final addr =
+                                  WalletSignatureService.connectedAddress(
+                                      modal);
                               if (addr == null) {
-                                setSheetState(() =>
-                                    modalError = 'Connect an EVM wallet first.');
+                                setSheetState(() => modalError =
+                                    'Connect an EVM wallet first.');
                                 return;
                               }
 
@@ -644,8 +658,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   throw StateError(
                                       'Could not get a wallet challenge from the API.');
                                 }
-                                final signature = await WalletSignatureService
-                                    .signChallenge(modal, challenge);
+                                final signature =
+                                    await WalletSignatureService.signChallenge(
+                                        modal, challenge);
                                 ok = await ref
                                     .read(authProvider.notifier)
                                     .bindWallet(
@@ -654,9 +669,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     );
                               } catch (e) {
                                 if (sheetCtx.mounted) {
-                                  setSheetState(() => modalError = e is StateError
-                                      ? e.message
-                                      : 'Signature was not completed.');
+                                  setSheetState(() => modalError =
+                                      e is StateError
+                                          ? e.message
+                                          : 'Signature was not completed.');
                                 }
                               }
 
@@ -709,7 +725,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             if (context.mounted) {
               showPixelToast(
                 context,
-                ok ? 'Wallet unlinked successfully.' : 'Failed to unlink wallet.',
+                ok
+                    ? 'Wallet unlinked successfully.'
+                    : 'Failed to unlink wallet.',
               );
             }
           },

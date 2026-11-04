@@ -819,53 +819,56 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             body: DitherBackground(
               top: PixelPalette.paper,
               bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView(
-                      padding: EdgeInsets.only(bottom: grid.px(3)),
-                      children: [
-                        _hero(context, grid, quest, saved),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            grid.px(4),
-                            grid.px(3),
-                            grid.px(4),
-                            grid.px(4),
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        padding: EdgeInsets.only(bottom: grid.px(3)),
+                        children: [
+                          _hero(context, grid, quest, saved),
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              grid.px(4),
+                              grid.px(3),
+                              grid.px(4),
+                              grid.px(4),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _objectives(context, grid, quest),
+                                SizedBox(height: grid.px(3)),
+                                if (quest.funding != null) ...[
+                                  _funded(context, grid, quest.funding!),
+                                  SizedBox(height: grid.px(3)),
+                                ],
+                                if (quest.crowdStatus == 'estimated_busy') ...[
+                                  _crowd(context, grid),
+                                  SizedBox(height: grid.px(3)),
+                                ],
+                                _checkpoint(context, grid, quest),
+                                SizedBox(height: grid.px(3)),
+                                _tasks(context, grid, displaySteps),
+                                SizedBox(height: grid.px(3)),
+                                if (_isQuestHost) ...[
+                                  _hostScan(context, grid),
+                                  SizedBox(height: grid.px(3)),
+                                ],
+                                if (isAuthor) ...[
+                                  _authorTools(context, grid),
+                                  SizedBox(height: grid.px(3)),
+                                ],
+                              ],
+                            ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _objectives(context, grid, quest),
-                              SizedBox(height: grid.px(3)),
-                              if (quest.funding != null) ...[
-                                _funded(context, grid, quest.funding!),
-                                SizedBox(height: grid.px(3)),
-                              ],
-                              if (quest.crowdStatus == 'estimated_busy') ...[
-                                _crowd(context, grid),
-                                SizedBox(height: grid.px(3)),
-                              ],
-                              _checkpoint(context, grid, quest),
-                              SizedBox(height: grid.px(3)),
-                              _tasks(context, grid, displaySteps),
-                              SizedBox(height: grid.px(3)),
-                              if (_isQuestHost) ...[
-                                _hostScan(context, grid),
-                                SizedBox(height: grid.px(3)),
-                              ],
-                              if (isAuthor) ...[
-                                _authorTools(context, grid),
-                                SizedBox(height: grid.px(3)),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  _bottomBar(context, grid, displaySteps),
-                ],
+                    _bottomBar(context, grid, displaySteps),
+                  ],
+                ),
               ),
             ),
           );
@@ -884,7 +887,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         quest.imageUrl!.isNotEmpty &&
         (quest.imageUrl!.startsWith('http://') ||
             quest.imageUrl!.startsWith('https://'));
-    final topInset = MediaQuery.paddingOf(context).top + grid.px(2);
+    final topInset = grid.px(2);
     return SizedBox(
       height: 300,
       child: Stack(
@@ -1543,8 +1546,10 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         _attempt!.steps
             .where((step) => step.required)
             .every((step) => step.isVerified || step.isPendingReview);
-    final done = _attempt?.verifiedSteps ?? 0;
-    final total = _attempt?.totalSteps ?? displaySteps.length;
+    final done = displaySteps
+        .where((step) => step.isVerified || step.isPendingReview)
+        .length;
+    final total = displaySteps.length;
     final status = _completed
         ? 'Quest completed and reviewed. Your reward is recorded in your account.'
         : isSubmitted
