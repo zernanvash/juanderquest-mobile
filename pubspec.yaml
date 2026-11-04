@@ -53,7 +53,6 @@ flutter:
     - assets/licenses/
   shaders:
     - shaders/dither_bg.frag
-    - shaders/pixel_map.frag
   fonts:
     - family: Silkscreen
       fonts:
