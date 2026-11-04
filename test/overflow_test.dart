@@ -83,8 +83,11 @@ import 'package:juanderquest_app/features/pixel_lab/pixel_lab_screen.dart';
 import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
 import 'package:juanderquest_app/core/pixel/pixel_nav.dart';
 import 'package:juanderquest_app/core/pixel/placeholder_art.dart';
+import 'package:juanderquest_app/features/dashboard/data/home_events.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_dashboard_providers.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
 import 'package:juanderquest_app/features/onboarding/pixel_tutorial.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
@@ -660,8 +663,65 @@ void main() {
                   completed: false,
                 ),
               ],
+              claimDay: 3,
+              nominalStamps: 5,
+              calendar: [
+                HomeStampDay(day: 1, stamps: 5, claimed: true),
+                HomeStampDay(day: 2, stamps: 5, claimed: true),
+                HomeStampDay(day: 3, stamps: 5, claimed: false),
+                HomeStampDay(day: 4, stamps: 5, claimed: false),
+                HomeStampDay(day: 5, stamps: 5, claimed: false),
+                HomeStampDay(day: 6, stamps: 5, claimed: false),
+                HomeStampDay(day: 7, stamps: 10, claimed: false),
+              ],
+              streak: 4,
+              bestStreak: 6,
+              weekUsed: 20,
+              weekCap: 250,
             ),
           ),
+          homeQotdProvider.overrideWith((ref) {
+            final notifier = HomeQotdNotifier(ref, autoLoad: false);
+            notifier.state = const AsyncValue.data(
+              HomeQotdState(
+                date: '2026-11-05',
+                questionId: 'q1',
+                questionText:
+                    'Which Pangasinan town is home to the Minor Basilica?',
+                quizTitle: 'Pangasinan 101',
+                options: [
+                  HomeQotdOption(id: 'o1', ordinal: 1, text: 'Manaoag'),
+                  HomeQotdOption(id: 'o2', ordinal: 2, text: 'Alaminos'),
+                  HomeQotdOption(id: 'o3', ordinal: 3, text: 'Bolinao'),
+                  HomeQotdOption(id: 'o4', ordinal: 4, text: 'Dagupan'),
+                ],
+              ),
+            );
+            return notifier;
+          }),
+          homeProposalsProvider.overrideWith((ref) async => [dummyProposal]),
+          homeNearbyQuizProvider.overrideWith(
+            (ref) async => const HomeNearbyQuizzes(
+              origin: 'gps',
+              items: [
+                NearbyQuizInvitationModel(
+                  quizId: 'quiz-1',
+                  destinationId: 'spot-1',
+                  destinationName: 'Hundred Islands National Park',
+                  municipality: 'Alaminos',
+                  title: 'Islands and Legends',
+                  description: 'Learn the stories of the islands.',
+                  radiusMeters: 200,
+                  distanceMeters: 125,
+                  xpReward: 25,
+                  timeLimitMinutes: 10,
+                  language: 'en',
+                  isCompleted: false,
+                ),
+              ],
+            ),
+          ),
+          homeEventsProvider.overrideWithValue(const []),
           authProvider.overrideWith((ref) => InertAuthNotifier(
               ref.watch(apiClientProvider),
               ref.watch(authRefreshProvider.notifier),

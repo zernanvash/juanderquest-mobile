@@ -8,17 +8,24 @@ import 'package:juanderquest_app/core/network/api_failure.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
+import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
+import 'package:juanderquest_app/features/dashboard/data/home_events.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_dashboard_providers.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
 import 'package:juanderquest_app/features/quests/providers/quest_provider.dart';
+import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
+import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
 import 'package:juanderquest_app/features/submissions/models/submission_model.dart';
 import 'package:juanderquest_app/features/submissions/providers/submission_provider.dart';
+import 'package:juanderquest_app/features/vote/models/governance_proposal_model.dart';
 
 class _MemoryHomeTipsStore implements HomeTipsStore {
   @override
@@ -73,6 +80,80 @@ class _SubmissionFixture extends SubmissionNotifier {
 
   @override
   Future<void> fetchSubmissions({bool force = false}) async {}
+}
+
+class _FakeApi {
+  _FakeApi({this.qotd, this.answer, this.claim});
+
+  final Map<String, dynamic>? qotd;
+  final Map<String, dynamic>? answer;
+  final Map<String, dynamic>? claim;
+  final Map<String, int> calls = {};
+
+  late final ApiClient client = _build();
+
+  ApiClient _build() {
+    final api = ApiClient(enableRetries: false);
+    api.dio.interceptors.insert(
+      0,
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          calls[options.path] = (calls[options.path] ?? 0) + 1;
+          if (options.path == '/me/discovery-preferences') {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'success': true,
+                  'data': {'categories': [], 'onboarding_state': 'answered'},
+                },
+              ),
+            );
+            return;
+          }
+          if (options.path == '/qotd' && qotd != null) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'success': true, 'data': qotd},
+              ),
+            );
+            return;
+          }
+          if (options.path == '/qotd/answer' && answer != null) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'success': true, 'data': answer},
+              ),
+            );
+            return;
+          }
+          if (options.path == '/me/daily/claim' && claim != null) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'success': true, 'data': claim},
+              ),
+            );
+            return;
+          }
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {'success': true, 'data': const <String, dynamic>{}},
+            ),
+          );
+        },
+      ),
+    );
+    return api;
+  }
 }
 
 class _RouteProbe extends StatelessWidget {
@@ -231,7 +312,7 @@ const _spots = [
     tags: ['islands'],
     reasons: ['LGU verified'],
     crowdStatus: 'quiet',
-    distanceKm: 12.5,
+    distanceKm: 1.2,
     saved: true,
   ),
   SpotModel(
@@ -250,6 +331,7 @@ const _spots = [
     tags: ['beach'],
     reasons: ['LGU verified'],
     crowdStatus: 'quiet',
+    distanceKm: 4.6,
   ),
 ];
 
@@ -257,7 +339,7 @@ const _daily = HomeDailyState(
   stamps: 12,
   missions: [
     HomeDailyMission(
-      id: 'daily-1',
+      id: 'm1',
       kind: 'quest_step',
       title: 'Check in at Patar Beach',
       stamps: 5,
@@ -265,8 +347,125 @@ const _daily = HomeDailyState(
       target: 1,
       completed: false,
     ),
+    HomeDailyMission(
+      id: 'm2',
+      kind: 'cheer_post',
+      title: 'Cheer a Plaza post',
+      stamps: 2,
+      progress: 1,
+      target: 1,
+      completed: true,
+    ),
+  ],
+  date: '2026-11-05',
+  claimToday: false,
+  claimDay: 3,
+  nominalStamps: 5,
+  claimedDays: 2,
+  calendar: [
+    HomeStampDay(day: 1, stamps: 5, claimed: true),
+    HomeStampDay(day: 2, stamps: 5, claimed: true),
+    HomeStampDay(day: 3, stamps: 5, claimed: false),
+    HomeStampDay(day: 4, stamps: 5, claimed: false),
+    HomeStampDay(day: 5, stamps: 5, claimed: false),
+    HomeStampDay(day: 6, stamps: 5, claimed: false),
+    HomeStampDay(day: 7, stamps: 10, claimed: false),
+  ],
+  streak: 4,
+  bestStreak: 6,
+  shieldsHeld: 1,
+  shieldsMax: 3,
+  weekUsed: 20,
+  weekCap: 250,
+  chestCompleted: 2,
+  chestRequired: 9,
+  chestStamps: 25,
+);
+
+const _qotd = HomeQotdState(
+  date: '2026-11-05',
+  questionId: 'q1',
+  questionText:
+      'Which town is home to the Minor Basilica of Our Lady of Manaoag?',
+  quizTitle: 'Pangasinan 101',
+  options: [
+    HomeQotdOption(id: 'o1', ordinal: 1, text: 'Manaoag'),
+    HomeQotdOption(id: 'o2', ordinal: 2, text: 'Alaminos'),
+    HomeQotdOption(id: 'o3', ordinal: 3, text: 'Bolinao'),
+    HomeQotdOption(id: 'o4', ordinal: 4, text: 'Dagupan'),
   ],
 );
+
+const _emptyQotd = HomeQotdState(
+  date: '2026-11-05',
+  questionId: '',
+  questionText: '',
+  quizTitle: '',
+  options: [],
+);
+
+final _proposals = [
+  GovernanceProposalModel(
+    id: 'p1',
+    title: 'Patar White Beach Eco Trail',
+    locationName: 'Bolinao',
+    category: 'eco',
+    description: 'Community eco-tourism trail.',
+    status: 'voting',
+    submittedById: 'u1',
+    submittedByName: 'Juan Dela Cruz',
+    yesVotes: 15,
+    noVotes: 5,
+    yesWeightMjdq: 150,
+    noWeightMjdq: 50,
+    totalVoters: 20,
+    bondMjdq: 25000,
+    escrowedMjdq: 160,
+  ),
+];
+
+const _quizzes = HomeNearbyQuizzes(
+  origin: 'gps',
+  items: [
+    NearbyQuizInvitationModel(
+      quizId: 'quiz-1',
+      destinationId: 'spot-1',
+      destinationName: 'Hundred Islands National Park',
+      municipality: 'Alaminos',
+      title: 'Islands and Legends',
+      description: 'Learn the stories of the islands.',
+      radiusMeters: 200,
+      distanceMeters: 125,
+      xpReward: 25,
+      timeLimitMinutes: 10,
+      language: 'en',
+      isCompleted: false,
+    ),
+  ],
+);
+
+const _gems = [
+  HiddenGemModel(
+    id: 'gem-1',
+    name: 'Bolinao Falls',
+    municipality: 'Bolinao',
+    reason: 'A quiet waterfall away from the crowds.',
+    crowdStatus: 'quiet',
+  ),
+];
+
+final _events = [
+  HomeEvent(
+    id: 'ev-test',
+    title: 'Pista Test Festival',
+    date: DateTime.now().add(const Duration(days: 3)),
+    municipality: 'Lingayen',
+    category: 'festival',
+    description: 'A test festival.',
+    route: '/quests',
+    badge: 'Festival',
+  ),
+];
 
 const _previous = ChoicePreviousResult(
   periodLabel: 'Week 44',
@@ -337,50 +536,111 @@ ChoiceDetail _voteDetail({required bool voted}) {
   );
 }
 
-ApiClient _api() {
-  final api = ApiClient(enableRetries: false);
-  api.dio.interceptors.insert(
-    0,
-    InterceptorsWrapper(
-      onRequest: (options, handler) {
-        handler.resolve(
-          Response(
-            requestOptions: options,
-            statusCode: 200,
-            data: {
-              'success': true,
-              'data': {'categories': [], 'onboarding_state': 'answered'},
-            },
-          ),
-        );
+Map<String, dynamic> _qotdJson() => {
+      'date': '2026-11-05',
+      'question': {
+        'id': 'q1',
+        'text':
+            'Which town is home to the Minor Basilica of Our Lady of Manaoag?',
+        'quiz_title': 'Pangasinan 101',
+        'options': [
+          {'id': 'o1', 'ordinal': 1, 'text': 'Manaoag'},
+          {'id': 'o2', 'ordinal': 2, 'text': 'Alaminos'},
+          {'id': 'o3', 'ordinal': 3, 'text': 'Bolinao'},
+          {'id': 'o4', 'ordinal': 4, 'text': 'Dagupan'},
+        ],
       },
-    ),
-  );
-  return api;
-}
+      'answered': false,
+      'answer': null,
+    };
+
+Map<String, dynamic> _answerJson() => {
+      'date': '2026-11-05',
+      'correct': true,
+      'correct_option_id': 'o1',
+      'explanation': 'Manaoag is home to the Minor Basilica.',
+      'source_url': null,
+    };
+
+Map<String, dynamic> _dailyJson({bool claimed = true}) => {
+      'date': '2026-11-05',
+      'next_reset_at':
+          DateTime.now().add(const Duration(hours: 10)).toIso8601String(),
+      'balance': claimed ? 17 : 12,
+      'week': {'used': claimed ? 25 : 20, 'cap': 250},
+      'claim': {
+        'claimed_today': claimed,
+        'cycle_day': 3,
+        'claimed_days': claimed ? 3 : 2,
+        'nominal_stamps': 5,
+        'awarded': claimed ? 5 : 0,
+        'capped': false,
+        'calendar': [
+          for (var day = 1; day <= 7; day++)
+            {
+              'day': day,
+              'stamps': day == 7 ? 10 : 5,
+              'claimed': claimed ? day <= 3 : day <= 2,
+            },
+        ],
+      },
+      'streak': {
+        'current': 4,
+        'best': 6,
+        'shields_held': 1,
+        'shields_max': 3,
+        'shield_price': 25,
+      },
+      'chest': {
+        'completed_missions': 2,
+        'required': 9,
+        'stamps': 25,
+        'earned': false,
+      },
+      'missions': [
+        {
+          'id': 'm1',
+          'kind': 'quest_step',
+          'title': 'Check in at Patar Beach',
+          'stamps': 5,
+          'on_site': true,
+          'progress': 0,
+          'target': 1,
+          'completed': false,
+        },
+      ],
+    };
 
 List<Override> _overrides({
+  _FakeApi? api,
   Future<ChoiceEngagementSummary> Function()? engagement,
   Future<ChoiceOverview> Function()? overview,
   Future<ChoiceDetail> Function(String id)? detail,
   QuestState? quests,
   SpotDiscoveryState? spots,
   SubmissionState? submissions,
-  Future<HomeDailyState> Function()? daily,
+  HomeDailyState? daily,
+  Future<HomeDailyState> Function()? dailyLoader,
+  AsyncValue<HomeQotdState>? qotd,
+  bool realQotd = false,
+  Future<List<GovernanceProposalModel>> Function()? proposals,
+  Future<HomeNearbyQuizzes> Function()? quizzes,
+  Future<List<HiddenGemModel>> Function()? gems,
+  List<HomeEvent>? events,
 }) {
-  final client = _api();
+  final fake = api ?? _FakeApi();
   return [
-    apiClientProvider.overrideWithValue(client),
+    apiClientProvider.overrideWithValue(fake.client),
     authProvider.overrideWith(
       (ref) => _AuthNotifier(
-        client,
+        fake.client,
         ref.watch(authRefreshProvider.notifier),
         _user,
       ),
     ),
     questProvider.overrideWith(
       (ref) => _QuestFixture(
-        client,
+        fake.client,
         quests ?? QuestState(quests: _quests, isLoading: false),
       ),
     ),
@@ -396,7 +656,7 @@ List<Override> _overrides({
     ),
     submissionProvider.overrideWith(
       (ref) => _SubmissionFixture(
-        client,
+        fake.client,
         submissions ??
             SubmissionState(submissions: _submissions, isLoading: false),
       ),
@@ -411,8 +671,24 @@ List<Override> _overrides({
       (ref, id) => (detail ?? (id) async => _voteDetail(voted: false))(id),
     ),
     homeDailyProvider.overrideWith(
-      (ref) => (daily ?? () async => _daily)(),
+      (ref) => (dailyLoader ?? () async => daily ?? _daily)(),
     ),
+    if (!realQotd)
+      homeQotdProvider.overrideWith((ref) {
+        final notifier = HomeQotdNotifier(ref, autoLoad: false);
+        notifier.state = qotd ?? const AsyncValue.data(_qotd);
+        return notifier;
+      }),
+    homeProposalsProvider.overrideWith(
+      (ref) => (proposals ?? () async => _proposals)(),
+    ),
+    homeNearbyQuizProvider.overrideWith(
+      (ref) => (quizzes ?? () async => _quizzes)(),
+    ),
+    hiddenGemProvider.overrideWith(
+      (ref) => (gems ?? () async => _gems)(),
+    ),
+    homeEventsProvider.overrideWithValue(events ?? _events),
     homeTipsStoreProvider.overrideWithValue(_MemoryHomeTipsStore()),
   ];
 }
@@ -462,13 +738,45 @@ GoRouter _router() => GoRouter(
           path: '/notifications',
           builder: (_, __) => const _RouteProbe('/notifications'),
         ),
+        GoRoute(
+          path: '/map',
+          builder: (_, __) => const _RouteProbe('/map'),
+        ),
+        GoRoute(
+          path: '/vote',
+          builder: (_, __) => const _RouteProbe('/vote'),
+        ),
+        GoRoute(
+          path: '/plaza',
+          builder: (_, __) => const _RouteProbe('/plaza'),
+        ),
+        GoRoute(
+          path: '/affiliate',
+          builder: (_, __) => const _RouteProbe('/affiliate'),
+        ),
+        GoRoute(
+          path: '/explore',
+          builder: (_, __) => const _RouteProbe('/explore'),
+          routes: [
+            GoRoute(
+              path: ':slug',
+              builder: (_, state) =>
+                  _RouteProbe('/explore/${state.pathParameters['slug']}'),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/cultural-quizzes/:id',
+          builder: (_, state) =>
+              _RouteProbe('/cultural-quizzes/${state.pathParameters['id']}'),
+        ),
       ],
     );
 
 Future<void> _pump(
   WidgetTester tester, {
   List<Override>? overrides,
-  Size size = const Size(400, 2400),
+  Size size = const Size(400, 2600),
   double textScale = 1.0,
 }) async {
   tester.view.physicalSize = size;
@@ -481,6 +789,7 @@ Future<void> _pump(
   });
   await tester.pumpWidget(
     ProviderScope(
+      key: UniqueKey(),
       overrides: overrides ?? _overrides(),
       child: MaterialApp.router(
         theme: AppTheme.pixel,
@@ -500,6 +809,7 @@ Finder _textContaining(String text) => find.byWidgetPredicate(
 Future<void> _openTab(WidgetTester tester, String tab) async {
   await tester.tap(find.byKey(ValueKey('home_tab_$tab')));
   await tester.pump();
+  await tester.pump(const Duration(milliseconds: 50));
 }
 
 Future<void> _tapRoute(
@@ -515,28 +825,42 @@ Future<void> _tapRoute(
   expect(find.text('route:$route'), findsOneWidget, reason: 'expected $route');
 }
 
+void _expectSlot(String key, String label, String value) {
+  final slot = find.byKey(ValueKey(key));
+  expect(slot, findsOneWidget, reason: 'missing $key');
+  expect(
+    find.descendant(of: slot, matching: find.text(label)),
+    findsOneWidget,
+    reason: '$key label',
+  );
+  expect(
+    find.descendant(of: slot, matching: find.text(value)),
+    findsOneWidget,
+    reason: '$key value',
+  );
+}
+
 void main() {
-  testWidgets('hero shows identity, cosmetics, level, XP and wallet', (
-    tester,
-  ) async {
+  testWidgets(
+      'hero is the compact layout B header and wallet lives in Progress',
+      (tester) async {
     await _pump(tester);
     expect(find.text('Juan Dela Cruz'), findsOneWidget);
-    expect(find.text('@juan_demo'), findsOneWidget);
     expect(find.text('Heritage Keeper'), findsOneWidget);
     expect(find.text('Level 3'), findsOneWidget);
     expect(_textContaining('25 / 50 XP'), findsOneWidget);
-    expect(_textContaining('125 total XP'), findsOneWidget);
-    expect(find.text('125,400'), findsOneWidget);
-    expect(find.text('12'), findsOneWidget);
-    expect(find.text('350'), findsOneWidget);
+    _expectSlot('home_wallet_mjdq', 'mJDQ balance', '125,400');
+    _expectSlot('home_wallet_jdq', 'JDQ governance', '12');
+    _expectSlot('home_wallet_rep', 'Scout reputation', '350');
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('hero targets open the profile', (tester) async {
+  testWidgets('hero and wallet targets open the profile', (tester) async {
     for (final key in [
       'home_hero_profile',
       'home_hero_level',
       'home_hero_level_chip',
+      'home_hero_title_chip',
       'home_wallet_mjdq',
       'home_wallet_jdq',
       'home_wallet_rep',
@@ -546,22 +870,129 @@ void main() {
     }
   });
 
-  testWidgets('progress tab shows travel stats, proofs and the daily mission',
-      (tester) async {
+  testWidgets('Progress shows every web panel with data', (tester) async {
     await _pump(tester);
-    expect(_textContaining('Visit streak: 4 days'), findsOneWidget);
-    expect(_textContaining('Verified visits: 18'), findsOneWidget);
-    expect(_textContaining('Destinations: 7'), findsOneWidget);
-    expect(_textContaining('Municipalities: 5'), findsOneWidget);
-    expect(_textContaining('Pending proofs: 1'), findsOneWidget);
-    expect(_textContaining('Approved proofs: 2'), findsOneWidget);
-    expect(_textContaining('Rejected proofs: 1'), findsOneWidget);
-    expect(find.text('Mangatarem Forest Cleanup'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
+    expect(
+      find.text(
+        'Which town is home to the Minor Basilica of Our Lady of Manaoag?',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('home_daily_panel')), findsOneWidget);
+    expect(find.text('Claim +5 stamps'), findsOneWidget);
     expect(_textContaining('Check in at Patar Beach'), findsOneWidget);
+    _expectSlot('home_stat_streak', 'Visit streak', '4 days');
+    _expectSlot('home_stat_visits', 'Verified visits', '18');
+    _expectSlot('home_stat_destinations', 'Destinations', '7');
+    _expectSlot('home_stat_municipalities', 'Municipalities', '5');
+    expect(find.text('Hundred Islands National Park'), findsOneWidget);
+    _expectSlot('home_proof_pending', 'Pending proofs', '1');
+    _expectSlot('home_proof_approved', 'Approved proofs', '2');
+    _expectSlot('home_proof_rejected', 'Rejected proofs', '1');
+    expect(find.text('Mangatarem Forest Cleanup'), findsOneWidget);
+    expect(find.text('Patar White Beach Eco Trail'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_affiliate')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('progress targets open their pages', (tester) async {
+  testWidgets('QOTD answer posts once and shows the result', (tester) async {
+    final fake = _FakeApi(qotd: _qotdJson(), answer: _answerJson());
+    await _pump(tester, overrides: _overrides(api: fake, realQotd: true));
+    expect(
+      find.text(
+        'Which town is home to the Minor Basilica of Our Lady of Manaoag?',
+      ),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home_qotd_option_o1')),
+    );
+    await tester.tap(find.byKey(const ValueKey('home_qotd_option_o1')));
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('home_qotd_option_o1')),
+      warnIfMissed: false,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(fake.calls['/qotd/answer'], 1);
+    expect(find.text('Correct!'), findsOneWidget);
+    expect(_textContaining('Manaoag is home'), findsOneWidget);
+  });
+
+  testWidgets('QOTD empty and error states', (tester) async {
+    await _pump(
+      tester,
+      overrides: _overrides(
+        qotd: const AsyncValue.data(_emptyQotd),
+      ),
+    );
+    expect(find.text('No question today.'), findsOneWidget);
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        qotd: AsyncValue.error(Exception('qotd down'), StackTrace.empty),
+      ),
+    );
+    expect(find.text('Question of the Day is unavailable.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_qotd_retry')), findsOneWidget);
+  });
+
+  testWidgets('daily claim posts once and shows the claimed state',
+      (tester) async {
+    final fake = _FakeApi(claim: _dailyJson());
+    await _pump(tester, overrides: _overrides(api: fake));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home_daily_claim')),
+    );
+    await tester.tap(find.byKey(const ValueKey('home_daily_claim')));
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('home_daily_claim')),
+      warnIfMissed: false,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(fake.calls['/me/daily/claim'], 1);
+    expect(_textContaining('Claimed today'), findsOneWidget);
+    expect(_textContaining('17 stamps'), findsOneWidget);
+  });
+
+  testWidgets('daily stamps empty and error states', (tester) async {
+    await _pump(
+      tester,
+      overrides: _overrides(
+        daily: const HomeDailyState(stamps: 0, missions: []),
+      ),
+    );
+    expect(find.text('No daily missions today.'), findsOneWidget);
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        dailyLoader: () async => throw Exception('daily down'),
+      ),
+    );
+    expect(find.text('Daily stamps are unavailable.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_daily_retry')), findsOneWidget);
+  });
+
+  testWidgets('daily mission targets open their pages', (tester) async {
+    await _pump(tester);
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_daily_mission_m1')),
+      '/quests',
+    );
+    await _pump(tester);
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_daily_mission_m2')),
+      '/plaza',
+    );
+  });
+
+  testWidgets('travel stats and proof rows open their pages', (tester) async {
     for (final key in [
       'home_stat_streak',
       'home_stat_visits',
@@ -575,38 +1006,110 @@ void main() {
       'home_proof_pending',
       'home_proof_approved',
       'home_proof_rejected',
-      'home_latest_proof',
+      'home_recent_sub-pending',
     ]) {
       await _pump(tester);
       await _tapRoute(tester, find.byKey(ValueKey(key)), '/history');
     }
+  });
+
+  testWidgets('nearby radar data, empty and error states', (tester) async {
     await _pump(tester);
     await _tapRoute(
       tester,
-      find.byKey(const ValueKey('home_daily_mission')),
-      '/quests',
+      find.byKey(const ValueKey('home_nearby_spot-1')),
+      '/explore/spot-1',
     );
+    await _pump(tester);
+    await _tapRoute(
+      tester,
+      find.descendant(
+        of: find.byKey(const ValueKey('home_radar_panel')),
+        matching: find.text('Map'),
+      ),
+      '/map',
+    );
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        spots: const SpotDiscoveryState(spots: [], isInitialLoading: false),
+      ),
+    );
+    expect(find.text('No destinations nearby yet.'), findsOneWidget);
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        spots: const SpotDiscoveryState(
+          isInitialLoading: false,
+          failure: ApiFailure(
+            code: ApiFailureCodes.serverUnavailable,
+            message: 'spots down',
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Nearby destinations are unavailable.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_radar_retry')), findsOneWidget);
   });
 
-  testWidgets(
-      'quests tab shows in-progress quests, completed count and see all',
+  testWidgets('proof empty and error states', (tester) async {
+    await _pump(
+      tester,
+      overrides: _overrides(
+        submissions: SubmissionState(submissions: const []),
+      ),
+    );
+    expect(find.text('No recent submissions yet.'), findsOneWidget);
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        submissions: SubmissionState(error: 'submissions down'),
+      ),
+    );
+    expect(find.text('Proof submissions are unavailable.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home_progress_proof_retry')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('home_progress_proof_retry')));
+    await tester.pump();
+  });
+
+  testWidgets('quest progress panel data, empty and error states',
       (tester) async {
     await _pump(tester);
     await _openTab(tester, 'quests');
     expect(find.text('Hundred Islands Eco Trek'), findsOneWidget);
-    expect(find.text('1 / 2 tasks done'), findsOneWidget);
-    expect(find.text('Patar Beach Cleanup'), findsNothing);
-    expect(_textContaining('Completed quests: 2'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_see_all_quests')), findsOneWidget);
-    expect(tester.takeException(), isNull);
+    expect(_textContaining('Step 2 of 2'), findsOneWidget);
+    _expectSlot('home_completed_quests', 'Completed quests', '2');
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        quests: QuestState(quests: const [], isLoading: false),
+      ),
+    );
+    await _openTab(tester, 'quests');
+    expect(find.text('No quests in progress yet.'), findsOneWidget);
+
+    await _pump(
+      tester,
+      overrides: _overrides(quests: QuestState(error: 'quests down')),
+    );
+    await _openTab(tester, 'quests');
+    expect(find.text('Quests are unavailable.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_quests_retry')), findsOneWidget);
   });
 
-  testWidgets('quests targets open their pages', (tester) async {
+  testWidgets('quest progress targets open their pages', (tester) async {
     await _pump(tester);
     await _openTab(tester, 'quests');
     await _tapRoute(
       tester,
-      find.byKey(const ValueKey('home_quest_q1')),
+      find.byKey(const ValueKey('home_quest_continue_q1')),
       '/quests/q1',
     );
     await _pump(tester);
@@ -625,25 +1128,73 @@ void main() {
     );
   });
 
-  testWidgets('collection tab shows stamps, badges and saved spots', (
-    tester,
-  ) async {
+  testWidgets('nearby quiz data, empty and error states', (tester) async {
     await _pump(tester);
-    await _openTab(tester, 'collection');
-    expect(_textContaining('Passport stamps: 12'), findsOneWidget);
-    expect(_textContaining('Badges earned: 2 of 3'), findsOneWidget);
-    expect(_textContaining('Saved spots: 1'), findsOneWidget);
-    expect(find.text('Eco Pioneer'), findsOneWidget);
-    expect(find.text('Heritage Keeper'), findsWidgets);
-    expect(tester.takeException(), isNull);
+    await _openTab(tester, 'quests');
+    expect(find.text('Islands and Legends'), findsOneWidget);
+    expect(_textContaining('125 m away'), findsOneWidget);
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_quiz_quiz-1')),
+      '/cultural-quizzes/quiz-1',
+    );
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        quizzes: () async => const HomeNearbyQuizzes(items: [], origin: 'gps'),
+      ),
+    );
+    await _openTab(tester, 'quests');
+    expect(find.text('No quizzes near you yet.'), findsOneWidget);
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        quizzes: () async => throw Exception('quiz down'),
+      ),
+    );
+    await _openTab(tester, 'quests');
+    expect(find.text('Nearby quizzes are unavailable.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_quiz_retry')), findsOneWidget);
   });
 
-  testWidgets('collection targets open their pages', (tester) async {
-    for (final key in ['home_collection_stamps', 'home_collection_badges']) {
-      await _pump(tester);
-      await _openTab(tester, 'collection');
-      await _tapRoute(tester, find.byKey(ValueKey(key)), '/profile');
-    }
+  testWidgets('events panel data and empty states', (tester) async {
+    await _pump(tester);
+    await _openTab(tester, 'quests');
+    expect(find.text('Pista Test Festival'), findsOneWidget);
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_event_ev-test')),
+      '/quests',
+    );
+
+    await _pump(
+      tester,
+      overrides: _overrides(events: const []),
+    );
+    await _openTab(tester, 'quests');
+    expect(find.text('No upcoming events listed.'), findsOneWidget);
+  });
+
+  testWidgets('collection panel data and tap routes', (tester) async {
+    await _pump(tester);
+    await _openTab(tester, 'collection');
+    _expectSlot('home_collection_stamps', 'Passport stamps', '12');
+    _expectSlot('home_collection_badges', 'Badges earned', '2 of 3');
+    _expectSlot('home_collection_saved', 'Saved spots', '1');
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_collection_stamps')),
+      '/profile',
+    );
+    await _pump(tester);
+    await _openTab(tester, 'collection');
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_collection_badges')),
+      '/profile',
+    );
     await _pump(tester);
     await _openTab(tester, 'collection');
     await _tapRoute(
@@ -654,49 +1205,30 @@ void main() {
     await _pump(tester);
     await _openTab(tester, 'collection');
     await _tapRoute(
-        tester, find.byKey(const ValueKey('home_badge_eco')), '/profile');
+      tester,
+      find.byKey(const ValueKey('home_badge_eco')),
+      '/profile',
+    );
   });
 
-  testWidgets('empty states render without invented data', (tester) async {
+  testWidgets('collection empty and error states', (tester) async {
     await _pump(
       tester,
       overrides: _overrides(
-        engagement: () async => const ChoiceEngagementSummary(
-          currentStreak: 0,
-          longestStreak: 0,
-          nextMilestone: 1,
-          verifiedVisits: 0,
-          uniqueDestinations: 0,
-          municipalities: 0,
-          participations: 0,
-          challenges: [],
-        ),
-        quests: QuestState(quests: const [], isLoading: false),
-        spots: const SpotDiscoveryState(spots: [], isInitialLoading: false),
+        daily: const HomeDailyState(stamps: 0, missions: []),
         submissions: SubmissionState(submissions: const []),
-        daily: () async => const HomeDailyState(stamps: 0, missions: []),
+        spots: const SpotDiscoveryState(spots: [], isInitialLoading: false),
       ),
     );
-    expect(_textContaining('Visit streak: 0 days'), findsOneWidget);
-    expect(find.text('No proofs submitted yet.'), findsOneWidget);
-    expect(find.text('No daily mission today.'), findsOneWidget);
-    await _openTab(tester, 'quests');
-    expect(find.text('No quests in progress yet.'), findsOneWidget);
-    expect(_textContaining('Completed quests: 0'), findsOneWidget);
     await _openTab(tester, 'collection');
-    expect(_textContaining('Passport stamps: 0'), findsOneWidget);
-    expect(_textContaining('Badges earned: 0 of 3'), findsOneWidget);
+    _expectSlot('home_collection_stamps', 'Passport stamps', '0');
+    _expectSlot('home_collection_badges', 'Badges earned', '0 of 3');
     expect(find.text('No saved spots yet.'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
 
-  testWidgets('error states render with retries', (tester) async {
     await _pump(
       tester,
       overrides: _overrides(
-        engagement: () async => throw Exception('engagement down'),
-        overview: () async => throw Exception('overview down'),
-        quests: QuestState(error: 'Quest list unavailable'),
+        dailyLoader: () async => throw Exception('daily down'),
         spots: const SpotDiscoveryState(
           isInitialLoading: false,
           failure: ApiFailure(
@@ -704,28 +1236,86 @@ void main() {
             message: 'spots down',
           ),
         ),
-        submissions: SubmissionState(error: 'submissions down'),
-        daily: () async => throw Exception('daily down'),
       ),
     );
-    expect(find.text('Travel stats are unavailable.'), findsOneWidget);
-    expect(find.text('Proof submissions are unavailable.'), findsOneWidget);
-    expect(find.text('Daily mission is unavailable.'), findsOneWidget);
-    expect(find.text('JuanChoice is unavailable.'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('home_progress_stats_retry')));
-    await tester.pump();
-    await _openTab(tester, 'quests');
-    expect(find.text('Quests are unavailable.'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_quests_retry')), findsOneWidget);
     await _openTab(tester, 'collection');
     expect(find.text('Stamps are unavailable.'), findsOneWidget);
     expect(find.text('Saved spots are unavailable.'), findsOneWidget);
-    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('JuanChoice shows an open vote and the voter status', (
-    tester,
-  ) async {
+  testWidgets('hidden gems data, empty and error states', (tester) async {
+    await _pump(tester);
+    await _openTab(tester, 'collection');
+    expect(find.text('Bolinao Falls'), findsOneWidget);
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_hidden_gem_gem-1')),
+      '/explore/gem-1',
+    );
+
+    await _pump(
+      tester,
+      overrides: _overrides(gems: () async => const []),
+    );
+    await _openTab(tester, 'collection');
+    expect(find.text('No hidden gems today.'), findsOneWidget);
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        gems: () async => throw Exception('gems down'),
+      ),
+    );
+    await _openTab(tester, 'collection');
+    expect(
+      find.text('Hidden gem highlights are unavailable.'),
+      findsOneWidget,
+    );
+    expect(
+        find.byKey(const ValueKey('home_hidden_gems_retry')), findsOneWidget);
+  });
+
+  testWidgets('community voting data, empty and error states', (tester) async {
+    await _pump(tester);
+    expect(find.text('Patar White Beach Eco Trail'), findsOneWidget);
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_proposal_p1')),
+      '/vote',
+    );
+    await _pump(tester);
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_vote_open')),
+      '/vote',
+    );
+
+    await _pump(
+      tester,
+      overrides: _overrides(proposals: () async => const []),
+    );
+    expect(find.text('No open proposals right now.'), findsOneWidget);
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        proposals: () async => throw Exception('proposals down'),
+      ),
+    );
+    expect(find.text('Community voting is unavailable.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_proposals_retry')), findsOneWidget);
+  });
+
+  testWidgets('affiliate invite opens the partner hub', (tester) async {
+    await _pump(tester);
+    await _tapRoute(
+      tester,
+      find.byKey(const ValueKey('home_affiliate')),
+      '/affiliate',
+    );
+  });
+
+  testWidgets('JuanChoice open vote, results and error', (tester) async {
     await _pump(
       tester,
       overrides: _overrides(
@@ -734,42 +1324,33 @@ void main() {
       ),
     );
     expect(_textContaining('Voting now: Best Sunset Spot'), findsOneWidget);
-    expect(_textContaining('2 days left'), findsOneWidget);
     expect(_textContaining('you voted'), findsOneWidget);
     await _tapRoute(
       tester,
       find.byKey(const ValueKey('home_juanchoice_card')),
       '/choice/camp-1',
     );
-  });
 
-  testWidgets('JuanChoice says when the traveler has not voted yet', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      overrides: _overrides(
-        overview: () async => _openOverview(),
-        detail: (id) async => _voteDetail(voted: false),
-      ),
-    );
-    expect(_textContaining('you have not voted yet'), findsOneWidget);
-  });
-
-  testWidgets('JuanChoice shows the last winner and votes', (tester) async {
     await _pump(tester);
     expect(_textContaining('Last results: Week 44'), findsOneWidget);
-    expect(_textContaining('Patar White Beach'), findsOneWidget);
     expect(_textContaining('74 votes'), findsOneWidget);
-    expect(_textContaining('128 ballots counted'), findsOneWidget);
     await _tapRoute(
       tester,
       find.byKey(const ValueKey('home_juanchoice_card')),
       '/choice',
     );
+
+    await _pump(
+      tester,
+      overrides: _overrides(
+        overview: () async => throw Exception('choice down'),
+      ),
+    );
+    expect(find.text('JuanChoice is unavailable.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_juanchoice_retry')), findsOneWidget);
   });
 
-  testWidgets('notifications and next-stop targets open their pages', (
+  testWidgets('notifications and next stop targets open their pages', (
     tester,
   ) async {
     await _pump(tester);
@@ -798,20 +1379,30 @@ void main() {
   });
 
   for (final size in [const Size(320, 568), const Size(568, 320)]) {
-    testWidgets('home tabs fit ${size.width}x${size.height} at 1.4x text', (
-      tester,
-    ) async {
-      await _pump(tester, size: size, textScale: 1.4);
-      for (final tab in ['progress', 'quests', 'collection']) {
+    for (final tab in ['progress', 'quests', 'collection']) {
+      testWidgets(
+          'home $tab tab fits ${size.width}x${size.height} at 1.4x text', (
+        tester,
+      ) async {
+        await _pump(tester, size: size, textScale: 1.4);
+        final tabFinder = find.byKey(ValueKey('home_tab_$tab'));
+        await tester.ensureVisible(tabFinder);
+        await tester.tap(tabFinder);
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        final bottom = switch (tab) {
+          'progress' => 'home_affiliate_panel',
+          'quests' => 'home_events_panel',
+          _ => 'home_hidden_gems_panel',
+        };
         await tester.scrollUntilVisible(
-          find.byKey(ValueKey('home_tab_$tab')),
+          find.byKey(ValueKey(bottom)),
           200,
           scrollable: find.byType(Scrollable).first,
         );
-        await tester.tap(find.byKey(ValueKey('home_tab_$tab')));
         await tester.pump();
         expect(tester.takeException(), isNull);
-      }
-    });
+      });
+    }
   }
 }
