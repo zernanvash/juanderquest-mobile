@@ -6,7 +6,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -942,7 +941,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   PixelTag(
-                    '${quest.categoryDisplay} Â· Eco-Quest',
+                    '${quest.categoryDisplay} · Eco-Quest',
                     style: PixelBoxStyle.gold,
                     textColor: PixelPalette.ink,
                     maxWidth: grid.px(140),
@@ -980,31 +979,13 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     );
   }
 
-  Widget _heroPlaceholder(BuildContext context, QuestModel quest) {
-    final grid = PixelGrid.of(context);
-    return ColoredBox(
-      color: PixelPalette.woodDeep,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const PixelSprite(DesignerArt.questMarker, scale: 4),
-            SizedBox(height: grid.px(2)),
-            Text(
-              quest.locationName,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: PixelType.small(
-                context,
-                color: PixelPalette.paperDim,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  /// No photo: the dither pattern only. The title panel already shows the
+  /// town, and a centred marker sat behind that panel.
+  Widget _heroPlaceholder(BuildContext context, QuestModel quest) =>
+      const DitherBackground(
+        top: PixelPalette.woodDeep,
+        bottom: PixelPalette.wood,
+      );
 
   Widget _objectives(BuildContext context, PixelGrid grid, QuestModel quest) {
     final base = _baseReward(quest.baseRewardPhp);
@@ -1028,7 +1009,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             Align(
               alignment: Alignment.centerLeft,
               child: PixelTag(
-                'Sponsored campaign Â· ${quest.remainingSlots ?? 'open'} slots',
+                'Sponsored campaign · ${quest.remainingSlots ?? 'open'} slots',
                 style: PixelBoxStyle.gold,
                 textColor: PixelPalette.ink,
                 maxWidth: grid.px(110),
@@ -1182,7 +1163,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           if (perk != null) ...[
             SizedBox(height: grid.px(1)),
             Text(
-              'Sponsor perk: ${perk['title'] ?? 'available'} Â· ${perk['remaining'] ?? 0} available',
+              'Sponsor perk: ${perk['title'] ?? 'available'} · ${perk['remaining'] ?? 0} available',
               style: PixelType.small(context, color: PixelPalette.greenBright),
             ),
           ],
@@ -1285,7 +1266,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Your tasks Â· $done / ${shown.length} done',
+          'Your tasks · $done / ${shown.length} done',
           style: PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
         ),
         SizedBox(height: grid.px(1)),
@@ -1348,7 +1329,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            'Step ${step.order} Â· ${_taskTypeLabel(step.checkpointType)}',
+                            'Step ${step.order} · ${_taskTypeLabel(step.checkpointType)}',
                             style: PixelType.small(
                               context,
                               color: PixelPalette.slate,
@@ -1486,7 +1467,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           SizedBox(height: grid.px(2)),
           for (final step in hostSteps) ...[
             PixelButton(
-              label: 'Scan traveler pass Â· step ${step.order}',
+              label: 'Scan traveler pass · step ${step.order}',
               variant: PixelButtonVariant.secondary,
               expand: true,
               onPressed: () => hostScanTravelerPass(
@@ -1744,11 +1725,11 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
 }
 
 const _questBackIcon = PixelArt('questBack', [
-  '..0..',
-  '.00..',
-  '00000',
-  '.00..',
-  '..0..',
+  '..0....',
+  '.00....',
+  '0000000',
+  '.00....',
+  '..0....',
 ]);
 
 /// Where the traveler can go to do an in-app task, if the app has a screen

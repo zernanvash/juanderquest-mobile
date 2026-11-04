@@ -210,11 +210,11 @@ class _Badge extends StatelessWidget {
 }
 
 const _backIcon = PixelArt('pixelBack', [
-  '..0..',
-  '.00..',
-  '00000',
-  '.00..',
-  '..0..',
+  '..0....',
+  '.00....',
+  '0000000',
+  '.00....',
+  '..0....',
 ]);
 
 class PixelAppBar extends StatelessWidget {
