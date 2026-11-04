@@ -146,40 +146,45 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     final target = _targetRect();
-    return Semantics(
-      container: true,
-      liveRegion: true,
-      label: '${widget.speaker}: ${_current.text}',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _tap,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _pulse,
-                builder: (context, _) => CustomPaint(
-                  painter: _ShadePainter(
-                    target: target,
-                    unit: grid.unit,
-                    dim: 0.72,
+    // Transparent Material: the overlay sits above the shell's Scaffold, so
+    // without it Flutter draws its yellow "missing text style" underlines.
+    return Material(
+      type: MaterialType.transparency,
+      child: Semantics(
+        container: true,
+        liveRegion: true,
+        label: '${widget.speaker}: ${_current.text}',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _tap,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: _pulse,
+                  builder: (context, _) => CustomPaint(
+                    painter: _ShadePainter(
+                      target: target,
+                      unit: grid.unit,
+                      dim: 0.72,
+                    ),
                   ),
                 ),
               ),
-            ),
-            ..._arrow(grid, target),
-            _box(context, grid, target),
-            Positioned(
-              top: MediaQuery.paddingOf(context).top + grid.px(3),
-              right: grid.px(3),
-              child: PixelButton(
-                key: const ValueKey('tutorial-skip'),
-                label: 'Skip',
-                variant: PixelButtonVariant.ghost,
-                onPressed: _finish,
+              ..._arrow(grid, target),
+              _box(context, grid, target),
+              Positioned(
+                top: MediaQuery.paddingOf(context).top + grid.px(3),
+                right: grid.px(3),
+                child: PixelButton(
+                  key: const ValueKey('tutorial-skip'),
+                  label: 'Skip',
+                  variant: PixelButtonVariant.ghost,
+                  onPressed: _finish,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
