@@ -559,7 +559,9 @@ class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
                             if (!missing)
                               TextButton(
                                 onPressed: () =>
-                                    setState(() => _spotFuture = _fetchSpot()),
+                                    setState(() {
+                                      _spotFuture = _fetchSpot();
+                                    }),
                                 child: const Text('Retry'),
                               ),
                           ])
