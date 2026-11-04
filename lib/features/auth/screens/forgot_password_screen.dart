@@ -1,13 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_input.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
 enum _RecoveryStep { email, code, password, done }
@@ -134,45 +137,89 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reset password')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.gutter),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                switch (_step) {
-                  _RecoveryStep.email => 'Forgot your password?',
-                  _RecoveryStep.code => 'Enter your code',
-                  _RecoveryStep.password => 'Choose a new password',
-                  _RecoveryStep.done => 'Password changed',
-                },
-                style: AppTypography.headlineSmall
-                    .copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              if (_info != null)
-                Text(_info!,
-                    style: AppTypography.bodySmall
-                        .copyWith(color: AppColors.textSecondary)),
-              const SizedBox(height: AppSpacing.lg),
-              ..._fields(),
-              if (_error != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(_error!,
-                    key: const ValueKey('recovery_error'),
-                    style: const TextStyle(color: AppColors.danger)),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              _primaryAction(),
-              if (_step == _RecoveryStep.code)
-                TextButton(
-                  onPressed: _busy ? null : _sendCode,
-                  child: const Text('Send a new code'),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Scaffold(
+        backgroundColor: PixelPalette.paperDim,
+        body: DitherBackground(
+          top: PixelPalette.paperDim,
+          bottom: PixelPalette.paper,
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PixelAppBar(
+                  title: 'RESET PASSWORD',
+                  onBack: () => Navigator.of(context).maybePop(),
                 ),
-            ],
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: PixelPanel(
+                          style: PixelBoxStyle.parchment,
+                          padding: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ShadowText(
+                                switch (_step) {
+                                  _RecoveryStep.email => 'FORGOT YOUR PASSWORD?',
+                                  _RecoveryStep.code => 'ENTER YOUR CODE',
+                                  _RecoveryStep.password => 'CHOOSE A NEW PASSWORD',
+                                  _RecoveryStep.done => 'PASSWORD CHANGED',
+                                },
+                                style: PixelType.title(context),
+                              ),
+                              const SizedBox(height: 8),
+                              if (_info != null) ...[
+                                Text(
+                                  _info!,
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.slate,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              ..._fields(),
+                              if (_error != null) ...[
+                                const SizedBox(height: 12),
+                                PixelPanel(
+                                  style: PixelBoxStyle.red,
+                                  padding: 2,
+                                  child: Text(
+                                    _error!,
+                                    key: const ValueKey('recovery_error'),
+                                    style: PixelType.body(
+                                      context,
+                                      color: PixelPalette.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 20),
+                              _primaryAction(),
+                              if (_step == _RecoveryStep.code) ...[
+                                const SizedBox(height: 12),
+                                PixelButton(
+                                  expand: true,
+                                  variant: PixelButtonVariant.secondary,
+                                  onPressed: _busy ? null : _sendCode,
+                                  label: 'Send a new code',
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -183,85 +230,81 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     switch (_step) {
       case _RecoveryStep.email:
         return [
-          TextField(
+          PixelTextField(
             key: const ValueKey('recovery_email'),
             controller: _email,
+            label: 'Email',
+            hint: 'traveler@example.com',
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
-            ),
           ),
         ];
       case _RecoveryStep.code:
         return [
-          TextField(
+          PixelTextField(
             key: const ValueKey('recovery_code'),
             controller: _code,
+            label: '6-digit code',
+            hint: '123456',
             keyboardType: TextInputType.number,
-            maxLength: 6,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             autofillHints: const [AutofillHints.oneTimeCode],
-            decoration: const InputDecoration(
-              labelText: '6-digit code',
-              border: OutlineInputBorder(),
-            ),
           ),
         ];
       case _RecoveryStep.password:
         return [
-          TextField(
+          PixelTextField(
             key: const ValueKey('recovery_password'),
             controller: _password,
+            label: 'New password (8+ characters)',
+            hint: '••••••••',
             obscureText: true,
             autofillHints: const [AutofillHints.newPassword],
-            decoration: const InputDecoration(
-              labelText: 'New password (8+ characters)',
-              border: OutlineInputBorder(),
-            ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
+          const SizedBox(height: 12),
+          PixelTextField(
             key: const ValueKey('recovery_confirm'),
             controller: _confirm,
+            label: 'Repeat new password',
+            hint: '••••••••',
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Repeat new password',
-              border: OutlineInputBorder(),
-            ),
           ),
         ];
       case _RecoveryStep.done:
         return [
-          const Text(
-              'You can now sign in with your email and the new password.'),
+          Text(
+            'You can now sign in with your email and the new password.',
+            style: PixelType.body(context, color: PixelPalette.ink),
+          ),
         ];
     }
   }
 
   Widget _primaryAction() {
     return switch (_step) {
-      _RecoveryStep.email => PrimaryButton(
+      _RecoveryStep.email => PixelButton(
           key: const ValueKey('recovery_send'),
+          expand: true,
           label: 'Send code',
-          isLoading: _busy,
+          loading: _busy,
           onPressed: _busy ? null : _sendCode,
         ),
-      _RecoveryStep.code => PrimaryButton(
+      _RecoveryStep.code => PixelButton(
           key: const ValueKey('recovery_verify'),
+          expand: true,
           label: 'Verify code',
-          isLoading: _busy,
+          loading: _busy,
           onPressed: _busy ? null : _verifyCode,
         ),
-      _RecoveryStep.password => PrimaryButton(
+      _RecoveryStep.password => PixelButton(
           key: const ValueKey('recovery_reset'),
+          expand: true,
           label: 'Save new password',
-          isLoading: _busy,
+          loading: _busy,
           onPressed: _busy ? null : _reset,
         ),
-      _RecoveryStep.done => PrimaryButton(
+      _RecoveryStep.done => PixelButton(
           key: const ValueKey('recovery_done'),
+          expand: true,
           label: 'Back to sign in',
           onPressed: () => context.go('/'),
         ),
