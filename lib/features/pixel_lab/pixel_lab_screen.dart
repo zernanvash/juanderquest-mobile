@@ -16,6 +16,7 @@ import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
+import 'hotbar_options.dart';
 import 'tutorial_preview.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
@@ -102,6 +103,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           _celebrations(context, grid),
                           SizedBox(height: grid.px(3)),
                           _tutorials(context, grid),
+                          SizedBox(height: grid.px(3)),
+                          _hotbarOptions(context, grid),
                           SizedBox(height: grid.px(6)),
                         ],
                       ),
@@ -817,6 +820,32 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
             'ART PIXEL ${_sizeLabel(settings.artPx)} · SPRITES KEEP THEIR OWN PIXEL SIZE.',
             style: PixelType.small(context, color: PixelPalette.slate),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Nav bar looks to choose from (owner 2026-11-04). Each sits under a strip
+  /// of page so you can see how it blends; tap the slots.
+  Widget _hotbarOptions(BuildContext context, PixelGrid grid) {
+    return _section(
+      context,
+      'Nav bar · pick one',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final option in HotbarOption.values) ...[
+            Text(option.label, style: PixelType.title(context)),
+            SizedBox(height: grid.px(1)),
+            ColoredBox(
+              color: PixelPalette.paper,
+              child: Padding(
+                padding: EdgeInsets.only(top: grid.px(10)),
+                child: HotbarPreview(option: option),
+              ),
+            ),
+            SizedBox(height: grid.px(4)),
+          ],
         ],
       ),
     );
