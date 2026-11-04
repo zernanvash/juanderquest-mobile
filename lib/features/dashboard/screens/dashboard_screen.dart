@@ -14,18 +14,19 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/designer_guide.dart';
+import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
+import '../../profile/providers/profile_stats_provider.dart';
 import '../../quests/models/quest_model.dart';
 import '../../quests/providers/quest_provider.dart';
-import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/screens/interests_screen.dart';
-import '../../spots/widgets/hidden_gem_card.dart';
 import '../../submissions/models/submission_model.dart';
 import '../../submissions/providers/submission_provider.dart';
 import '../home_tips.dart';
+import '../providers/home_daily_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -36,6 +37,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _tipsRequested = false;
+  int _tab = 0;
 
   @override
   void initState() {
@@ -43,6 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(choiceEngagementProvider.future);
       ref.read(choiceOverviewProvider.future);
+      ref.read(homeDailyProvider.future);
       ref.read(submissionProvider.notifier).fetchSubmissions();
       ref.read(spotDiscoveryProvider.notifier).load();
       ref.read(questProvider.notifier).fetchQuests();
@@ -54,6 +57,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     await Future.wait([
       ref.refresh(choiceEngagementProvider.future),
       ref.refresh(choiceOverviewProvider.future),
+      ref.refresh(homeDailyProvider.future),
       ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
       ref.read(spotDiscoveryProvider.notifier).load(refresh: true),
       ref.read(questProvider.notifier).fetchQuests(),
@@ -63,16 +67,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final engagement = ref.watch(choiceEngagementProvider);
-    final overview = ref.watch(choiceOverviewProvider);
-    final spots = ref.watch(spotDiscoveryProvider);
-    final quests = ref.watch(questProvider);
-    final submissions = ref.watch(submissionProvider);
     final tipsKeys = ref.watch(homeTipsKeysProvider);
-    final firstName =
-        (user?.displayName.trim().split(RegExp(r'\s+')).first ?? 'Traveler');
-    final level = ((user?.points ?? 0) ~/ 50) + 1;
-    final levelProgress = ((user?.points ?? 0) % 50) / 50;
 
     if (!_tipsRequested && user != null) {
       _tipsRequested = true;
@@ -130,148 +125,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 dimensions:
                                     'Responsive, vertically scrollable mobile dashboard',
                                 dataBinding:
-                                    'Authenticated profile, engagement, destinations, quests, submissions, and JuanChoice APIs',
+                                    'Authenticated profile, engagement, destinations, quests, submissions, daily rewards, and JuanChoice APIs',
                                 stateNotes:
                                     'API failures are shown as unavailable; no synthetic activity or ranking data',
                                 uxNotes:
-                                    'One-tap shortcuts keep Explore, map, quests, and JuanChoice close at hand',
+                                    'Compact hero, Progress / Quests / Collection tabs, and always-visible JuanChoice',
                               ),
-                              child: _HeroCard(
-                                firstName: firstName,
-                                points: user?.points ?? 0,
-                                level: level,
-                                progress: levelProgress,
-                              ),
+                              child: _CompactHero(user: user),
                             ),
                           ),
-                          SizedBox(height: grid.px(4)),
-                          _ImpactSection(
-                            engagement: engagement,
-                            onProfile: () => context.go('/profile'),
+                          SizedBox(height: grid.px(3)),
+                          _JuanChoiceCard(
                             onRetry: () =>
-                                ref.invalidate(choiceEngagementProvider),
+                                ref.invalidate(choiceOverviewProvider),
                           ),
-                          SizedBox(height: grid.px(4)),
-                          KeyedSubtree(
-                            key: tipsKeys.nextStop,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _SectionHeader(
-                                  title: 'Pick your next stop',
-                                  action: 'Explore all',
-                                  onTap: () => context.go('/explore'),
-                                ),
-                                SizedBox(height: grid.px(2)),
-                                _QuickActions(
-                                  onExplore: () => context.go('/explore'),
-                                  onMap: () => context.go('/map'),
-                                  onQuests: () => context.go('/quests'),
-                                ),
-                                SizedBox(height: grid.px(2)),
-                                if (spots.isInitialLoading &&
-                                    spots.spots.isEmpty)
-                                  const _PixelLoadingPanel()
-                                else if (spots.failure != null &&
-                                    spots.spots.isEmpty)
-                                  _PixelUnavailablePanel(
-                                    message:
-                                        'Destinations could not be loaded.',
-                                    onRetry: () => ref
-                                        .read(spotDiscoveryProvider.notifier)
-                                        .load(refresh: true),
-                                  )
-                                else if (spots.spots.isNotEmpty)
-                                  _FeaturedSpot(
-                                    spot: _recommendedSpot(spots.spots),
-                                    onTap: () => context.push(
-                                      '/explore/${Uri.encodeComponent(_recommendedSpot(spots.spots).id)}',
-                                    ),
-                                  )
-                                else
-                                  const _PixelEmptyPanel(
-                                    message:
-                                        'No destinations are available yet. Try again later.',
-                                  ),
-                              ],
-                            ),
+                          SizedBox(height: grid.px(3)),
+                          _QuestLogTabs(
+                            selected: _tab,
+                            nextStopKey: tipsKeys.nextStop,
+                            onSelect: (value) => setState(() => _tab = value),
                           ),
-                          SizedBox(height: grid.px(4)),
-                          const HiddenGemCard(),
-                          SizedBox(height: grid.px(4)),
-                          _SectionHeader(
-                            title: 'JuanChoice',
-                            action: 'Open',
-                            onTap: () => context.go('/choice'),
-                          ),
-                          SizedBox(height: grid.px(2)),
-                          overview.when(
-                            loading: () => const _PixelLoadingPanel(),
-                            error: (_, __) => _PixelUnavailablePanel(
-                              message: 'JuanChoice status is unavailable.',
-                              onRetry: () =>
-                                  ref.invalidate(choiceOverviewProvider),
-                            ),
-                            data: (data) => _JuanChoiceCard(
-                              overview: data,
-                              onTap: () => context.go('/choice'),
-                            ),
-                          ),
-                          SizedBox(height: grid.px(4)),
-                          _SectionHeader(
-                            title: 'Your quests',
-                            action: 'See all',
-                            onTap: () => context.go('/quests'),
-                          ),
-                          SizedBox(height: grid.px(2)),
-                          if (quests.isLoading)
-                            const _PixelLoadingPanel()
-                          else if (quests.error != null)
-                            _PixelUnavailablePanel(
-                              message: 'Quest list is unavailable.',
-                              onRetry: () => ref
-                                  .read(questProvider.notifier)
-                                  .fetchQuests(),
-                            )
-                          else
-                            _QuestsSection(quests: quests.quests),
-                          SizedBox(height: grid.px(4)),
-                          _SectionHeader(
-                            title: 'Recent activity',
-                            action: 'History',
-                            onTap: () => context.push('/history'),
-                          ),
-                          SizedBox(height: grid.px(2)),
-                          if (submissions.isLoading &&
-                              submissions.submissions.isEmpty)
-                            const _PixelLoadingPanel()
-                          else if (submissions.error != null &&
-                              submissions.submissions.isEmpty)
-                            _PixelUnavailablePanel(
-                              message: 'Recent activity is unavailable.',
-                              onRetry: () => ref
-                                  .read(submissionProvider.notifier)
-                                  .fetchSubmissions(force: true),
-                            )
-                          else if (submissions.submissions.isEmpty)
-                            const _PixelEmptyPanel(
-                              message:
-                                  'Your quest submissions will appear here.',
-                            )
-                          else
-                            ...submissions.submissions
-                                .take(3)
-                                .map((item) => _ActivityRow(submission: item)),
-                          SizedBox(height: grid.px(4)),
-                          _PixelInfoRow(
-                            key: const ValueKey('dashboard_cultural_quizzes'),
-                            icon: DesignerArt.search,
-                            title: 'Cultural quizzes',
-                            subtitle:
-                                'Discover quizzes near participating heritage and cultural destinations.',
-                            action: 'Explore',
-                            onTap: () => context.go('/explore'),
-                          ),
+                          SizedBox(height: grid.px(3)),
+                          const _NextStopPanel(),
                         ],
                       ),
                     ),
@@ -284,662 +159,740 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
-
-  SpotModel _recommendedSpot(List<SpotModel> items) {
-    return items.firstWhere(
-      (spot) => spot.reasons.isNotEmpty,
-      orElse: () => items.first,
-    );
-  }
 }
 
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({
-    required this.firstName,
-    required this.points,
-    required this.level,
-    required this.progress,
-  });
+// ------------------------------------------------------------------ hero
 
-  final String firstName;
-  final int points, level;
-  final double progress;
+class _CompactHero extends StatelessWidget {
+  const _CompactHero({required this.user});
+
+  final UserModel? user;
+
+  static Map<String, dynamic>? _cosmeticAsset(
+    Map<String, dynamic>? cosmetics,
+    String slot,
+  ) {
+    final item = cosmetics?[slot];
+    if (item is! Map || item['asset'] is! Map) return null;
+    return Map<String, dynamic>.from(item['asset'] as Map);
+  }
+
+  static Color? _cosmeticColor(dynamic value) {
+    if (value is! String || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) {
+      return null;
+    }
+    return Color(int.parse(value.substring(1), radix: 16) | 0xff000000);
+  }
+
+  static String _number(int value) {
+    final digits = value.abs().toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(digits[i]);
+    }
+    return '${value < 0 ? '-' : ''}$buffer';
+  }
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final juanScale = (44 * dpr / DesignerArt.juanIdle.frames.first.height)
-        .round()
-        .clamp(1, 8)
-        .toInt();
+    final displayName = user?.displayName.trim().isNotEmpty == true
+        ? user!.displayName.trim()
+        : 'Traveler';
+    final handle = user?.handle ?? '@traveler';
+    final points = user?.points ?? 0;
+    final level = (points ~/ 50) + 1;
+    final xpInLevel = points % 50;
+    final titleAsset = _cosmeticAsset(user?.cosmetics, 'title');
+    final nameColorAsset = _cosmeticAsset(user?.cosmetics, 'nameColor');
+    final nameColor = _cosmeticColor(nameColorAsset?['color']);
+    final cosmeticTitle = titleAsset?['text']?.toString() ?? '';
+    final initial = displayName.isEmpty ? 'J' : displayName[0].toUpperCase();
+    final avatarUrl = user?.avatarUrl ?? '';
+    final validAvatar = avatarUrl.isNotEmpty &&
+        !avatarUrl.endsWith('.svg') &&
+        (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
+
     return PixelPanel(
       style: PixelBoxStyle.wood,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PixelPanel(
-            style: PixelBoxStyle.slot,
-            sunken: true,
-            padding: 2,
-            child: PixelAnimation(DesignerArt.juanIdle, scale: juanScale),
-          ),
-          SizedBox(width: grid.px(3)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ShadowText(
-                  'Welcome back, $firstName',
-                  style: PixelType.body(context, color: PixelPalette.paper)
-                      .copyWith(fontWeight: FontWeight.w700),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: grid.px(1)),
-                PixelText.rich(
-                  'Level {green:$level} · {gold:$points Explorer XP}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: PixelType.small(context, color: PixelPalette.paperDim),
-                ),
-                SizedBox(height: grid.px(2)),
-                PixelProgressBar(
-                  value: progress,
-                  segments: 10,
-                  color: PixelPalette.greenBright,
-                ),
-                SizedBox(height: grid.px(1)),
-                PixelStatRow(
-                  'Progress',
-                  '$points / ${level * 50} XP',
-                  labelColor: PixelPalette.paperDim,
-                  valueColor: PixelPalette.sun,
-                  style: PixelType.small(context),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ImpactSection extends StatelessWidget {
-  const _ImpactSection({
-    required this.engagement,
-    required this.onProfile,
-    required this.onRetry,
-  });
-
-  final AsyncValue<ChoiceEngagementSummary> engagement;
-  final VoidCallback onProfile;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionHeader(
-          title: 'Your impact',
-          action: 'View profile',
-          onTap: onProfile,
-        ),
-        SizedBox(height: grid.px(2)),
-        engagement.when(
-          loading: () => const _PixelLoadingPanel(),
-          error: (_, __) => _PixelUnavailablePanel(
-            message: 'Your travel stats are temporarily unavailable.',
-            onRetry: onRetry,
-          ),
-          data: (summary) => _ImpactTiles(summary: summary),
-        ),
-      ],
-    );
-  }
-}
-
-class _ImpactTiles extends StatelessWidget {
-  const _ImpactTiles({required this.summary});
-
-  final ChoiceEngagementSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    final stats = <(String, String)>[
-      ('Visit streak', '${summary.currentStreak} days'),
-      ('Verified visits', '${summary.verifiedVisits}'),
-      ('Destinations', '${summary.uniqueDestinations}'),
-      ('Municipalities', '${summary.municipalities}'),
-    ];
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final gap = grid.px(2);
-        final width =
-            ((constraints.maxWidth - gap * 2) / 3).clamp(1.0, 400.0).toDouble();
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (final stat in stats)
-              SizedBox(
-                width: width,
-                child: PixelPanel(
-                  style: PixelBoxStyle.slot,
-                  sunken: true,
-                  padding: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: grid.px(18),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            stat.$2,
-                            style: PixelType.title(context,
-                                color: PixelPalette.sun),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: grid.px(1)),
-                      Text(
-                        stat.$1,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({
-    required this.onExplore,
-    required this.onMap,
-    required this.onQuests,
-  });
-
-  final VoidCallback onExplore, onMap, onQuests;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    return IntrinsicHeight(
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: PixelButton(
-              key: const ValueKey('dashboard_quick_explore'),
-              label: 'Explore',
-              icon: DesignerArt.navExplore,
-              iconScale: 2,
-              expand: true,
-              onPressed: onExplore,
-            ),
-          ),
-          SizedBox(width: grid.px(2)),
-          Expanded(
-            child: PixelButton(
-              key: const ValueKey('dashboard_quick_map'),
-              label: 'Map',
-              icon: DesignerArt.navExplore,
-              iconScale: 2,
-              expand: true,
-              style: PixelBoxStyle.wood,
-              textColor: PixelPalette.white,
-              onPressed: onMap,
-            ),
-          ),
-          SizedBox(width: grid.px(2)),
-          Expanded(
-            child: PixelButton(
-              key: const ValueKey('dashboard_quick_quests'),
-              label: 'Quests',
-              icon: DesignerArt.questMarker,
-              iconScale: 2,
-              expand: true,
-              style: PixelBoxStyle.wood,
-              textColor: PixelPalette.white,
-              onPressed: onQuests,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.action,
-    required this.onTap,
-  });
-
-  final String title, action;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: grid.px(2),
-      runSpacing: grid.px(1),
-      children: [
-        Text(
-          title,
-          style: PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
-        ),
-        Semantics(
-          button: true,
-          label: action,
-          child: ExcludeSemantics(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onTap,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 48),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: 1,
-                  child: Text(
-                    '$action >',
-                    style: PixelType.small(
-                      context,
-                      color: PixelPalette.blueBright,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FeaturedSpot extends ConsumerWidget {
-  const _FeaturedSpot({required this.spot, required this.onTap});
-
-  final SpotModel spot;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final grid = PixelGrid.of(context);
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final iconScale =
-        (24 * dpr / DesignerArt.heartLiked.height).round().clamp(1, 8).toInt();
-    final crowd = switch (spot.crowdStatus) {
-      'quiet' => ('Quiet', PixelBoxStyle.green, PixelPalette.white),
-      'busy' || 'crowded' => ('Busy', PixelBoxStyle.red, PixelPalette.white),
-      'moderate' => ('Moderate', PixelBoxStyle.gold, PixelPalette.ink),
-      _ => null,
-    };
-    final distance = spot.distanceKm == null
-        ? ''
-        : ' · ${spot.distanceKm!.toStringAsFixed(1)} km';
-    return Semantics(
-      container: true,
-      button: true,
-      label: 'Open ${spot.name}',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: PixelPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              PixelPanel(
-                style: PixelBoxStyle.slot,
-                sunken: true,
-                padding: 1,
-                child: ClipRect(
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: spot.imageUrl != null
-                        ? Image.network(
-                            spot.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                const _PixelImageFallback(),
-                          )
-                        : const _PixelImageFallback(),
-                  ),
-                ),
-              ),
-              SizedBox(height: grid.px(2)),
-              Text(
-                spot.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: PixelType.body(context)
-                    .copyWith(fontWeight: FontWeight.w700),
-              ),
-              SizedBox(height: grid.px(1)),
-              Text(
-                '${spot.municipality}$distance',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: PixelType.small(context, color: PixelPalette.slate),
-              ),
-              if (spot.reasons.isNotEmpty) ...[
-                SizedBox(height: grid.px(1)),
-                Text(
-                  spot.reasons.first,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style:
-                      PixelType.small(context, color: PixelPalette.greenBright),
-                ),
-              ],
-              SizedBox(height: grid.px(2)),
-              Row(
-                children: [
-                  if (crowd != null)
-                    PixelChip(
-                      crowd.$1,
-                      style: crowd.$2,
-                      textColor: crowd.$3,
-                    ),
-                  const Spacer(),
-                  _SavedHeart(
-                    saved: spot.saved,
-                    scale: iconScale,
-                    onToggle: () async {
-                      final failure = await ref
-                          .read(spotDiscoveryProvider.notifier)
-                          .toggleSaved(spot);
-                      if (failure != null && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(failure.message)),
-                        );
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SavedHeart extends StatefulWidget {
-  const _SavedHeart({
-    required this.saved,
-    required this.scale,
-    required this.onToggle,
-  });
-
-  final bool saved;
-  final int scale;
-  final Future<void> Function() onToggle;
-
-  @override
-  State<_SavedHeart> createState() => _SavedHeartState();
-}
-
-class _SavedHeartState extends State<_SavedHeart> {
-  bool _playing = false;
-  bool _target = false;
-
-  Future<void> _toggle() async {
-    setState(() {
-      _target = !widget.saved;
-      _playing = true;
-    });
-    await widget.onToggle();
-    if (mounted) setState(() => _playing = false);
-  }
-
-  void _done() {
-    if (mounted) setState(() => _playing = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = _playing
-        ? null
-        : widget.saved
-            ? DesignerArt.heartLiked
-            : DesignerArt.heartUnliked;
-    return Semantics(
-      button: true,
-      toggled: widget.saved,
-      label: widget.saved ? 'Remove saved destination' : 'Save destination',
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _toggle,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            child: Center(
-              widthFactor: 1,
-              heightFactor: 1,
-              child: _playing
-                  ? PixelAnimation(
-                      _target
-                          ? DesignerArt.heartLikeAnim
-                          : DesignerArt.heartUnlikeAnim,
-                      scale: widget.scale,
-                      loop: false,
-                      onDone: _done,
-                    )
-                  : PixelSprite(icon!, scale: widget.scale),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PixelImageFallback extends StatelessWidget {
-  const _PixelImageFallback();
-
-  @override
-  Widget build(BuildContext context) => const DitherBackground(
-        top: PixelPalette.paperDim,
-        bottom: PixelPalette.paper,
-      );
-}
-
-class _JuanChoiceCard extends StatelessWidget {
-  const _JuanChoiceCard({required this.overview, required this.onTap});
-
-  final ChoiceOverview overview;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    final current = overview.current;
-    final label = current != null
-        ? 'Current round: ${current.theme}'
-        : overview.previous != null
-            ? 'Previous result: ${overview.previous!.periodLabel}'
-            : 'Community destination voting';
-    return Semantics(
-      container: true,
-      button: true,
-      label: 'Open JuanChoice',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: PixelPanel(
-          child: Row(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const PixelSprite(DesignerArt.juanChoice, scale: 2),
-              SizedBox(width: grid.px(3)),
+              GestureDetector(
+                key: const ValueKey('home_hero_profile'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => context.go('/profile'),
+                child: PixelPanel(
+                  style: PixelBoxStyle.gold,
+                  padding: 1,
+                  child: SizedBox(
+                    width: grid.px(16),
+                    height: grid.px(16),
+                    child: ClipRect(
+                      child: validAvatar
+                          ? Image.network(
+                              avatarUrl,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.medium,
+                              errorBuilder: (_, __, ___) =>
+                                  _avatarFallback(context, initial),
+                            )
+                          : _avatarFallback(context, initial),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: grid.px(2)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      label,
-                      maxLines: 2,
+                      displayName,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: PixelType.body(context)
-                          .copyWith(fontWeight: FontWeight.w700),
+                      style: PixelType.title(
+                        context,
+                        color: nameColor ?? PixelPalette.paper,
+                      ),
                     ),
                     SizedBox(height: grid.px(1)),
                     Text(
-                      overview.notice ??
-                          'See the current round and previous results.',
-                      maxLines: 3,
+                      handle,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.slate,
-                      ),
+                      style:
+                          PixelType.small(context, color: PixelPalette.cream),
+                    ),
+                    SizedBox(height: grid.px(1)),
+                    Wrap(
+                      spacing: grid.px(1),
+                      runSpacing: grid.px(1),
+                      children: [
+                        Semantics(
+                          button: true,
+                          label: 'Level $level',
+                          child: ExcludeSemantics(
+                            child: GestureDetector(
+                              key: const ValueKey('home_hero_level_chip'),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => context.go('/profile'),
+                              child: PixelChip(
+                                'Level $level',
+                                style: PixelBoxStyle.green,
+                                textColor: PixelPalette.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (cosmeticTitle.isNotEmpty)
+                          PixelChip(cosmeticTitle, style: PixelBoxStyle.gold),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
+          SizedBox(height: grid.px(2)),
+          GestureDetector(
+            key: const ValueKey('home_hero_level'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => context.go('/profile'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PixelProgressBar(
+                  value: xpInLevel / 50,
+                  segments: 10,
+                  color: PixelPalette.greenBright,
+                ),
+                SizedBox(height: grid.px(1)),
+                PixelText.rich(
+                  '{sun:$xpInLevel / 50 XP} to level {paper:${level + 1}} · {paper:$points total XP}',
+                  maxLines: 2,
+                  style: PixelType.small(context, color: PixelPalette.cream),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: grid.px(2)),
+          Row(
+            children: [
+              Expanded(
+                child: _WalletStat(
+                  key: const ValueKey('home_wallet_mjdq'),
+                  label: 'mJDQ',
+                  value: _number(user?.mjdqBalance ?? 0),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              Expanded(
+                child: _WalletStat(
+                  key: const ValueKey('home_wallet_jdq'),
+                  label: 'JDQ',
+                  value: _number(user?.jdqGovernanceBalance ?? 0),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              Expanded(
+                child: _WalletStat(
+                  key: const ValueKey('home_wallet_rep'),
+                  label: 'Reputation',
+                  value: _number(user?.scoutReputation ?? 0),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatarFallback(BuildContext context, String initial) {
+    return DitherBackground(
+      top: PixelPalette.greenMid,
+      bottom: PixelPalette.greenDeep,
+      child: Center(
+        child: Text(
+          initial,
+          style: PixelType.title(context, color: PixelPalette.paper),
         ),
       ),
     );
   }
 }
 
-class _QuestsSection extends StatelessWidget {
-  const _QuestsSection({required this.quests});
+class _WalletStat extends StatelessWidget {
+  const _WalletStat({
+    super.key,
+    required this.label,
+    required this.value,
+  });
 
-  final List<QuestModel> quests;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    if (quests.isEmpty) {
-      return _PixelInfoRow(
-        icon: DesignerArt.questMarker,
-        title: '0 quests available',
-        subtitle: 'Visit destinations and complete their activities.',
-        action: 'Browse',
-        onTap: () => context.go('/quests'),
-      );
+    return Semantics(
+      button: true,
+      label: '$label: $value',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.go('/profile'),
+          child: PixelPanel(
+            style: PixelBoxStyle.slot,
+            padding: 1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(context, color: PixelPalette.slate),
+                ),
+                SizedBox(height: grid.px(1)),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: PixelType.numbers(
+                      context,
+                      color: PixelPalette.greenDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------------- JuanChoice
+
+class _JuanChoiceCard extends ConsumerWidget {
+  const _JuanChoiceCard({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overview = ref.watch(choiceOverviewProvider);
+    return overview.when(
+      loading: () => const _LoadingPanel(),
+      error: (_, __) => _UnavailablePanel(
+        message: 'JuanChoice is unavailable.',
+        retryKey: const ValueKey('home_juanchoice_retry'),
+        onRetry: onRetry,
+      ),
+      data: (data) {
+        final current = data.current;
+        final open = current != null && data.isCampaignOpen(current);
+        final detail =
+            open ? ref.watch(choiceDetailProvider(current.id)) : null;
+        return _JuanChoiceContent(
+          overview: data,
+          openCampaign: open ? current : null,
+          detail: detail,
+        );
+      },
+    );
+  }
+}
+
+class _JuanChoiceContent extends StatelessWidget {
+  const _JuanChoiceContent({
+    required this.overview,
+    required this.openCampaign,
+    required this.detail,
+  });
+
+  final ChoiceOverview overview;
+  final ChoiceCampaign? openCampaign;
+  final AsyncValue<ChoiceDetail>? detail;
+
+  static int _daysLeft(ChoiceOverview overview, ChoiceCampaign campaign) {
+    final serverTime = overview.serverTime;
+    final receivedAt = overview.receivedAt;
+    final DateTime now;
+    if (serverTime != null) {
+      final elapsed = overview.monotonicClock?.elapsed ??
+          (receivedAt == null
+              ? Duration.zero
+              : DateTime.now().difference(receivedAt));
+      now = serverTime.add(elapsed);
+    } else {
+      now = DateTime.now();
     }
-    final shown = quests.take(2).toList();
+    final remaining = campaign.closesAt.difference(now);
+    if (remaining <= Duration.zero) return 0;
+    return (remaining.inHours / 24).ceil();
+  }
+
+  static String _daysLabel(int days) {
+    if (days <= 0) return 'Closes today';
+    if (days == 1) return '1 day left';
+    return '$days days left';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final campaign = openCampaign;
+    final previous = overview.previous;
+    final winners = previous == null
+        ? const <ChoiceStanding>[]
+        : previous.standings
+            .where((standing) => previous.coWinnerIds.contains(
+                  standing.candidateId,
+                ))
+            .toList();
+    final title = campaign != null
+        ? 'Voting now: ${campaign.theme}'
+        : previous != null
+            ? 'Last results: ${previous.periodLabel}'
+            : 'Community vote';
+    final target = campaign != null ? '/choice/${campaign.id}' : '/choice';
+    return Semantics(
+      container: true,
+      button: true,
+      label: 'JuanChoice. $title',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          key: const ValueKey('home_juanchoice_card'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.push(target),
+          child: PixelPanel(
+            style: PixelBoxStyle.tooltip,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const PixelSprite(DesignerArt.juanChoice, scale: 2),
+                    SizedBox(width: grid.px(2)),
+                    Expanded(
+                      child: Text(
+                        'JuanChoice',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: PixelType.title(
+                          context,
+                          color: PixelPalette.paper,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: grid.px(1)),
+                    Flexible(
+                      child: PixelChip(
+                        campaign != null ? 'Vote open' : 'Community',
+                        style: campaign != null
+                            ? PixelBoxStyle.green
+                            : PixelBoxStyle.gold,
+                        textColor: campaign != null
+                            ? PixelPalette.white
+                            : PixelPalette.ink,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: grid.px(2)),
+                if (campaign != null) ...[
+                  PixelText.rich(
+                    'Voting now: {sun:${campaign.theme}}',
+                    maxLines: 2,
+                    style: PixelType.body(context, color: PixelPalette.paper),
+                  ),
+                  SizedBox(height: grid.px(1)),
+                  PixelText.rich(
+                    '{paper:${_daysLabel(_daysLeft(overview, campaign))}} · ${_ballotLabel(detail)}',
+                    maxLines: 2,
+                    style: PixelType.small(context, color: PixelPalette.cream),
+                  ),
+                ] else if (previous != null) ...[
+                  PixelText.rich(
+                    'Last results: {sun:${previous.periodLabel}}',
+                    maxLines: 2,
+                    style: PixelType.body(context, color: PixelPalette.paper),
+                  ),
+                  SizedBox(height: grid.px(1)),
+                  if (winners.isEmpty)
+                    Text(
+                      'No winner this round.',
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.cream,
+                      ),
+                    )
+                  else
+                    for (final winner in winners.take(2))
+                      PixelText.rich(
+                        '{paper:${winner.spotName}} — {sun:${winner.votes} votes}',
+                        maxLines: 2,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.cream,
+                        ),
+                      ),
+                  if (winners.length > 2)
+                    Text(
+                      '+${winners.length - 2} more winners',
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.paperDim,
+                      ),
+                    ),
+                  SizedBox(height: grid.px(1)),
+                  Text(
+                    '${previous.validBallots} ballots counted',
+                    style:
+                        PixelType.small(context, color: PixelPalette.paperDim),
+                  ),
+                ] else
+                  Text(
+                    'No community vote is open and no results are in yet.',
+                    style: PixelType.small(context, color: PixelPalette.cream),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _ballotLabel(AsyncValue<ChoiceDetail>? detail) {
+    if (detail == null) return 'you have not voted yet';
+    if (detail.isLoading) return 'checking your ballot';
+    final value = detail.asData?.value;
+    if (value == null) return 'vote status unavailable';
+    return value.ballot == null ? 'you have not voted yet' : 'you voted';
+  }
+}
+
+// ------------------------------------------------------------------ tabs
+
+class _QuestLogTabs extends StatelessWidget {
+  const _QuestLogTabs({
+    required this.selected,
+    required this.nextStopKey,
+    required this.onSelect,
+  });
+
+  final int selected;
+  final GlobalKey nextStopKey;
+  final ValueChanged<int> onSelect;
+
+  static const _labels = ['Progress', 'Quests', 'Collection'];
+
+  static final _idleStyle = PixelBoxStyle.wood.copyWith(
+    fill: PixelPalette.woodDeep,
+    highlight: PixelPalette.wood,
+    shade: PixelPalette.woodNight,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final content = switch (selected) {
+      0 => const _ProgressTab(),
+      1 => const _QuestsTab(),
+      _ => const _CollectionTab(),
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < shown.length; i++) ...[
-          if (i > 0) SizedBox(height: grid.px(2)),
-          _QuestCard(
-            quest: shown[i],
-            onContinue: () => context.go('/quests'),
+        Row(
+          children: [
+            for (var i = 0; i < _labels.length; i++) ...[
+              if (i > 0) SizedBox(width: grid.px(1)),
+              Expanded(
+                child: KeyedSubtree(
+                  key: i == 1 ? nextStopKey : null,
+                  child: _tab(context, grid, i),
+                ),
+              ),
+            ],
+          ],
+        ),
+        SizedBox(height: grid.px(1)),
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: content,
+        ),
+      ],
+    );
+  }
+
+  Widget _tab(BuildContext context, PixelGrid grid, int index) {
+    final active = index == selected;
+    return Semantics(
+      button: true,
+      selected: active,
+      label: _labels[index],
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          key: ValueKey('home_tab_${_labels[index].toLowerCase()}'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onSelect(index),
+          child: PixelPanel(
+            style: active ? PixelBoxStyle.wood : _idleStyle,
+            padding: 1,
+            pressed: !active,
+            child: Center(
+              child: Text(
+                _labels[index],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.small(context, color: PixelPalette.paper),
+              ),
+            ),
           ),
-        ],
-        if (quests.length > shown.length) ...[
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------- progress
+
+class _ProgressTab extends ConsumerWidget {
+  const _ProgressTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final grid = PixelGrid.of(context);
+    final engagement = ref.watch(choiceEngagementProvider);
+    final submissions = ref.watch(submissionProvider);
+    final daily = ref.watch(homeDailyProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Travel stats'),
+        SizedBox(height: grid.px(1)),
+        engagement.when(
+          loading: () => const _LoadingPanel(),
+          error: (_, __) => _UnavailablePanel(
+            message: 'Travel stats are unavailable.',
+            retryKey: const ValueKey('home_progress_stats_retry'),
+            onRetry: () => ref.invalidate(choiceEngagementProvider),
+          ),
+          data: (summary) => Column(
+            children: [
+              _TapStatRow(
+                key: const ValueKey('home_stat_streak'),
+                label: 'Visit streak',
+                value:
+                    '${summary.currentStreak} ${summary.currentStreak == 1 ? 'day' : 'days'}',
+                onTap: () => context.go('/profile'),
+              ),
+              _TapStatRow(
+                key: const ValueKey('home_stat_visits'),
+                label: 'Verified visits',
+                value: '${summary.verifiedVisits}',
+                onTap: () => context.go('/profile'),
+              ),
+              _TapStatRow(
+                key: const ValueKey('home_stat_destinations'),
+                label: 'Destinations',
+                value: '${summary.uniqueDestinations}',
+                onTap: () => context.go('/profile'),
+              ),
+              _TapStatRow(
+                key: const ValueKey('home_stat_municipalities'),
+                label: 'Municipalities',
+                value: '${summary.municipalities}',
+                onTap: () => context.go('/profile'),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: grid.px(2)),
+        const _SectionLabel('Proof submissions'),
+        SizedBox(height: grid.px(1)),
+        _proofBlock(context, grid, ref, submissions),
+        SizedBox(height: grid.px(2)),
+        const _SectionLabel('Daily mission'),
+        SizedBox(height: grid.px(1)),
+        daily.when(
+          loading: () => const _LoadingPanel(),
+          error: (_, __) => _UnavailablePanel(
+            message: 'Daily mission is unavailable.',
+            retryKey: const ValueKey('home_progress_daily_retry'),
+            onRetry: () => ref.invalidate(homeDailyProvider),
+          ),
+          data: (state) => _DailyMissionRow(state: state),
+        ),
+      ],
+    );
+  }
+
+  Widget _proofBlock(
+    BuildContext context,
+    PixelGrid grid,
+    WidgetRef ref,
+    SubmissionState submissions,
+  ) {
+    if (submissions.isLoading && submissions.submissions.isEmpty) {
+      return const _LoadingPanel();
+    }
+    if (submissions.error != null && submissions.submissions.isEmpty) {
+      return _UnavailablePanel(
+        message: 'Proof submissions are unavailable.',
+        retryKey: const ValueKey('home_progress_proof_retry'),
+        onRetry: () =>
+            ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
+      );
+    }
+    int count(String status) => submissions.submissions
+        .where((item) => item.status.toLowerCase() == status)
+        .length;
+    final latest =
+        submissions.submissions.isEmpty ? null : submissions.submissions.first;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _TapStatRow(
+          key: const ValueKey('home_proof_pending'),
+          label: 'Pending proofs',
+          value: '${count('pending')}',
+          onTap: () => context.push('/history'),
+        ),
+        _TapStatRow(
+          key: const ValueKey('home_proof_approved'),
+          label: 'Approved proofs',
+          value: '${count('approved')}',
+          onTap: () => context.push('/history'),
+        ),
+        _TapStatRow(
+          key: const ValueKey('home_proof_rejected'),
+          label: 'Rejected proofs',
+          value: '${count('rejected')}',
+          onTap: () => context.push('/history'),
+        ),
+        if (latest == null) ...[
           SizedBox(height: grid.px(1)),
           Text(
-            '${quests.length} quests available',
+            'No proofs submitted yet.',
             style: PixelType.small(context, color: PixelPalette.slate),
           ),
+        ] else ...[
+          SizedBox(height: grid.px(1)),
+          _LatestProof(submission: latest),
         ],
       ],
     );
   }
 }
 
-class _QuestCard extends StatelessWidget {
-  const _QuestCard({required this.quest, required this.onContinue});
+class _DailyMissionRow extends StatelessWidget {
+  const _DailyMissionRow({required this.state});
 
-  final QuestModel quest;
-  final VoidCallback onContinue;
+  final HomeDailyState state;
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final total = quest.steps.length;
-    final done = quest.steps.where((step) => step.isVerified).length;
-    final segments = total == 0 ? 1 : total.clamp(1, 20).toInt();
-    final value = total == 0 ? 0.0 : done / total;
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final scale =
-        (24 * dpr / DesignerArt.questMarker.height).round().clamp(1, 8).toInt();
+    final mission = state.nextMission;
+    if (mission == null) {
+      return PixelPanel(
+        style: PixelBoxStyle.slot,
+        padding: 2,
+        child: Text(
+          'No daily mission today.',
+          style: PixelType.body(context, color: PixelPalette.slate),
+        ),
+      );
+    }
+    final done = mission.completed || state.allComplete;
     return Semantics(
-      container: true,
-      label: quest.title,
-      child: PixelPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      button: true,
+      label: 'Daily mission: ${mission.title}',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          key: const ValueKey('home_daily_mission'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.push('/quests'),
+          child: PixelPanel(
+            style: PixelBoxStyle.tooltip,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                PixelSprite(DesignerArt.questMarker, scale: scale),
-                SizedBox(width: grid.px(2)),
-                Expanded(
-                  child: Text(
-                    quest.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: PixelType.body(context)
-                        .copyWith(fontWeight: FontWeight.w700),
-                  ),
+                PixelText.rich(
+                  '{sun:${mission.title}}',
+                  maxLines: 2,
+                  style: PixelType.body(context, color: PixelPalette.paper),
+                ),
+                SizedBox(height: grid.px(1)),
+                PixelText.rich(
+                  '{paper:${mission.progress} / ${mission.target}} · ${done ? '{sun:Done}' : '{paper:In progress}'} · {sun:+${mission.stamps} stamps}',
+                  maxLines: 2,
+                  style: PixelType.small(context, color: PixelPalette.cream),
                 ),
               ],
             ),
-            SizedBox(height: grid.px(2)),
-            Text(
-              '${quest.categoryDisplay} · $total tasks · +${quest.rewardPoints} mJDQ',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: PixelType.small(context, color: PixelPalette.slate),
-            ),
-            SizedBox(height: grid.px(2)),
-            PixelProgressBar(
-              value: value,
-              segments: segments,
-              color: PixelPalette.sun,
-            ),
-            SizedBox(height: grid.px(1)),
-            Text(
-              '$done / $total tasks done',
-              style: PixelType.small(context, color: PixelPalette.slate),
-            ),
-            SizedBox(height: grid.px(2)),
-            PixelButton(
-              label: 'Continue',
-              expand: true,
-              onPressed: onContinue,
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.submission});
+class _LatestProof extends StatelessWidget {
+  const _LatestProof({required this.submission});
 
   final SubmissionModel submission;
 
@@ -958,39 +911,41 @@ class _ActivityRow extends StatelessWidget {
       'approved' || 'rejected' => PixelPalette.white,
       _ => PixelPalette.ink,
     };
-    return Padding(
-      padding: EdgeInsets.only(bottom: grid.px(2)),
-      child: Semantics(
-        button: true,
-        label: '${submission.questTitle}, $status',
+    return Semantics(
+      button: true,
+      label: 'Latest proof: ${submission.questTitle}, $status',
+      child: ExcludeSemantics(
         child: GestureDetector(
+          key: const ValueKey('home_latest_proof'),
           behavior: HitTestBehavior.opaque,
           onTap: () => context.push('/history'),
           child: PixelPanel(
+            style: PixelBoxStyle.slot,
             padding: 2,
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PixelChip(status, style: style, textColor: textColor),
-                SizedBox(width: grid.px(2)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        submission.questTitle,
-                        style: PixelType.body(context),
-                      ),
-                      SizedBox(height: grid.px(1)),
-                      Text(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PixelChip(status, style: style, textColor: textColor),
+                    SizedBox(width: grid.px(1)),
+                    Expanded(
+                      child: Text(
                         submission.createdAt.split('T').first,
+                        textAlign: TextAlign.end,
                         style: PixelType.small(
                           context,
                           color: PixelPalette.slate,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  submission.questTitle,
+                  style: PixelType.body(context),
                 ),
               ],
             ),
@@ -1001,63 +956,120 @@ class _ActivityRow extends StatelessWidget {
   }
 }
 
-class _PixelInfoRow extends StatelessWidget {
-  const _PixelInfoRow({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.action,
-    required this.onTap,
-  });
+// --------------------------------------------------------------- quests
 
-  final PixelArt icon;
-  final String title, subtitle, action;
-  final VoidCallback onTap;
+class _QuestsTab extends ConsumerWidget {
+  const _QuestsTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final grid = PixelGrid.of(context);
+    final quests = ref.watch(questProvider);
+    final submissions = ref.watch(submissionProvider);
+    final stats = ref.watch(profileStatsProvider);
+    final inProgress = _inProgress(quests.quests, submissions);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('In progress'),
+        SizedBox(height: grid.px(1)),
+        if (quests.isLoading && quests.quests.isEmpty)
+          const _LoadingPanel()
+        else if (quests.error != null && quests.quests.isEmpty)
+          _UnavailablePanel(
+            message: 'Quests are unavailable.',
+            retryKey: const ValueKey('home_quests_retry'),
+            onRetry: () => ref.read(questProvider.notifier).fetchQuests(),
+          )
+        else if (inProgress.isEmpty)
+          Text(
+            'No quests in progress yet.',
+            style: PixelType.small(context, color: PixelPalette.slate),
+          )
+        else
+          for (var i = 0; i < inProgress.length; i++) ...[
+            if (i > 0) SizedBox(height: grid.px(1)),
+            _QuestProgressRow(quest: inProgress[i]),
+          ],
+        SizedBox(height: grid.px(2)),
+        _TapStatRow(
+          key: const ValueKey('home_completed_quests'),
+          label: 'Completed quests',
+          value: '${stats.completedQuests}',
+          onTap: () => context.push('/quests'),
+        ),
+        SizedBox(height: grid.px(2)),
+        PixelButton(
+          key: const ValueKey('home_see_all_quests'),
+          label: 'See all quests',
+          icon: DesignerArt.questMarker,
+          expand: true,
+          onPressed: () => context.push('/quests'),
+        ),
+      ],
+    );
+  }
+
+  static List<QuestModel> _inProgress(
+    List<QuestModel> quests,
+    SubmissionState submissions,
+  ) {
+    final completedTitles = submissions.submissions
+        .where((item) => item.status == 'approved')
+        .map((item) => item.questTitle)
+        .toSet();
+    return quests.where((quest) {
+      if (completedTitles.contains(quest.title)) return false;
+      if (quest.steps.isEmpty) return false;
+      final anyVerified = quest.steps.any((step) => step.isVerified);
+      final allVerified = quest.steps.every((step) => step.isVerified);
+      return anyVerified && !allVerified;
+    }).toList();
+  }
+}
+
+class _QuestProgressRow extends StatelessWidget {
+  const _QuestProgressRow({required this.quest});
+
+  final QuestModel quest;
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final scale = (32 * dpr / icon.height).round().clamp(1, 8).toInt();
+    final total = quest.steps.length;
+    final done = quest.steps.where((step) => step.isVerified).length;
     return Semantics(
-      container: true,
       button: true,
-      label: '$title. $action',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: PixelPanel(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PixelSprite(icon, scale: scale),
-              SizedBox(width: grid.px(3)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: PixelType.body(context)
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    SizedBox(height: grid.px(1)),
-                    Text(
-                      subtitle,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.slate,
-                      ),
-                    ),
-                  ],
+      label: '${quest.title}, $done of $total tasks done',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          key: ValueKey('home_quest_${quest.id}'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.push('/quests/${quest.id}'),
+          child: PixelPanel(
+            style: PixelBoxStyle.slot,
+            padding: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  quest.title,
+                  style: PixelType.body(context)
+                      .copyWith(fontWeight: FontWeight.w700),
                 ),
-              ),
-              SizedBox(width: grid.px(2)),
-              PixelChip(action, style: PixelBoxStyle.slot),
-            ],
+                SizedBox(height: grid.px(1)),
+                Text(
+                  '$done / $total tasks done',
+                  style: PixelType.small(context, color: PixelPalette.slate),
+                ),
+                SizedBox(height: grid.px(1)),
+                PixelProgressBar(
+                  value: total == 0 ? 0 : done / total,
+                  segments: total == 0 ? 1 : total.clamp(1, 20).toInt(),
+                  color: PixelPalette.sun,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1065,8 +1077,205 @@ class _PixelInfoRow extends StatelessWidget {
   }
 }
 
-class _PixelLoadingPanel extends StatelessWidget {
-  const _PixelLoadingPanel();
+// ----------------------------------------------------------- collection
+
+class _CollectionTab extends ConsumerWidget {
+  const _CollectionTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final grid = PixelGrid.of(context);
+    final daily = ref.watch(homeDailyProvider);
+    final stats = ref.watch(profileStatsProvider);
+    final spots = ref.watch(spotDiscoveryProvider);
+    final earned = [
+      stats.ecoPioneerState,
+      stats.heritageKeeperState,
+      stats.foodExplorerState,
+    ].where((state) => state == BadgeState.earned).length;
+    final saved = spots.spots.where((spot) => spot.saved).length;
+    final badges = <(String, BadgeState, String)>[
+      ('Eco Pioneer', stats.ecoPioneerState, 'home_badge_eco'),
+      ('Heritage Keeper', stats.heritageKeeperState, 'home_badge_heritage'),
+      ('Food Explorer', stats.foodExplorerState, 'home_badge_food'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('Passport'),
+        SizedBox(height: grid.px(1)),
+        daily.when(
+          loading: () => const _LoadingPanel(),
+          error: (_, __) => _UnavailablePanel(
+            message: 'Stamps are unavailable.',
+            retryKey: const ValueKey('home_collection_stamps_retry'),
+            onRetry: () => ref.invalidate(homeDailyProvider),
+          ),
+          data: (state) => _TapStatRow(
+            key: const ValueKey('home_collection_stamps'),
+            label: 'Passport stamps',
+            value: '${state.stamps}',
+            onTap: () => context.go('/profile'),
+          ),
+        ),
+        SizedBox(height: grid.px(1)),
+        _TapStatRow(
+          key: const ValueKey('home_collection_badges'),
+          label: 'Badges earned',
+          value: '$earned of 3',
+          onTap: () => context.go('/profile'),
+        ),
+        SizedBox(height: grid.px(1)),
+        Wrap(
+          spacing: grid.px(1),
+          runSpacing: grid.px(1),
+          children: [
+            for (final badge in badges)
+              PixelChip(
+                badge.$1,
+                key: ValueKey(badge.$3),
+                style: badge.$2 == BadgeState.earned
+                    ? PixelBoxStyle.green
+                    : PixelBoxStyle.slot,
+                textColor: badge.$2 == BadgeState.earned
+                    ? PixelPalette.white
+                    : PixelPalette.slate,
+                onTap: () => context.go('/profile'),
+              ),
+          ],
+        ),
+        SizedBox(height: grid.px(2)),
+        const _SectionLabel('Places'),
+        SizedBox(height: grid.px(1)),
+        if (spots.failure != null && spots.spots.isEmpty)
+          _UnavailablePanel(
+            message: 'Saved spots are unavailable.',
+            retryKey: const ValueKey('home_collection_saved_retry'),
+            onRetry: () =>
+                ref.read(spotDiscoveryProvider.notifier).load(refresh: true),
+          )
+        else ...[
+          _TapStatRow(
+            key: const ValueKey('home_collection_saved'),
+            label: 'Saved spots',
+            value: '$saved',
+            onTap: () => context.push('/saved'),
+          ),
+          if (saved == 0) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'No saved spots yet.',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+// ------------------------------------------------------------- next stop
+
+class _NextStopPanel extends StatelessWidget {
+  const _NextStopPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Pick your next stop',
+            style: PixelType.title(context, color: PixelPalette.paper),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Questing is the main way to earn XP. Explore and the map are in the bar below.',
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            key: const ValueKey('home_next_stop_quests'),
+            label: 'Quests',
+            icon: DesignerArt.questMarker,
+            expand: true,
+            variant: PixelButtonVariant.secondary,
+            onPressed: () => context.push('/quests'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --------------------------------------------------------------- shared
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
+    );
+  }
+}
+
+class _TapStatRow extends StatelessWidget {
+  const _TapStatRow({
+    super.key,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 44),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: PixelStatRow(
+          label,
+          value,
+          labelColor: PixelPalette.stone,
+          valueColor: PixelPalette.greenDark,
+          trailing: onTap == null
+              ? null
+              : Text(
+                  '>',
+                  style: PixelType.small(context, color: PixelPalette.woodMid),
+                ),
+        ),
+      ),
+    );
+    if (onTap == null) return row;
+    return Semantics(
+      button: true,
+      label: '$label: $value',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: row,
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingPanel extends StatelessWidget {
+  const _LoadingPanel();
 
   @override
   Widget build(BuildContext context) {
@@ -1078,19 +1287,23 @@ class _PixelLoadingPanel extends StatelessWidget {
   }
 }
 
-class _PixelUnavailablePanel extends StatelessWidget {
-  const _PixelUnavailablePanel({
+class _UnavailablePanel extends StatelessWidget {
+  const _UnavailablePanel({
     required this.message,
     required this.onRetry,
+    this.retryKey,
   });
 
   final String message;
   final VoidCallback onRetry;
+  final Key? retryKey;
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     return PixelPanel(
+      style: PixelBoxStyle.slot,
+      padding: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1098,34 +1311,13 @@ class _PixelUnavailablePanel extends StatelessWidget {
             message,
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
-          SizedBox(height: grid.px(2)),
+          SizedBox(height: grid.px(1)),
           PixelButton(
+            key: retryKey,
             label: 'Retry',
             onPressed: onRetry,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PixelEmptyPanel extends StatelessWidget {
-  const _PixelEmptyPanel({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    return PixelPanel(
-      style: PixelBoxStyle.parchment,
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: PixelType.body(context, color: PixelPalette.slate),
-        ),
       ),
     );
   }
