@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
@@ -156,14 +157,9 @@ class _ImageFallback extends StatelessWidget {
   const _ImageFallback();
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: PixelPalette.paperDim,
-        child: Center(
-          child: Text(
-            'No photo',
-            style: PixelType.small(context, color: PixelPalette.stone),
-          ),
-        ),
+  Widget build(BuildContext context) => const DitherBackground(
+        top: PixelPalette.paperDim,
+        bottom: PixelPalette.paper,
       );
 }
 

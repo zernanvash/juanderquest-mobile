@@ -133,30 +133,41 @@ class _PixelHotbarState extends State<PixelHotbar> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (icon != null)
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            PixelSprite(icon, scale: iconScale),
-                            if (badgeText != null)
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: _Badge(
-                                  text: badgeText,
-                                  alert: item.badge != '!',
-                                ),
-                              ),
-                          ],
+                        SizedBox(
+                          height: 28,
+                          child: Center(
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                PixelSprite(icon, scale: iconScale),
+                                if (badgeText != null)
+                                  Positioned(
+                                    top: -2,
+                                    right: -6,
+                                    child: _Badge(
+                                      text: badgeText,
+                                      alert: item.badge != '!',
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                       if (icon != null) SizedBox(height: grid.px(1)),
-                      Text(
-                        item.label.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: PixelType.small(
-                          context,
-                          color:
-                              selected ? PixelPalette.ink : PixelPalette.paper,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: Text(
+                          item.label.toUpperCase(),
+                          maxLines: 1,
+                          softWrap: false,
+                          style: PixelType.small(
+                            context,
+                            color: selected
+                                ? PixelPalette.ink
+                                : PixelPalette.paper,
+                          ),
                         ),
                       ),
                     ],
@@ -250,7 +261,7 @@ class PixelAppBar extends StatelessWidget {
                   child: ShadowText(
                     title,
                     style: PixelType.title(context, color: PixelPalette.paper),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

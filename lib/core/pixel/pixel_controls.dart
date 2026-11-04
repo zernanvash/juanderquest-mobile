@@ -103,14 +103,18 @@ class _PixelButtonState extends State<PixelButton> {
           SizedBox(width: grid.px(2)),
         ],
         Flexible(
-          child: ShadowText(
-            widget.label.toUpperCase(),
-            style: PixelType.body(context, color: textColor).copyWith(
-              fontWeight: FontWeight.w700,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: ShadowText(
+              widget.label.toUpperCase(),
+              style: PixelType.body(context, color: textColor).copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+              softWrap: false,
+              textAlign: TextAlign.center,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
           ),
         ),
       ],
@@ -242,7 +246,7 @@ class PixelChip extends StatelessWidget {
     final grid = PixelGrid.of(context);
     final child = PixelPanel(
       style: style.copyWith(corner: 1, shadowPx: onTap == null ? 0 : 1),
-      padding: 1,
+      padding: 2,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -250,7 +254,18 @@ class PixelChip extends StatelessWidget {
             PixelSprite(icon!, scale: iconScale),
             SizedBox(width: grid.px(1)),
           ],
-          Text(label, style: PixelType.small(context, color: textColor)),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: PixelType.small(context, color: textColor),
+              ),
+            ),
+          ),
         ],
       ),
     );
