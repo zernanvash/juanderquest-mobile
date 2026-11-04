@@ -273,10 +273,21 @@ class _CompactHero extends StatelessWidget {
                       spacing: grid.px(1),
                       runSpacing: grid.px(1),
                       children: [
-                        PixelChip(
-                          'Level $level',
-                          style: PixelBoxStyle.green,
-                          textColor: PixelPalette.white,
+                        Semantics(
+                          button: true,
+                          label: 'Level $level',
+                          child: ExcludeSemantics(
+                            child: GestureDetector(
+                              key: const ValueKey('home_hero_level_chip'),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => context.go('/profile'),
+                              child: PixelChip(
+                                'Level $level',
+                                style: PixelBoxStyle.green,
+                                textColor: PixelPalette.white,
+                              ),
+                            ),
+                          ),
                         ),
                         if (cosmeticTitle.isNotEmpty)
                           PixelChip(cosmeticTitle, style: PixelBoxStyle.gold),

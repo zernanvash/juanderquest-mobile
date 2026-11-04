@@ -536,6 +536,7 @@ void main() {
     for (final key in [
       'home_hero_profile',
       'home_hero_level',
+      'home_hero_level_chip',
       'home_wallet_mjdq',
       'home_wallet_jdq',
       'home_wallet_rep',
