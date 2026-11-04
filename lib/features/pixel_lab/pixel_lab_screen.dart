@@ -16,6 +16,8 @@ import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
+import '../onboarding/pixel_tutorial.dart';
+import 'tutorial_preview.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
   const PixelLabScreen({super.key});
@@ -99,6 +101,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           _sprites(context, grid, settings),
                           SizedBox(height: grid.px(3)),
                           _celebrations(context, grid),
+                          SizedBox(height: grid.px(3)),
+                          _tutorials(context, grid),
                           SizedBox(height: grid.px(6)),
                         ],
                       ),
@@ -814,6 +818,34 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
             'ART PIXEL ${_sizeLabel(settings.artPx)} · SPRITES KEEP THEIR OWN PIXEL SIZE.',
             style: PixelType.small(context, color: PixelPalette.slate),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// First-run tutorial styles for the owner to choose from (2026-11-04).
+  Widget _tutorials(BuildContext context, PixelGrid grid) {
+    return _section(
+      context,
+      'First-run tutorial · pick one',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Each one plays the same 4 lines over a pretend Home screen. '
+            'Tap to finish a line, tap again for the next.',
+            style: PixelType.body(context),
+          ),
+          for (final style in TutorialStyle.values) ...[
+            SizedBox(height: grid.px(2)),
+            PixelButton(
+              key: ValueKey('lab-tutorial-${style.name}'),
+              label: style.label,
+              expand: true,
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => TutorialPreviewScreen(style: style))),
+            ),
+          ],
         ],
       ),
     );
