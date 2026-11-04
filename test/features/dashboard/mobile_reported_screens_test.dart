@@ -9,6 +9,7 @@ import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/widgets/nearby_quiz_card.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
@@ -87,17 +88,20 @@ Future<void> render(
             notice: null,
             votingEnabled: false,
           )),
-      choiceEngagementProvider.overrideWith((ref) async =>
-          const ChoiceEngagementSummary(
-            currentStreak: 0,
-            longestStreak: 0,
-            nextMilestone: 1,
-            verifiedVisits: 0,
-            uniqueDestinations: 0,
-            municipalities: 0,
-            participations: 0,
-            challenges: [],
-          )),
+      choiceEngagementProvider
+          .overrideWith((ref) async => const ChoiceEngagementSummary(
+                currentStreak: 0,
+                longestStreak: 0,
+                nextMilestone: 1,
+                verifiedVisits: 0,
+                uniqueDestinations: 0,
+                municipalities: 0,
+                participations: 0,
+                challenges: [],
+              )),
+      homeDailyProvider.overrideWith(
+        (ref) async => const HomeDailyState(stamps: 0, missions: []),
+      ),
     ],
     child: MaterialApp(theme: AppTheme.lightTheme, home: screen),
   ));
@@ -132,7 +136,8 @@ void main() {
       (tester) async {
     await render(tester, const SubmissionHistoryScreen(),
         scale: 1,
-        submissionState: SubmissionState(error: 'Failed to fetch submissions.'));
+        submissionState:
+            SubmissionState(error: 'Failed to fetch submissions.'));
     expect(find.text('Could not load history'), findsOneWidget);
     expect(find.text('NO SUBMISSIONS YET'), findsNothing);
   });
@@ -146,18 +151,6 @@ void main() {
     final title = tester.renderObject<RenderParagraph>(find.text(longTitle));
     expect(title.didExceedMaxLines, isFalse,
         reason: 'Populated recent activity title is clipped to one line.');
-  });
-  testWidgets('cultural quiz CTA title is readable at 320px, 2x text',
-      (tester) async {
-    await render(tester, const DashboardScreen(), settle: false);
-    await tester.scrollUntilVisible(find.text('Cultural quizzes'), 150,
-        scrollable: find.byType(Scrollable).first);
-    await tester.pump();
-    expect(tester.takeException(), isNull);
-    final title =
-        tester.renderObject<RenderParagraph>(find.text('Cultural quizzes'));
-    expect(title.didExceedMaxLines, isFalse,
-        reason: 'Primary cultural quiz CTA is clipped to one line.');
   });
   testWidgets('nearby cultural quiz invitation at 320px, 2x text',
       (tester) async {

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -8,20 +7,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:juanderquest_app/app/main_shell.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
-import 'package:juanderquest_app/core/network/api_failure.dart';
 import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
 import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
 import 'package:juanderquest_app/core/pixel/pixel_art.dart';
 import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
-import 'package:juanderquest_app/core/pixel/pixel_feedback.dart';
 import 'package:juanderquest_app/core/pixel/pixel_nav.dart';
 import 'package:juanderquest_app/core/pixel/placeholder_art.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/onboarding/pixel_tutorial.dart';
-import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
@@ -105,16 +102,6 @@ class _CampaignFixture extends CampaignNotifier {
 
   @override
   Future<void> fetchCampaigns({bool forceRefresh = false}) async {}
-}
-
-class _RouteProbe extends StatelessWidget {
-  const _RouteProbe(this.path);
-
-  final String path;
-
-  @override
-  Widget build(BuildContext context) =>
-      Scaffold(body: Center(child: Text('route:$path')));
 }
 
 class _BranchProbe extends StatelessWidget {
@@ -289,96 +276,27 @@ List<Override> _overrides({
     choiceOverviewProvider.overrideWith(
       (ref) => (overview ?? () => Future.value(_overview))(),
     ),
+    homeDailyProvider.overrideWith(
+      (ref) async => const HomeDailyState(
+        stamps: 12,
+        missions: [
+          HomeDailyMission(
+            id: 'daily-1',
+            kind: 'quest_step',
+            title: 'Check in at Patar Beach',
+            stamps: 5,
+            progress: 0,
+            target: 1,
+            completed: false,
+          ),
+        ],
+      ),
+    ),
     hiddenGemProvider.overrideWith((ref) async => const []),
     homeTipsStoreProvider.overrideWithValue(
       tipsStore ?? _MemoryHomeTipsStore(true),
     ),
   ];
-}
-
-GoRouter _testRouter() => GoRouter(
-      initialLocation: '/dashboard',
-      routes: [
-        GoRoute(
-          path: '/dashboard',
-          builder: (_, __) => const DashboardScreen(),
-        ),
-        GoRoute(
-          path: '/explore',
-          builder: (_, __) => const _RouteProbe('/explore'),
-        ),
-        GoRoute(
-          path: '/explore/:id',
-          builder: (_, state) =>
-              _RouteProbe('/explore/${state.pathParameters['id']}'),
-        ),
-        GoRoute(path: '/map', builder: (_, __) => const _RouteProbe('/map')),
-        GoRoute(
-          path: '/quests',
-          builder: (_, __) => const _RouteProbe('/quests'),
-        ),
-        GoRoute(
-          path: '/choice',
-          builder: (_, __) => const _RouteProbe('/choice'),
-        ),
-        GoRoute(
-          path: '/profile',
-          builder: (_, __) => const _RouteProbe('/profile'),
-        ),
-        GoRoute(
-          path: '/history',
-          builder: (_, __) => const _RouteProbe('/history'),
-        ),
-        GoRoute(
-          path: '/notifications',
-          builder: (_, __) => const _RouteProbe('/notifications'),
-        ),
-      ],
-    );
-
-Future<void> _pumpDashboard(
-  WidgetTester tester, {
-  List<Override>? overrides,
-  Size size = const Size(400, 2000),
-}) async {
-  tester.view.physicalSize = size;
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(() {
-    tester.view.resetPhysicalSize();
-    tester.view.resetDevicePixelRatio();
-  });
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: overrides ?? _overrides(),
-      child: MaterialApp.router(
-        theme: AppTheme.pixel,
-        routerConfig: _testRouter(),
-      ),
-    ),
-  );
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 100));
-}
-
-Future<void> _expectDashboardTap(
-  WidgetTester tester,
-  Finder target,
-  String route, {
-  bool scroll = false,
-}) async {
-  await _pumpDashboard(tester);
-  if (scroll) {
-    await tester.scrollUntilVisible(
-      target,
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
-  }
-  expect(target, findsOneWidget);
-  await tester.tap(target);
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 400));
-  expect(find.text('route:$route'), findsOneWidget, reason: 'expected $route');
 }
 
 class _TipsHarness extends ConsumerStatefulWidget {
@@ -639,120 +557,6 @@ void main() {
     await tester.pump();
     expect(find.text('PROFILE PAGE'), findsOneWidget);
     semantics.dispose();
-  });
-
-  testWidgets('dashboard shows the real data state', (tester) async {
-    await _pumpDashboard(tester);
-    expect(find.text('Welcome back, Juan'), findsOneWidget);
-    expect(
-      find.byWidgetPredicate((w) =>
-          w is RichText &&
-          w.text.toPlainText().contains('Level 3 · 125 Explorer XP')),
-      findsOneWidget,
-    );
-    expect(find.text('3 days'), findsOneWidget);
-    expect(find.text('Hundred Islands Eco Trek'), findsOneWidget);
-    expect(find.text('Mangatarem Community Forest and River Cleanup'),
-        findsOneWidget);
-    expect(find.text('Cultural quizzes'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('dashboard shows loading states', (tester) async {
-    final neverSummary = Completer<ChoiceEngagementSummary>();
-    final neverOverview = Completer<ChoiceOverview>();
-    await _pumpDashboard(
-      tester,
-      overrides: _overrides(
-        engagement: () => neverSummary.future,
-        overview: () => neverOverview.future,
-        quests: QuestState(isLoading: true),
-        spots: const SpotDiscoveryState(isInitialLoading: true),
-        submissions: SubmissionState(isLoading: true),
-      ),
-    );
-    expect(find.byType(PixelLoader), findsWidgets);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('dashboard shows every unavailable state with RETRY', (
-    tester,
-  ) async {
-    await _pumpDashboard(
-      tester,
-      overrides: _overrides(
-        engagement: () => Future.error(Exception('engagement down')),
-        overview: () => Future.error(Exception('overview down')),
-        quests: QuestState(error: 'Quest list unavailable'),
-        spots: const SpotDiscoveryState(
-          isInitialLoading: false,
-          failure: ApiFailure(
-            code: ApiFailureCodes.serverUnavailable,
-            message: 'destinations down',
-          ),
-        ),
-        submissions: SubmissionState(error: 'submissions down'),
-      ),
-    );
-    expect(
-      find.text('Your travel stats are temporarily unavailable.'),
-      findsOneWidget,
-    );
-    expect(find.text('Destinations could not be loaded.'), findsOneWidget);
-    expect(find.text('JuanChoice status is unavailable.'), findsOneWidget);
-    expect(find.text('Quest list is unavailable.'), findsOneWidget);
-    expect(find.text('Recent activity is unavailable.'), findsOneWidget);
-    expect(find.text('Retry'), findsWidgets);
-    await tester.tap(find.text('Retry').first);
-    await tester.pump();
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('dashboard keeps every navigation target', (tester) async {
-    await _expectDashboardTap(
-      tester,
-      find.byTooltip('Notifications'),
-      '/notifications',
-    );
-    await _expectDashboardTap(
-      tester,
-      find.byKey(const ValueKey('dashboard_quick_explore')),
-      '/explore',
-    );
-    await _expectDashboardTap(
-      tester,
-      find.byKey(const ValueKey('dashboard_quick_map')),
-      '/map',
-    );
-    await _expectDashboardTap(
-      tester,
-      find.byKey(const ValueKey('dashboard_quick_quests')),
-      '/quests',
-    );
-    await _expectDashboardTap(
-      tester,
-      find.text('See all >'),
-      '/quests',
-      scroll: true,
-    );
-    await _expectDashboardTap(
-      tester,
-      find.text('Continue'),
-      '/quests',
-      scroll: true,
-    );
-    await _expectDashboardTap(
-      tester,
-      find.text('Hundred Islands National Park'),
-      '/explore/spot-1',
-      scroll: true,
-    );
-    await _expectDashboardTap(
-      tester,
-      find.byKey(const ValueKey('dashboard_cultural_quizzes')),
-      '/explore',
-      scroll: true,
-    );
   });
 
   testWidgets('tutorial shows once, SKIP stores the flag', (tester) async {

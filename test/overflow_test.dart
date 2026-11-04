@@ -84,6 +84,7 @@ import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
 import 'package:juanderquest_app/core/pixel/pixel_nav.dart';
 import 'package:juanderquest_app/core/pixel/placeholder_art.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/onboarding/pixel_tutorial.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
@@ -645,6 +646,22 @@ void main() {
               child is MapViewScreen)
             apiClientProvider.overrideWithValue(affiliateApi),
           dailyMissionFetcherProvider.overrideWithValue(() async => false),
+          homeDailyProvider.overrideWith(
+            (ref) async => const HomeDailyState(
+              stamps: 12,
+              missions: [
+                HomeDailyMission(
+                  id: 'daily-1',
+                  kind: 'quest_step',
+                  title: 'Check in at Patar Beach',
+                  stamps: 5,
+                  progress: 0,
+                  target: 1,
+                  completed: false,
+                ),
+              ],
+            ),
+          ),
           authProvider.overrideWith((ref) => InertAuthNotifier(
               ref.watch(apiClientProvider),
               ref.watch(authRefreshProvider.notifier),
