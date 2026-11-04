@@ -27,15 +27,14 @@ class MainShell extends ConsumerStatefulWidget {
     this.location = '/dashboard',
   });
 
-  /// The six main pages. Detail pages (a spot, a quest, search, notifications,
+  /// The main pages (one per tab). Detail pages (a spot, a quest, search, notifications,
   /// saved) hide the hotbar; their back button returns to a main page.
   static const mainPages = {
     '/',
     '/dashboard',
     '/explore',
     '/map',
-    '/quests',
-    '/choice',
+    '/shop',
     '/profile',
   };
 
@@ -91,7 +90,8 @@ class _MainShellState extends ConsumerState<MainShell> {
           if (router.canPop()) {
             router.pop();
           } else {
-            widget.navigationShell.goBranch(currentIndex, initialLocation: true);
+            widget.navigationShell
+                .goBranch(currentIndex, initialLocation: true);
           }
           return;
         }
@@ -139,25 +139,27 @@ class _MainShellState extends ConsumerState<MainShell> {
                       }
                     },
                     items: const [
+                      // Owner 2026-11-05: Home · Explore · Map · Shop · Profile.
+                      // Explore and Map icons are placeholders until the
+                      // designer draws them.
                       PixelHotbarItem(
-                        label: 'HOME',
+                        label: 'Home',
                         icon: PlaceholderArt.home,
                       ),
                       PixelHotbarItem(
-                        label: 'MAP',
+                        label: 'Explore',
+                        icon: DesignerArt.search,
+                      ),
+                      PixelHotbarItem(
+                        label: 'Map',
                         icon: DesignerArt.navExplore,
                       ),
                       PixelHotbarItem(
-                        label: 'QUESTS',
-                        icon: DesignerArt.questMarker,
+                        label: 'Shop',
+                        icon: DesignerArt.navShop,
                       ),
                       PixelHotbarItem(
-                        label: 'CHOICE',
-                        icon: DesignerArt.juanChoice,
-                        pressedIcon: DesignerArt.juanChoiceHover,
-                      ),
-                      PixelHotbarItem(
-                        label: 'PROFILE',
+                        label: 'Profile',
                         icon: PlaceholderArt.profile,
                       ),
                     ],

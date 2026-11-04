@@ -134,33 +134,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/dashboard',
                 builder: (context, state) => const DashboardScreen(),
               ),
-              GoRoute(
-                path: '/explore',
-                builder: (context, state) => const SpotExploreScreen(),
-                routes: [
-                  GoRoute(
-                    path: ':slug',
-                    builder: (context, state) => SpotDetailRouteScreen(
-                      slug: state.pathParameters['slug']!,
-                      initialSpot: state.extra is SpotModel
-                          ? state.extra as SpotModel
-                          : null,
-                    ),
-                    routes: [
-                      GoRoute(
-                        path: 'quests/new',
-                        parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) => QuestBuilderScreen(
-                          spotSlug: state.pathParameters['slug'],
-                          initialSpot: state.extra is SpotModel
-                              ? state.extra as SpotModel
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
               // Plan 70: posting lives in the Spot Discovery Studio (query kept).
               GoRoute(
                 path: '/spots/new',
@@ -181,8 +154,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                     context: context,
                     state: state,
                     child: SpotSearchScreen(
-                      initialQuery:
-                          state.uri.queryParameters['q'] ?? extra?['q']?.toString(),
+                      initialQuery: state.uri.queryParameters['q'] ??
+                          extra?['q']?.toString(),
                       initialCategory: state.uri.queryParameters['category'] ??
                           extra?['category']?.toString(),
                       initialCrowd: state.uri.queryParameters['crowd'] ??
@@ -202,18 +175,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                   path: '/saved',
                   builder: (context, state) => const SavedSpotsScreen()),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/map',
-                builder: (context, state) => const MapViewScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
+              // Owner 2026-11-05: Quests and JuanChoice left the hotbar; they open
+              // from Home (and Explore/Map) as pages without the hotbar.
               GoRoute(
                 path: '/quests',
                 builder: (context, state) => const QuestListScreen(),
@@ -270,10 +233,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                 ],
               ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
               GoRoute(
                 path: '/choice',
                 builder: (context, state) => const JuanChoiceScreen(),
@@ -287,13 +246,59 @@ final routerProvider = Provider<GoRouter>((ref) {
                         path: 'candidates/:candidateId',
                         builder: (context, state) => JuanChoiceDetailScreen(
                           campaignId: state.pathParameters['id']!,
-                          focusCandidateId:
-                              state.pathParameters['candidateId'],
+                          focusCandidateId: state.pathParameters['candidateId'],
                         ),
                       ),
                     ],
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/explore',
+                builder: (context, state) => const SpotExploreScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':slug',
+                    builder: (context, state) => SpotDetailRouteScreen(
+                      slug: state.pathParameters['slug']!,
+                      initialSpot: state.extra is SpotModel
+                          ? state.extra as SpotModel
+                          : null,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'quests/new',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => QuestBuilderScreen(
+                          spotSlug: state.pathParameters['slug'],
+                          initialSpot: state.extra is SpotModel
+                              ? state.extra as SpotModel
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/map',
+                builder: (context, state) => const MapViewScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/shop',
+                builder: (context, state) => const ShopScreen(),
               ),
             ],
           ),
@@ -324,7 +329,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (context, state) => const ProposalListScreen()),
         ],
       ),
-      GoRoute(path: '/shop', builder: (context, state) => const ShopScreen()),
       // Plan 67: link a wallet when a purchase needs one.
       GoRoute(
           path: '/wallet/connect',
@@ -340,10 +344,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const SettingsScreen(),
         ),
         routes: [
-          GoRoute(path:'appearance',builder:(context,state)=>const AppearanceScreen()),
-          GoRoute(path: 'updates', builder: (context, state) => const SettingsUpdatesScreen()),
-          GoRoute(path: 'developer', builder: (context, state) => const SettingsDeveloperScreen()),
-          GoRoute(path: 'pixel-lab', builder: (context, state) => const PixelLabScreen()),
+          GoRoute(
+              path: 'appearance',
+              builder: (context, state) => const AppearanceScreen()),
+          GoRoute(
+              path: 'updates',
+              builder: (context, state) => const SettingsUpdatesScreen()),
+          GoRoute(
+              path: 'developer',
+              builder: (context, state) => const SettingsDeveloperScreen()),
+          GoRoute(
+              path: 'pixel-lab',
+              builder: (context, state) => const PixelLabScreen()),
         ],
       ),
       GoRoute(
@@ -392,7 +404,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final query = state.uri.queryParameters;
           return SpotDiscoveryStudioScreen(
-            routePin: StudioPin.tryParse(query['lat'], query['lng'], query['zoom']),
+            routePin:
+                StudioPin.tryParse(query['lat'], query['lng'], query['zoom']),
             routeRecognition: state.extra is SpotRecognitionResult
                 ? state.extra as SpotRecognitionResult
                 : null,
@@ -584,10 +597,9 @@ class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
                                 textAlign: TextAlign.center),
                             if (!missing)
                               TextButton(
-                                onPressed: () =>
-                                    setState(() {
-                                      _spotFuture = _fetchSpot();
-                                    }),
+                                onPressed: () => setState(() {
+                                  _spotFuture = _fetchSpot();
+                                }),
                                 child: const Text('Retry'),
                               ),
                           ])

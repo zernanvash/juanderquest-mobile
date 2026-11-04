@@ -431,7 +431,7 @@ List<TutorialStep> firstRunSteps({
         target: nextStop,
       ),
       TutorialStep(
-        'This bar jumps between Home, Map, Quests, JuanChoice and your Profile. Have fun!',
+        'This bar jumps between Home, Explore, the Map, the Shop and your Profile. Have fun!',
         target: hotbar,
       ),
     ];

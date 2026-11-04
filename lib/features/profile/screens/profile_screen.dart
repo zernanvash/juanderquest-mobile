@@ -530,20 +530,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             '/trail',
             key: const ValueKey('profile_trail')),
         SizedBox(height: grid.px(2)),
-        row('Merchant Shop', 'Browse available vouchers', '/shop',
-            key: const ValueKey('profile_shop')),
-        SizedBox(height: grid.px(2)),
         row('Leaderboard',
             'View top explorers, rankings, and sprint leaderboards.', '/plaza',
             key: const ValueKey('profile_leaderboard')),
-        if (isMine) ...[
-          SizedBox(height: grid.px(2)),
-          row(
-              'Explorer Settings',
-              'Configure preferences, AR calibration, and app updates.',
-              '/settings',
-              key: const ValueKey('profile_settings')),
-        ],
+        // Owner 2026-11-05: Shop is a tab now and Settings is the gear in the
+        // header, so their rows here were removed.
       ],
     );
   }

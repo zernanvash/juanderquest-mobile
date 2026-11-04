@@ -575,6 +575,14 @@ void main() {
             StatefulShellBranch(
               routes: [
                 GoRoute(
+                  path: '/explore',
+                  builder: (_, __) => const _BranchProbe('EXPLORE PAGE'),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
                   path: '/map',
                   builder: (_, __) => const _BranchProbe('MAP PAGE'),
                 ),
@@ -583,16 +591,8 @@ void main() {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/quests',
-                  builder: (_, __) => const _BranchProbe('QUESTS PAGE'),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/choice',
-                  builder: (_, __) => const _BranchProbe('CHOICE PAGE'),
+                  path: '/shop',
+                  builder: (_, __) => const _BranchProbe('SHOP PAGE'),
                 ),
               ],
             ),
@@ -622,17 +622,20 @@ void main() {
     final semantics = tester.ensureSemantics();
     expect(find.text('HOME PAGE'), findsOneWidget);
     expect(
-      tester.getSemantics(find.bySemanticsLabel('HOME')),
+      tester.getSemantics(find.bySemanticsLabel('Home')),
       containsSemantics(isSelected: true),
     );
-    await tester.tap(find.bySemanticsLabel('MAP'));
+    await tester.tap(find.bySemanticsLabel('Map'));
     await tester.pump();
     expect(find.text('MAP PAGE'), findsOneWidget);
     expect(
-      tester.getSemantics(find.bySemanticsLabel('MAP')),
+      tester.getSemantics(find.bySemanticsLabel('Map')),
       containsSemantics(isSelected: true),
     );
-    await tester.tap(find.bySemanticsLabel('PROFILE'));
+    await tester.tap(find.bySemanticsLabel('Shop'));
+    await tester.pump();
+    expect(find.text('SHOP PAGE'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Profile'));
     await tester.pump();
     expect(find.text('PROFILE PAGE'), findsOneWidget);
     semantics.dispose();

@@ -415,13 +415,12 @@ void main() {
       expect(find.text('route:/saved'), findsOneWidget);
     });
 
-    testWidgets('opens the shop', (tester) async {
+    testWidgets('has no shop or settings rows (tab and header gear instead)',
+        (tester) async {
       _useTallView(tester);
       await _pump(tester, const ProfileScreen(), user: _user);
-      await tester.tap(find.byKey(const ValueKey('profile_shop')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 600));
-      expect(find.text('route:/shop'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_shop')), findsNothing);
+      expect(find.byKey(const ValueKey('profile_settings')), findsNothing);
     });
 
     testWidgets('copies the wallet and confirms unlinking', (tester) async {
