@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../submissions/providers/submission_provider.dart';
 
@@ -39,7 +38,6 @@ final companionMessageProvider =
     Provider.family<CompanionMessage?, int>((ref, tabIndex) {
   final preferences = ref.watch(companionControllerProvider);
   if (preferences.muted) return null;
-  final auth = ref.watch(authProvider);
   final discovery = ref.watch(spotDiscoveryProvider);
   final submissions = ref.watch(submissionProvider);
 
@@ -66,22 +64,10 @@ final companionMessageProvider =
         title: 'Let’s keep the trip comfortable',
         body:
             'Some destinations may be busy based on recent app activity—not live occupancy. Open one to see quieter alternatives.');
-  } else if (tabIndex == 0 &&
-      discovery.spots.any((spot) => spot.questId != null)) {
-    message = const CompanionMessage(
-        id: 'quest-nearby',
-        title: 'Adventure is nearby',
-        body:
-            'Some destinations have a linked quest. Look for the gold Quest Available badge.',
-        actionLabel: 'Browse quests',
-        route: '/quests');
-  } else if (auth.isAuthenticated && tabIndex == 4) {
-    message = const CompanionMessage(
-        id: 'profile-guide',
-        title: 'This is your travel journal',
-        body:
-            'Your approved quests, points, and submission history come together here.');
   }
+  // Owner 2026-11-04: the guide hints ("Adventure is nearby", "This is your
+  // travel journal") came back on every launch; the first-run tutorial
+  // (onboarding/pixel_tutorial.dart, once per account) replaces them.
   return message != null && !preferences.dismissed.contains(message.id)
       ? message
       : null;
