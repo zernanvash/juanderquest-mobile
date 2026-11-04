@@ -9,13 +9,15 @@ import 'package:juanderquest_app/features/quests/screens/quest_funding_screen.da
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('author can create a draft funding round from mobile', (tester) async {
+  testWidgets('author can create a draft funding round from mobile',
+      (tester) async {
     final client = ApiClient(enableRetries: false);
     var createdPlan = false;
     var submittedBody = <String, dynamic>{};
     client.dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        if (options.path == '/quests/quest-1/funding-plan' && options.method == 'GET') {
+        if (options.path == '/quests/quest-1/funding-plan' &&
+            options.method == 'GET') {
           return handler.resolve(Response(
             requestOptions: options,
             statusCode: 200,
@@ -29,7 +31,9 @@ void main() {
                         'mode': 'budget',
                         'reward_points': 50,
                         'target_points': 530,
-                        'ends_at': DateTime.now().add(const Duration(days: 14)).toIso8601String(),
+                        'ends_at': DateTime.now()
+                            .add(const Duration(days: 14))
+                            .toIso8601String(),
                         'contributions': [],
                       }
                     : null,
@@ -37,13 +41,17 @@ void main() {
             },
           ));
         }
-        if (options.path == '/quests/quest-1/funding-plans' && options.method == 'POST') {
+        if (options.path == '/quests/quest-1/funding-plans' &&
+            options.method == 'POST') {
           submittedBody = Map<String, dynamic>.from(options.data as Map);
           createdPlan = true;
           return handler.resolve(Response(
             requestOptions: options,
             statusCode: 200,
-            data: {'success': true, 'data': {'id': 'plan-1'}},
+            data: {
+              'success': true,
+              'data': {'id': 'plan-1'}
+            },
           ));
         }
         return handler.reject(DioException(
@@ -64,8 +72,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Set up this round'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Create draft funding plan'));
-    await tester.tap(find.text('Create draft funding plan'));
+    await tester.ensureVisible(find.text('CREATE DRAFT FUNDING PLAN'));
+    await tester.tap(find.text('CREATE DRAFT FUNDING PLAN'));
     await tester.pumpAndSettle();
 
     expect(submittedBody['mode'], 'budget');
@@ -74,7 +82,8 @@ void main() {
     expect(find.textContaining('Funding round · draft'), findsOneWidget);
   });
 
-  testWidgets('funding setup remains usable at 320px with 2x text', (tester) async {
+  testWidgets('funding setup remains usable at 320px with 2x text',
+      (tester) async {
     tester.view.physicalSize = const Size(640, 1136);
     tester.view.devicePixelRatio = 2;
     tester.platformDispatcher.textScaleFactorTestValue = 2;
@@ -89,7 +98,10 @@ void main() {
       onRequest: (options, handler) => handler.resolve(Response(
         requestOptions: options,
         statusCode: 200,
-        data: {'success': true, 'data': {'plan': null}},
+        data: {
+          'success': true,
+          'data': {'plan': null}
+        },
       )),
     ));
     await tester.pumpWidget(ProviderScope(

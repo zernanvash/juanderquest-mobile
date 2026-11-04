@@ -41,6 +41,9 @@ import 'package:juanderquest_app/features/spots/providers/spot_discovery_provide
 import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
 import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
 import 'package:juanderquest_app/features/leaderboard/screens/leaderboard_screen.dart';
+import 'package:juanderquest_app/features/notifications/screens/notifications_screen.dart';
+import 'package:juanderquest_app/features/quests/screens/quest_funding_screen.dart';
+import 'package:juanderquest_app/features/trail/trail_coming_soon_screen.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/providers/cultural_quiz_provider.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz_detail_screen.dart';
@@ -735,6 +738,7 @@ void main() {
     );
 
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
     if (child is QuestDetailScreen ||
         child is InterestsScreen ||
         child is SpotPostingSheet) {
@@ -1566,6 +1570,179 @@ void main() {
       await testScreenOverflow(
         tester,
         CulturalQuizResultScreen(result: result),
+        const Size(568, 320),
+        2.0,
+      );
+    });
+
+    testWidgets('AboutScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const AboutScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('NotificationsScreen does not overflow in small portrait',
+        (tester) async {
+      final client = ApiClient();
+      client.dio.interceptors.insert(0, InterceptorsWrapper(
+        onRequest: (options, handler) {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {
+                'items': [
+                  {
+                    'id': 1,
+                    'title': 'Quest funding ready',
+                    'message': 'Your round is ready.',
+                    'kind': 'quest_reward',
+                    'href': '/notifications/1',
+                    'read': false,
+                  },
+                ],
+              },
+            },
+          ));
+        },
+      ));
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(client)],
+          child: const NotificationsScreen(),
+        ),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('NotificationsScreen does not overflow in small landscape',
+        (tester) async {
+      final client = ApiClient();
+      client.dio.interceptors.insert(0, InterceptorsWrapper(
+        onRequest: (options, handler) {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {
+                'items': [
+                  {
+                    'id': 1,
+                    'title': 'Quest funding ready',
+                    'message': 'Your round is ready.',
+                    'kind': 'quest_reward',
+                    'href': '/notifications/1',
+                    'read': false,
+                  },
+                ],
+              },
+            },
+          ));
+        },
+      ));
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(client)],
+          child: const NotificationsScreen(),
+        ),
+        const Size(568, 320),
+        2.0,
+      );
+    });
+
+    testWidgets('QuestFundingScreen does not overflow in small portrait',
+        (tester) async {
+      final client = ApiClient();
+      client.dio.interceptors.insert(0, InterceptorsWrapper(
+        onRequest: (options, handler) {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {
+                'plan': {
+                  'id': 'plan-1',
+                  'status': 'draft',
+                  'reward_points': 50,
+                  'mode': 'budget',
+                  'target_points': 500,
+                  'contributions': [
+                    {'committed_points': 100, 'held_points': 20},
+                  ],
+                  'ends_at': '2026-12-01T00:00:00Z',
+                },
+              },
+            },
+          ));
+        },
+      ));
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(client)],
+          child: const QuestFundingScreen(questId: 'quest-1'),
+        ),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('QuestFundingScreen does not overflow in small landscape',
+        (tester) async {
+      final client = ApiClient();
+      client.dio.interceptors.insert(0, InterceptorsWrapper(
+        onRequest: (options, handler) {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {'plan': null},
+            },
+          ));
+        },
+      ));
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(client)],
+          child: const QuestFundingScreen(questId: 'quest-1'),
+        ),
+        const Size(568, 320),
+        2.0,
+      );
+    });
+
+    testWidgets('TrailComingSoonScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const TrailComingSoonScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('TrailComingSoonScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const TrailComingSoonScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('NavigationScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        const NavigationScreen(
+          destination: NavTarget(
+            name: 'Hundred Islands National Park',
+            lat: 16.2045,
+            lng: 120.0435,
+            address: 'Lucap Wharf, Alaminos City, Pangasinan',
+          ),
+        ),
         const Size(568, 320),
         2.0,
       );

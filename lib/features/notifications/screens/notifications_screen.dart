@@ -1,15 +1,20 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/designer_guide.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../auth/providers/auth_provider.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../../../core/services/push_routing.dart';
 import '../../../core/services/push_service.dart';
-import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -47,39 +52,38 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       _enablingPush = false;
       _pushOn = granted;
     });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(granted
+    showPixelToast(
+      context,
+      granted
           ? 'Notifications are on for this phone.'
-          : 'Notifications are off. You can allow them in Android Settings.'),
-    ));
+          : 'Notifications are off. You can allow them in Android Settings.',
+    );
   }
 
   /// Shown until the phone allows notifications.
-  Widget _pushCard() {
-    return Container(
+  Widget _pushCard(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
       key: const ValueKey('notifications_push_card'),
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: AppSpacing.roundedMd,
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-      ),
+      style: PixelBoxStyle.green,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Get these on your phone',
-              style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          const Text(
-              'Rewards, quest funding, sponsorships and Plaza activity, even when the app is closed.'),
-          const SizedBox(height: AppSpacing.sm),
-          FilledButton.icon(
+          Text(
+            'Get these on your phone',
+            style: PixelType.title(context, color: PixelPalette.white),
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Rewards, quest funding, sponsorships and Plaza activity, even when the app is closed.',
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
             key: const ValueKey('notifications_enable_push'),
+            label: 'Turn on notifications',
+            variant: PixelButtonVariant.secondary,
+            loading: _enablingPush,
             onPressed: _enablingPush ? null : _enablePush,
-            icon: const Icon(Icons.notifications_active_rounded),
-            label:
-                Text(_enablingPush ? 'Turning on…' : 'Turn on notifications'),
           ),
         ],
       ),
@@ -124,98 +128,165 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       });
     } on DioException {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Could not update that notification. Please retry.')),
-      );
+      showPixelToast(
+          context, 'Could not update that notification. Please retry.');
     }
   }
 
   @override
-  Widget build(BuildContext context) => JdqScaffold(
-        scrollable: true,
-        appBar: AppBar(title: const Text('Notifications')),
-        body: UiSpecContainer(
-          spec: const UiSpec(
-            title: 'Durable Traveler Notifications',
-            figmaLayer: '#Notifications_Inbox',
-            dimensions:
-                'Scrollable notification cards with readable status and timestamp',
-            dataBinding:
-                'GET /api/v1/notifications; PATCH /api/v1/notifications/:id/read',
-            stateNotes:
-                'Loading, empty, retryable unavailable, unread, and read states',
-            uxNotes:
-                'Inbox for every notification; push to the phone is optional (card shown until allowed).',
-          ),
-          child: Padding(
-            padding: const EdgeInsets.only(
-                top: AppSpacing.md, bottom: AppSpacing.xl),
+  Widget build(BuildContext context) {
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Notifications',
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      children: [
+                        if (_pushOn == false) ...[
+                          _pushCard(context, grid),
+                          SizedBox(height: grid.px(3)),
+                        ],
+                        _inbox(context, grid),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _inbox(BuildContext context, PixelGrid grid) {
+    if (_loading) {
+      return const Center(child: PixelLoader(label: 'Loading notifications'));
+    }
+    if (_error != null) {
+      return PixelPanel(
+        style: PixelBoxStyle.red,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _error!,
+              style: PixelType.body(context, color: PixelPalette.white),
+            ),
+            SizedBox(height: grid.px(2)),
+            Align(
+              alignment: Alignment.centerRight,
+              child: PixelButton(
+                key: const ValueKey('notifications_retry'),
+                label: 'Retry',
+                onPressed: _load,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_items.isEmpty) {
+      return const PixelEmptyState(
+        key: ValueKey('notifications_empty'),
+        title: 'All caught up',
+        message:
+            'You’re all caught up. Funding and quest updates will appear here.',
+      );
+    }
+    return Column(
+      children: [
+        for (final item in _items) ...[
+          _notificationCard(context, grid, item),
+          SizedBox(height: grid.px(2)),
+        ],
+      ],
+    );
+  }
+
+  Widget _notificationCard(
+      BuildContext context, PixelGrid grid, Map<String, dynamic> item) {
+    final read = item['read'] == true;
+    final id = item['id'].toString();
+    return PixelPanel(
+      style: read ? PixelBoxStyle.parchment : PixelBoxStyle.green,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            key: ValueKey('notification_$id'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (!read) _markRead(id);
+              context.push(appRouteForPushHref(item['href']?.toString()));
+            },
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_pushOn == false) _pushCard(),
-                _inbox(),
+                Text(
+                  item['title']?.toString() ?? 'Update',
+                  style: PixelType.title(
+                    context,
+                    color: read ? PixelPalette.ink : PixelPalette.white,
+                  ),
+                ),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  item['message']?.toString() ?? '',
+                  style: PixelType.body(
+                    context,
+                    color: read ? PixelPalette.slate : PixelPalette.cream,
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-      );
-
-  Widget _inbox() => _loading
-      ? const Center(
-          child: Padding(
-              padding: EdgeInsets.all(AppSpacing.xl),
-              child: CircularProgressIndicator()))
-      : _error != null
-          ? Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: AppSpacing.md),
-              OutlinedButton(onPressed: _load, child: const Text('Retry'))
-            ]))
-          : _items.isEmpty
-              ? const Center(
-                  child: Padding(
-                      padding: EdgeInsets.all(AppSpacing.xl),
-                      child: Text(
-                          'You’re all caught up. Funding and quest updates will appear here.')))
-              : Column(
-                  children: _items.map((item) {
-                    final read = item['read'] == true;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: ListTile(
-                        onTap: () {
-                          if (!read) _markRead(item['id'].toString());
-                          context.push(
-                              appRouteForPushHref(item['href']?.toString()));
-                        },
-                        leading: Icon(
-                            item['kind'] == 'quest_reward'
-                                ? Icons.stars_rounded
-                                : Icons.campaign_outlined,
-                            color: read
-                                ? AppColors.textSecondary
-                                : AppColors.primary),
-                        title: Text(item['title']?.toString() ?? 'Update',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(item['message']?.toString() ?? '')),
-                        trailing: read
-                            ? const Icon(Icons.check,
-                                color: AppColors.textSecondary)
-                            : IconButton(
-                                tooltip: 'Mark as read',
-                                icon:
-                                    const Icon(Icons.mark_email_read_outlined),
-                                onPressed: () =>
-                                    _markRead(item['id'].toString()),
-                              ),
-                      ),
-                    );
-                  }).toList(),
-                );
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              PixelChip(
+                item['kind'] == 'quest_reward' ? 'Reward' : 'Campaign',
+                style: read ? PixelBoxStyle.slot : PixelBoxStyle.gold,
+              ),
+              if (read)
+                const PixelChip('Read', style: PixelBoxStyle.slot)
+              else
+                Tooltip(
+                  message: 'Mark as read',
+                  child: PixelButton(
+                    key: ValueKey('notification_read_$id'),
+                    label: 'Mark as read',
+                    variant: PixelButtonVariant.secondary,
+                    onPressed: () => _markRead(id),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

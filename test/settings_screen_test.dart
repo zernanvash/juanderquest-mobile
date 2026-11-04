@@ -27,7 +27,8 @@ void main() {
     demoPoints: 500,
   );
 
-  testWidgets('SettingsScreen renders key sections without overflow', (tester) async {
+  testWidgets('SettingsScreen renders key sections without overflow',
+      (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1.0;
     tester.platformDispatcher.textScaleFactorTestValue = 2.0;
@@ -60,22 +61,29 @@ void main() {
     expect(find.text('Explorer Settings'), findsOneWidget);
     // Settings home is a short list of categories; each opens its own page.
     for (final group in const ['ACCOUNT', 'ACTIVITY', 'APP', 'ABOUT']) {
-      expect(find.text(group, skipOffstage: false), findsOneWidget, reason: group);
+      expect(find.text(group, skipOffstage: false), findsOneWidget,
+          reason: group);
     }
     // Items moved here from the profile page.
     expect(find.text('My submissions', skipOffstage: false), findsOneWidget);
-    expect(find.text('About JuanDerQuest & team', skipOffstage: false), findsOneWidget);
+    expect(find.text('About JuanDerQuest & team', skipOffstage: false),
+        findsOneWidget);
     expect(find.text('App updates', skipOffstage: false), findsOneWidget);
     expect(find.text('Developer tools', skipOffstage: false), findsOneWidget);
     // Detail now lives on the sub-pages, not on the home list.
-    expect(find.text('App System & Updates', skipOffstage: false), findsNothing);
-    expect(find.text('Developer & UI Designer Mode', skipOffstage: false), findsNothing);
+    expect(
+        find.text('App System & Updates', skipOffstage: false), findsNothing);
+    expect(find.text('Developer & UI Designer Mode', skipOffstage: false),
+        findsNothing);
     // Plan 47: the AR calibration/test studio is gone; travelers never calibrate.
-    expect(find.text('Augmented Reality Studio', skipOffstage: false), findsNothing);
-    expect(find.text('Log Out of Account', skipOffstage: false), findsOneWidget);
+    expect(find.text('Augmented Reality Studio', skipOffstage: false),
+        findsNothing);
+    expect(
+        find.text('LOG OUT OF ACCOUNT', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('SettingsScreen renders in landscape without overflow', (tester) async {
+  testWidgets('SettingsScreen renders in landscape without overflow',
+      (tester) async {
     tester.view.physicalSize = const Size(568, 320);
     tester.view.devicePixelRatio = 1.0;
     tester.platformDispatcher.textScaleFactorTestValue = 2.0;
@@ -115,7 +123,8 @@ void main() {
       GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
       GoRoute(
           path: '/dashboard',
-          builder: (_, __) => const Text('HOME', textDirection: TextDirection.ltr)),
+          builder: (_, __) =>
+              const Text('HOME', textDirection: TextDirection.ltr)),
     ]);
     await tester.pumpWidget(
       ProviderScope(
