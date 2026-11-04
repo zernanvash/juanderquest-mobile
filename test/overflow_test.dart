@@ -76,6 +76,7 @@ import 'package:juanderquest_app/features/spots/widgets/spot_posting_sheet.dart'
 import 'package:juanderquest_app/features/spots/screens/spot_discovery_studio_screen.dart';
 import 'package:juanderquest_app/features/spots/utils/spot_location_handoff.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
+import 'package:juanderquest_app/features/pixel_lab/home_options.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_updates_screen.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_developer_screen.dart';
 import 'package:juanderquest_app/features/pixel_lab/pixel_lab_screen.dart';
@@ -1771,5 +1772,27 @@ void main() {
         1.4,
       );
     });
+
+    for (final layout in HomeOptionLayout.values) {
+      testWidgets('Home ${layout.name} preview does not overflow in portrait',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          HomeOptionPreview(layout: layout),
+          const Size(320, 568),
+          2.0,
+        );
+      });
+
+      testWidgets('Home ${layout.name} preview does not overflow in landscape',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          HomeOptionPreview(layout: layout),
+          const Size(568, 320),
+          2.0,
+        );
+      });
+    }
   });
 }
