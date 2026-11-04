@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
 import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,6 +39,12 @@ import 'package:juanderquest_app/features/spots/providers/spot_discovery_provide
 import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
 import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
 import 'package:juanderquest_app/features/leaderboard/screens/leaderboard_screen.dart';
+import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
+import 'package:juanderquest_app/features/cultural_quizzes/providers/cultural_quiz_provider.dart';
+import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz_detail_screen.dart';
+import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz_play_screen.dart';
+import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz_result_screen.dart';
+import 'package:juanderquest_app/features/vote/screens/proposal_list_screen.dart';
 import 'package:juanderquest_app/features/plaza/plaza_screen.dart';
 import 'package:juanderquest_app/features/plaza/plaza_provider.dart';
 import 'package:juanderquest_app/core/services/push_service.dart';
@@ -73,6 +79,7 @@ import 'package:juanderquest_app/core/pixel/placeholder_art.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
+import 'package:juanderquest_app/features/juanchoice/screens/juanchoice_screen.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/cosmetics/screens/appearance_screen.dart';
 import 'package:juanderquest_app/features/shop/providers/cosmetics_provider.dart';
@@ -660,6 +667,7 @@ void main() {
                     participations: 1,
                     challenges: [],
                   )),
+          choiceSupporterQuestProvider.overrideWith((ref) async => null),
           choiceOverviewProvider
               .overrideWith((ref) async => const ChoiceOverview(
                     current: null,
@@ -1228,5 +1236,220 @@ void main() {
       await testScreenOverflow(
           tester, const PixelLabScreen(), const Size(568, 320), 2.0);
     });
-  });
+
+    testWidgets('LeaderboardScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const LeaderboardScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('VoteScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const VoteScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('ProposalListScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ProposalListScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('ProposalListScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const ProposalListScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('JuanChoiceScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const JuanChoiceScreen(), const Size(320, 568), 2.0);
+    });
+
+    testWidgets('JuanChoiceScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+          tester, const JuanChoiceScreen(), const Size(568, 320), 2.0);
+    });
+
+    testWidgets('CampaignDetailScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        const CampaignDetailScreen(
+            campaignId: 'bangus-festival-2026',
+            initialCampaign: dummyCampaign),
+        const Size(568, 320),
+        2.0,
+      );
+    });
+
+    testWidgets('CulturalQuizDetailScreen does not overflow in small portrait',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [
+            culturalQuizDetailProvider('quiz-1').overrideWith(
+              (ref) async => const CulturalQuizModel(
+                id: 'quiz-1',
+                destinationId: 'spot-1',
+                destinationName: 'Patar Beach',
+                municipality: 'Bolinao',
+                gpsLat: 16.2,
+                gpsLng: 119.9,
+                title: 'Bolinao Coastal Heritage',
+                description:
+                    'Explore Cape Bolinao historical landmarks and culture.',
+                language: 'en',
+                radiusMeters: 200,
+                xpReward: 25,
+                timeLimitMinutes: 30,
+                cooldownHours: 24,
+                status: 'published',
+                version: 1,
+                isCompleted: false,
+              ),
+            ),
+          ],
+          child: const CulturalQuizDetailScreen(quizId: 'quiz-1'),
+        ),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('CulturalQuizDetailScreen does not overflow in small landscape',
+        (tester) async {
+      await testScreenOverflow(
+        tester,
+        ProviderScope(
+          overrides: [
+            culturalQuizDetailProvider('quiz-1').overrideWith(
+              (ref) async => const CulturalQuizModel(
+                id: 'quiz-1',
+                destinationId: 'spot-1',
+                destinationName: 'Patar Beach',
+                municipality: 'Bolinao',
+                gpsLat: 16.2,
+                gpsLng: 119.9,
+                title: 'Bolinao Coastal Heritage',
+                description:
+                    'Explore Cape Bolinao historical landmarks and culture.',
+                language: 'en',
+                radiusMeters: 200,
+                xpReward: 25,
+                timeLimitMinutes: 30,
+                cooldownHours: 24,
+                status: 'published',
+                version: 1,
+                isCompleted: false,
+              ),
+            ),
+          ],
+          child: const CulturalQuizDetailScreen(quizId: 'quiz-1'),
+        ),
+        const Size(568, 320),
+        2.0,
+      );
+    });
+
+    testWidgets('CulturalQuizPlayScreen does not overflow in small portrait',
+        (tester) async {
+      final session = (
+        attempt: CulturalQuizAttemptModel(
+          id: 'att-1',
+          quizId: 'quiz-1',
+          versionId: 'v-1',
+          rewardScopeId: 'scope-1',
+          userId: 'u1',
+          status: 'in_progress',
+          startedAt: DateTime.now(),
+          expiresAt: DateTime.now().add(const Duration(minutes: 30)),
+          completedAt: null,
+          score: null,
+          totalQuestions: 2,
+          xpAwarded: 0,
+        ),
+        questions: const [
+          CulturalQuizQuestionModel(
+            id: 'q-1',
+            versionId: 'v-1',
+            ordinal: 1,
+            questionText: 'When was Cape Bolinao Lighthouse built?',
+            explanation: 'Constructed in 1905.',
+            options: [
+              CulturalQuizOptionModel(
+                  id: 'a', questionId: 'q-1', ordinal: 1, optionText: '1905'),
+              CulturalQuizOptionModel(
+                  id: 'b', questionId: 'q-1', ordinal: 2, optionText: '1898'),
+            ],
+          ),
+          CulturalQuizQuestionModel(
+            id: 'q-2',
+            versionId: 'v-1',
+            ordinal: 2,
+            questionText: 'Which sea borders Bolinao?',
+            explanation: 'The South China Sea.',
+            options: [
+              CulturalQuizOptionModel(
+                  id: 'e',
+                  questionId: 'q-2',
+                  ordinal: 1,
+                  optionText: 'South China Sea'),
+              CulturalQuizOptionModel(
+                  id: 'f', questionId: 'q-2', ordinal: 2, optionText: 'Sulu Sea'),
+            ],
+          ),
+        ],
+      );
+      await testScreenOverflow(
+        tester,
+        CulturalQuizPlayScreen(quizId: 'quiz-1', session: session),
+        const Size(320, 568),
+        2.0,
+      );
+    });
+
+    testWidgets('CulturalQuizResultScreen does not overflow in small landscape',
+        (tester) async {
+      final result = CulturalQuizGradedResultModel(
+        attempt: CulturalQuizAttemptModel(
+          id: 'att-1',
+          quizId: 'quiz-1',
+          versionId: 'v-1',
+          rewardScopeId: 'scope-1',
+          userId: 'u1',
+          status: 'passed',
+          startedAt: DateTime.now(),
+          expiresAt: DateTime.now(),
+          completedAt: DateTime.now(),
+          score: 2,
+          totalQuestions: 2,
+          xpAwarded: 25,
+        ),
+        passed: true,
+        score: 2,
+        totalQuestions: 2,
+        xpAwarded: 25,
+        alreadyCompletedPrior: false,
+        breakdown: const [
+          CulturalQuizGradeBreakdownItem(
+            questionId: 'q-1',
+            questionText: 'When was Cape Bolinao Lighthouse built?',
+            selectedOptionId: 'a',
+            correctOptionId: 'a',
+            isCorrect: true,
+            explanation: 'Constructed in 1905.',
+          ),
+        ],
+      );
+      await testScreenOverflow(
+        tester,
+        CulturalQuizResultScreen(result: result),
+        const Size(568, 320),
+        2.0,
+      );
+    });  });
 }

@@ -2,17 +2,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
+
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../models/cultural_quiz_model.dart';
 import '../providers/cultural_quiz_provider.dart';
 
 class CulturalQuizPlayScreen extends ConsumerStatefulWidget {
   final String quizId;
-  final ({CulturalQuizAttemptModel attempt, List<CulturalQuizQuestionModel> questions}) session;
+  final ({
+    CulturalQuizAttemptModel attempt,
+    List<CulturalQuizQuestionModel> questions
+  }) session;
 
   const CulturalQuizPlayScreen({
     super.key,
@@ -21,10 +29,12 @@ class CulturalQuizPlayScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<CulturalQuizPlayScreen> createState() => _CulturalQuizPlayScreenState();
+  ConsumerState<CulturalQuizPlayScreen> createState() =>
+      _CulturalQuizPlayScreenState();
 }
 
-class _CulturalQuizPlayScreenState extends ConsumerState<CulturalQuizPlayScreen> {
+class _CulturalQuizPlayScreenState
+    extends ConsumerState<CulturalQuizPlayScreen> {
   int _currentIndex = 0;
   final Map<String, String> _selectedOptionByQuestion = {};
   Timer? _countdownTimer;
@@ -64,9 +74,8 @@ class _CulturalQuizPlayScreenState extends ConsumerState<CulturalQuizPlayScreen>
   Future<void> _submitQuiz() async {
     final questions = widget.session.questions;
     if (_selectedOptionByQuestion.length < questions.length) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please answer all 5 questions before submitting.')),
-      );
+      showPixelToast(
+          context, 'Please answer all 5 questions before submitting.');
       return;
     }
 
@@ -76,15 +85,18 @@ class _CulturalQuizPlayScreenState extends ConsumerState<CulturalQuizPlayScreen>
     });
 
     try {
-      final answers = questions.map((q) => (
-        questionId: q.id,
-        selectedOptionId: _selectedOptionByQuestion[q.id]!,
-      )).toList();
+      final answers = questions
+          .map((q) => (
+                questionId: q.id,
+                selectedOptionId: _selectedOptionByQuestion[q.id]!,
+              ))
+          .toList();
 
-      final result = await ref.read(culturalQuizControllerProvider.notifier).submitAttempt(
-        attemptId: widget.session.attempt.id,
-        answers: answers,
-      );
+      final result =
+          await ref.read(culturalQuizControllerProvider.notifier).submitAttempt(
+                attemptId: widget.session.attempt.id,
+                answers: answers,
+              );
 
       if (!mounted) return;
 
@@ -112,207 +124,186 @@ class _CulturalQuizPlayScreenState extends ConsumerState<CulturalQuizPlayScreen>
     final currentQ = questions[_currentIndex];
     final minutes = _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
-
-    return JdqScaffold(
-      appBar: AppBar(title: Text('Question ${_currentIndex + 1} of ${questions.length}')),
-      body: Column(
-        children: [
-          // Header Timer and Progress
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-            color: AppColors.surface,
-            child: Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: (_currentIndex + 1) / questions.length,
-                      backgroundColor: AppColors.surfaceContainerHigh,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                      minHeight: 6,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _remaining.inMinutes < 5 ? AppColors.danger.withValues(alpha: 0.12) : AppColors.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.timer_outlined,
-                        size: 16,
-                        color: _remaining.inMinutes < 5 ? AppColors.danger : AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$minutes:$seconds',
-                        style: AppTypography.labelSmall.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: _remaining.inMinutes < 5 ? AppColors.danger : AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Main Question & Options Body
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.md),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Question ${currentQ.ordinal}',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  PixelAppBar(
+                    title:
+                        'Question ${_currentIndex + 1} of ${questions.length}',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    currentQ.questionText,
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Option tiles
-                  ...currentQ.options.map((opt) {
-                    final isSelected = _selectedOptionByQuestion[currentQ.id] == opt.id;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? AppColors.primary : AppColors.borderLowContrast,
-                          width: isSelected ? 2 : 1,
-                        ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(4),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () {
-                            setState(() {
-                              _selectedOptionByQuestion[currentQ.id] = opt.id;
-                            });
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isSelected ? AppColors.primary : AppColors.surfaceContainerHigh,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      String.fromCharCode(64 + opt.ordinal),
-                                      style: TextStyle(
-                                        color: isSelected ? Colors.white : AppColors.textSecondary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.md),
-                                Expanded(
-                                  child: Text(
-                                    opt.optionText,
-                                    style: AppTypography.bodyMedium.copyWith(
-                                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: PixelProgressBar(
+                                value:
+                                    (_currentIndex + 1) / questions.length,
+                                segments: questions.length,
+                              ),
                             ),
+                            SizedBox(width: grid.px(2)),
+                            PixelChip(
+                              '$minutes:$seconds',
+                              style: _remaining.inMinutes < 5
+                                  ? PixelBoxStyle.red
+                                  : PixelBoxStyle.slot,
+                              textColor: _remaining.inMinutes < 5
+                                  ? PixelPalette.white
+                                  : PixelPalette.ink,
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: grid.px(3)),
+                        Text(
+                          'Question ${currentQ.ordinal}',
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.greenDark,
                           ),
                         ),
-                      ),
-                    );
-                  }),
-
-                  if (_submitError != null)
-                    Container(
-                      margin: const EdgeInsets.only(top: AppSpacing.md),
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: AppColors.danger.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _submitError!,
-                        style: AppTypography.bodySmall.copyWith(color: AppColors.danger),
-                      ),
+                        SizedBox(height: grid.px(1)),
+                        Text(
+                          currentQ.questionText,
+                          style: PixelType.title(context),
+                        ),
+                        SizedBox(height: grid.px(3)),
+                        for (final opt in currentQ.options) ...[
+                          _option(context, grid, currentQ, opt),
+                          SizedBox(height: grid.px(2)),
+                        ],
+                        if (_submitError != null)
+                          PixelPanel(
+                            style: PixelBoxStyle.red,
+                            child: Text(
+                              _submitError!,
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.white,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
+                  ),
+                  _footer(context, grid, questions.length),
                 ],
               ),
             ),
-          ),
+          );
+        },
+      ),
+    );
+  }
 
-          // Footer Navigation
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  offset: const Offset(0, -2),
-                  blurRadius: 8,
-                ),
-              ],
+  Widget _option(
+    BuildContext context,
+    PixelGrid grid,
+    CulturalQuizQuestionModel question,
+    CulturalQuizOptionModel option,
+  ) {
+    final isSelected = _selectedOptionByQuestion[question.id] == option.id;
+    return GestureDetector(
+      key: ValueKey('quiz_option_${option.id}'),
+      onTap: () {
+        pixelTick(context);
+        setState(() {
+          _selectedOptionByQuestion[question.id] = option.id;
+        });
+      },
+      child: PixelPanel(
+        style: isSelected ? PixelBoxStyle.green : PixelBoxStyle.parchment,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PixelChip(
+              String.fromCharCode(64 + option.ordinal),
+              style: isSelected ? PixelBoxStyle.gold : PixelBoxStyle.slot,
             ),
-            child: Row(
-              children: [
-                if (_currentIndex > 0)
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setState(() {
-                          _currentIndex -= 1;
-                        });
-                      },
-                      child: const Text('Previous'),
-                    ),
+            SizedBox(width: grid.px(2)),
+            Expanded(
+              child: Text(
+                option.optionText,
+                style: PixelType.body(
+                  context,
+                  color: isSelected ? PixelPalette.white : PixelPalette.ink,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _footer(BuildContext context, PixelGrid grid, int total) {
+    final isLast = _currentIndex >= total - 1;
+    return Container(
+      color: PixelPalette.ink,
+      padding: EdgeInsets.fromLTRB(
+        grid.px(3),
+        grid.px(2),
+        grid.px(3),
+        grid.px(2) + MediaQuery.paddingOf(context).bottom,
+      ),
+      child: Row(
+        children: [
+          if (_currentIndex > 0) ...[
+            Expanded(
+              child: PixelButton(
+                key: const ValueKey('quiz_previous'),
+                label: 'Previous',
+                variant: PixelButtonVariant.secondary,
+                expand: true,
+                onPressed: () {
+                  setState(() {
+                    _currentIndex -= 1;
+                  });
+                },
+              ),
+            ),
+            SizedBox(width: grid.px(2)),
+          ] else
+            const Spacer(),
+          Expanded(
+            child: isLast
+                ? PixelButton(
+                    key: const ValueKey('quiz_submit'),
+                    label: _isSubmitting ? 'Submitting' : 'Submit Quiz',
+                    expand: true,
+                    loading: _isSubmitting,
+                    onPressed: _isSubmitting ? null : _submitQuiz,
                   )
-                else
-                  const Spacer(),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _currentIndex < questions.length - 1
-                      ? PrimaryButton(
-                          label: 'Next',
-                          onPressed: () {
-                            setState(() {
-                              _currentIndex += 1;
-                            });
-                          },
-                        )
-                      : PrimaryButton(
-                          label: _isSubmitting ? 'Submitting...' : 'Submit Quiz',
-                          isLoading: _isSubmitting,
-                          onPressed: _isSubmitting ? null : _submitQuiz,
-                        ),
-                ),
-              ],
-            ),
+                : PixelButton(
+                    key: const ValueKey('quiz_next'),
+                    label: 'Next',
+                    expand: true,
+                    onPressed: () {
+                      setState(() {
+                        _currentIndex += 1;
+                      });
+                    },
+                  ),
           ),
         ],
       ),

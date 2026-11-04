@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/widgets/nearby_quiz_card.dart';
@@ -70,8 +71,10 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: CulturalQuizResultScreen(result: result),
+      ProviderScope(
+        child: MaterialApp(
+          home: CulturalQuizResultScreen(result: result),
+        ),
       ),
     );
 

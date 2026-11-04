@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
+
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/cultural_quiz_model.dart';
 import '../providers/cultural_quiz_provider.dart';
@@ -20,19 +25,19 @@ class CulturalQuizDetailScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<CulturalQuizDetailScreen> createState() => _CulturalQuizDetailScreenState();
+  ConsumerState<CulturalQuizDetailScreen> createState() =>
+      _CulturalQuizDetailScreenState();
 }
 
-class _CulturalQuizDetailScreenState extends ConsumerState<CulturalQuizDetailScreen> {
+class _CulturalQuizDetailScreenState
+    extends ConsumerState<CulturalQuizDetailScreen> {
   bool _isStarting = false;
   String? _errorMessage;
 
   Future<void> _startAttempt(CulturalQuizModel quiz) async {
     final user = ref.read(authProvider).user;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to take cultural quizzes.')),
-      );
+      showPixelToast(context, 'Please sign in to take cultural quizzes.');
       context.push('/login');
       return;
     }
@@ -52,23 +57,26 @@ class _CulturalQuizDetailScreenState extends ConsumerState<CulturalQuizDetailScr
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Location permission is required to start a location-triggered quiz.');
+          throw Exception(
+              'Location permission is required to start a location-triggered quiz.');
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied. Please enable them in system settings.');
+        throw Exception(
+            'Location permissions are permanently denied. Please enable them in system settings.');
       }
 
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      final session = await ref.read(culturalQuizControllerProvider.notifier).startAttempt(
-        quizId: quiz.id,
-        lat: position.latitude,
-        lng: position.longitude,
-      );
+      final session =
+          await ref.read(culturalQuizControllerProvider.notifier).startAttempt(
+                quizId: quiz.id,
+                lat: position.latitude,
+                lng: position.longitude,
+              );
 
       if (!mounted) return;
 
@@ -90,173 +98,45 @@ class _CulturalQuizDetailScreenState extends ConsumerState<CulturalQuizDetailScr
     }
   }
 
+  void _reload() => ref.invalidate(culturalQuizDetailProvider(widget.quizId));
+
   @override
   Widget build(BuildContext context) {
     final quizAsync = ref.watch(culturalQuizDetailProvider(widget.quizId));
-
-    return JdqScaffold(
-      appBar: AppBar(title: const Text('Cultural Quiz')),
-      body: quizAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Text('Failed to load quiz: $err', style: AppTypography.bodyMedium),
-          ),
-        ),
-        data: (quiz) {
-          if (quiz == null) {
-            return const Center(child: Text('Cultural Quiz not found.'));
-          }
-
-          final isCooldownActive = quiz.cooldownUntil != null;
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Destination & Quiz Header
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.borderLowContrast),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Cultural Quiz',
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 20),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              '${quiz.destinationName} • ${quiz.municipality}',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        quiz.title,
-                        style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        quiz.description,
-                        style: AppTypography.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-
-                // Rule and Parameters card
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerHigh.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildParamRow(
-                        icon: Icons.stars_rounded,
-                        iconColor: AppColors.sunGold,
-                        title: 'Reward',
-                        value: quiz.isCompleted
-                            ? 'Learning Only (XP already earned)'
-                            : '+${quiz.xpReward} Explorer XP',
-                      ),
-                      const Divider(height: 16),
-                      _buildParamRow(
-                        icon: Icons.checklist_rounded,
-                        iconColor: AppColors.primary,
-                        title: 'Questions',
-                        value: '5 multiple-choice (4/5 to pass)',
-                      ),
-                      const Divider(height: 16),
-                      _buildParamRow(
-                        icon: Icons.timer_outlined,
-                        iconColor: AppColors.secondary,
-                        title: 'Time Limit',
-                        value: '${quiz.timeLimitMinutes} minutes to submit',
-                      ),
-                      const Divider(height: 16),
-                      _buildParamRow(
-                        icon: Icons.radar_rounded,
-                        iconColor: AppColors.info,
-                        title: 'Start Location',
-                        value: 'Within ${quiz.radiusMeters}m of destination',
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
-                if (_errorMessage != null)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.danger),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.error_outline, color: AppColors.danger),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.danger),
-                          ),
-                        ),
-                      ],
+                  Expanded(
+                    child: quizAsync.when(
+                      loading: () =>
+                          const Center(child: PixelLoader(label: 'Loading quiz')),
+                      error: (err, _) => _error(context, grid, 'Failed to load quiz: $err'),
+                      data: (quiz) {
+                        if (quiz == null) {
+                          return _error(context, grid, 'Cultural Quiz not found.');
+                        }
+                        return _quiz(context, grid, quiz);
+                      },
                     ),
                   ),
-
-                if (isCooldownActive)
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.sunGold.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.hourglass_top_rounded, color: AppColors.secondary),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            'Retry cooldown active until:\n${quiz.cooldownUntil}',
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.secondary),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  PrimaryButton(
-                    label: _isStarting ? 'Verifying location...' : 'Start Quiz',
-                    isLoading: _isStarting,
-                    onPressed: _isStarting ? null : () => _startAttempt(quiz),
-                  ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Note: You must be physically within ${quiz.radiusMeters}m to start. You may freely move outside the radius while completing the quiz before the timer expires.',
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -264,23 +144,150 @@ class _CulturalQuizDetailScreenState extends ConsumerState<CulturalQuizDetailScr
     );
   }
 
-  Widget _buildParamRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String value,
-  }) {
-    return Row(
+  Widget _error(BuildContext context, PixelGrid grid, String message) {
+    return ListView(
+      padding: EdgeInsets.all(grid.px(4)),
       children: [
-        Icon(icon, color: iconColor, size: 22),
-        const SizedBox(width: AppSpacing.sm),
-        Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-        const Spacer(),
-        Flexible(
+        PixelPanel(
+          style: PixelBoxStyle.red,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                message,
+                style: PixelType.body(context, color: PixelPalette.white),
+              ),
+              SizedBox(height: grid.px(3)),
+              Align(
+                alignment: Alignment.centerRight,
+                child: PixelButton(
+                  key: const ValueKey('quiz_detail_retry'),
+                  label: 'Retry',
+                  onPressed: _reload,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _quiz(BuildContext context, PixelGrid grid, CulturalQuizModel quiz) {
+    final isCooldownActive = quiz.cooldownUntil != null;
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        grid.px(4),
+        grid.px(3),
+        grid.px(4),
+        grid.px(8) + MediaQuery.paddingOf(context).bottom,
+      ),
+      children: [
+        PixelPanel(
+          style: PixelBoxStyle.wood,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${quiz.destinationName} · ${quiz.municipality}',
+                style: PixelType.small(context, color: PixelPalette.sun),
+              ),
+              SizedBox(height: grid.px(1)),
+              Text(
+                quiz.title,
+                style: PixelType.title(context, color: PixelPalette.paper),
+              ),
+              SizedBox(height: grid.px(1)),
+              Text(
+                quiz.description,
+                style: PixelType.body(context, color: PixelPalette.cream),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: grid.px(3)),
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: Column(
+            children: [
+              _param(
+                context,
+                grid,
+                'Reward',
+                quiz.isCompleted
+                    ? 'Learning Only (XP already earned)'
+                    : '+${quiz.xpReward} Explorer XP',
+              ),
+              _divider(grid),
+              _param(context, grid, 'Questions',
+                  '5 multiple-choice (4/5 to pass)'),
+              _divider(grid),
+              _param(context, grid, 'Time Limit',
+                  '${quiz.timeLimitMinutes} minutes to submit'),
+              _divider(grid),
+              _param(context, grid, 'Start Location',
+                  'Within ${quiz.radiusMeters}m of destination'),
+            ],
+          ),
+        ),
+        if (_errorMessage != null) ...[
+          SizedBox(height: grid.px(3)),
+          PixelPanel(
+            style: PixelBoxStyle.red,
+            child: Text(
+              _errorMessage!,
+              style: PixelType.body(context, color: PixelPalette.white),
+            ),
+          ),
+        ],
+        SizedBox(height: grid.px(3)),
+        if (isCooldownActive)
+          PixelPanel(
+            style: PixelBoxStyle.gold,
+            child: Text(
+              'Retry cooldown active until:\n${quiz.cooldownUntil}',
+              style: PixelType.body(context),
+            ),
+          )
+        else
+          PixelButton(
+            key: const ValueKey('quiz_start'),
+            label: _isStarting ? 'Verifying location' : 'Start Quiz',
+            expand: true,
+            loading: _isStarting,
+            onPressed: _isStarting ? null : () => _startAttempt(quiz),
+          ),
+        SizedBox(height: grid.px(2)),
+        Text(
+          'Note: You must be physically within ${quiz.radiusMeters}m to start. You may freely move outside the radius while completing the quiz before the timer expires.',
+          textAlign: TextAlign.center,
+          style: PixelType.body(context, color: PixelPalette.slate),
+        ),
+      ],
+    );
+  }
+
+  Widget _divider(PixelGrid grid) => SizedBox(height: grid.px(2));
+
+  Widget _param(
+    BuildContext context,
+    PixelGrid grid,
+    String title,
+    String value,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: grid.px(26),
+          child: Text(title, style: PixelType.body(context)),
+        ),
+        SizedBox(width: grid.px(2)),
+        Expanded(
           child: Text(
             value,
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.end,
+            style: PixelType.body(context, color: PixelPalette.slate),
           ),
         ),
       ],
