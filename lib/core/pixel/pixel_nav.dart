@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'generated/pixel_palette.g.dart';
@@ -40,45 +42,70 @@ class PixelHotbar extends StatefulWidget {
 class _PixelHotbarState extends State<PixelHotbar> {
   int? _pressed;
 
+  /// Owner 2026-11-04 picked "A · Wood shelf": dark wood bar, square
+  /// parchment slots, the active slot gold and lifted. Slots are square and
+  /// sized in whole art pixels; icons draw at a whole-number device scale.
   static const _selectedStyle = PixelBoxStyle(
-    fill: PixelPalette.mist,
-    highlight: PixelPalette.white,
-    shade: PixelPalette.paperDim,
-    outline: PixelPalette.white,
-    corner: 0,
+    fill: PixelPalette.sun,
+    highlight: PixelPalette.sunLight,
+    shade: PixelPalette.amber,
+    corner: 1,
     shadowPx: 1,
   );
 
   static const _idleStyle = PixelBoxStyle(
-    fill: PixelPalette.slate,
-    highlight: PixelPalette.stone,
-    shade: PixelPalette.ink,
-    outline: PixelPalette.ink,
-    corner: 0,
-    shadowPx: 0,
+    fill: PixelPalette.parchment,
+    highlight: PixelPalette.white,
+    shade: PixelPalette.paperDim,
+    corner: 1,
+    shadowPx: 1,
   );
+
+  /// Largest slot side, in logical px.
+  static const _maxSide = 72.0;
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     return Container(
-      color: PixelPalette.ink,
+      decoration: BoxDecoration(
+        color: PixelPalette.woodDeep,
+        border: Border(
+          top: BorderSide(color: PixelPalette.wood, width: grid.px(1)),
+        ),
+      ),
       padding: EdgeInsets.fromLTRB(
         grid.px(2),
+        grid.px(4),
         grid.px(2),
-        grid.px(2),
-        grid.px(2) + MediaQuery.paddingOf(context).bottom,
+        grid.px(3) + MediaQuery.paddingOf(context).bottom,
       ),
-      child: Row(
-        children: [
-          for (var i = 0; i < widget.items.length; i++)
-            Expanded(child: _slot(context, grid, i)),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final n = widget.items.length;
+          final gap = grid.px(2);
+          // Square side: an equal share of the width, capped, rounded down to
+          // whole art pixels so every slot is exactly the same size.
+          final share = (constraints.maxWidth - gap * (n - 1)) / n;
+          final side =
+              (share.clamp(0, _maxSide) / grid.unit).floorToDouble() *
+                  grid.unit;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              for (var i = 0; i < n; i++)
+                SizedBox.square(
+                  dimension: side,
+                  child: _slot(context, grid, i, side),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _slot(BuildContext context, PixelGrid grid, int i) {
+  Widget _slot(BuildContext context, PixelGrid grid, int i, double side) {
     final item = widget.items[i];
     final selected = i == widget.index;
     final pressed = _pressed == i;
@@ -95,14 +122,16 @@ class _PixelHotbarState extends State<PixelHotbar> {
                 : item.badge!;
     final semanticsLabel =
         item.badge == null ? item.label : '${item.label}, $badgeSemantics';
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Whole device pixels per art pixel, so the icon fits about half the slot
+    // without stretching.
     final iconScale = icon == null
         ? 1
-        : (32 * MediaQuery.devicePixelRatioOf(context) / icon.height)
-            .round()
+        : (side * 0.5 * dpr / math.max(icon.width, icon.height))
+            .floor()
             .clamp(1, 16)
             .toInt();
-    final offset =
-        selected ? -grid.unit : (pressed ? grid.unit : 0.0);
+    final lift = selected ? -grid.px(2) : (pressed ? grid.unit : 0.0);
     return Semantics(
       selected: selected,
       button: true,
@@ -117,62 +146,49 @@ class _PixelHotbarState extends State<PixelHotbar> {
             if (!selected) pixelTick(context);
             widget.onTap(i);
           },
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: grid.px(1)),
-            child: Transform.translate(
-              offset: Offset(0, offset),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 64),
-                child: PixelPanel(
-                  style: selected ? _selectedStyle : _idleStyle,
-                  sunken: !selected,
-                  pressed: pressed,
-                  padding: 1,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (icon != null)
-                        SizedBox(
-                          height: 28,
-                          child: Center(
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              alignment: Alignment.center,
-                              children: [
-                                PixelSprite(icon, scale: iconScale),
-                                if (badgeText != null)
-                                  Positioned(
-                                    top: -2,
-                                    right: -6,
-                                    child: _Badge(
-                                      text: badgeText,
-                                      alert: item.badge != '!',
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (icon != null) SizedBox(height: grid.px(1)),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: Text(
-                          item.label.toUpperCase(),
-                          maxLines: 1,
-                          softWrap: false,
-                          style: PixelType.small(
-                            context,
-                            color: selected
-                                ? PixelPalette.ink
-                                : PixelPalette.paper,
-                          ),
+          child: Transform.translate(
+            offset: Offset(0, lift),
+            child: PixelPanel(
+              style: selected ? _selectedStyle : _idleStyle,
+              pressed: pressed,
+              padding: 1,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null)
+                    Expanded(
+                      child: Center(
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: [
+                            PixelSprite(icon, scale: iconScale),
+                            if (badgeText != null)
+                              Positioned(
+                                top: -2,
+                                right: -6,
+                                child: _Badge(
+                                  text: badgeText,
+                                  alert: item.badge != '!',
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      item.label.toUpperCase(),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: PixelType.small(
+                        context,
+                        color: selected ? PixelPalette.ink : PixelPalette.wood,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
