@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../models/route_model.dart';
 
 class RouteFallbackNoticeCard extends StatelessWidget {
-  const RouteFallbackNoticeCard({super.key, required this.route, required this.destination});
+  const RouteFallbackNoticeCard(
+      {super.key, required this.route, required this.destination});
 
   final RouteModel route;
   final String destination;
@@ -15,31 +21,40 @@ class RouteFallbackNoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final warning = route.warningMessage ?? 'Road routing is unavailable. This line is a distance estimate.';
+    final grid = PixelGrid.of(context);
+    final warning = route.warningMessage ??
+        'Road routing is unavailable. This line is a distance estimate.';
     final km = route.summary.distanceKm.toStringAsFixed(1);
-    return Card(
-      color: const Color(0xFFFFF3CD),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(warning, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text('≈ $km km straight-line distance${route.coverageLabel == null ? '' : ' • ${route.coverageLabel} coverage'}'),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 4, children: [
-            OutlinedButton.icon(
-              onPressed: () => _open(Uri.https('www.google.com', '/maps/dir/', {
-                'api': '1', 'destination': destination, 'travelmode': 'driving',
-              })),
-              icon: const Icon(Icons.map_outlined), label: const Text('Google Maps'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => _open(Uri.https('waze.com', '/ul', {'ll': destination, 'navigate': 'yes'})),
-              icon: const Icon(Icons.navigation), label: const Text('Waze'),
-            ),
-          ]),
+    return PixelPanel(
+      style: PixelBoxStyle.gold,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(warning, style: PixelType.title(context)),
+        SizedBox(height: grid.px(1)),
+        Text(
+          '$km km straight-line distance${route.coverageLabel == null ? '' : ' · ${route.coverageLabel} coverage'}',
+          style: PixelType.body(context, color: PixelPalette.goldDeep),
+        ),
+        SizedBox(height: grid.px(2)),
+        Wrap(spacing: grid.px(2), runSpacing: grid.px(2), children: [
+          PixelButton(
+            key: const ValueKey('route_fallback_google'),
+            label: 'Google Maps',
+            variant: PixelButtonVariant.secondary,
+            onPressed: () => _open(Uri.https('www.google.com', '/maps/dir/', {
+              'api': '1',
+              'destination': destination,
+              'travelmode': 'driving',
+            })),
+          ),
+          PixelButton(
+            key: const ValueKey('route_fallback_waze'),
+            label: 'Waze',
+            variant: PixelButtonVariant.secondary,
+            onPressed: () => _open(Uri.https(
+                'waze.com', '/ul', {'ll': destination, 'navigate': 'yes'})),
+          ),
         ]),
-      ),
+      ]),
     );
   }
 }

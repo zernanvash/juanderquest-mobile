@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/designer_guide.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
-import '../../app_update/providers/app_update_provider.dart';
+import '../../../core/app_release.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../../../core/services/push_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/designer_guide.dart';
+import '../../app_update/providers/app_update_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
-import '../../../core/app_release.dart';
 import '../../dashboard/home_tips.dart';
 
 /// Settings home: short categories that open their own pages, so a new
@@ -20,193 +23,203 @@ import '../../dashboard/home_tips.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  Widget _buildAvatarWidget(String? avatarUrl, String name, Map<String, dynamic>? cosmetics) =>
-      CosmeticAvatar(name: name, imageUrl: avatarUrl, size: 56,
-        frame: cosmetics?['frame']?['asset'] as Map<String, dynamic>?);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final updateState = ref.watch(appUpdateProvider);
-    final version = '${versionLabel(updateState.installedVersionName)} (${updateState.installedVersionCode})';
-
-    return JdqScaffold(
-      scrollable: true,
-      appBar: AppBar(
-        title: const Text('Explorer Settings'),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: AppSpacing.md),
-
-          // User Identity Card
-          UiSpecContainer(
-            spec: const UiSpec(
-              title: 'Explorer Identity & Account Card',
-              figmaLayer: '#Settings_User_Card',
-              dimensions: 'Full width, Padding: 16dp',
-              dataBinding: 'authProvider.user (displayName, email, seedId)',
-              stateNotes: 'Displays logged-in traveler credentials and profile link',
-              uxNotes: 'Wood brown typography with warm stone accents.',
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: AppSpacing.roundedLg,
-                border: Border.all(color: AppColors.borderLowContrast),
-                boxShadow: AppSpacing.cardShadow,
-              ),
-              child: Row(
+    final version =
+        '${versionLabel(updateState.installedVersionName)} (${updateState.installedVersionCode})';
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(2.5),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.sunGold,
-                    ),
-                    child: _buildAvatarWidget(user?.avatarUrl, user?.displayName ?? 'Traveler', user?.cosmetics),
+                  PixelAppBar(
+                    title: 'Explorer Settings',
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
-                  const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user?.displayName ?? 'Juan Dela Cruz',
-                          style: AppTypography.headlineSmall.copyWith(
-                            fontWeight: FontWeight.bold,
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _identity(context, grid, user),
+                          SizedBox(height: grid.px(3)),
+                          _SettingsGroup(title: 'ACCOUNT', tiles: [
+                            _SettingsTile(
+                              key: const ValueKey('settings_appearance'),
+                              icon: 'A',
+                              title: 'Appearance',
+                              subtitle:
+                                  'Profile banners, frames, titles and name colours',
+                              onTap: () => context.push('/settings/appearance'),
+                            ),
+                            _SettingsTile(
+                              key: const ValueKey('settings_interests'),
+                              icon: 'I',
+                              title: 'Travel interests',
+                              subtitle: 'Tune which destinations we recommend',
+                              onTap: () =>
+                                  context.push('/onboarding/interests'),
+                            ),
+                          ]),
+                          _SettingsGroup(title: 'ACTIVITY', tiles: [
+                            _SettingsTile(
+                              key: const ValueKey('settings_submissions'),
+                              icon: 'S',
+                              title: 'My submissions',
+                              subtitle:
+                                  'Status of your quest and spot submissions',
+                              onTap: () => context.push('/history'),
+                            ),
+                            _SettingsTile(
+                              key: const ValueKey('settings_affiliate'),
+                              icon: 'M',
+                              title: 'Merchant affiliate',
+                              subtitle:
+                                  'Apply to take part in tourism promotions',
+                              onTap: () => context.push('/affiliate'),
+                            ),
+                          ]),
+                          _SettingsGroup(title: 'APP', tiles: [
+                            // Owner 2026-11-04: run the first-run tutorial again on Home.
+                            _SettingsTile(
+                              key: const ValueKey('settings_replay_tutorial'),
+                              icon: 'R',
+                              title: 'Replay tutorial',
+                              subtitle: 'Juan shows you around Home again',
+                              onTap: () async {
+                                await ref
+                                    .read(homeTipsControllerProvider.notifier)
+                                    .resetForReplay();
+                                if (context.mounted) context.go('/dashboard');
+                              },
+                            ),
+                            _SettingsTile(
+                              key: const ValueKey('settings_updates'),
+                              icon: 'U',
+                              title: 'App updates',
+                              subtitle: updateState.hasUpdate
+                                  ? '$version · update available'
+                                  : version,
+                              highlight: updateState.hasUpdate,
+                              onTap: () => context.push('/settings/updates'),
+                            ),
+                            _SettingsTile(
+                              key: const ValueKey('settings_developer'),
+                              icon: 'D',
+                              title: 'Developer tools',
+                              subtitle: ref.watch(designerGuideProvider)
+                                  ? 'Designer guide is on'
+                                  : 'Designer guide and diagnostics',
+                              onTap: () => context.push('/settings/developer'),
+                            ),
+                          ]),
+                          _SettingsGroup(title: 'ABOUT', tiles: [
+                            _SettingsTile(
+                              key: const ValueKey('settings_about'),
+                              icon: 'J',
+                              title: 'About JuanDerQuest & team',
+                              subtitle:
+                                  'Universidad de Dagupan capstone authors',
+                              onTap: () => context.push('/about'),
+                            ),
+                            _SettingsTile(
+                              key: const ValueKey('settings_governance'),
+                              icon: 'G',
+                              title: 'Governance prototype',
+                              subtitle:
+                                  'Separate from JuanChoice community voting',
+                              onTap: () => context.push('/vote'),
+                            ),
+                          ]),
+                          SizedBox(height: grid.px(4)),
+                          PixelButton(
+                            key: const ValueKey('settings_logout'),
+                            label: 'Log Out of Account',
+                            variant: PixelButtonVariant.danger,
+                            expand: true,
+                            onPressed: () async {
+                              // Stop this phone receiving the account's notifications first,
+                              // while the session can still authenticate the request.
+                              await ref
+                                  .read(pushServiceProvider)
+                                  .unregisterDevice();
+                              ref.read(authProvider.notifier).logout();
+                              if (context.mounted) context.go('/');
+                            },
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          user?.email ?? 'juan@juanderquest.ph',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Pangasinan Explorer #${user != null ? (user.id.length > 8 ? user.id.substring(0, 8) : user.id) : 'demo'}',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _identity(BuildContext context, PixelGrid grid, dynamic user) {
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PixelPanel(
+            style: PixelBoxStyle.gold,
+            padding: 1,
+            child: CosmeticAvatar(
+              name: user?.displayName ?? 'Traveler',
+              imageUrl: user?.avatarUrl,
+              size: grid.px(22),
+              frame:
+                  user?.cosmetics?['frame']?['asset'] as Map<String, dynamic>?,
+            ),
           ),
-
-          _SettingsGroup(title: 'Account', tiles: [
-            _SettingsTile(
-              key: const ValueKey('settings_appearance'),
-              icon: Icons.palette_outlined,
-              title: 'Appearance',
-              subtitle: 'Profile banners, frames, titles and name colours',
-              onTap: () => context.push('/settings/appearance'),
+          SizedBox(width: grid.px(2)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user?.displayName ?? 'Juan Dela Cruz',
+                  maxLines: 2,
+                  style: PixelType.title(context),
+                ),
+                Text(
+                  user?.email ?? 'juan@juanderquest.ph',
+                  maxLines: 2,
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                ),
+                Text(
+                  'Pangasinan Explorer #${user != null ? (user.id.length > 8 ? user.id.substring(0, 8) : user.id) : 'demo'}',
+                  maxLines: 2,
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.greenDark,
+                  ),
+                ),
+              ],
             ),
-            _SettingsTile(
-              key: const ValueKey('settings_interests'),
-              icon: Icons.interests_rounded,
-              title: 'Travel interests',
-              subtitle: 'Tune which destinations we recommend',
-              onTap: () => context.push('/onboarding/interests'),
-            ),
-          ]),
-
-          _SettingsGroup(title: 'Activity', tiles: [
-            _SettingsTile(
-              key: const ValueKey('settings_submissions'),
-              icon: Icons.history_rounded,
-              title: 'My submissions',
-              subtitle: 'Status of your quest and spot submissions',
-              onTap: () => context.push('/history'),
-            ),
-            _SettingsTile(
-              key: const ValueKey('settings_affiliate'),
-              icon: Icons.store_mall_directory_outlined,
-              title: 'Merchant affiliate',
-              subtitle: 'Apply to take part in tourism promotions',
-              onTap: () => context.push('/affiliate'),
-            ),
-          ]),
-
-          _SettingsGroup(title: 'App', tiles: [
-            // Owner 2026-11-04: run the first-run tutorial again on Home.
-            _SettingsTile(
-              key: const ValueKey('settings_replay_tutorial'),
-              icon: Icons.school_rounded,
-              title: 'Replay tutorial',
-              subtitle: 'Juan shows you around Home again',
-              onTap: () async {
-                await ref
-                    .read(homeTipsControllerProvider.notifier)
-                    .resetForReplay();
-                if (context.mounted) context.go('/dashboard');
-              },
-            ),
-            _SettingsTile(
-              key: const ValueKey('settings_updates'),
-              icon: Icons.system_update_rounded,
-              title: 'App updates',
-              subtitle: updateState.hasUpdate ? '$version · update available' : version,
-              highlight: updateState.hasUpdate,
-              onTap: () => context.push('/settings/updates'),
-            ),
-            _SettingsTile(
-              key: const ValueKey('settings_developer'),
-              icon: Icons.design_services_rounded,
-              title: 'Developer tools',
-              subtitle: ref.watch(designerGuideProvider)
-                  ? 'Designer guide is on'
-                  : 'Designer guide and diagnostics',
-              onTap: () => context.push('/settings/developer'),
-            ),
-          ]),
-
-          _SettingsGroup(title: 'About', tiles: [
-            _SettingsTile(
-              key: const ValueKey('settings_about'),
-              icon: Icons.school_rounded,
-              title: 'About JuanDerQuest & team',
-              subtitle: 'Universidad de Dagupan capstone authors',
-              onTap: () => context.push('/about'),
-            ),
-            _SettingsTile(
-              key: const ValueKey('settings_governance'),
-              icon: Icons.how_to_vote_rounded,
-              title: 'Governance prototype',
-              subtitle: 'Separate from JuanChoice community voting',
-              onTap: () => context.push('/vote'),
-            ),
-          ]),
-
-          const SizedBox(height: AppSpacing.sectionGap),
-
-          // Session Sign Out
-          DestructiveButton(
-            label: 'Log Out of Account',
-            icon: Icons.logout_rounded,
-            onPressed: () async {
-              // Stop this phone receiving the account's notifications first,
-              // while the session can still authenticate the request.
-              await ref.read(pushServiceProvider).unregisterDevice();
-              ref.read(authProvider.notifier).logout();
-              if (context.mounted) context.go('/');
-            },
           ),
-
-          const SizedBox(height: AppSpacing.sectionGap),
         ],
       ),
     );
@@ -221,37 +234,28 @@ class _SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = <Widget>[];
-    for (var i = 0; i < tiles.length; i++) {
-      if (i > 0) children.add(const Divider(height: 1, color: AppColors.borderLowContrast));
-      children.add(tiles[i]);
-    }
+    final grid = PixelGrid.of(context);
     return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.lg),
+      padding: EdgeInsets.only(top: grid.px(3)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
-            child: Text(
-              title.toUpperCase(),
-              style: AppTypography.labelSmall.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.8,
-              ),
-            ),
+          Text(
+            title,
+            style: PixelType.small(context, color: PixelPalette.slate),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: Column(children: children),
+          SizedBox(height: grid.px(1)),
+          PixelPanel(
+            style: PixelBoxStyle.parchment,
+            padding: 1,
+            child: Column(
+              children: [
+                for (var i = 0; i < tiles.length; i++) ...[
+                  if (i > 0)
+                    Divider(height: grid.px(1), color: PixelPalette.mist),
+                  tiles[i],
+                ],
+              ],
             ),
           ),
         ],
@@ -270,7 +274,7 @@ class _SettingsTile extends StatelessWidget {
     this.highlight = false,
   });
 
-  final IconData icon;
+  final String icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -278,17 +282,56 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
+    final grid = PixelGrid.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(title,
-          style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle,
-          style: AppTypography.bodySmall.copyWith(
-            color: highlight ? AppColors.primary : AppColors.textSecondary,
-            fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-          )),
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: grid.px(2),
+          vertical: grid.px(2),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PixelPanel(
+              style: PixelBoxStyle.slot,
+              padding: 1,
+              child: SizedBox(
+                width: grid.px(10),
+                child: Text(
+                  icon,
+                  textAlign: TextAlign.center,
+                  style: PixelType.title(context),
+                ),
+              ),
+            ),
+            SizedBox(width: grid.px(2)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: PixelType.title(context)),
+                  Text(
+                    subtitle,
+                    style: PixelType.body(
+                      context,
+                      color: highlight
+                          ? PixelPalette.greenDark
+                          : PixelPalette.slate,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: grid.px(1)),
+            Text(
+              '>',
+              style: PixelType.title(context, color: PixelPalette.woodMid),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

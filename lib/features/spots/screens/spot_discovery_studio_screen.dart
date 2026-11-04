@@ -10,8 +10,15 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/base_tile_layer.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
@@ -170,7 +177,7 @@ class _SpotDiscoveryStudioScreenState
     if (!mounted || gps == null) return;
     if (isSoftPin(_source)) {
       _movePin(gps.lat, gps.lng, SpotLocationSource.photoExif, zoom: 17);
-      setState(() => _note = '✨ Location set from your photo’s GPS');
+      setState(() => _note = 'Location set from your photo’s GPS');
     } else {
       setState(() => _photoGps = gps);
     }
@@ -214,53 +221,69 @@ class _SpotDiscoveryStudioScreenState
   @override
   Widget build(BuildContext context) {
     final initial = _initial;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Spot Discovery Studio',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-              Text('Pangasinan Atlas',
-                  style: TextStyle(fontSize: 11, color: AppColors.primary)),
-            ]),
-        actions: [
-          if (_draftSaved && _published == null)
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Center(
-                  child: Text('✓ Draft saved',
-                      style:
-                          TextStyle(fontSize: 11, color: AppColors.textMuted))),
-            ),
-        ],
-      ),
-      body: initial == null
-          ? const Center(child: CircularProgressIndicator())
-          : _published != null
-              ? _Celebration(
-                  spot: _published!, pin: _pin, onAddAnother: _addAnother)
-              : SpotPostingSheet(
-                  key: ValueKey('studio-$_session'),
-                  embedded: true,
-                  initialLat: _pin.lat,
-                  initialLng: _pin.lng,
-                  initialDraft: initial.draft,
-                  initialRecognition: initial.recognition,
-                  header: _buildMapHeader(initial),
-                  footerBuilder: (draft, media, isVideo) => SpotPostcard(
-                    draft: draft,
-                    handle: ref.watch(authProvider).user?.handle,
-                    coverPath: isVideo ? null : media?.path,
-                  ),
-                  onDraftChanged: _onDraftChanged,
-                  onPhotoPicked: _onPhotoPicked,
-                  onPublished: _onPublished,
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: Column(
+              children: [
+                PixelAppBar(
+                  title: 'Spot Discovery Studio',
+                  onBack:
+                      canPop ? () => Navigator.of(context).maybePop() : null,
+                  actions: [
+                    if (_draftSaved && _published == null)
+                      Text(
+                        '✓ Draft saved',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.paper,
+                        ),
+                      ),
+                  ],
                 ),
+                Expanded(
+                  child: initial == null
+                      ? const Center(
+                          child: PixelLoader(label: 'Starting studio'))
+                      : _published != null
+                          ? _Celebration(
+                              spot: _published!,
+                              pin: _pin,
+                              onAddAnother: _addAnother,
+                            )
+                          : SpotPostingSheet(
+                              key: ValueKey('studio-$_session'),
+                              embedded: true,
+                              initialLat: _pin.lat,
+                              initialLng: _pin.lng,
+                              initialDraft: initial.draft,
+                              initialRecognition: initial.recognition,
+                              header: _buildMapHeader(initial),
+                              footerBuilder: (draft, media, isVideo) =>
+                                  SpotPostcard(
+                                draft: draft,
+                                handle: ref.watch(authProvider).user?.handle,
+                                coverPath: isVideo ? null : media?.path,
+                              ),
+                              onDraftChanged: _onDraftChanged,
+                              onPhotoPicked: _onPhotoPicked,
+                              onPublished: _onPublished,
+                            ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildMapHeader(InitialSpotLocation initial) {
+    final grid = PixelGrid.of(context);
     final photoFar = _photoGps != null &&
             metersBetween(_photoGps!.lat, _photoGps!.lng, _pin.lat, _pin.lng) >
                 _photoSnapMeters
@@ -294,7 +317,7 @@ class _SpotDiscoveryStudioScreenState
                 padding: EdgeInsets.only(bottom: 36),
                 child: Icon(Icons.location_pin,
                     size: 40,
-                    color: AppColors.sunGold,
+                    color: PixelPalette.sun,
                     shadows: [Shadow(blurRadius: 6, color: Colors.black38)]),
               ),
             ),
@@ -303,68 +326,59 @@ class _SpotDiscoveryStudioScreenState
           Positioned(
             top: 8,
             right: 8,
-            child: FilledButton.tonalIcon(
+            child: PixelButton(
               key: const ValueKey('studio_use_gps'),
-              // The theme's full-width minimum is infinite inside Positioned: the button vanished.
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
+              label: 'Use my GPS',
+              variant: PixelButtonVariant.secondary,
+              loading: _locating,
               onPressed: _locating ? null : () => _useGps(),
-              icon: _locating
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.my_location_rounded, size: 16),
-              label: const Text('Use my GPS'),
             ),
           ),
         ]),
       ),
       if (_note != null || _source == SpotLocationSource.fallbackAnchor)
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(.08),
-              borderRadius: AppSpacing.roundedMd),
-          child: Text(
-            _note ??
-                'Starting at Lingayen. Move the map, use your GPS, or add a photo taken at the spot.',
-            key: const ValueKey('studio_location_note'),
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary),
+          margin: EdgeInsets.fromLTRB(grid.px(3), grid.px(2), grid.px(3), 0),
+          child: PixelPanel(
+            style: PixelBoxStyle.gold,
+            child: Text(
+              _note ??
+                  'Starting at Lingayen. Move the map, use your GPS, or add a photo taken at the spot.',
+              key: const ValueKey('studio_location_note'),
+              style: PixelType.body(context, color: PixelPalette.goldDeep),
+            ),
           ),
         ),
       if (photoFar != null)
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          padding: const EdgeInsets.all(10),
-          decoration: const BoxDecoration(
-              color: Color(0xFFE0F2FE), borderRadius: AppSpacing.roundedMd),
-          child: Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 4,
+          margin: EdgeInsets.fromLTRB(grid.px(3), grid.px(2), grid.px(3), 0),
+          child: PixelPanel(
+            style: PixelBoxStyle.parchment,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                    'This photo was taken ${metersBetween(photoFar.lat, photoFar.lng, _pin.lat, _pin.lng).round()} m from the pin.',
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF0C4A6E))),
-                TextButton(
+                  'This photo was taken ${metersBetween(photoFar.lat, photoFar.lng, _pin.lat, _pin.lng).round()} m from the pin.',
+                  style: PixelType.body(context),
+                ),
+                SizedBox(height: grid.px(1)),
+                PixelButton(
                   key: const ValueKey('studio_move_to_photo'),
+                  label: 'Move pin to photo location',
+                  variant: PixelButtonVariant.secondary,
                   onPressed: () {
                     _movePin(photoFar.lat, photoFar.lng,
                         SpotLocationSource.photoExif,
                         zoom: 17);
                     setState(() {
                       _photoGps = null;
-                      _note = '📍 Pin moved to where the photo was taken';
+                      _note = 'Pin moved to where the photo was taken';
                     });
                   },
-                  child: const Text('Move pin to photo location'),
                 ),
-              ]),
+              ],
+            ),
+          ),
         ),
     ]);
   }
@@ -388,6 +402,7 @@ class SpotPostcard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
     final category = spotPostingCategories
             .where((c) => c['id'] == draft.category)
             .map((c) => c['label'] as String)
@@ -401,99 +416,75 @@ class SpotPostcard extends StatelessWidget {
     if (coverPath != null) {
       cover = Image.file(File(coverPath!),
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink());
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, __, ___) => const DitherBackground(
+                top: PixelPalette.greenMid,
+                bottom: PixelPalette.greenDeep,
+              ));
     } else if (coverUrl != null && coverUrl!.isNotEmpty) {
       cover = Image.network(coverUrl!,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink());
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, __, ___) => const DitherBackground(
+                top: PixelPalette.greenMid,
+                bottom: PixelPalette.greenDeep,
+              ));
     } else {
-      cover = const Center(child: Text('🏝️', style: TextStyle(fontSize: 40)));
+      cover = const DitherBackground(
+        top: PixelPalette.greenMid,
+        bottom: PixelPalette.greenDeep,
+      );
     }
-    return Card(
+    return PixelPanel(
       key: const ValueKey('spot_postcard'),
-      clipBehavior: Clip.antiAlias,
+      style: PixelBoxStyle.parchment,
+      padding: 2,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (!stamp)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(12, 8, 12, 6),
-            child: Text('✨ LIVE ATLAS POSTCARD',
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    color: AppColors.primary)),
-          ),
+        if (!stamp) ...[
+          Text('LIVE ATLAS POSTCARD',
+              style: PixelType.small(context, color: PixelPalette.greenDark)),
+          SizedBox(height: grid.px(1)),
+        ],
         SizedBox(
-          height: 120,
+          height: grid.px(60),
           child: Stack(fit: StackFit.expand, children: [
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [
-                Color(0xFF1B4332),
-                Color(0xFF2D6A4F),
-                Color(0xFFFFB703)
-              ])),
-            ),
             cover,
             Positioned(
-              left: 8,
-              top: 8,
-              right: 8,
-              child: Wrap(spacing: 6, runSpacing: 4, children: [
-                _pill('$category · ${draft.subcategory.replaceAll('_', ' ')}',
-                    Colors.black54, Colors.white),
-                if (stamp)
-                  _pill('✨ $discovered', const Color(0xDD582F0E),
-                      const Color(0xFFFFD166)),
+              left: grid.px(1),
+              top: grid.px(1),
+              right: grid.px(1),
+              child:
+                  Wrap(spacing: grid.px(1), runSpacing: grid.px(1), children: [
+                PixelChip(
+                  '$category · ${draft.subcategory.replaceAll('_', ' ')}',
+                  style: PixelBoxStyle.slot,
+                ),
+                if (stamp) PixelChip(discovered),
               ]),
             ),
           ]),
         ),
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(
-                draft.name.trim().isEmpty ? 'Your new spot' : draft.name.trim(),
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.woodBrown)),
-            const SizedBox(height: 2),
-            Text(place.isEmpty ? 'Pangasinan' : place,
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary)),
-            const SizedBox(height: 4),
-            Text(
-                draft.description.trim().isEmpty
-                    ? 'Your story about this place will appear here.'
-                    : draft.description.trim(),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
-            if (!stamp) ...[
-              const SizedBox(height: 6),
-              Text(discovered,
-                  style: const TextStyle(
-                      fontSize: 10, color: AppColors.textMuted)),
-            ],
-          ]),
-        ),
+        SizedBox(height: grid.px(2)),
+        Text(draft.name.trim().isEmpty ? 'Your new spot' : draft.name.trim(),
+            style: PixelType.title(context)),
+        Text(place.isEmpty ? 'Pangasinan' : place,
+            style: PixelType.body(context, color: PixelPalette.greenDark)),
+        SizedBox(height: grid.px(1)),
+        Text(
+            draft.description.trim().isEmpty
+                ? 'Your story about this place will appear here.'
+                : draft.description.trim(),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: PixelType.body(context, color: PixelPalette.slate)),
+        if (!stamp) ...[
+          SizedBox(height: grid.px(1)),
+          Text(discovered,
+              style: PixelType.small(context, color: PixelPalette.slate)),
+        ],
       ]),
     );
   }
-
-  static Widget _pill(String text, Color background, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-            color: background, borderRadius: AppSpacing.roundedPill),
-        child: Text(text,
-            style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w800, color: color)),
-      );
 }
 
 class _Celebration extends ConsumerWidget {
@@ -506,31 +497,24 @@ class _Celebration extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final grid = PixelGrid.of(context);
     final lat = spot.gpsLat, lng = spot.gpsLng;
     return SingleChildScrollView(
       key: const ValueKey('studio_celebration'),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(grid.px(4)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('PINNED TO THE PANGASINAN ATLAS',
+        Text('PINNED TO THE PANGASINAN ATLAS',
             textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
-                color: Color(0xFFB45309))),
-        const SizedBox(height: 6),
+            style: PixelType.small(context, color: PixelPalette.goldDeep)),
+        SizedBox(height: grid.px(1)),
         Text('${spot.name} is on the map!',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: AppColors.woodBrown)),
-        const SizedBox(height: 4),
-        const Text(
+            textAlign: TextAlign.center, style: PixelType.title(context)),
+        SizedBox(height: grid.px(1)),
+        Text(
             'Thank you for charting a new discovery. Travelers can find it right away.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        const SizedBox(height: 16),
+            style: PixelType.body(context, color: PixelPalette.slate)),
+        SizedBox(height: grid.px(3)),
         SpotPostcard(
           stamp: true,
           handle: ref.watch(authProvider).user?.handle,
@@ -541,42 +525,41 @@ class _Celebration extends ConsumerWidget {
               description: spot.description,
               category: spot.category),
         ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
+        SizedBox(height: grid.px(3)),
+        PixelButton(
           key: const ValueKey('studio_view_on_map'),
+          label: 'View pin on map',
+          expand: true,
           onPressed: () => context.canPop()
               ? context.pop(spot)
               : context.go('/map?lat=$lat&lng=$lng'),
-          icon: const Icon(Icons.map_rounded),
-          label: const Text('View pin on map'),
         ),
-        const SizedBox(height: 8),
-        FilledButton.icon(
+        SizedBox(height: grid.px(2)),
+        PixelButton(
           key: const ValueKey('studio_create_quest'),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            minimumSize: const Size(0, 48),
-          ),
+          label: 'Create a quest here',
+          expand: true,
           onPressed: () => context.push(
             '/explore/${spot.slug.isNotEmpty ? spot.slug : spot.id}/quests/new',
             extra: spot,
           ),
-          icon: const Icon(Icons.explore_rounded),
-          label: const Text('Create a quest here'),
         ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
+        SizedBox(height: grid.px(2)),
+        PixelButton(
+          key: const ValueKey('studio_navigate'),
+          label: 'Navigate here',
+          variant: PixelButtonVariant.secondary,
+          expand: true,
           onPressed: () => context.push(
               '/navigate?name=${Uri.encodeQueryComponent(spot.name)}&lat=$lat&lng=$lng'),
-          icon: const Icon(Icons.navigation_rounded),
-          label: const Text('Navigate here'),
         ),
-        const SizedBox(height: 8),
-        TextButton.icon(
+        SizedBox(height: grid.px(2)),
+        PixelButton(
           key: const ValueKey('studio_add_another'),
+          label: 'Add another spot',
+          variant: PixelButtonVariant.secondary,
+          expand: true,
           onPressed: onAddAnother,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Add another spot'),
         ),
       ]),
     );

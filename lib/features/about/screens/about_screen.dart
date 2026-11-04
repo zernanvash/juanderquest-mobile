@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -18,165 +20,147 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return JdqScaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.woodBrown),
-          onPressed: () => context.pop(),
-          tooltip: 'Back',
-        ),
-        title: const FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            'About JuanDerQuest',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-          ),
-        ),
-      ),
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        children: [
-          // Hero Banner
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF2D6A4F), Color(0xFF1B4332)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: AppSpacing.roundedXl,
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: AppColors.sunGold,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.school_rounded, color: AppColors.woodBrown, size: 20),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Universidad de Dagupan',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'JuanDerQuest: A Gamified Blockchain-based System for Promoting Tourist Destinations in Pangasinan',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.sunGold,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'School of Information Technology Education (SITE)\nCapstone Research Prototype 2026',
-                  style: TextStyle(fontSize: 11, color: Color(0xFFE2F0E8), height: 1.4),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Tri-Party Flywheel Architecture Card
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: AppSpacing.roundedLg,
-              border: Border.all(color: AppColors.borderLowContrast),
-              boxShadow: AppSpacing.cardShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Tri-Party Tourism Flywheel',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-                ),
-                const SizedBox(height: 8),
-                _buildFlywheelRow('🧭 Travelers & Explorers', 'Complete GPS quest trails and earn demo mJDQ rewards. Soulbound badges are under development.'),
-                const SizedBox(height: 6),
-                _buildFlywheelRow('🏪 Local MSME Merchants', 'Fund discount vouchers with zero upfront costs; enjoy foot traffic diverted away from crowded hotspots.'),
-                const SizedBox(height: 6),
-                _buildFlywheelRow('🏛️ Municipal LGUs & Tourism Boards', 'Balance tourism distribution, prevent overcrowding, and sponsor event campaigns with locked escrow pools.'),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Research Team
-          const Text(
-            'Research Authors & Development Team',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
-          ),
-          const SizedBox(height: 8),
-
-          ..._authors.map((author) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: AppSpacing.roundedMd,
-                border: Border.all(color: AppColors.borderLowContrast),
-              ),
-              child: Row(
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 14,
-                    backgroundColor: AppColors.primaryContainer,
-                    child: Text(
-                      author.substring(0, 1),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.onPrimaryContainer),
-                    ),
+                  PixelAppBar(
+                    title: 'About JuanDerQuest',
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
-                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      author,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.woodBrown),
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          PixelPanel(
+                            style: PixelBoxStyle.wood,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Universidad de Dagupan',
+                                  style: PixelType.title(
+                                    context,
+                                    color: PixelPalette.paper,
+                                  ),
+                                ),
+                                SizedBox(height: grid.px(1)),
+                                Text(
+                                  'JuanDerQuest: A Gamified Blockchain-based System for Promoting Tourist Destinations in Pangasinan',
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.sun,
+                                  ),
+                                ),
+                                SizedBox(height: grid.px(1)),
+                                Text(
+                                  'School of Information Technology Education (SITE)\nCapstone Research Prototype 2026',
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.cream,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: grid.px(3)),
+                          Text('Tri-Party Tourism Flywheel',
+                              style: PixelType.title(context)),
+                          SizedBox(height: grid.px(2)),
+                          _flywheel(
+                            context,
+                            grid,
+                            'Travelers & Explorers',
+                            'Complete GPS quest trails and earn demo mJDQ rewards. Soulbound badges are under development.',
+                          ),
+                          SizedBox(height: grid.px(2)),
+                          _flywheel(
+                            context,
+                            grid,
+                            'Local MSME Merchants',
+                            'Fund discount vouchers with zero upfront costs; enjoy foot traffic diverted away from crowded hotspots.',
+                          ),
+                          SizedBox(height: grid.px(2)),
+                          _flywheel(
+                            context,
+                            grid,
+                            'Municipal LGUs & Tourism Boards',
+                            'Balance tourism distribution, prevent overcrowding, and sponsor event campaigns with locked escrow pools.',
+                          ),
+                          SizedBox(height: grid.px(3)),
+                          Text('Research Authors & Development Team',
+                              style: PixelType.title(context)),
+                          SizedBox(height: grid.px(2)),
+                          for (final author in _authors) ...[
+                            PixelPanel(
+                              style: PixelBoxStyle.parchment,
+                              child: Row(
+                                children: [
+                                  PixelPanel(
+                                    style: PixelBoxStyle.gold,
+                                    padding: 1,
+                                    child: SizedBox(
+                                      width: grid.px(9),
+                                      child: Text(
+                                        author.substring(0, 1),
+                                        textAlign: TextAlign.center,
+                                        style: PixelType.title(context),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: grid.px(2)),
+                                  Expanded(
+                                    child: Text(
+                                      author,
+                                      style: PixelType.title(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: grid.px(1)),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            );
-          }),
-
-          const SizedBox(height: 16),
-        ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildFlywheelRow(String title, String description) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: AppSpacing.roundedMd,
-      ),
+  Widget _flywheel(
+      BuildContext context, PixelGrid grid, String title, String body) {
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
-          const SizedBox(height: 2),
-          Text(description, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3)),
+          Text(title,
+              style: PixelType.title(context, color: PixelPalette.greenDark)),
+          SizedBox(height: grid.px(1)),
+          Text(body, style: PixelType.body(context, color: PixelPalette.slate)),
         ],
       ),
     );

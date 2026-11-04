@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
+
 /// Pulls the marker code out of a scanned QR payload.
 ///
 /// Plan 43 QR sheets encode the raw `marker_code`. Links that carry it as a
@@ -64,80 +72,170 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(widget.title),
-        actions: [
-          IconButton(
-            key: const ValueKey('qr_torch'),
-            tooltip: 'Flashlight',
-            icon: const Icon(Icons.flashlight_on_rounded),
-            onPressed: () => _controller.toggleTorch(),
-          ),
-        ],
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-            errorBuilder: (context, error) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  error.errorCode == MobileScannerErrorCode.permissionDenied
-                      ? 'Camera access is off. Allow it in Settings, or enter the code instead.'
-                      : 'The camera could not start. Enter the code instead.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          ),
-          IgnorePointer(
-            child: Center(
-              child: Container(
-                width: 240,
-                height: 240,
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFFFB703), width: 3),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: SafeArea(
-              minimum: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _rejected ?? 'Point your camera at the QR code.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    key: const ValueKey('qr_enter_code'),
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white70),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.ink,
+            body: Column(
+              children: [
+                PixelAppBar(
+                  title: widget.title,
+                  onBack:
+                      canPop ? () => Navigator.of(context).maybePop() : null,
+                  actions: [
+                    PixelButton(
+                      key: const ValueKey('qr_torch'),
+                      label: 'Torch',
+                      variant: PixelButtonVariant.secondary,
+                      onPressed: () => _controller.toggleTorch(),
                     ),
-                    child: const Text('Enter code instead'),
+                  ],
+                ),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      MobileScanner(
+                        controller: _controller,
+                        onDetect: _onDetect,
+                        errorBuilder: (context, error) => Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(grid.px(6)),
+                            child: Text(
+                              error.errorCode ==
+                                      MobileScannerErrorCode.permissionDenied
+                                  ? 'Camera access is off. Allow it in Settings, or enter the code instead.'
+                                  : 'The camera could not start. Enter the code instead.',
+                              textAlign: TextAlign.center,
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.paper,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      IgnorePointer(
+                        child: Center(
+                          child: SizedBox(
+                            width: grid.px(120),
+                            height: grid.px(120),
+                            child: CustomPaint(
+                              painter: _PixelFramePainter(grid),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: SafeArea(
+                          minimum: EdgeInsets.all(grid.px(4)),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                  fit: FlexFit.loose,
+                                  child: SingleChildScrollView(
+                                      child: PixelPanel(
+                                    style: PixelBoxStyle.inkDialogue,
+                                    child: Text(
+                                      _rejected ??
+                                          'Point your camera at the QR code.',
+                                      textAlign: TextAlign.center,
+                                      style: PixelType.body(
+                                        context,
+                                        color: PixelPalette.paper,
+                                      ),
+                                    ),
+                                  ))),
+                              SizedBox(height: grid.px(2)),
+                              PixelButton(
+                                key: const ValueKey('qr_enter_code'),
+                                label: 'Enter code instead',
+                                expand: true,
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
+}
+
+class _PixelFramePainter extends CustomPainter {
+  _PixelFramePainter(this.grid);
+
+  final PixelGrid grid;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final u = grid.unit;
+    final paint = Paint()
+      ..color = PixelPalette.sun
+      ..isAntiAlias = false;
+    final w = (size.width / u).floor();
+    final h = (size.height / u).floor();
+    const arm = 10;
+    const thick = 2;
+    for (var i = 0; i < arm; i++) {
+      for (var t = 0; t < thick; t++) {
+        canvas.drawRect(
+          Rect.fromLTWH(
+              grid.snap(i * u), grid.snap(t * u), grid.snap(u), grid.snap(u)),
+          paint,
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(grid.snap((w - 1 - i) * u), grid.snap(t * u),
+              grid.snap(u), grid.snap(u)),
+          paint,
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(grid.snap(i * u), grid.snap((h - 1 - t) * u),
+              grid.snap(u), grid.snap(u)),
+          paint,
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(grid.snap((w - 1 - i) * u), grid.snap((h - 1 - t) * u),
+              grid.snap(u), grid.snap(u)),
+          paint,
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(
+              grid.snap(t * u), grid.snap(i * u), grid.snap(u), grid.snap(u)),
+          paint,
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(grid.snap((w - 1 - t) * u), grid.snap(i * u),
+              grid.snap(u), grid.snap(u)),
+          paint,
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(grid.snap(t * u), grid.snap((h - 1 - i) * u),
+              grid.snap(u), grid.snap(u)),
+          paint,
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(grid.snap((w - 1 - t) * u), grid.snap((h - 1 - i) * u),
+              grid.snap(u), grid.snap(u)),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PixelFramePainter old) => old.grid.unit != grid.unit;
 }

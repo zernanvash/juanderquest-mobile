@@ -3,10 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 
 /// Same choices as the web onboarding (`/onboarding/interests`).
@@ -46,8 +51,10 @@ class InterestsPrompt {
     final userId = ref.read(authProvider).user?.id;
     if (userId == null || await answeredOnDevice(userId)) return;
     try {
-      final res =
-          await ref.read(apiClientProvider).dio.get('/me/discovery-preferences');
+      final res = await ref
+          .read(apiClientProvider)
+          .dio
+          .get('/me/discovery-preferences');
       final data = res.data is Map ? res.data['data'] : null;
       final state = data is Map ? data['onboarding_state'] : null;
       if (state != 'pending') {
@@ -82,8 +89,10 @@ class _InterestsScreenState extends ConsumerState<InterestsScreen> {
 
   Future<void> _loadCurrent() async {
     try {
-      final res =
-          await ref.read(apiClientProvider).dio.get('/me/discovery-preferences');
+      final res = await ref
+          .read(apiClientProvider)
+          .dio
+          .get('/me/discovery-preferences');
       final data = res.data is Map ? res.data['data'] : null;
       final cats = data is Map ? data['categories'] : null;
       if (cats is List && mounted) {
@@ -97,7 +106,10 @@ class _InterestsScreenState extends ConsumerState<InterestsScreen> {
   Future<void> _finish(bool completed) async {
     setState(() => _saving = true);
     try {
-      await ref.read(apiClientProvider).dio.put('/me/discovery-preferences', data: {
+      await ref
+          .read(apiClientProvider)
+          .dio
+          .put('/me/discovery-preferences', data: {
         'categories': completed ? _selected.toList() : <String>[],
         'tags': <String>[],
         'occasions': <String>[],
@@ -117,65 +129,133 @@ class _InterestsScreenState extends ConsumerState<InterestsScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Could not save your interests. Try again.')));
+      showPixelToast(context, 'Could not save your interests. Try again.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Your interests')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.gutter),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('PERSONALIZE YOUR DISCOVERIES',
-                  style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.primary, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              Text('What do you enjoy while traveling?',
-                  style: AppTypography.headlineSmall
-                      .copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              Text('Choose any that fit. You can change these later in Settings.',
-                  style: AppTypography.bodySmall
-                      .copyWith(color: AppColors.textSecondary)),
-              const SizedBox(height: AppSpacing.lg),
-              if (!_loaded)
-                const Center(child: CircularProgressIndicator())
-              else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final e in travelInterests.entries)
-                      FilterChip(
-                        key: ValueKey('interest_${e.key}'),
-                        label: Text(e.value),
-                        selected: _selected.contains(e.key),
-                        onSelected: (on) => setState(() =>
-                            on ? _selected.add(e.key) : _selected.remove(e.key)),
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          final canPop = Navigator.of(context).canPop();
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: Column(
+                children: [
+                  PixelAppBar(
+                    title: 'Your Interests',
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        grid.px(4),
+                        grid.px(3),
+                        grid.px(4),
+                        grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
-                  ],
-                ),
-              const SizedBox(height: AppSpacing.xl),
-              PrimaryButton(
-                key: const ValueKey('interests_save'),
-                label: 'Save my interests',
-                isLoading: _saving,
-                onPressed: _saving || _selected.isEmpty ? null : () => _finish(true),
+                      children: [
+                        PixelPanel(
+                          style: PixelBoxStyle.wood,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PERSONALIZE YOUR DISCOVERIES',
+                                style: PixelType.small(
+                                  context,
+                                  color: PixelPalette.sun,
+                                ),
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Text(
+                                'What do you enjoy while traveling?',
+                                style: PixelType.title(
+                                  context,
+                                  color: PixelPalette.paper,
+                                ),
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Text(
+                                'Choose any that fit. You can change these later in Settings.',
+                                style: PixelType.body(
+                                  context,
+                                  color: PixelPalette.cream,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: grid.px(3)),
+                        if (!_loaded)
+                          const Center(
+                            child: PixelLoader(label: 'Loading interests'),
+                          )
+                        else
+                          Wrap(
+                            spacing: grid.px(1),
+                            runSpacing: grid.px(1),
+                            children: [
+                              for (final entry in travelInterests.entries)
+                                GestureDetector(
+                                  key: ValueKey('interest_${entry.key}'),
+                                  onTap: () {
+                                    pixelTick(context);
+                                    setState(() => _selected.contains(entry.key)
+                                        ? _selected.remove(entry.key)
+                                        : _selected.add(entry.key));
+                                  },
+                                  child: PixelPanel(
+                                    style: _selected.contains(entry.key)
+                                        ? PixelBoxStyle.green
+                                        : PixelBoxStyle.parchment,
+                                    padding: 1,
+                                    child: Text(
+                                      entry.value,
+                                      style: PixelType.body(
+                                        context,
+                                        color: _selected.contains(entry.key)
+                                            ? PixelPalette.white
+                                            : PixelPalette.ink,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        SizedBox(height: grid.px(4)),
+                        PixelButton(
+                          key: const ValueKey('interests_save'),
+                          label: 'Save my interests',
+                          expand: true,
+                          loading: _saving,
+                          onPressed: _saving || _selected.isEmpty
+                              ? null
+                              : () => _finish(true),
+                        ),
+                        SizedBox(height: grid.px(2)),
+                        PixelButton(
+                          key: const ValueKey('interests_skip'),
+                          label: 'Skip for now',
+                          variant: PixelButtonVariant.secondary,
+                          expand: true,
+                          onPressed: _saving ? null : () => _finish(false),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              TextButton(
-                key: const ValueKey('interests_skip'),
-                onPressed: _saving ? null : () => _finish(false),
-                child: const Text('Skip for now'),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
