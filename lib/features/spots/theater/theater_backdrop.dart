@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_painting.dart';
 import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../models/spot_model.dart';
@@ -21,7 +22,7 @@ enum TheaterBackdrop {
   off('Off', 'Photo stays as it is.'),
   dark('Dark', 'Photo dims behind the details.'),
   blur('Blur', 'Photo goes soft and dim.'),
-  pixel('Pixelated', 'Photo turns into big pixels, dimmed.');
+  pixel('Pixelated', 'Photo becomes a pixel painting, lightly dimmed.');
 
   const TheaterBackdrop(this.label, this.hint);
   final String label;
@@ -132,7 +133,11 @@ class TheaterBackdropTreatment extends StatelessWidget {
         );
     final dim = ColoredBox(
       color: PixelPalette.ink.withValues(
-        alpha: mode == TheaterBackdrop.dark ? 0.82 : 0.5,
+        alpha: switch (mode) {
+          TheaterBackdrop.dark => 0.82,
+          TheaterBackdrop.pixel => 0.4,
+          _ => 0.5,
+        },
       ),
     );
     if (mode == TheaterBackdrop.off) {
@@ -147,13 +152,11 @@ class TheaterBackdropTreatment extends StatelessWidget {
 
     final Widget photo;
     if (mode == TheaterBackdrop.pixel) {
-      // ~36 art pixels across, scaled up with no smoothing.
-      photo = Image(
-        image: ResizeImage(source, width: 36),
-        fit: BoxFit.cover,
+      // A block-game painting: ~40 px across, the photo's own 12 colours,
+      // dithered brush texture (see paintPixels).
+      photo = PixelPainting(
+        image: source,
         alignment: SpotStillPhoto.alignment,
-        filterQuality: FilterQuality.none,
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       );
     } else {
       photo = ImageFiltered(
