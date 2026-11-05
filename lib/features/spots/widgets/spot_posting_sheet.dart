@@ -1,14 +1,24 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_recognition_provider.dart';
+import '../studio/pixel/studio_category_grid.dart';
+import '../studio/pixel/studio_icons.dart';
+import '../studio/pixel/studio_section.dart';
+import '../studio/pixel/studio_text.dart';
+import '../studio/pixel/studio_text_field.dart';
 import '../utils/spot_posting.dart';
 
 class SpotPostingSheetResult {
@@ -67,6 +77,9 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
   SpotPostingTouched _touched = const SpotPostingTouched();
   final Set<String> _usedStarters = {};
   bool _editAddress = false;
+  bool _categoryPicked = false;
+  bool _detailsOpen = false;
+  bool _showAllStarters = false;
   Map<String, String> _fieldErrors = {};
   bool _submitting = false;
   String? _submitError;
@@ -100,6 +113,11 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     _draft =
         rec == null ? base : applyRecognition(base, rec, touched: _touched);
     _recognition = rec;
+    _categoryPicked = widget.initialDraft != null ||
+        (rec != null &&
+            spotPostingCategories.any(
+              (category) => category['id'] == rec.suggestedCategory,
+            ));
     _syncControllers();
     for (final controller in [
       _nameController,
@@ -169,6 +187,10 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
       _recognizing = false;
       _recognition = rec;
       _draft = applyRecognition(_draft, rec, touched: _touched);
+      _categoryPicked = _categoryPicked ||
+          spotPostingCategories.any(
+            (category) => category['id'] == rec.suggestedCategory,
+          );
       _syncControllers();
     });
     _emitDraft();
@@ -190,6 +212,16 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
       _fieldErrors = {};
     });
     _emitDraft();
+  }
+
+  void _selectCategory(String id) {
+    _readTextFields();
+    _touched = _touched.copyWith(category: true);
+    _categoryPicked = true;
+    _update(_draft.copyWith(
+      category: id,
+      subcategory: subcategoriesForCategory(id).first,
+    ));
   }
 
   void _requestMovePin() {
@@ -310,7 +342,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
           'Failed to connect to server.');
     } catch (_) {
       setState(() => _submitError =
-          'Publishing failed. Your answers are kept — try again.');
+          'Publishing failed. Your answers are kept; try again.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -328,8 +360,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: mediaQuery.size.height * 0.92),
           child: Material(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            color: PixelPalette.paper,
             clipBehavior: Clip.antiAlias,
             child:
                 _publishedSpot != null ? _buildSuccessView() : _buildComposer(),
@@ -340,73 +371,38 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
   }
 
   Widget _buildSuccessView() {
+    final grid = PixelGrid.of(context);
     final spot = _publishedSpot!;
     void done() => Navigator.of(context)
         .pop(SpotPostingSheetResult(draft: _draft, publishedSpot: spot));
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
-                borderRadius: AppSpacing.roundedXl),
-            child: const Icon(Icons.celebration_rounded,
-                color: AppColors.primary, size: 28),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Destination published',
-            style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.w900, color: AppColors.woodBrown),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${spot.name} is now visible on the map. Plan a trail through it or get directions.',
-            style:
-                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: done,
-              icon: const Icon(Icons.place_rounded, size: 16),
-              label: const Text('Show it on the map'),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+      padding: EdgeInsets.all(grid.px(4)),
+      child: PixelPanel(
+        style: PixelBoxStyle.parchment,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Destination published',
+              textAlign: TextAlign.center,
+              style: PixelType.title(context),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _section(String title, Widget child, {Widget? trailing}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(title,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.woodBrown)),
-              ),
-              if (trailing != null) Flexible(child: trailing),
-            ],
-          ),
-          const SizedBox(height: 6),
-          child,
-        ],
+            SizedBox(height: grid.px(1)),
+            Text(
+              '${spot.name} is now visible on the map. Plan a trail through it or get directions.',
+              textAlign: TextAlign.center,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(3)),
+            PixelButton(
+              label: 'Show it on the map',
+              icon: StudioIcons.pin,
+              iconScale: 2,
+              expand: true,
+              onPressed: done,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -415,233 +411,203 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     final message = _fieldErrors[key];
     if (message == null) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Text(message,
-          style: const TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w700, color: Colors.red)),
+      padding: EdgeInsets.only(top: PixelGrid.of(context).px(0.5)),
+      child: Text(
+        message,
+        style: PixelType.small(context, color: PixelPalette.redDeep),
+      ),
     );
   }
 
   Widget _buildComposer() {
-    final readiness = postingReadiness(_draft.copyWith(
-      name: _nameController.text,
-      description: _descriptionController.text,
-      municipality: _municipalityController.text,
-      address: _addressController.text,
-    ));
+    final grid = PixelGrid.of(context);
+    final readiness = studioReadinessHint(_currentDraft);
     return Column(
       mainAxisSize: widget.embedded ? MainAxisSize.max : MainAxisSize.min,
       children: [
-        if (!widget.embedded) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-            child: Row(
-              children: [
-                const Icon(Icons.auto_awesome_rounded,
-                    color: AppColors.primary, size: 20),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('Add this place',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.woodBrown)),
-                ),
-                IconButton(
-                  onPressed:
-                      _submitting ? null : () => Navigator.of(context).pop(),
-                  tooltip: 'Close',
-                  icon: const Icon(Icons.close_rounded,
-                      size: 20, color: AppColors.textMuted),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-        ],
+        if (!widget.embedded) _buildSheetHeader(context, grid),
         Flexible(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(widget.embedded ? 0 : 16),
+            padding: EdgeInsets.fromLTRB(
+              widget.embedded ? 0 : grid.px(4),
+              widget.embedded ? 0 : grid.px(2),
+              widget.embedded ? 0 : grid.px(4),
+              widget.embedded ? 0 : grid.px(4),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (widget.header != null) widget.header!,
-                if (widget.embedded) const SizedBox(height: 12),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: widget.embedded ? 16 : 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildLocationCard(),
-                      const SizedBox(height: 16),
-                      _buildMediaBar(),
-                      const SizedBox(height: 16),
-                      _buildName(),
-                      _buildCategory(),
-                      _buildStory(),
-                      _buildDetails(),
-                      if (_submitError != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(_submitError!,
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.red)),
-                        ),
-                      if (widget.footerBuilder != null) ...[
-                        const SizedBox(height: 16),
-                        widget.footerBuilder!(
-                            _currentDraft, _mediaFile, _mediaIsVideo),
-                      ],
-                      if (widget.embedded) const SizedBox(height: 16),
-                    ],
+                if (widget.embedded) SizedBox(height: grid.px(3)),
+                _buildPlaceSection(context, grid),
+                SizedBox(height: grid.px(2)),
+                _buildPhotosSection(context, grid),
+                SizedBox(height: grid.px(2)),
+                _buildNameSection(context, grid),
+                SizedBox(height: grid.px(2)),
+                _buildCategorySection(context, grid),
+                SizedBox(height: grid.px(2)),
+                _buildStorySection(context, grid),
+                SizedBox(height: grid.px(2)),
+                _buildDetailsSection(context, grid),
+                if (widget.footerBuilder != null) ...[
+                  SizedBox(height: grid.px(3)),
+                  Text(
+                    'Preview',
+                    style: PixelType.body(context)
+                        .copyWith(fontWeight: FontWeight.w700),
                   ),
-                ),
+                  SizedBox(height: grid.px(1)),
+                  widget.footerBuilder!(
+                      _currentDraft, _mediaFile, _mediaIsVideo),
+                ],
+                if (_submitError != null) ...[
+                  SizedBox(height: grid.px(2)),
+                  PixelPanel(
+                    style: PixelBoxStyle.red,
+                    padding: 2,
+                    child: Text(
+                      _submitError!,
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.white,
+                      ),
+                    ),
+                  ),
+                ],
+                if (widget.embedded) SizedBox(height: grid.px(2)),
               ],
             ),
           ),
         ),
-        const Divider(height: 1),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _mediaUploading
-                      ? 'Finishing your upload…'
-                      : readiness ?? '✓ Ready to publish',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: readiness == null
-                        ? AppColors.primary
-                        : const Color(0xFFB45309),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: FilledButton.icon(
-                    onPressed: _submitting || _mediaUploading ? null : _publish,
-                    style: FilledButton.styleFrom(
-                        // The theme's full-width minimum is infinite inside FittedBox: the button vanished.
-                        minimumSize: const Size(0, 48),
-                        backgroundColor: AppColors.sunGold,
-                        foregroundColor: AppColors.woodBrown),
-                    icon: _submitting
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.auto_awesome_rounded, size: 16),
-                    label: Text(_submitting ? 'Publishing…' : 'Publish spot'),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _buildPublishBar(context, grid, readiness),
       ],
     );
   }
 
-  Widget _buildLocationCard() {
-    final place = _recognizing
-        ? 'Recognizing this place…'
-        : formatRecognizedPlaceLabel(_draft);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.07),
-        borderRadius: AppSpacing.roundedLg,
-        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildSheetHeader(BuildContext context, PixelGrid grid) {
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      padding: 2,
+      child: Row(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Icon(Icons.place_rounded,
-                    size: 16, color: AppColors.primary),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(place,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary)),
-                    if (_draft.address.isNotEmpty)
-                      Text(_draft.address,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary)),
-                  ],
-                ),
-              ),
-            ],
+          Expanded(
+            child: Text(
+              'Add this place',
+              style: PixelType.title(context),
+            ),
           ),
-          if (_recognition?.outsidePangasinan == true)
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
+          SizedBox(width: grid.px(1)),
+          PixelIconButton(
+            icon: StudioIcons.close,
+            semanticLabel: 'Close',
+            iconHeight: 18,
+            onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceSection(BuildContext context, PixelGrid grid) {
+    final place = _recognizing
+        ? 'Recognizing this place'
+        : formatRecognizedPlaceLabel(_draft);
+    return StudioSection(
+      step: 1,
+      title: 'Place',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PixelPanel(
+            style: PixelBoxStyle.slot,
+            padding: 1,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        place,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: PixelType.body(
+                          context,
+                          color: PixelPalette.greenDark,
+                        ).copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      if (_draft.address.isNotEmpty)
+                        Text(
+                          _draft.address,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: grid.px(1)),
+                PixelChip(
+                  _editAddress ? 'Close' : 'Edit',
+                  key: const ValueKey('studio_edit_address'),
+                  style: PixelBoxStyle.slot,
+                  textColor: PixelPalette.greenDark,
+                  onTap: () => setState(() => _editAddress = !_editAddress),
+                ),
+              ],
+            ),
+          ),
+          if (_recognition?.outsidePangasinan == true) ...[
+            SizedBox(height: grid.px(1)),
+            PixelPanel(
+              style: PixelBoxStyle.gold,
+              padding: 1,
               child: Text(
-                  'This pin is outside Pangasinan. Double-check the location.',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF92400E))),
-            ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              // In the studio the map sits right above; drag it instead.
-              if (!widget.embedded)
-                OutlinedButton.icon(
-                  onPressed: _requestMovePin,
-                  icon: const Icon(Icons.open_with_rounded, size: 14),
-                  label: const Text('Adjust pin'),
+                'This pin is outside Pangasinan. Double-check the location.',
+                style: PixelType.small(
+                  context,
+                  color: PixelPalette.goldDeep,
                 ),
-              TextButton.icon(
-                onPressed: () => setState(() => _editAddress = !_editAddress),
-                icon: const Icon(Icons.edit_rounded, size: 14),
-                label: Text(_editAddress
-                    ? 'Hide address fields'
-                    : 'Edit address manually'),
               ),
-            ],
-          ),
+            ),
+          ],
           if (_editAddress) ...[
-            const SizedBox(height: 6),
-            TextField(
+            SizedBox(height: grid.px(2)),
+            StudioTextField(
+              key: const ValueKey('studio_municipality'),
               controller: _municipalityController,
+              label: 'Municipality / city',
               maxLength: 100,
-              decoration: const InputDecoration(
-                  labelText: 'Municipality / city', counterText: ''),
+              errorText: _fieldErrors['municipality'],
               onChanged: (_) =>
                   setState(() => _touched = _touched.copyWith(location: true)),
             ),
-            _error('municipality'),
-            TextField(
+            SizedBox(height: grid.px(2)),
+            StudioTextField(
+              key: const ValueKey('studio_address'),
               controller: _addressController,
+              label: 'Address / landmark',
               maxLength: 300,
-              decoration: const InputDecoration(
-                  labelText: 'Address / landmark', counterText: ''),
+              errorText: _fieldErrors['address'],
+              minLines: 2,
+              maxLines: 3,
               onChanged: (_) =>
                   setState(() => _touched = _touched.copyWith(location: true)),
             ),
-            _error('address'),
+          ],
+          if (!widget.embedded) ...[
+            SizedBox(height: grid.px(2)),
+            PixelButton(
+              label: 'Adjust pin',
+              icon: StudioIcons.pin,
+              iconScale: 2,
+              variant: PixelButtonVariant.secondary,
+              onPressed: _requestMovePin,
+            ),
           ],
           _error('pin'),
         ],
@@ -649,82 +615,154 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     );
   }
 
-  Widget _buildMediaBar() {
-    final file = _mediaFile;
-    if (file != null) {
-      return Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-            border: Border.all(color: AppColors.borderLowContrast),
-            borderRadius: AppSpacing.roundedLg),
-        child: Row(
-          children: [
-            Icon(_mediaIsVideo ? Icons.movie_rounded : Icons.photo_rounded,
-                color: AppColors.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                _mediaUploading
-                    ? 'Uploading…'
-                    : _mediaAssetId != null
-                        ? '✓ Uploaded · cover ${_mediaIsVideo ? 'video' : 'photo'}'
-                        : _mediaError ?? 'Upload failed',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: _mediaAssetId != null || _mediaUploading
-                      ? AppColors.primary
-                      : Colors.red,
+  Widget _buildPhotosSection(BuildContext context, PixelGrid grid) {
+    final hasMedia = _mediaFile != null || _mediaUrl != null;
+    return StudioSection(
+      step: 2,
+      title: 'Photos',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: PixelButton(
+                  key: const ValueKey('studio_media_camera'),
+                  label: 'Camera',
+                  icon: StudioIcons.camera,
+                  iconScale: 2,
+                  expand: true,
+                  onPressed: () => _pickMedia(source: ImageSource.camera),
                 ),
               ),
-            ),
-            if (!_mediaUploading && _mediaAssetId == null)
-              TextButton(onPressed: _uploadMedia, child: const Text('Retry')),
-            IconButton(
-                onPressed: _removeMedia,
-                tooltip: 'Remove media',
-                icon: const Icon(Icons.delete_outline_rounded, size: 18)),
-          ],
-        ),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: () => _pickMedia(source: ImageSource.camera),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-              icon: const Icon(Icons.photo_camera_rounded, size: 16),
-              label: const Text('Take photo'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => _pickMedia(source: ImageSource.gallery),
-              icon: const Icon(Icons.photo_library_rounded, size: 16),
-              label: const Text('Gallery'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () =>
-                  _pickMedia(source: ImageSource.gallery, video: true),
-              icon: const Icon(Icons.videocam_rounded, size: 16),
-              label: const Text('30s video'),
-            ),
-          ],
-        ),
-        if (_mediaError != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(_mediaError!,
-                style: const TextStyle(fontSize: 11, color: Colors.red)),
+              SizedBox(width: grid.px(1)),
+              Expanded(
+                child: PixelButton(
+                  key: const ValueKey('studio_media_gallery'),
+                  label: 'Gallery',
+                  icon: StudioIcons.gallery,
+                  iconScale: 2,
+                  expand: true,
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: () => _pickMedia(source: ImageSource.gallery),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              Expanded(
+                child: PixelButton(
+                  key: const ValueKey('studio_media_video'),
+                  label: 'Video 30s',
+                  icon: StudioIcons.video,
+                  iconScale: 2,
+                  expand: true,
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: () =>
+                      _pickMedia(source: ImageSource.gallery, video: true),
+                ),
+              ),
+            ],
           ),
-      ],
+          if (hasMedia) ...[
+            SizedBox(height: grid.px(1)),
+            _mediaPreview(context, grid),
+          ],
+          if (_mediaError != null && !hasMedia) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              _mediaError!,
+              style: PixelType.small(context, color: PixelPalette.redDeep),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildName() {
+  Widget _mediaPreview(BuildContext context, PixelGrid grid) {
+    final thumbnail = _mediaIsVideo
+        ? null
+        : _mediaFile != null
+            ? Image.file(
+                File(_mediaFile!.path),
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: PixelSprite(StudioIcons.gallery, scale: 2),
+                ),
+              )
+            : _mediaUrl != null
+                ? Image.network(
+                    _mediaUrl!,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.medium,
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: PixelSprite(StudioIcons.gallery, scale: 2),
+                    ),
+                  )
+                : null;
+    final status = _mediaUploading
+        ? 'Uploading'
+        : _mediaAssetId != null
+            ? 'Uploaded'
+            : _mediaError ?? 'Upload failed';
+    return PixelPanel(
+      style: PixelBoxStyle.slot,
+      padding: 1,
+      child: Row(
+        children: [
+          SizedBox(
+            width: grid.px(16),
+            height: grid.px(16),
+            child: thumbnail ??
+                Center(
+                  child: PixelSprite(
+                    _mediaIsVideo ? StudioIcons.video : StudioIcons.camera,
+                    scale: 2,
+                  ),
+                ),
+          ),
+          SizedBox(width: grid.px(2)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _mediaIsVideo ? 'Video cover' : 'Photo cover',
+                  style: PixelType.body(context)
+                      .copyWith(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  status,
+                  style: PixelType.small(
+                    context,
+                    color: _mediaAssetId != null || _mediaUploading
+                        ? PixelPalette.greenDark
+                        : PixelPalette.redDeep,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!_mediaUploading && _mediaAssetId == null)
+            PixelChip(
+              'Retry',
+              style: PixelBoxStyle.slot,
+              textColor: PixelPalette.greenDark,
+              onTap: _uploadMedia,
+            ),
+          SizedBox(width: grid.px(1)),
+          PixelIconButton(
+            icon: StudioIcons.close,
+            semanticLabel: 'Remove media',
+            iconHeight: 16,
+            onPressed: _removeMedia,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNameSection(BuildContext context, PixelGrid grid) {
     final rec = _recognition;
     final autoFilled = rec?.placeName != null &&
         !_touched.name &&
@@ -736,182 +774,190 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     final duplicate = rec?.nearbyDuplicates.isNotEmpty == true
         ? rec!.nearbyDuplicates.first
         : null;
-    return _section(
-      'Destination name *',
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return StudioSection(
+      step: 3,
+      title: 'Name',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
+          StudioTextField(
+            key: const ValueKey('studio_name'),
             controller: _nameController,
+            label: 'Destination name',
+            hint: 'e.g. Tambobong White Beach',
             maxLength: 200,
-            decoration: InputDecoration(
-              hintText: 'e.g. Tambobong White Beach',
-              counterText: '',
-              suffixIcon: _nameController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Clear name',
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      onPressed: () => setState(() {
-                        _nameController.clear();
-                        _touched = _touched.copyWith(name: true);
-                      }),
-                    ),
-            ),
+            errorText: _fieldErrors['name'],
             onChanged: (_) =>
                 setState(() => _touched = _touched.copyWith(name: true)),
           ),
-          if (suggestions.isNotEmpty)
+          if (suggestions.isNotEmpty) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Suggestions',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(0.5)),
             Wrap(
-              spacing: 6,
+              spacing: grid.px(1),
+              runSpacing: grid.px(1),
               children: [
                 for (final name in suggestions)
-                  ActionChip(
-                    label: Text(name),
-                    onPressed: () => setState(() {
+                  PixelChip(
+                    name,
+                    key: ValueKey('studio_name_suggestion_$name'),
+                    style: PixelBoxStyle.slot,
+                    textColor: PixelPalette.greenDark,
+                    onTap: () => setState(() {
                       _nameController.text = name;
                       _touched = _touched.copyWith(name: true);
                     }),
                   ),
               ],
             ),
-          if (duplicate != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
+          ],
+          if (autoFilled) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Auto-recognized from map',
+              style: PixelType.small(context, color: PixelPalette.greenDark),
+            ),
+          ],
+          if (duplicate != null) ...[
+            SizedBox(height: grid.px(1)),
+            PixelPanel(
+              style: PixelBoxStyle.gold,
+              padding: 1,
               child: Text(
                 'Looks close to ${duplicate.name} (${duplicate.distanceMeters} m away). Continue only if it is a different place.',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF92400E)),
+                style: PixelType.small(
+                  context,
+                  color: PixelPalette.goldDeep,
+                ),
               ),
             ),
-          _error('name'),
-        ],
-      ),
-      trailing: autoFilled
-          ? const Text('✨ Auto-recognized from map',
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary))
-          : null,
-    );
-  }
-
-  Widget _buildCategory() {
-    return _section(
-      'Category',
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              for (final category in spotPostingCategories)
-                ChoiceChip(
-                  label: Text(category['label'] as String),
-                  selected: _draft.category == category['id'],
-                  onSelected: (_) {
-                    _readTextFields();
-                    _touched = _touched.copyWith(category: true);
-                    final id = category['id'] as String;
-                    _update(_draft.copyWith(
-                        category: id,
-                        subcategory: subcategoriesForCategory(id).first));
-                  },
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              for (final sub in subcategoriesForCategory(_draft.category))
-                ChoiceChip(
-                  label: Text(sub.replaceAll('_', ' ')),
-                  selected: _draft.subcategory == sub,
-                  onSelected: (_) {
-                    _readTextFields();
-                    _touched = _touched.copyWith(category: true);
-                    _update(_draft.copyWith(subcategory: sub));
-                  },
-                ),
-            ],
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildStory() {
-    final starters = _recognition?.storyStarters ?? const <String>[];
-    final length = _descriptionController.text.trim().length;
-    return _section(
-      'What makes it worth visiting? *',
-      Column(
+  Widget _buildCategorySection(BuildContext context, PixelGrid grid) {
+    return StudioSection(
+      step: 4,
+      title: 'Category',
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (starters.isNotEmpty) ...[
-            const Text('✨ Tap to build your description:',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary)),
-            const SizedBox(height: 4),
-            for (final starter in starters)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    alignment: Alignment.centerLeft,
-                    backgroundColor: _usedStarters.contains(starter)
-                        ? AppColors.primary.withOpacity(0.08)
-                        : null,
+          StudioCategoryGrid(
+            selectedCategory: _draft.category,
+            picked: _categoryPicked,
+            onSelected: _selectCategory,
+          ),
+          if (_categoryPicked) ...[
+            SizedBox(height: grid.px(2)),
+            Text(
+              'Type',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(0.5)),
+            Wrap(
+              spacing: grid.px(1),
+              runSpacing: grid.px(1),
+              children: [
+                for (final sub in subcategoriesForCategory(_draft.category))
+                  PixelChip(
+                    studioSubcategoryName(sub),
+                    key: ValueKey('studio_subtype_$sub'),
+                    style: _draft.subcategory == sub
+                        ? PixelBoxStyle.green
+                        : PixelBoxStyle.slot,
+                    textColor: _draft.subcategory == sub
+                        ? PixelPalette.white
+                        : PixelPalette.slate,
+                    onTap: () {
+                      _readTextFields();
+                      _touched = _touched.copyWith(category: true);
+                      _update(_draft.copyWith(subcategory: sub));
+                    },
                   ),
-                  onPressed: _usedStarters.contains(starter)
-                      ? null
-                      : () => setState(() {
-                            _descriptionController.text = appendStoryStarter(
-                                _descriptionController.text, starter);
-                            _usedStarters.add(starter);
-                            _fieldErrors = {};
-                          }),
-                  child: Text(
-                      '${_usedStarters.contains(starter) ? '✓' : '+'} $starter',
-                      style: const TextStyle(fontSize: 12)),
-                ),
-              ),
+              ],
+            ),
           ],
-          TextField(
+          _error('category'),
+          _error('subcategory'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStorySection(BuildContext context, PixelGrid grid) {
+    final starters = _recognition?.storyStarters ?? const <String>[];
+    final visible = _showAllStarters ? starters : starters.take(3).toList();
+    final length = _descriptionController.text.trim().length;
+    return StudioSection(
+      step: 5,
+      title: 'Story',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          StudioTextField(
+            key: const ValueKey('studio_description'),
             controller: _descriptionController,
+            label: 'Description',
+            hint:
+                'Describe the place, what travelers can do, and any honest tips.',
             minLines: 3,
             maxLines: 6,
             maxLength: 2000,
-            decoration: const InputDecoration(
-              labelText: 'Description',
-              hintText:
-                  'Describe the place, what travelers can do, and any honest tips.',
-              counterText: '',
-            ),
+            errorText: _fieldErrors['description'],
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: grid.px(0.5)),
           Text(
-            length >= 20
-                ? '✓ Description looks good'
-                : 'At least 20 characters.',
-            style: TextStyle(
-                fontSize: 11,
-                color: length >= 20 ? AppColors.primary : AppColors.textMuted),
+            length >= 20 ? 'Description looks good' : 'At least 20 characters.',
+            style: PixelType.small(
+              context,
+              color: length >= 20 ? PixelPalette.greenDark : PixelPalette.slate,
+            ),
           ),
-          _error('description'),
+          if (starters.isNotEmpty) ...[
+            SizedBox(height: grid.px(2)),
+            Text(
+              'Suggestions',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(0.5)),
+            for (var i = 0; i < visible.length; i++) ...[
+              if (i > 0) SizedBox(height: grid.px(1)),
+              _StoryStarterRow(
+                starter: visible[i],
+                used: _usedStarters.contains(visible[i]),
+                onTap: () => setState(() {
+                  _descriptionController.text = appendStoryStarter(
+                      _descriptionController.text, visible[i]);
+                  _usedStarters.add(visible[i]);
+                  _fieldErrors = {};
+                }),
+              ),
+            ],
+            if (starters.length > 3) ...[
+              SizedBox(height: grid.px(1)),
+              PixelChip(
+                _showAllStarters ? 'Fewer ideas' : 'More ideas',
+                key: const ValueKey('studio_more_ideas'),
+                style: PixelBoxStyle.slot,
+                textColor: PixelPalette.greenDark,
+                onTap: () =>
+                    setState(() => _showAllStarters = !_showAllStarters),
+              ),
+            ],
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildDetails() {
+  Widget _buildDetailsSection(BuildContext context, PixelGrid grid) {
     final summary = [
       _draft.goodFor.map((id) => spotGoodForOptions[id] ?? id).join(' & '),
       _draft.bestTime.map((id) => spotBestTimeOptions[id] ?? id).join('/'),
@@ -923,41 +969,78 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
       _update(next);
     }
 
-    return Material(
-      color: AppColors.background,
-      shape: const RoundedRectangleBorder(
-        borderRadius: AppSpacing.roundedLg,
-        side: BorderSide(color: AppColors.borderLowContrast),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          title: const Text('✨ Visitor details',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.woodBrown)),
-          subtitle: summary.isEmpty
-              ? null
-              : Text(summary,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
-          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Good for (max 5)',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+    return StudioSection(
+      step: 6,
+      title: 'Visitor details',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            button: true,
+            label:
+                _detailsOpen ? 'Hide visitor details' : 'Show visitor details',
+            child: ExcludeSemantics(
+              child: GestureDetector(
+                key: const ValueKey('studio_details_toggle'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _detailsOpen = !_detailsOpen),
+                child: PixelPanel(
+                  style: PixelBoxStyle.slot,
+                  padding: 1,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Who · When · Hours',
+                              style: PixelType.small(
+                                context,
+                                color: PixelPalette.slate,
+                              ),
+                            ),
+                            if (summary.isNotEmpty)
+                              Text(
+                                summary,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: PixelType.small(context),
+                              ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: grid.px(1)),
+                      PixelChip(
+                        _detailsOpen ? 'Hide' : 'Open',
+                        style: PixelBoxStyle.slot,
+                        textColor: PixelPalette.greenDark,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (_detailsOpen) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Good for (max 5)',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(0.5)),
             Wrap(
-              spacing: 6,
+              spacing: grid.px(1),
+              runSpacing: grid.px(1),
               children: [
                 for (final entry in spotGoodForOptions.entries)
-                  FilterChip(
-                    label: Text(entry.value),
+                  _toggleChip(
+                    context,
+                    label: entry.value,
                     selected: _draft.goodFor.contains(entry.key),
-                    onSelected: (on) {
+                    onTap: () {
                       final list = [..._draft.goodFor];
-                      if (!on) {
+                      if (list.contains(entry.key)) {
                         list.remove(entry.key);
                       } else if (list.length < 5) {
                         list.add(entry.key);
@@ -967,19 +1050,25 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text('Best time (max 4)',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+            _error('goodFor'),
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Best time (max 4)',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(0.5)),
             Wrap(
-              spacing: 6,
+              spacing: grid.px(1),
+              runSpacing: grid.px(1),
               children: [
                 for (final entry in spotBestTimeOptions.entries)
-                  FilterChip(
-                    label: Text(entry.value),
+                  _toggleChip(
+                    context,
+                    label: entry.value,
                     selected: _draft.bestTime.contains(entry.key),
-                    onSelected: (on) {
+                    onTap: () {
                       final list = [..._draft.bestTime];
-                      if (!on) {
+                      if (list.contains(entry.key)) {
                         list.remove(entry.key);
                       } else if (list.length < 4) {
                         list.add(entry.key);
@@ -989,42 +1078,147 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
-            TextField(
+            _error('bestTime'),
+            SizedBox(height: grid.px(2)),
+            StudioTextField(
+              key: const ValueKey('studio_hours'),
               controller: _hoursController,
+              label: 'Operating hours',
+              hint: 'e.g. 06:00 AM - 06:00 PM',
               maxLength: 80,
-              decoration: const InputDecoration(
-                  labelText: 'Operating hours',
-                  hintText: 'e.g. 06:00 AM - 06:00 PM',
-                  counterText: ''),
+              errorText: _fieldErrors['dailyHours'],
               onChanged: (value) {
                 _touched = _touched.copyWith(details: true);
                 _draft = _draft.copyWith(dailyHours: value);
               },
             ),
-            const SizedBox(height: 8),
-            const Text('Amenities',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Amenities',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(0.5)),
             Wrap(
-              spacing: 6,
+              spacing: grid.px(1),
+              runSpacing: grid.px(1),
               children: [
                 for (final amenity in spotPostingAmenities)
-                  FilterChip(
-                    label: Text(amenity.replaceAll('_', ' ')),
+                  _toggleChip(
+                    context,
+                    label: studioSubcategoryName(amenity),
                     selected: _draft.amenities.contains(amenity),
-                    onSelected: (on) {
+                    onTap: () {
                       final list = [..._draft.amenities];
-                      if (on) {
-                        list.add(amenity);
-                      } else {
+                      if (list.contains(amenity)) {
                         list.remove(amenity);
+                      } else {
+                        list.add(amenity);
                       }
                       touchDetails(_draft.copyWith(amenities: list));
                     },
                   ),
               ],
             ),
+            _error('amenities'),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleChip(
+    BuildContext context, {
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return PixelChip(
+      label,
+      style: selected ? PixelBoxStyle.green : PixelBoxStyle.slot,
+      textColor: selected ? PixelPalette.white : PixelPalette.slate,
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildPublishBar(
+    BuildContext context,
+    PixelGrid grid,
+    String? readiness,
+  ) {
+    final label = _mediaUploading ? 'Finishing your upload' : readiness;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        grid.px(3),
+        grid.px(2),
+        grid.px(3),
+        grid.px(2),
+      ),
+      child: PixelPanel(
+        style: PixelBoxStyle.parchment,
+        padding: 2,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              label ?? 'Ready to publish',
+              style: PixelType.small(
+                context,
+                color: label == null
+                    ? PixelPalette.greenDark
+                    : PixelPalette.goldDeep,
+              ),
+            ),
+            SizedBox(height: grid.px(1)),
+            PixelButton(
+              key: const ValueKey('studio_publish'),
+              label: _submitting ? 'Publishing' : 'Publish spot',
+              icon: StudioIcons.edit,
+              iconScale: 2,
+              expand: true,
+              loading: _submitting,
+              onPressed: _submitting || _mediaUploading ? null : _publish,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StoryStarterRow extends StatelessWidget {
+  const _StoryStarterRow({
+    required this.starter,
+    required this.used,
+    required this.onTap,
+  });
+
+  final String starter;
+  final bool used;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: !used,
+      label: used ? 'Added: $starter' : 'Add: $starter',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          key: ValueKey('studio_starter_${starter.hashCode}'),
+          behavior: HitTestBehavior.opaque,
+          onTap: used ? null : onTap,
+          child: PixelPanel(
+            style: used ? PixelBoxStyle.green : PixelBoxStyle.parchment,
+            padding: 1,
+            child: Text(
+              used ? 'Added · $starter' : '+ $starter',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: PixelType.small(
+                context,
+                color: used ? PixelPalette.white : PixelPalette.ink,
+              ),
+            ),
+          ),
         ),
       ),
     );
