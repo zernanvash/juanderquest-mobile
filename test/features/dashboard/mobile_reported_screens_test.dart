@@ -9,7 +9,10 @@ import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/widgets/nearby_quiz_card.dart';
+import 'package:juanderquest_app/features/dashboard/data/home_events.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_dashboard_providers.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
@@ -102,6 +105,24 @@ Future<void> render(
       homeDailyProvider.overrideWith(
         (ref) async => const HomeDailyState(stamps: 0, missions: []),
       ),
+      homeQotdProvider.overrideWith((ref) {
+        final notifier = HomeQotdNotifier(ref, autoLoad: false);
+        notifier.state = const AsyncValue.data(
+          HomeQotdState(
+            date: '',
+            questionId: '',
+            questionText: '',
+            quizTitle: '',
+            options: [],
+          ),
+        );
+        return notifier;
+      }),
+      homeProposalsProvider.overrideWith((ref) async => const []),
+      homeNearbyQuizProvider.overrideWith(
+        (ref) async => const HomeNearbyQuizzes(items: [], origin: 'default'),
+      ),
+      homeEventsProvider.overrideWithValue(const []),
     ],
     child: MaterialApp(theme: AppTheme.lightTheme, home: screen),
   ));
