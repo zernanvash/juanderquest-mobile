@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
-import 'package:juanderquest_app/features/spots/theater/theater_chapters.dart';
 
 void main() {
   group('SpotModel theater extensions', () {
@@ -247,16 +246,6 @@ void main() {
 
       final spotEmpty = spotWithPeriod.copyWith(description: '   ');
       expect(spotEmpty.teaser, '');
-    });
-
-    test('chapters helper returns 4 chapters without alternatives, 5 with alternatives', () {
-      final base = SpotTheaterChapter.getAvailable(hasAlternatives: false);
-      expect(base.length, 4);
-      expect(base.map((c) => c.id).toList(), ['overview', 'about', 'notes', 'venue']);
-
-      final withAlts = SpotTheaterChapter.getAvailable(hasAlternatives: true);
-      expect(withAlts.length, 5);
-      expect(withAlts.map((c) => c.id).toList(), ['overview', 'about', 'notes', 'venue', 'nearby']);
     });
   });
 }

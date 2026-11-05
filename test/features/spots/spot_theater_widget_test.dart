@@ -8,7 +8,7 @@ import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
-import 'package:juanderquest_app/features/spots/theater/theater_chapters.dart';
+import 'package:juanderquest_app/features/spots/theater/theater_backdrop.dart';
 import 'package:juanderquest_app/features/spots/theater/theater_gallery_dialog.dart';
 
 class _InertAuthNotifier extends AuthNotifier {
@@ -228,7 +228,8 @@ void main() {
       expect(find.byKey(const ValueKey('spot_create_quest_btn')), findsNothing);
     });
 
-    testWidgets('chapter tap jumps to section', (tester) async {
+    testWidgets('no sticky chapter bar; double-tap pops a heart',
+        (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -237,20 +238,45 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: _fullSpot));
       await tester.pumpAndSettle();
 
-      // Scroll so chapter bar is visible
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
       await tester.pumpAndSettle();
+      expect(find.byType(SliverPersistentHeader), findsNothing);
 
-      expect(find.byType(TheaterChapterBar), findsOneWidget);
+      final hearts = find.descendant(
+        of: find.byType(TheaterDoubleTapHearts),
+        matching: find.byType(Opacity),
+      );
+      expect(hearts, findsNothing);
+      await tester.tapAt(const Offset(200, 400));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tapAt(const Offset(200, 400));
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(hearts, findsOneWidget);
 
-      // Tap ABOUT chapter tab
-      final aboutTab = find.text('ABOUT');
-      expect(aboutTab, findsWidgets);
-      await tester.tap(aboutTab.first);
-      await tester.pumpAndSettle();
+      // The heart is gone after its short animation.
+      await tester.pump(const Duration(seconds: 1));
+      expect(hearts, findsNothing);
+    });
 
-      // Verify that ABOUT section is on screen
-      expect(find.text('GOOD FOR'), findsOneWidget);
+    testWidgets('backdrop treatment follows the Pixel lab choice',
+        (tester) async {
+      for (final mode in TheaterBackdrop.values) {
+        await tester.pumpWidget(ProviderScope(
+          key: ValueKey(mode),
+          overrides: [theaterBackdropProvider.overrideWith((ref) => mode)],
+          child: MaterialApp(
+            home: TheaterBackdropLayers(
+              spot: _fullSpot,
+              reveal: ValueNotifier(1.0),
+            ),
+          ),
+        ));
+        expect(
+          find.byType(TheaterBackdropTreatment),
+          mode == TheaterBackdrop.off ? findsNothing : findsOneWidget,
+          reason: mode.name,
+        );
+      }
     });
 
     testWidgets('empty about sub-blocks are hidden', (tester) async {

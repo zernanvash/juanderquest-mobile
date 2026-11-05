@@ -11,7 +11,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
 import '../theater/theater_about_section.dart';
-import '../theater/theater_chapters.dart';
+import '../theater/theater_backdrop.dart';
 import '../theater/theater_nearby_section.dart';
 import '../theater/theater_overview_section.dart';
 import '../theater/theater_panel.dart';
@@ -35,18 +35,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   bool _isSaved = false;
 
   // Plan 75m: scroll state lives in notifiers so scrolling rebuilds only the
-  // chapter bar and the scroll hint, never the whole page.
-  final ValueNotifier<SpotTheaterChapter> _chapter =
-      ValueNotifier(SpotTheaterChapter.overview);
-  final ValueNotifier<double> _progress = ValueNotifier(0.0);
+  // scroll hint and the backdrop fade, never the whole page.
   final ValueNotifier<bool> _scrolled = ValueNotifier(false);
-  DateTime _lastSpy = DateTime.fromMillisecondsSinceEpoch(0);
 
-  final _overviewKey = GlobalKey();
-  final _aboutKey = GlobalKey();
-  final _notesKey = GlobalKey();
-  final _venueKey = GlobalKey();
-  final _nearbyKey = GlobalKey();
+  /// 0 at the top of the page, 1 once the details cover most of the screen.
+  final ValueNotifier<double> _reveal = ValueNotifier(0.0);
 
   @override
   void initState() {
@@ -64,88 +57,19 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _chapter.dispose();
-    _progress.dispose();
     _scrolled.dispose();
+    _reveal.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (!mounted) return;
-    final offset =
-        _scrollController.hasClients ? _scrollController.offset : 0.0;
-    final maxScroll = _scrollController.hasClients
-        ? _scrollController.position.maxScrollExtent
-        : 1.0;
-    final progress = maxScroll > 0 ? (offset / maxScroll).clamp(0.0, 1.0) : 0.0;
-
+    if (!mounted || !_scrollController.hasClients) return;
+    final offset = _scrollController.offset;
     _scrolled.value = offset >= 10;
-    if ((_progress.value - progress).abs() > 0.01 ||
-        progress == 0 ||
-        progress == 1) {
-      _progress.value = progress;
-    }
-
-    // Scroll-spy: the section positions are read at most every 120 ms.
-    final now = DateTime.now();
-    if (now.difference(_lastSpy).inMilliseconds < 120) return;
-    _lastSpy = now;
-    final available = SpotTheaterChapter.getAvailable(
-        hasAlternatives: _alternatives.isNotEmpty);
-
-    double getSectionTop(GlobalKey key) {
-      final ctx = key.currentContext;
-      if (ctx == null) return double.infinity;
-      final box = ctx.findRenderObject() as RenderBox?;
-      if (box == null || !box.hasSize) return double.infinity;
-      return box.localToGlobal(Offset.zero).dy;
-    }
-
-    const barThreshold = 180.0;
-    final SpotTheaterChapter active;
-    if (available.contains(SpotTheaterChapter.nearby) &&
-        getSectionTop(_nearbyKey) <= barThreshold) {
-      active = SpotTheaterChapter.nearby;
-    } else if (getSectionTop(_venueKey) <= barThreshold) {
-      active = SpotTheaterChapter.venue;
-    } else if (getSectionTop(_notesKey) <= barThreshold) {
-      active = SpotTheaterChapter.notes;
-    } else if (getSectionTop(_aboutKey) <= barThreshold) {
-      active = SpotTheaterChapter.about;
-    } else {
-      active = SpotTheaterChapter.overview;
-    }
-    _chapter.value = active;
-  }
-
-  void _scrollToChapter(SpotTheaterChapter chapter) {
-    GlobalKey? targetKey;
-    switch (chapter) {
-      case SpotTheaterChapter.overview:
-        targetKey = _overviewKey;
-        break;
-      case SpotTheaterChapter.about:
-        targetKey = _aboutKey;
-        break;
-      case SpotTheaterChapter.notes:
-        targetKey = _notesKey;
-        break;
-      case SpotTheaterChapter.venue:
-        targetKey = _venueKey;
-        break;
-      case SpotTheaterChapter.nearby:
-        targetKey = _nearbyKey;
-        break;
-    }
-
-    final ctx = targetKey.currentContext;
-    if (ctx != null) {
-      // Stepped jump with zero duration (stepped motion rule)
-      Scrollable.ensureVisible(
-        ctx,
-        alignment: 0.0,
-        duration: Duration.zero,
-      );
+    final span = _scrollController.position.viewportDimension * 0.6;
+    final reveal = span > 0 ? (offset / span).clamp(0.0, 1.0) : 0.0;
+    if ((_reveal.value - reveal).abs() > 0.02 || reveal == 0 || reveal == 1) {
+      _reveal.value = reveal;
     }
   }
 
@@ -296,106 +220,88 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
               child: RepaintBoundary(child: SpotStillPhoto(spot: spot)),
             ),
 
-            // 2. Story content: scrolls over the stationary photo
-            CustomScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // First Viewport: unobstructed photo, top controls, hero block, scroll hint
-                SliverToBoxAdapter(
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: _scrolled,
-                    builder: (context, scrolled, _) => TheaterFirstViewport(
-                      spot: spot,
-                      isSaved: _isSaved,
-                      // Only whether the page has left the top matters here.
-                      scrollOffset: scrolled ? 10 : 0,
-                      onToggleSave: _toggleSaved,
-                      onShare: _shareSpot,
-                      onDirections: _openDirections,
-                      onPlayQuest: _playQuest,
+            // 1b. Stationary scrims + the Pixel-lab backdrop treatment.
+            Positioned.fill(
+              child: TheaterBackdropLayers(spot: spot, reveal: _reveal),
+            ),
+
+            // 2. Story content: scrolls over the stationary photo.
+            //    Double-tap anywhere pops a heart.
+            TheaterDoubleTapHearts(
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  // First Viewport: unobstructed photo, top controls, hero block, scroll hint
+                  SliverToBoxAdapter(
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: _scrolled,
+                      builder: (context, scrolled, _) => TheaterFirstViewport(
+                        spot: spot,
+                        isSaved: _isSaved,
+                        // Only whether the page has left the top matters here.
+                        scrollOffset: scrolled ? 10 : 0,
+                        onToggleSave: _toggleSaved,
+                        onShare: _shareSpot,
+                        onDirections: _openDirections,
+                        onPlayQuest: _playQuest,
+                      ),
                     ),
                   ),
-                ),
 
-                // Sticky pixel chapter bar
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _TheaterChapterBarDelegate(
-                    chapter: _chapter,
-                    hasAlternatives: hasAlternatives,
-                    progress: _progress,
-                    onSelectChapter: _scrollToChapter,
-                  ),
-                ),
-
-                // Story content sections with generous spacing revealing photo between panels
-                SliverPadding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      // Chapter 1: OVERVIEW
-                      Container(
-                        key: _overviewKey,
-                        child: TheaterOverviewSection(
+                  // Story content sections with generous spacing revealing photo between panels
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 24),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        // Chapter 1: OVERVIEW
+                        TheaterOverviewSection(
                           spot: spot,
                           isAuthor: isAuthor,
                           onPlayQuest: _playQuest,
                         ),
-                      ),
-                      const SizedBox(height: 28),
+                        const SizedBox(height: 28),
 
-                      // Chapter 2: ABOUT
-                      Container(
-                        key: _aboutKey,
-                        child: TheaterAboutSection(spot: spot),
-                      ),
-                      const SizedBox(height: 28),
+                        // Chapter 2: ABOUT
+                        TheaterAboutSection(spot: spot),
+                        const SizedBox(height: 28),
 
-                      // Chapter 3: NOTES
-                      Container(
-                        key: _notesKey,
-                        child: SpotCommunitySection(
+                        // Chapter 3: NOTES
+                        SpotCommunitySection(
                           spotId: spot.id,
                           spotName: spot.name,
                         ),
-                      ),
-                      const SizedBox(height: 28),
+                        const SizedBox(height: 28),
 
-                      // Chapter 4: VENUE & MAP
-                      Container(
-                        key: _venueKey,
-                        child: TheaterVenueSection(
+                        // Chapter 4: VENUE & MAP
+                        TheaterVenueSection(
                           spot: spot,
                           onDirections: _openDirections,
                         ),
-                      ),
 
-                      // Chapter 5: NEARBY (only when alternatives exist)
-                      if (hasAlternatives) ...[
-                        const SizedBox(height: 28),
-                        Container(
-                          key: _nearbyKey,
-                          child: TheaterNearbySection(
+                        // Chapter 5: NEARBY (only when alternatives exist)
+                        if (hasAlternatives) ...[
+                          const SizedBox(height: 28),
+                          TheaterNearbySection(
                             alternatives: _alternatives,
                             isLoading: _loadingAlternatives,
                           ),
+                        ],
+
+                        const SizedBox(height: 28),
+
+                        // End panel: photo credit, report problem, safe area
+                        _buildEndPanel(context, spot),
+
+                        SizedBox(
+                          height: MediaQuery.paddingOf(context).bottom + 24,
                         ),
-                      ],
-
-                      const SizedBox(height: 28),
-
-                      // End panel: photo credit, report problem, safe area
-                      _buildEndPanel(context, spot),
-
-                      SizedBox(
-                        height: MediaQuery.paddingOf(context).bottom + 24,
-                      ),
-                    ]),
+                      ]),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -439,47 +345,4 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
       ),
     );
   }
-}
-
-class _TheaterChapterBarDelegate extends SliverPersistentHeaderDelegate {
-  _TheaterChapterBarDelegate({
-    required this.chapter,
-    required this.hasAlternatives,
-    required this.progress,
-    required this.onSelectChapter,
-  });
-
-  final ValueNotifier<SpotTheaterChapter> chapter;
-  final bool hasAlternatives;
-  final ValueNotifier<double> progress;
-  final ValueChanged<SpotTheaterChapter> onSelectChapter;
-
-  @override
-  double get minExtent => 56.0;
-
-  @override
-  double get maxExtent => 56.0;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([chapter, progress]),
-      builder: (context, _) => TheaterChapterBar(
-        currentChapter: chapter.value,
-        hasAlternatives: hasAlternatives,
-        readingProgress: progress.value,
-        onSelectChapter: onSelectChapter,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_TheaterChapterBarDelegate oldDelegate) =>
-      oldDelegate.chapter != chapter ||
-      oldDelegate.progress != progress ||
-      oldDelegate.hasAlternatives != hasAlternatives;
 }

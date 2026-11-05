@@ -17,6 +17,7 @@ import '../../core/pixel/pixel_theme.dart';
 import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
+import '../spots/theater/theater_backdrop.dart';
 import 'home_options.dart';
 import 'rpg_feel_section.dart';
 import 'tutorial_preview.dart';
@@ -91,6 +92,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           _section(context, 'RPG feel (75k)',
                               const RpgFeelSection()),
                           SizedBox(height: grid.px(3)),
+                          _spotBackdrop(context, grid),
+                          SizedBox(height: grid.px(3)),
                           _homeOptions(context, grid),
                           SizedBox(height: grid.px(3)),
                           _palette(context, grid),
@@ -122,6 +125,46 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _spotBackdrop(BuildContext context, PixelGrid grid) {
+    final current = ref.watch(theaterBackdropProvider);
+    return _section(
+      context,
+      'Spot page background · pick one',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'What the place photo looks like behind the details once you '
+            'scroll down. Open any place in Explore to see it.',
+            style: PixelType.small(context, color: PixelPalette.ink),
+          ),
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(2),
+            children: [
+              for (final mode in TheaterBackdrop.values)
+                PixelButton(
+                  key: ValueKey('lab_backdrop_${mode.name}'),
+                  label: mode.label,
+                  variant: mode == current
+                      ? PixelButtonVariant.primary
+                      : PixelButtonVariant.secondary,
+                  onPressed: () =>
+                      ref.read(theaterBackdropProvider.notifier).state = mode,
+                ),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          Text(
+            current.hint,
+            style: PixelType.small(context, color: PixelPalette.woodDeep),
+          ),
+        ],
       ),
     );
   }

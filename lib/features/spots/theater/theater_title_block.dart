@@ -9,7 +9,6 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../models/spot_model.dart';
 import 'theater_gallery_dialog.dart';
-import 'theater_panel.dart';
 
 class TheaterFirstViewport extends StatelessWidget {
   const TheaterFirstViewport({
@@ -44,21 +43,8 @@ class TheaterFirstViewport extends StatelessWidget {
       width: double.infinity,
       child: Stack(
         children: [
-          // Top scrim
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: TheaterTopScrim(height: 140),
-          ),
-
-          // Bottom scrim
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: TheaterBottomScrim(height: effectiveHeight * 0.65),
-          ),
+          // Scrims live in the stationary TheaterBackdropLayers (no edge
+          // shows when the page is pulled past its top).
 
           // Top Controls (Back, Gallery, Credit, Save, Share)
           Positioned(

@@ -12,12 +12,20 @@ class SpotStillPhoto extends StatelessWidget {
 
   final SpotModel spot;
 
+  static const alignment = Alignment(0, -0.16);
+
+  /// The photo shown behind the spot page, or null when there is none.
+  static String? urlFor(SpotModel spot) {
+    final url =
+        spot.leadStillPhoto?.url ?? (spot.isVideo ? null : spot.imageUrl);
+    return url == null || url.trim().isEmpty ? null : url;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final still = spot.leadStillPhoto;
-    final url = still?.url ?? (spot.isVideo ? null : spot.imageUrl);
+    final url = urlFor(spot);
 
-    if (url == null || url.trim().isEmpty) {
+    if (url == null) {
       return const _DitherFallback();
     }
 
@@ -32,7 +40,7 @@ class SpotStillPhoto extends StatelessWidget {
         url,
         key: const Key('theater_still_photo_image'),
         fit: BoxFit.cover,
-        alignment: const Alignment(0, -0.16),
+        alignment: alignment,
         cacheWidth: cacheWidth,
         errorBuilder: (_, __, ___) => const _DitherFallback(),
       ),
