@@ -8,6 +8,7 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../models/spot_model.dart';
 import 'theater_panel.dart';
+import 'theater_title_block.dart';
 
 class TheaterOverviewSection extends StatelessWidget {
   const TheaterOverviewSection({
@@ -24,8 +25,11 @@ class TheaterOverviewSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final isBusy = spot.crowdStatus == 'estimated_busy' || spot.crowdStatus == 'busy';
-    final isQuiet = spot.crowdStatus == 'estimated_quiet' || spot.crowdStatus == 'quiet';
+    final sourceName = spotCreditName(spot.sourceName);
+    final isBusy =
+        spot.crowdStatus == 'estimated_busy' || spot.crowdStatus == 'busy';
+    final isQuiet =
+        spot.crowdStatus == 'estimated_quiet' || spot.crowdStatus == 'quiet';
 
     return TheaterPanel(
       child: Column(
@@ -85,14 +89,14 @@ class TheaterOverviewSection extends StatelessWidget {
           ],
 
           // Author / Creator / Source
-          if (spot.sourceName.isNotEmpty || isAuthor) ...[
+          if (sourceName.isNotEmpty || isAuthor) ...[
             Wrap(
               spacing: grid.px(1),
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (spot.sourceName.isNotEmpty)
+                if (sourceName.isNotEmpty)
                   Text(
-                    'Shared by ${spot.sourceName}',
+                    'Shared by $sourceName',
                     style: PixelType.small(context, color: PixelPalette.mist),
                   ),
                 if (isAuthor)

@@ -85,6 +85,20 @@ abstract final class StudioIcons {
     '0......',
   ]);
 
+  static const share = PixelArt('studioShare', [
+    '............',
+    '..........00',
+    '.........0h0',
+    '........0hh0',
+    '.......0h0h0',
+    '......0000h0',
+    '.....0hh0.00',
+    '....0hh0....',
+    '...0hh0.....',
+    '...000......',
+    '............',
+  ]);
+
   static PixelArt forCategory(String id) => switch (id) {
         'eat_drink' => ExploreArt.foodStrip,
         'nature_outdoors' => ExploreArt.natureStrip,
