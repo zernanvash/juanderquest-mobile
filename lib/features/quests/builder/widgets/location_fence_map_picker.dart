@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_box.dart';
 import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/base_tile_layer.dart';
+import '../../../map/pixel/map_marker_art.dart';
 import '../builder_models.dart';
 
 class LocationFenceMapPicker extends StatefulWidget {
@@ -112,10 +114,9 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          const Icon(
-                            Icons.location_pin,
-                            size: 36,
-                            color: AppColors.primary,
+                          const PixelSprite(
+                            MapMarkerArt.spotPin,
+                            scale: 2,
                           ),
                         ],
                       ),
@@ -138,13 +139,10 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
           ),
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: PixelPalette.paperDim,
-            border: Border.all(color: PixelPalette.mist),
-          ),
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -171,17 +169,47 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                   ),
                 ],
               ),
-              Slider(
-                value: widget.fence.radiusMeters.toDouble().clamp(30.0, 500.0),
-                min: 30,
-                max: 500,
-                divisions: 47,
-                activeColor: PixelPalette.green,
-                inactiveColor: PixelPalette.mist,
-                onChanged: (val) {
-                  widget.onChanged(
-                      widget.fence.copyWith(radiusMeters: val.round()));
-                },
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  for (final step in [30, 50, 100, 200, 500])
+                    PixelChip(
+                      '$step m',
+                      style: widget.fence.radiusMeters == step
+                          ? PixelBoxStyle.gold
+                          : PixelBoxStyle.slot,
+                      textColor: widget.fence.radiusMeters == step
+                          ? PixelPalette.ink
+                          : PixelPalette.slate,
+                      onTap: () => widget.onChanged(
+                        widget.fence.copyWith(radiusMeters: step),
+                      ),
+                    ),
+                ],
+              ),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 6,
+                  trackShape: const _PixelSliderTrackShape(),
+                  thumbShape: const _PixelSliderThumbShape(),
+                  activeTrackColor: PixelPalette.green,
+                  inactiveTrackColor: PixelPalette.stone,
+                  overlayColor: Colors.transparent,
+                  thumbColor: PixelPalette.gold,
+                ),
+                child: Slider(
+                  value:
+                      widget.fence.radiusMeters.toDouble().clamp(30.0, 500.0),
+                  min: 30,
+                  max: 500,
+                  divisions: 47,
+                  onChanged: (val) {
+                    widget.onChanged(
+                        widget.fence.copyWith(radiusMeters: val.round()));
+                  },
+                ),
               ),
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -206,6 +234,60 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PixelSliderTrackShape extends RectangularSliderTrackShape {
+  const _PixelSliderTrackShape();
+
+  @override
+  Rect getPreferredRect({
+    required RenderBox parentBox,
+    Offset offset = Offset.zero,
+    required SliderThemeData sliderTheme,
+    bool isEnabled = false,
+    bool isDiscrete = false,
+  }) {
+    final trackHeight = sliderTheme.trackHeight ?? 6.0;
+    final trackLeft = offset.dx + 4;
+    final trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2;
+    final trackWidth = parentBox.size.width - 8;
+    return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);
+  }
+}
+
+class _PixelSliderThumbShape extends SliderComponentShape {
+  static const double size = 14.0;
+  const _PixelSliderThumbShape();
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
+      const Size(size, size);
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final rect = Rect.fromCenter(center: center, width: size, height: size);
+    context.canvas.drawRect(rect, Paint()..color = PixelPalette.gold);
+    context.canvas.drawRect(
+      rect,
+      Paint()
+        ..color = PixelPalette.ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
     );
   }
 }

@@ -3,6 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../map/pixel/map_marker_art.dart';
 import '../core/ar_device.dart';
 import '../core/ar_hunt.dart';
 import '../core/ar_math.dart';
@@ -110,11 +115,13 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton.filledTonal(
+                  PixelIconButton(
                     onPressed: () => context.canPop()
                         ? context.pop()
                         : context.go('/settings'),
-                    icon: const Icon(Icons.arrow_back_rounded),
+                    icon: MapMarkerArt.iconClose,
+                    semanticLabel: 'Back to settings',
+                    style: PixelBoxStyle.parchment,
                   ),
                   const SizedBox(height: 8),
                   if (_denied)
@@ -129,31 +136,50 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
                           children: [
                             _Readout(lines: _lines(pose, focal)),
                             const SizedBox(height: 8),
-                            Material(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(12),
-                              child: SwitchListTile(
-                                key: const ValueKey('ar_diag_world_toggle'),
-                                dense: true,
-                                title: const Text('World AR (ARCore, beta)',
-                                    style: TextStyle(color: Colors.white)),
-                                subtitle: Text(
-                                  'Use ARCore in quests when available. '
-                                  'ARCore: ${_worldAvailability?.name ?? '…'}',
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                                value: _worldEnabled,
-                                onChanged: (v) async {
-                                  await WorldArPrefs.setEnabled(v);
-                                  if (mounted) {
-                                    setState(() => _worldEnabled = v);
-                                  }
-                                },
+                            PixelPanel(
+                              style: PixelBoxStyle.parchment,
+                              padding: 2,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'World AR (ARCore, beta)',
+                                          style: PixelType.body(context),
+                                        ),
+                                        Text(
+                                          'Use ARCore in quests when available. '
+                                          'ARCore: ${_worldAvailability?.name ?? '…'}',
+                                          style: PixelType.small(
+                                            context,
+                                            color: PixelPalette.slate,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  PixelSwitch(
+                                    key: const ValueKey('ar_diag_world_toggle'),
+                                    value: _worldEnabled,
+                                    onChanged: (v) async {
+                                      await WorldArPrefs.setEnabled(v);
+                                      if (mounted) {
+                                        setState(() => _worldEnabled = v);
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(height: 8),
-                            TextButton.icon(
+                            PixelButton(
                               key: const ValueKey('ar_diag_replay_tutorial'),
+                              label: 'Replay AR tutorial',
+                              variant: PixelButtonVariant.secondary,
                               onPressed: () async {
                                 await ArTutorialPrefs.reset();
                                 if (!context.mounted) return;
@@ -164,10 +190,6 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
                                   ),
                                 );
                               },
-                              icon: const Icon(Icons.replay_rounded,
-                                  color: Colors.white),
-                              label: const Text('Replay AR tutorial',
-                                  style: TextStyle(color: Colors.white)),
                             ),
                           ],
                         ),
@@ -188,13 +210,12 @@ class _ArDiagnosticsScreenState extends State<ArDiagnosticsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FilledButton.icon(
+                  PixelButton(
                     key: const ValueKey('ar_diag_place'),
                     onPressed: _ready ? _placeAhead : null,
-                    icon: const Icon(Icons.add_location_alt_rounded),
-                    label: Text(_object == null
+                    label: _object == null
                         ? 'Place test object ahead'
-                        : 'Move test object ahead'),
+                        : 'Move test object ahead',
                   ),
                 ],
               ),
@@ -234,21 +255,20 @@ class _Readout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(10),
-      ),
+    return PixelPanel(
+      style: PixelBoxStyle.wood,
+      padding: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final l in lines)
-            Text(l,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontFamily: 'monospace')),
+            Text(
+              l,
+              style: PixelType.small(
+                context,
+                color: PixelPalette.paper,
+              ),
+            ),
         ],
       ),
     );

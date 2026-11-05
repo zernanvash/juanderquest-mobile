@@ -22,7 +22,6 @@ import '../builder/task_validation.dart';
 import '../builder/widgets/quest_traveler_preview_card.dart';
 import '../builder/widgets/task_item_card.dart';
 import '../builder/widgets/task_settings_panel.dart';
-import '../pixel/dashed_button.dart';
 
 class QuestBuilderScreen extends ConsumerStatefulWidget {
   final String? spotSlug;
@@ -632,7 +631,7 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
               style: PixelType.title(context),
             ),
             if (_state.tasks.length < 10)
-              PixelDashedButton(
+              PixelButton(
                 key: const ValueKey('builder_add_task_btn'),
                 label: '+ Add task',
                 onPressed: _handleAddTask,

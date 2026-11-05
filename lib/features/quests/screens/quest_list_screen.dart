@@ -384,43 +384,39 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
         _activeTabIndex == 0 ? _questCategories : _campaignCategories;
     final selected =
         _activeTabIndex == 0 ? _selectedCategory : _selectedCampaignCategory;
-    return Wrap(
-      spacing: grid.px(2),
-      runSpacing: grid.px(1),
-      children: [
-        for (final option in options)
-          _CategoryChip(
-            key: ValueKey('quests_category_${option.$1}'),
-            label: option.$2,
-            selected: selected == option.$1,
-            onTap: () => _activeTabIndex == 0
-                ? _selectQuestCategory(option.$1)
-                : _selectCampaignCategory(option.$1),
-          ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var i = 0; i < options.length; i++) ...[
+            if (i > 0) SizedBox(width: grid.px(2)),
+            _CategoryChip(
+              key: ValueKey('quests_category_${options[i].$1}'),
+              label: options[i].$2,
+              selected: selected == options[i].$1,
+              onTap: () => _activeTabIndex == 0
+                  ? _selectQuestCategory(options[i].$1)
+                  : _selectCampaignCategory(options[i].$1),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
   Widget _search(BuildContext context, PixelGrid grid) {
-    return Row(
-      children: [
-        const PixelSprite(DesignerArt.search, scale: 2),
-        SizedBox(width: grid.px(2)),
-        Expanded(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: PixelTextField(
-              controller: _searchController,
-              hint: _activeTabIndex == 0
-                  ? 'Quests, town, tag'
-                  : 'Events & festivals',
-              onChanged: (_) => setState(() {
-                _visibleCount = 10;
-              }),
-            ),
-          ),
-        ),
-      ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: PixelTextField(
+        controller: _searchController,
+        prefix: const PixelSprite(DesignerArt.search, scale: 2),
+        hint: _activeTabIndex == 0
+            ? 'Quests, town, tag'
+            : 'Events & festivals',
+        onChanged: (_) => setState(() {
+          _visibleCount = 10;
+        }),
+      ),
     );
   }
 

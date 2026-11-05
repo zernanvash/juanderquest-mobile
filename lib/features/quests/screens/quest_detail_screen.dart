@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -916,6 +917,97 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         (quest.imageUrl!.startsWith('http://') ||
             quest.imageUrl!.startsWith('https://'));
     final topInset = grid.px(2);
+    if (!hasImage) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 96,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _heroPlaceholder(context, quest),
+                ),
+                Positioned(
+                  top: topInset,
+                  left: grid.px(2),
+                  child: PixelIconButton(
+                    icon: _questBackIcon,
+                    semanticLabel: 'Back',
+                    iconHeight: 24,
+                    style: PixelBoxStyle.parchment,
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        context.go('/dashboard');
+                      }
+                    },
+                  ),
+                ),
+                Positioned(
+                  top: topInset,
+                  right: grid.px(2),
+                  child: SavedQuestHeart(
+                    saved: saved,
+                    questTitle: quest.title,
+                    onToggle: () =>
+                        ref.read(savedQuestsProvider.notifier).toggle(quest.id),
+                  ),
+                ),
+                const Center(
+                  child: PixelSprite(DesignerArt.questMarker, scale: 3),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            color: PixelPalette.ink.withValues(alpha: 0.95),
+            padding: EdgeInsets.fromLTRB(
+              grid.px(3),
+              grid.px(2),
+              grid.px(3),
+              grid.px(2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PixelTag(
+                  '${quest.categoryDisplay} · Eco-Quest',
+                  style: PixelBoxStyle.gold,
+                  textColor: PixelPalette.ink,
+                  maxWidth: grid.px(140),
+                ),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  quest.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.title(context, color: PixelPalette.paper),
+                ),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  quest.locationName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.paperDim,
+                  ),
+                ),
+                SizedBox(height: grid.px(2)),
+                PixelButton(
+                  label: 'Directions',
+                  style: PixelBoxStyle.wood,
+                  textColor: PixelPalette.white,
+                  onPressed: _openDirections,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
     return SizedBox(
       height: 300,
       child: Stack(
