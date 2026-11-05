@@ -17,6 +17,7 @@ import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
+import 'package:juanderquest_app/core/dev/test_content.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
 import 'package:juanderquest_app/features/quests/providers/quest_provider.dart';
 import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
@@ -892,7 +893,7 @@ void main() {
     _expectSlot('home_proof_approved', 'Approved proofs', '2');
     _expectSlot('home_proof_rejected', 'Rejected proofs', '1');
     expect(find.text('Mangatarem Forest Cleanup'), findsOneWidget);
-    expect(find.text('Patar White Beach Eco Trail'), findsOneWidget);
+    expect(find.text('Patar White Beach Eco Trail'), findsNothing);
     expect(find.byKey(const ValueKey('home_affiliate')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -919,6 +920,9 @@ void main() {
     expect(fake.calls['/qotd/answer'], 1);
     expect(find.text('Correct!'), findsOneWidget);
     expect(_textContaining('Manaoag is home'), findsOneWidget);
+    // Answered: only the chosen (here also correct) option stays.
+    expect(find.byKey(const ValueKey('home_qotd_option_o1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_qotd_option_o2')), findsNothing);
   });
 
   testWidgets('QOTD empty and error states', (tester) async {
@@ -1276,35 +1280,13 @@ void main() {
         find.byKey(const ValueKey('home_hidden_gems_retry')), findsOneWidget);
   });
 
-  testWidgets('community voting data, empty and error states', (tester) async {
+  testWidgets('no community voting card: governance is a read-only archive',
+      (tester) async {
+    // Owner 2026-11-05 (Plan 75n §7): JuanChoice is the only live vote.
     await _pump(tester);
-    expect(find.text('Patar White Beach Eco Trail'), findsOneWidget);
-    await _tapRoute(
-      tester,
-      find.byKey(const ValueKey('home_proposal_p1')),
-      '/vote',
-    );
-    await _pump(tester);
-    await _tapRoute(
-      tester,
-      find.byKey(const ValueKey('home_vote_open')),
-      '/vote',
-    );
-
-    await _pump(
-      tester,
-      overrides: _overrides(proposals: () async => const []),
-    );
-    expect(find.text('No open proposals right now.'), findsOneWidget);
-
-    await _pump(
-      tester,
-      overrides: _overrides(
-        proposals: () async => throw Exception('proposals down'),
-      ),
-    );
-    expect(find.text('Community voting is unavailable.'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_proposals_retry')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_proposals_panel')), findsNothing);
+    expect(find.byKey(const ValueKey('home_vote_open')), findsNothing);
+    expect(find.text('Patar White Beach Eco Trail'), findsNothing);
   });
 
   testWidgets('affiliate invite opens the partner hub', (tester) async {
@@ -1377,6 +1359,113 @@ void main() {
     );
     expect(keys.hero.currentContext, isNotNull);
     expect(keys.nextStop.currentContext, isNotNull);
+  });
+
+  // ---------------------------------------------------------- Plan 75n WP-3
+  testWidgets('events header says upcoming festivals; titles use full width',
+      (tester) async {
+    final event = HomeEvent(
+      id: 'ev-long',
+      title: 'Pista ng Dayat Sea Festival and Grand Street Dancing',
+      date: DateTime.now().add(const Duration(days: 300)),
+      municipality: 'Lingayen',
+      category: 'festival',
+      description: 'A long-named festival.',
+      route: '/quests',
+    );
+    await _pump(tester, overrides: _overrides(events: [event]));
+    await _openTab(tester, 'quests');
+    expect(_textContaining('Upcoming festivals'), findsOneWidget);
+    expect(_textContaining('This month in Pangasinan'), findsNothing);
+    final title = tester.getSize(
+      find.byKey(const ValueKey('home_event_title_ev-long')),
+    );
+    final row = tester.getSize(find.byKey(const ValueKey('home_event_ev-long')));
+    // The countdown chip no longer sits beside the title.
+    expect(title.width, greaterThan(row.width * 0.8));
+  });
+
+  testWidgets('hidden gems hide an unknown crowd level', (tester) async {
+    await _pump(
+      tester,
+      overrides: _overrides(
+        gems: () async => const [
+          HiddenGemModel(
+            id: 'gem-unknown',
+            name: 'Tondol White Sand Beach Cove',
+            municipality: 'Anda',
+            reason: 'Shallow water.',
+          ),
+          HiddenGemModel(
+            id: 'gem-quiet',
+            name: 'Bolinao Falls',
+            municipality: 'Bolinao',
+            reason: 'A quiet waterfall.',
+            crowdStatus: 'quiet',
+          ),
+        ],
+      ),
+    );
+    await _openTab(tester, 'collection');
+    expect(find.text('Tondol White Sand Beach Cove'), findsOneWidget);
+    expect(_textContaining('unknown'), findsNothing);
+    expect(
+      find.text(const HiddenGemModel(
+        id: 'x',
+        name: 'x',
+        municipality: 'x',
+        reason: 'x',
+        crowdStatus: 'quiet',
+      ).crowdLabel),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('test quests stay off Home unless Developer mode shows them',
+      (tester) async {
+    final testQuest = QuestModel(
+      id: 'q-sim',
+      title: 'SIM Lingayen heritage walk',
+      description: 'QA sample.',
+      category: 'heritage',
+      locationName: 'Lingayen',
+      gpsLat: 16.0,
+      gpsLng: 120.2,
+      radiusMeters: 100,
+      rewardPoints: 10,
+      markerImageUrl: '',
+      isTest: true,
+      steps: _quests.first.steps,
+    );
+    final state = QuestState(quests: [..._quests, testQuest], isLoading: false);
+    await _pump(tester, overrides: _overrides(quests: state));
+    await _openTab(tester, 'quests');
+    expect(find.text('Hundred Islands Eco Trek'), findsOneWidget);
+    expect(find.text('SIM Lingayen heritage walk'), findsNothing);
+
+    await _pump(
+      tester,
+      overrides: [
+        ..._overrides(quests: state),
+        showTestContentProvider.overrideWith((ref) => true),
+      ],
+    );
+    await _openTab(tester, 'quests');
+    expect(find.text('SIM Lingayen heritage walk'), findsOneWidget);
+  });
+
+  testWidgets('quest progress has one See all (the button), not two',
+      (tester) async {
+    await _pump(tester);
+    await _openTab(tester, 'quests');
+    expect(find.byKey(const ValueKey('home_see_all_quests')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home_quest_progress_panel')),
+        matching: _textContaining('See all'),
+      ),
+      findsOneWidget,
+    );
   });
 
   for (final size in [const Size(320, 568), const Size(568, 320)]) {

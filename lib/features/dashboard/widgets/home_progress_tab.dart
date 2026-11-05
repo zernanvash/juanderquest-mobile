@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -17,9 +18,7 @@ import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../submissions/models/submission_model.dart';
 import '../../submissions/providers/submission_provider.dart';
-import '../../vote/models/governance_proposal_model.dart';
 import '../providers/home_daily_provider.dart';
-import '../providers/home_dashboard_providers.dart';
 import '../providers/home_qotd_provider.dart';
 import 'home_juanchoice_card.dart';
 import 'home_widgets.dart';
@@ -46,8 +45,6 @@ class HomeProgressTab extends StatelessWidget {
         const _ProofActivitySection(),
         SizedBox(height: grid.px(2)),
         const HomeJuanChoiceCard(),
-        SizedBox(height: grid.px(2)),
-        const _CommunityVotingSection(),
         SizedBox(height: grid.px(2)),
         const _AffiliateInvite(),
       ],
@@ -79,6 +76,17 @@ class _QotdSection extends ConsumerWidget {
           if (!state.hasQuestion) {
             return const HomeEmptyText('No question today.');
           }
+          // Once answered, keep only the chosen and the correct option so the
+          // card stops taking a full screen for the rest of the day.
+          final options = state.answered
+              ? state.options
+                  .where(
+                    (option) =>
+                        option.id == state.selectedOptionId ||
+                        option.id == state.correctOptionId,
+                  )
+                  .toList()
+              : state.options;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -107,16 +115,16 @@ class _QotdSection extends ConsumerWidget {
                 ),
               ),
               SizedBox(height: grid.px(2)),
-              for (var i = 0; i < state.options.length; i++) ...[
+              for (var i = 0; i < options.length; i++) ...[
                 if (i > 0) SizedBox(height: grid.px(1)),
                 _QotdOptionRow(
-                  option: state.options[i],
+                  option: options[i],
                   state: state,
                   onTap: state.answered || state.submitting
                       ? null
                       : () => ref
                           .read(homeQotdProvider.notifier)
-                          .answer(state.options[i].id),
+                          .answer(options[i].id),
                 ),
               ],
               if (state.submitting) ...[
@@ -604,12 +612,11 @@ class _WalletSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final grid = PixelGrid.of(context);
     final user = ref.watch(authProvider).user;
     return HomePanel(
       key: const ValueKey('home_wallet_panel'),
       title: 'Wallet',
-      child: Column(
+      child: HomeStatGrid(
         children: [
           HomeStatSlot(
             key: const ValueKey('home_wallet_mjdq'),
@@ -619,14 +626,12 @@ class _WalletSection extends ConsumerWidget {
             value: homeNumber(user?.points ?? 0),
             onTap: () => context.go('/profile'),
           ),
-          SizedBox(height: grid.px(1)),
           HomeStatSlot(
             key: const ValueKey('home_wallet_jdq'),
             label: 'JDQ governance',
             value: homeNumber(user?.jdqGovernanceBalance ?? 0),
             onTap: () => context.go('/profile'),
           ),
-          SizedBox(height: grid.px(1)),
           HomeStatSlot(
             key: const ValueKey('home_wallet_rep'),
             label: 'Scout reputation',
@@ -646,7 +651,6 @@ class _TravelStatsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final grid = PixelGrid.of(context);
     final engagement = ref.watch(choiceEngagementProvider);
     return HomePanel(
       key: const ValueKey('home_travel_panel'),
@@ -658,7 +662,7 @@ class _TravelStatsSection extends ConsumerWidget {
           retryKey: const ValueKey('home_progress_stats_retry'),
           onRetry: () => ref.invalidate(choiceEngagementProvider),
         ),
-        data: (summary) => Column(
+        data: (summary) => HomeStatGrid(
           children: [
             HomeStatSlot(
               key: const ValueKey('home_stat_streak'),
@@ -667,21 +671,18 @@ class _TravelStatsSection extends ConsumerWidget {
                   '${summary.currentStreak} ${summary.currentStreak == 1 ? 'day' : 'days'}',
               onTap: () => context.go('/profile'),
             ),
-            SizedBox(height: grid.px(1)),
             HomeStatSlot(
               key: const ValueKey('home_stat_visits'),
               label: 'Verified visits',
               value: '${summary.verifiedVisits}',
               onTap: () => context.go('/profile'),
             ),
-            SizedBox(height: grid.px(1)),
             HomeStatSlot(
               key: const ValueKey('home_stat_destinations'),
               label: 'Destinations',
               value: '${summary.uniqueDestinations}',
               onTap: () => context.go('/profile'),
             ),
-            SizedBox(height: grid.px(1)),
             HomeStatSlot(
               key: const ValueKey('home_stat_municipalities'),
               label: 'Municipalities',
@@ -704,7 +705,13 @@ class _NearbySection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final grid = PixelGrid.of(context);
     final spots = ref.watch(spotDiscoveryProvider);
-    final sorted = [...spots.spots]..sort((a, b) {
+    final sorted = [
+      ...withoutTestContent(
+        spots.spots,
+        (spot) => spot.isTest,
+        showTest: ref.watch(showTestContentProvider),
+      ),
+    ]..sort((a, b) {
         final da = a.distanceKm ?? double.infinity;
         final db = b.distanceKm ?? double.infinity;
         return da.compareTo(db);
@@ -771,7 +778,7 @@ class _NearbySpotRow extends StatelessWidget {
                 children: [
                   Text(
                     spot.name,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: PixelType.body(
                       context,
@@ -920,105 +927,6 @@ class _RecentSubmissionRow extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// -------------------------------------------------------- community voting
-
-class _CommunityVotingSection extends ConsumerWidget {
-  const _CommunityVotingSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final grid = PixelGrid.of(context);
-    final proposals = ref.watch(homeProposalsProvider);
-    return HomePanel(
-      key: const ValueKey('home_proposals_panel'),
-      title: 'Community voting',
-      subtitle: 'JuanChoice & municipal proposals',
-      actionLabel: 'Open',
-      onAction: () => context.push('/vote'),
-      child: proposals.when(
-        loading: () => const HomeInlineLoading(label: 'Loading proposals'),
-        error: (_, __) => HomeErrorPanel(
-          message: 'Community voting is unavailable.',
-          retryKey: const ValueKey('home_proposals_retry'),
-          onRetry: () => ref.invalidate(homeProposalsProvider),
-        ),
-        data: (items) {
-          final active = items
-              .where(
-                (proposal) =>
-                    proposal.status == 'voting' || proposal.status == 'active',
-              )
-              .toList();
-          if (active.isEmpty) {
-            return const HomeEmptyText('No open proposals right now.');
-          }
-          return Column(
-            children: [
-              for (var i = 0; i < active.take(2).length; i++) ...[
-                if (i > 0) SizedBox(height: grid.px(1)),
-                _ProposalRow(proposal: active[i]),
-              ],
-              SizedBox(height: grid.px(2)),
-              PixelButton(
-                key: const ValueKey('home_vote_open'),
-                label: 'Open community voting',
-                expand: true,
-                variant: PixelButtonVariant.secondary,
-                onPressed: () => context.push('/vote'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ProposalRow extends StatelessWidget {
-  const _ProposalRow({required this.proposal});
-
-  final GovernanceProposalModel proposal;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    return Semantics(
-      button: true,
-      label: 'Open proposal ${proposal.title}',
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          key: ValueKey('home_proposal_${proposal.id}'),
-          behavior: HitTestBehavior.opaque,
-          onTap: () => context.push('/vote'),
-          child: PixelPanel(
-            style: PixelBoxStyle.parchment,
-            padding: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  proposal.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: PixelType.body(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: grid.px(0.5)),
-                PixelText.rich(
-                  '{green:Yes ${proposal.yesVotes}} · {red:No ${proposal.noVotes}} · {grey:${proposal.locationName}}',
-                  maxLines: 2,
-                  style: PixelType.small(context),
                 ),
               ],
             ),

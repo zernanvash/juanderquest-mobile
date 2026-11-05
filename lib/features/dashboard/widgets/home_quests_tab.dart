@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -62,13 +63,19 @@ class _QuestProgressSection extends ConsumerWidget {
     final quests = ref.watch(questProvider);
     final submissions = ref.watch(submissionProvider);
     final stats = ref.watch(profileStatsProvider);
-    final inProgress = _inProgress(quests.quests, submissions);
+    final inProgress = _inProgress(
+      withoutTestContent(
+        quests.quests,
+        (quest) => quest.isTest,
+        showTest: ref.watch(showTestContentProvider),
+      ),
+      submissions,
+    );
     return HomePanel(
       key: const ValueKey('home_quest_progress_panel'),
       title: 'Quest progress',
       subtitle: 'Ongoing trails and steps verified',
-      actionLabel: 'See all',
-      onAction: () => context.push('/quests'),
+      // No header "See all": the full-width button below already does it.
       child: quests.isLoading && quests.quests.isEmpty
           ? const HomeInlineLoading(label: 'Loading quests')
           : quests.error != null && quests.quests.isEmpty
@@ -311,7 +318,7 @@ class _EventsSection extends ConsumerWidget {
     return HomePanel(
       key: const ValueKey('home_events_panel'),
       title: 'Events calendar',
-      subtitle: 'This month in Pangasinan',
+      subtitle: 'Upcoming festivals & fiestas',
       child: events.isEmpty
           ? const HomeEmptyText('No upcoming events listed.')
           : Column(
@@ -353,26 +360,16 @@ class _EventRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        event.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: PixelType.body(
-                          context,
-                        ).copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    SizedBox(width: grid.px(1)),
-                    PixelChip(
-                      homeEventCountdown(event, now),
-                      style: PixelBoxStyle.slot,
-                      textColor: PixelPalette.greenDark,
-                    ),
-                  ],
+                // Full width so long festival names get their two lines;
+                // the countdown sits with the badge underneath.
+                Text(
+                  event.title,
+                  key: ValueKey('home_event_title_${event.id}'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.body(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: grid.px(0.5)),
                 Text(
@@ -381,14 +378,24 @@ class _EventRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: PixelType.small(context, color: PixelPalette.slate),
                 ),
-                if (event.badge != null) ...[
-                  SizedBox(height: grid.px(1)),
-                  PixelChip(
-                    event.badge!,
-                    style: PixelBoxStyle.gold,
-                    textColor: PixelPalette.ink,
-                  ),
-                ],
+                SizedBox(height: grid.px(1)),
+                Wrap(
+                  spacing: grid.px(1),
+                  runSpacing: grid.px(1),
+                  children: [
+                    PixelChip(
+                      homeEventCountdown(event, now),
+                      style: PixelBoxStyle.slot,
+                      textColor: PixelPalette.greenDark,
+                    ),
+                    if (event.badge != null)
+                      PixelChip(
+                        event.badge!,
+                        style: PixelBoxStyle.gold,
+                        textColor: PixelPalette.ink,
+                      ),
+                  ],
+                ),
               ],
             ),
           ),

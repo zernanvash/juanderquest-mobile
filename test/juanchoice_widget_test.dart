@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/screens/juanchoice_screen.dart';
+import 'package:juanderquest_app/features/juanchoice/utils/juanchoice_dates.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
@@ -37,6 +38,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Coastal gems'), findsOneWidget);
     expect(find.textContaining('free and separate'), findsOneWidget);
+  });
+
+  testWidgets('Plan 75n: closing date is a readable date, not a timestamp',
+      (tester) async {
+    await tester.pumpWidget(ProviderScope(overrides: [
+      choiceOverviewProvider.overrideWith((ref) async => overview()),
+      choiceCampaignsProvider.overrideWith((ref) async => [campaign]),
+      choiceSupporterQuestProvider.overrideWith((ref) async => null),
+    ], child: const MaterialApp(home: JuanChoiceScreen())));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Voting closes ${choiceDate(campaign.closesAt)}'),
+        findsOneWidget);
+    expect(find.textContaining('PHT'), findsNothing);
+    expect(find.textContaining(RegExp(r'\d{4}-\d{2}-\d{2}')), findsNothing);
   });
 
   testWidgets('reviewed supporter quest is visible without AR-only language', (tester) async {

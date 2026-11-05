@@ -40,7 +40,7 @@ class HomeHero extends StatelessWidget {
     final displayName = user?.displayName.trim().isNotEmpty == true
         ? user!.displayName.trim()
         : 'Traveler';
-    final handle = user?.handle ?? '@traveler';
+    final handle = user?.publicHandle;
     final points = user?.points ?? 0;
     final level = (points ~/ 50) + 1;
     final xpInLevel = points % 50;
@@ -100,16 +100,18 @@ class HomeHero extends StatelessWidget {
                         color: nameColor ?? PixelPalette.paper,
                       ),
                     ),
-                    SizedBox(height: grid.px(1)),
-                    Text(
-                      handle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.cream,
+                    if (handle != null) ...[
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        handle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.cream,
+                        ),
                       ),
-                    ),
+                    ],
                     SizedBox(height: grid.px(1)),
                     Wrap(
                       spacing: grid.px(1),
@@ -168,7 +170,7 @@ class HomeHero extends StatelessWidget {
                     SizedBox(width: grid.px(1)),
                     Expanded(
                       child: PixelText.rich(
-                        'Purse: {sun:$points mJDQ} · Rep: {green:${user?.scoutReputation ?? 0}}',
+                        'Purse: {sun:$points mJDQ} · Rep: {sunLight:${user?.scoutReputation ?? 0}}',
                         maxLines: 1,
                         style: PixelType.small(
                           context,

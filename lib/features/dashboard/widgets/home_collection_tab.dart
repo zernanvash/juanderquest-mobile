@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -46,7 +47,11 @@ class _PassportSection extends ConsumerWidget {
       stats.heritageKeeperState,
       stats.foodExplorerState,
     ].where((state) => state == BadgeState.earned).length;
-    final saved = spots.spots.where((spot) => spot.saved).length;
+    final saved = withoutTestContent(
+      spots.spots,
+      (spot) => spot.isTest,
+      showTest: ref.watch(showTestContentProvider),
+    ).where((spot) => spot.saved).length;
     final badges = <(String, BadgeState, String)>[
       ('Eco Pioneer', stats.ecoPioneerState, 'home_badge_eco'),
       ('Heritage Keeper', stats.heritageKeeperState, 'home_badge_heritage'),
@@ -85,6 +90,26 @@ class _PassportSection extends ConsumerWidget {
             value: '$earned of 3',
             onTap: () => context.go('/profile'),
           ),
+          // The badge chips sit right under their count.
+          SizedBox(height: grid.px(1)),
+          Wrap(
+            spacing: grid.px(1),
+            runSpacing: grid.px(1),
+            children: [
+              for (final badge in badges)
+                PixelChip(
+                  badge.$1,
+                  key: ValueKey(badge.$3),
+                  style: badge.$2 == BadgeState.earned
+                      ? PixelBoxStyle.green
+                      : PixelBoxStyle.slot,
+                  textColor: badge.$2 == BadgeState.earned
+                      ? PixelPalette.white
+                      : PixelPalette.slate,
+                  onTap: () => context.go('/profile'),
+                ),
+            ],
+          ),
           SizedBox(height: grid.px(1)),
           if (spots.failure != null && spots.spots.isEmpty)
             HomeErrorPanel(
@@ -105,25 +130,6 @@ class _PassportSection extends ConsumerWidget {
               const HomeEmptyText('No saved spots yet.'),
             ],
           ],
-          SizedBox(height: grid.px(1)),
-          Wrap(
-            spacing: grid.px(1),
-            runSpacing: grid.px(1),
-            children: [
-              for (final badge in badges)
-                PixelChip(
-                  badge.$1,
-                  key: ValueKey(badge.$3),
-                  style: badge.$2 == BadgeState.earned
-                      ? PixelBoxStyle.green
-                      : PixelBoxStyle.slot,
-                  textColor: badge.$2 == BadgeState.earned
-                      ? PixelPalette.white
-                      : PixelPalette.slate,
-                  onTap: () => context.go('/profile'),
-                ),
-            ],
-          ),
         ],
       ),
     );
@@ -202,14 +208,18 @@ class _HiddenGemRow extends StatelessWidget {
                           ).copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
-                      SizedBox(width: grid.px(1)),
-                      Flexible(
-                        child: PixelChip(
-                          gem.crowdLabel,
-                          style: PixelBoxStyle.slot,
-                          textColor: PixelPalette.slate,
+                      // "Crowd level unknown" says nothing and squeezed the
+                      // name; show the chip only when there is a reading.
+                      if (gem.crowdStatus != 'unknown') ...[
+                        SizedBox(width: grid.px(1)),
+                        Flexible(
+                          child: PixelChip(
+                            gem.crowdLabel,
+                            style: PixelBoxStyle.slot,
+                            textColor: PixelPalette.slate,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                   SizedBox(height: grid.px(0.5)),
