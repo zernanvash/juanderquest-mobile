@@ -44,14 +44,6 @@ class QuestCard extends StatelessWidget {
     bevel: false,
   );
 
-  bool _isMismatchedSofa(String? url, String title) {
-    if (url == null) return false;
-    final lowerTitle = title.toLowerCase();
-    final lowerUrl = url.toLowerCase();
-    return lowerUrl.contains('photo-1513694203232-719a280e022f') ||
-        (lowerTitle.contains('lingayen') && lowerTitle.contains('liberation'));
-  }
-
   @override
   Widget build(BuildContext context) {
     if (status.toUpperCase() == 'COMPLETED') return _completedCard(context);
@@ -82,7 +74,7 @@ class QuestCard extends StatelessWidget {
                   child: AspectRatio(
                     aspectRatio: isFeatured ? 16 / 9 : 16 / 10,
                     child: (quest.imageUrl != null &&
-                            !_isMismatchedSofa(quest.imageUrl, quest.title))
+                            !isMismatchedQuestPhoto(quest.imageUrl))
                         ? Image.network(
                             quest.imageUrl!,
                             fit: BoxFit.cover,

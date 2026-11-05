@@ -896,21 +896,13 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     );
   }
 
-  bool _isMismatchedSofa(String? url, String title) {
-    if (url == null) return false;
-    final lowerTitle = title.toLowerCase();
-    final lowerUrl = url.toLowerCase();
-    return lowerUrl.contains('photo-1513694203232-719a280e022f') ||
-        (lowerTitle.contains('lingayen') && lowerTitle.contains('liberation'));
-  }
-
   Widget _hero(
     BuildContext context,
     PixelGrid grid,
     QuestModel quest,
     bool saved,
   ) {
-    final isSofa = _isMismatchedSofa(quest.imageUrl, quest.title);
+    final isSofa = isMismatchedQuestPhoto(quest.imageUrl);
     final hasImage = !isSofa &&
         quest.imageUrl != null &&
         quest.imageUrl!.isNotEmpty &&

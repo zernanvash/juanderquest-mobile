@@ -101,6 +101,30 @@ class _PixelTextFieldState extends State<PixelTextField> {
       builder: (field) {
         final error = widget.errorText ?? field.errorText;
         final hasError = error != null && error.isNotEmpty;
+        final input = TextField(
+          controller: _controller,
+          focusNode: widget.focusNode,
+          enabled: widget.enabled,
+          obscureText: widget.obscureText,
+          keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction,
+          textCapitalization: widget.textCapitalization,
+          autofillHints: widget.autofillHints,
+          autofocus: widget.autofocus,
+          maxLines: widget.maxLines,
+          cursorColor: PixelPalette.ink,
+          cursorWidth: grid.unit,
+          cursorRadius: Radius.zero,
+          style: PixelType.body(context),
+          onChanged: (value) {
+            field.didChange(value);
+            widget.onChanged?.call(value);
+          },
+          decoration: InputDecoration.collapsed(
+            hintText: widget.hint,
+            hintStyle: PixelType.body(context, color: PixelPalette.stone),
+          ),
+        );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -120,62 +144,12 @@ class _PixelTextFieldState extends State<PixelTextField> {
               sunken: true,
               padding: 2,
               child: widget.prefix == null
-                  ? TextField(
-                      controller: _controller,
-                      focusNode: widget.focusNode,
-                      enabled: widget.enabled,
-                      obscureText: widget.obscureText,
-                      keyboardType: widget.keyboardType,
-                      textInputAction: widget.textInputAction,
-                      textCapitalization: widget.textCapitalization,
-                      autofillHints: widget.autofillHints,
-                      autofocus: widget.autofocus,
-                      maxLines: widget.maxLines,
-                      cursorColor: PixelPalette.ink,
-                      cursorWidth: grid.unit,
-                      cursorRadius: Radius.zero,
-                      style: PixelType.body(context),
-                      onChanged: (value) {
-                        field.didChange(value);
-                        widget.onChanged?.call(value);
-                      },
-                      decoration: InputDecoration.collapsed(
-                        hintText: widget.hint,
-                        hintStyle: PixelType.body(context,
-                            color: PixelPalette.stone),
-                      ),
-                    )
+                  ? input
                   : Row(
                       children: [
                         widget.prefix!,
                         SizedBox(width: grid.px(2)),
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: widget.focusNode,
-                            enabled: widget.enabled,
-                            obscureText: widget.obscureText,
-                            keyboardType: widget.keyboardType,
-                            textInputAction: widget.textInputAction,
-                            textCapitalization: widget.textCapitalization,
-                            autofillHints: widget.autofillHints,
-                            autofocus: widget.autofocus,
-                            maxLines: widget.maxLines,
-                            cursorColor: PixelPalette.ink,
-                            cursorWidth: grid.unit,
-                            cursorRadius: Radius.zero,
-                            style: PixelType.body(context),
-                            onChanged: (value) {
-                              field.didChange(value);
-                              widget.onChanged?.call(value);
-                            },
-                            decoration: InputDecoration.collapsed(
-                              hintText: widget.hint,
-                              hintStyle: PixelType.body(context,
-                                  color: PixelPalette.stone),
-                            ),
-                          ),
-                        ),
+                        Expanded(child: input),
                       ],
                     ),
             ),

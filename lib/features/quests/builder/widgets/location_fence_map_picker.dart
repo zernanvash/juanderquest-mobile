@@ -189,26 +189,15 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
                     ),
                 ],
               ),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 6,
-                  trackShape: const _PixelSliderTrackShape(),
-                  thumbShape: const _PixelSliderThumbShape(),
-                  activeTrackColor: PixelPalette.green,
-                  inactiveTrackColor: PixelPalette.stone,
-                  overlayColor: Colors.transparent,
-                  thumbColor: PixelPalette.gold,
-                ),
-                child: Slider(
-                  value:
-                      widget.fence.radiusMeters.toDouble().clamp(30.0, 500.0),
-                  min: 30,
-                  max: 500,
-                  divisions: 47,
-                  onChanged: (val) {
-                    widget.onChanged(
-                        widget.fence.copyWith(radiusMeters: val.round()));
-                  },
+              PixelSlider(
+                key: const ValueKey('fence_radius_slider'),
+                value: (widget.fence.radiusMeters.clamp(30, 500) - 30) / 470,
+                divisions: 47,
+                semanticLabel: 'Check-in radius',
+                onChanged: (fraction) => widget.onChanged(
+                  widget.fence.copyWith(
+                    radiusMeters: (30 + fraction * 470).round(),
+                  ),
                 ),
               ),
               const Row(
@@ -234,60 +223,6 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _PixelSliderTrackShape extends RectangularSliderTrackShape {
-  const _PixelSliderTrackShape();
-
-  @override
-  Rect getPreferredRect({
-    required RenderBox parentBox,
-    Offset offset = Offset.zero,
-    required SliderThemeData sliderTheme,
-    bool isEnabled = false,
-    bool isDiscrete = false,
-  }) {
-    final trackHeight = sliderTheme.trackHeight ?? 6.0;
-    final trackLeft = offset.dx + 4;
-    final trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2;
-    final trackWidth = parentBox.size.width - 8;
-    return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);
-  }
-}
-
-class _PixelSliderThumbShape extends SliderComponentShape {
-  static const double size = 14.0;
-  const _PixelSliderThumbShape();
-
-  @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
-      const Size(size, size);
-
-  @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
-    final rect = Rect.fromCenter(center: center, width: size, height: size);
-    context.canvas.drawRect(rect, Paint()..color = PixelPalette.gold);
-    context.canvas.drawRect(
-      rect,
-      Paint()
-        ..color = PixelPalette.ink
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
     );
   }
 }

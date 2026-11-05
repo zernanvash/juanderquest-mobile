@@ -336,3 +336,8 @@ class QuestFundingSummary {
         if (perk != null) 'perk': perk,
       };
 }
+
+/// Owner review 2026-11-05 (Plan 75n): this stock photo (a sofa) is attached
+/// to a heritage quest on the server; show the pixel fallback instead.
+bool isMismatchedQuestPhoto(String? url) =>
+    url != null && url.contains('photo-1513694203232-719a280e022f');

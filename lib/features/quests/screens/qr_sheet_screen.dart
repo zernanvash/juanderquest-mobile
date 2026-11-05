@@ -182,9 +182,8 @@ class _QrSheetScreenState extends ConsumerState<QrSheetScreen> {
                         }
                         if (snapshot.hasError) {
                           final error = snapshot.error;
-                          final bool is403 = (error is DioException &&
-                                  error.response?.statusCode == 403) ||
-                              (error?.toString().contains('403') ?? false);
+                          final bool is403 = error is DioException &&
+                              error.response?.statusCode == 403;
                           final String message;
                           if (is403) {
                             message =

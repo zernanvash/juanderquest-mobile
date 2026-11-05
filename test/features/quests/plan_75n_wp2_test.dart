@@ -406,7 +406,7 @@ void main() {
 
     testWidgets('QuestCard and QuestDetailScreen fall back when given mismatched sofa stock photo',
         (tester) async {
-      const sofaUrl = 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80';
+      const sofaUrl = 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80';
       final sofaQuest = _makeQuest(
         id: 'q-sofa',
         title: 'Heritage Trail',
