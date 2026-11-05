@@ -31,6 +31,19 @@ class UserModel {
   String get handle => seedId.isNotEmpty
       ? '@$seedId'
       : '@${id.substring(0, id.length > 8 ? 8 : id.length)}';
+
+  /// The handle to show travelers, or null when it is only an auto-generated
+  /// account id (`usr-…`). Owner 2026-11-05 (Plan 75n): hide those. Always
+  /// exactly one leading "@".
+  String? get publicHandle {
+    final raw = seedId.trim().replaceFirst(RegExp(r'^@+'), '');
+    if (raw.isEmpty ||
+        RegExp(r'^usr-[0-9a-f-]+$', caseSensitive: false).hasMatch(raw)) {
+      return null;
+    }
+    return '@$raw';
+  }
+
   bool get hasBoundWallet =>
       walletAddress != null && walletAddress!.trim().isNotEmpty;
   String? get formattedWalletAddress {
@@ -56,7 +69,9 @@ class UserModel {
       jdqGovernanceBalance:
           (json['jdq_governance_balance'] as num?)?.toInt() ?? 0,
       scoutReputation: (json['scout_reputation'] as num?)?.toInt() ?? 0,
-      cosmetics: json['cosmetics'] is Map<String, dynamic> ? Map<String, dynamic>.from(json['cosmetics']) : null,
+      cosmetics: json['cosmetics'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(json['cosmetics'])
+          : null,
     );
   }
 

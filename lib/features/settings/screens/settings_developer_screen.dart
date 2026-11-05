@@ -15,6 +15,7 @@ import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/dev/test_content.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../map/widgets/map_origin_card.dart';
 
@@ -107,6 +108,42 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                                 semanticLabel: 'Designer Guide Mode',
                                 onChanged: (value) => ref
                                     .read(designerGuideProvider.notifier)
+                                    .state = value,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: grid.px(3)),
+                        // Plan 75n: QA/test quests and spots are hidden from
+                        // travelers unless this is on (session only).
+                        PixelPanel(
+                          style: PixelBoxStyle.parchment,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Show test content',
+                                        style: PixelType.title(context)),
+                                    SizedBox(height: grid.px(1)),
+                                    Text(
+                                      'SIM quests and test spots in Explore and Quests. Resets on restart.',
+                                      style: PixelType.body(
+                                        context,
+                                        color: PixelPalette.slate,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: grid.px(2)),
+                              PixelSwitch(
+                                key: const ValueKey('show_test_content_switch'),
+                                value: ref.watch(showTestContentProvider),
+                                semanticLabel: 'Show test content',
+                                onChanged: (value) => ref
+                                    .read(showTestContentProvider.notifier)
                                     .state = value,
                               ),
                             ],
