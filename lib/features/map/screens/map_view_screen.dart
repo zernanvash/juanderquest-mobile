@@ -11,6 +11,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -457,8 +458,17 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   }
 
   void _fitAllBounds() {
-    final quests = ref.read(questProvider).quests;
-    final spots = ref.read(spotDiscoveryProvider).spots;
+    final showTest = ref.read(showTestContentProvider);
+    final quests = withoutTestContent(
+      ref.read(questProvider).quests,
+      (q) => q.isTest,
+      showTest: showTest,
+    );
+    final spots = withoutTestContent(
+      ref.read(spotDiscoveryProvider).spots,
+      (s) => s.isTest,
+      showTest: showTest,
+    );
 
     final points = <LatLng>[];
 
@@ -615,8 +625,17 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   }
 
   Future<void> _openPlacesList() async {
-    final quests = ref.read(questProvider).quests;
-    final spots = ref.read(spotDiscoveryProvider).spots;
+    final showTest = ref.read(showTestContentProvider);
+    final quests = withoutTestContent(
+      ref.read(questProvider).quests,
+      (q) => q.isTest,
+      showTest: showTest,
+    );
+    final spots = withoutTestContent(
+      ref.read(spotDiscoveryProvider).spots,
+      (s) => s.isTest,
+      showTest: showTest,
+    );
     final entries = filterMapEntries(
       quests: quests,
       spots: spots,
@@ -779,8 +798,17 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     final spotState = ref.watch(spotDiscoveryProvider);
     final spotlight = ref.watch(choiceSpotlightProvider).valueOrNull;
 
-    final quests = questState.quests;
-    final spots = spotState.spots;
+    final showTest = ref.watch(showTestContentProvider);
+    final quests = withoutTestContent(
+      questState.quests,
+      (q) => q.isTest,
+      showTest: showTest,
+    );
+    final spots = withoutTestContent(
+      spotState.spots,
+      (s) => s.isTest,
+      showTest: showTest,
+    );
     final plannedSpots =
         planChoiceSpotlight(spots, (spot) => spot.id, spotlight);
 
