@@ -131,6 +131,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   PixelAppBar(
                     title: isMine ? 'Traveler Passport' : 'Explorer Profile',
+                    isTab: isMine,
                     onBack: canPop && !isMine
                         ? () => Navigator.of(context).maybePop()
                         : null,

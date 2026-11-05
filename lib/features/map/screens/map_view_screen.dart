@@ -1054,6 +1054,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           preferredSize: const Size.fromHeight(56),
           child: PixelAppBar(
             title: 'MAP',
+            isTab: true,
             actions: [
               PixelIconButton(
                 icon: DesignerArt.search,

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'generated/pixel_palette.g.dart';
 import 'pixel_art.dart';
@@ -243,15 +244,60 @@ class PixelAppBar extends StatelessWidget {
     required this.title,
     this.onBack,
     this.actions = const [],
+    this.isTab = false,
   });
 
   final String title;
   final VoidCallback? onBack;
   final List<Widget> actions;
+  final bool isTab;
+
+  static const _tabPaths = {
+    '/',
+    '/dashboard',
+    '/explore',
+    '/map',
+    '/shop',
+    '/profile',
+  };
+
+  bool _isMainTab(BuildContext context) {
+    if (isTab) return true;
+    try {
+      final route = GoRouterState.of(context);
+      final path = route.uri.path;
+      final normalized = path.length > 1 && path.endsWith('/')
+          ? path.substring(0, path.length - 1)
+          : path;
+      if (_tabPaths.contains(normalized)) {
+        if (normalized == '/profile' &&
+            route.pathParameters['username'] != null) {
+          return false;
+        }
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
+    final canPop = Navigator.of(context).canPop();
+    final isMain = _isMainTab(context);
+
+    final VoidCallback? effectiveBack = isMain
+        ? null
+        : (canPop
+            ? (onBack ?? () => Navigator.of(context).maybePop())
+            : () {
+                try {
+                  context.go('/dashboard');
+                } catch (_) {
+                  (onBack ?? () => Navigator.of(context).maybePop())();
+                }
+              });
+
     return Container(
       color: PixelPalette.ink,
       child: SafeArea(
@@ -267,13 +313,13 @@ class PixelAppBar extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 48),
             child: Row(
               children: [
-                if (onBack != null) ...[
+                if (effectiveBack != null) ...[
                   PixelIconButton(
                     icon: _backIcon,
                     semanticLabel: 'Back',
                     style: PixelBoxStyle.parchment,
                     iconHeight: 24,
-                    onPressed: onBack,
+                    onPressed: effectiveBack,
                   ),
                   SizedBox(width: grid.px(2)),
                 ],

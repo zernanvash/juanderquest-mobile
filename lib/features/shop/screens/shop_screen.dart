@@ -308,7 +308,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Traveler Shop',
-                    onBack: null,
+                    isTab: true,
                     actions: [
                       PixelChip('$points mJDQ', style: PixelBoxStyle.gold),
                     ],
