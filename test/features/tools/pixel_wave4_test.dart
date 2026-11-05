@@ -17,6 +17,7 @@ import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/navigation/models/route_model.dart';
 import 'package:juanderquest_app/features/navigation/providers/navigation_provider.dart';
 import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
+import 'package:juanderquest_app/core/dev/test_content.dart';
 import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/features/notifications/screens/notifications_screen.dart';
 import 'package:juanderquest_app/features/quests/builder/quest_builder_repository.dart';
@@ -348,6 +349,7 @@ Future<void> _pump(
   QuestBuilderRepository Function(ApiClient client)? qrRepo,
   PushService? push,
   AppUpdateNotifier Function()? appUpdate,
+  bool showTest = false,
 }) async {
   tester.view.physicalSize = const Size(1080, 6000);
   tester.view.devicePixelRatio = 2.0;
@@ -376,6 +378,7 @@ Future<void> _pump(
         pushServiceProvider.overrideWithValue(push ?? _PushFixture()),
         if (appUpdate != null)
           appUpdateProvider.overrideWith((ref) => appUpdate()),
+        showTestContentProvider.overrideWith((ref) => showTest),
       ],
       child: MaterialApp.router(routerConfig: _router(home, initial: initial)),
     ),
@@ -783,6 +786,73 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('route:/navigate', skipOffstage: false), findsOneWidget);
+    });
+
+    testWidgets('hides test spots until the developer switch is on',
+        (tester) async {
+      const testState = SpotDiscoveryState(
+        spots: [
+          _spot,
+          SpotModel(
+            id: 'artest',
+            slug: 'artest',
+            name: 'ARTEST Spot',
+            description: 'A test spot.',
+            category: 'nature_outdoors',
+            subcategory: 'beaches',
+            municipality: 'Bolinao',
+            address: 'Patar, Bolinao',
+            sourceName: 'Test',
+            trustLevel: 'community',
+            gpsLat: 16.2,
+            gpsLng: 119.9,
+            tags: [],
+            reasons: [],
+            isTest: true,
+          ),
+        ],
+        trending: [],
+        categories: ['nature_outdoors'],
+        isInitialLoading: false,
+      );
+
+      await _pump(tester, const SpotSearchScreen(),
+          spots: (ref) => _SpotsFixture(ref, testState));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Patar Beach'), findsWidgets);
+      expect(find.text('ARTEST Spot'), findsNothing);
+
+      await _pump(
+        tester,
+        const SpotSearchScreen(),
+        spots: (ref) => _SpotsFixture(ref, testState),
+        showTest: true,
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('ARTEST Spot'), findsWidgets);
+    });
+
+    testWidgets('starts with categories above destinations and no keyboard',
+        (tester) async {
+      await _pump(tester, const SpotSearchScreen(),
+          spots: (ref) => _SpotsFixture(ref, _spotsState));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final categories = tester.getTopLeft(find.text('Categories'));
+      final destinations =
+          tester.getTopLeft(find.text('Explore Current Destinations'));
+      expect(categories.dy, lessThan(destinations.dy));
+
+      final field = find.descendant(
+        of: find.byKey(const ValueKey('search_field')),
+        matching: find.byType(TextField),
+      );
+      expect(field, findsOneWidget);
+      expect(tester.widget<TextField>(field).focusNode?.hasFocus, isFalse);
+
+      await tester.tap(field);
+      await tester.pump();
+      expect(tester.widget<TextField>(field).focusNode?.hasFocus, isTrue);
     });
   });
 

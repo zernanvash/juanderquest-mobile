@@ -88,8 +88,10 @@ class ExploreSpotCard extends StatelessWidget {
                     children: [
                       Text(
                         '${spot.municipality.toUpperCase()} · ${categoryLabel(spot.category).toUpperCase()}',
-                        style:
-                            PixelType.small(context, color: PixelPalette.stone),
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.stone,
+                        ),
                       ),
                       if (recommendationReason != null)
                         FittedBox(
@@ -98,8 +100,9 @@ class ExploreSpotCard extends StatelessWidget {
                           child: PixelChip(
                             recommendationReason.toUpperCase(),
                             style: _recommendationStyle(recommendationReason),
-                            textColor:
-                                _recommendationTextColor(recommendationReason),
+                            textColor: _recommendationTextColor(
+                              recommendationReason,
+                            ),
                           ),
                         ),
                     ],
@@ -127,8 +130,10 @@ class ExploreSpotCard extends StatelessWidget {
               },
               child: hasPhoto
                   ? PixelPanel(
-                      style:
-                          PixelBoxStyle.slot.copyWith(corner: 0, shadowPx: 0),
+                      style: PixelBoxStyle.slot.copyWith(
+                        corner: 0,
+                        shadowPx: 0,
+                      ),
                       padding: 1,
                       child: AspectRatio(
                         aspectRatio: 16 / 10,
@@ -146,7 +151,8 @@ class ExploreSpotCard extends StatelessWidget {
             ),
             SizedBox(height: grid.px(2)),
 
-            // Action Row: LIKE (count, pixel heart), SAVE (bookmark), PLAY QUEST (if available)
+            // Action Row: LIKE (count, pixel heart), SAVE (bookmark), PLAY QUEST
+            // (if available), and VIEW SPOT right-aligned for ordinary cards.
             Wrap(
               spacing: grid.px(1),
               runSpacing: grid.px(1),
@@ -155,8 +161,6 @@ class ExploreSpotCard extends StatelessWidget {
                 // LIKE Button with Count
                 ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 48),
-                  // widthFactor 1: sized to the button, so the actions
-                  // sit in one row instead of a full-width line each.
                   child: Center(
                     widthFactor: 1,
                     child: PixelButton(
@@ -180,8 +184,6 @@ class ExploreSpotCard extends StatelessWidget {
                 // SAVE Bookmark Button
                 ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 48),
-                  // widthFactor 1: sized to the button, so the actions
-                  // sit in one row instead of a full-width line each.
                   child: Center(
                     widthFactor: 1,
                     child: PixelIconButton(
@@ -204,8 +206,6 @@ class ExploreSpotCard extends StatelessWidget {
                 if (hasQuest && onPlayQuest != null)
                   ConstrainedBox(
                     constraints: const BoxConstraints(minHeight: 48),
-                    // widthFactor 1: sized to the button, so the actions
-                    // sit in one row instead of a full-width line each.
                     child: Center(
                       widthFactor: 1,
                       child: PixelButton(
@@ -219,6 +219,21 @@ class ExploreSpotCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (!hasQuest) ...[
+              SizedBox(height: grid.px(1)),
+              Align(
+                alignment: Alignment.centerRight,
+                child: PixelButton(
+                  key: ValueKey('explore_view_spot_${spot.id}'),
+                  label: 'VIEW SPOT >',
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: () {
+                    pixelTick(context);
+                    onTapCard();
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -262,8 +277,10 @@ class ExploreSpotCard extends StatelessWidget {
                 right: grid.px(2),
                 bottom: grid.px(2),
                 child: PixelPanel(
-                  style: PixelBoxStyle.inkDialogue
-                      .copyWith(corner: 0, shadowPx: 0),
+                  style: PixelBoxStyle.inkDialogue.copyWith(
+                    corner: 0,
+                    shadowPx: 0,
+                  ),
                   padding: 1,
                   child: Text(
                     '${categoryLabel(spot.category).toUpperCase()} · EXPLORE ›',
