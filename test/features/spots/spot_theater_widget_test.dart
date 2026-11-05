@@ -84,7 +84,8 @@ const _fullSpot = SpotModel(
   id: 'spot-theater-full',
   slug: 'hundred-islands-national-park',
   name: 'Hundred Islands National Park',
-  description: 'A protected archipelago of 124 islands in Alaminos. Famous for snorkeling, cave exploration, and pristine beaches.',
+  description:
+      'A protected archipelago of 124 islands in Alaminos. Famous for snorkeling, cave exploration, and pristine beaches.',
   category: 'nature',
   subcategory: 'islands',
   municipality: 'Alaminos',
@@ -127,7 +128,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Spot Theater Widget Tests', () {
-    testWidgets('stationary photo layer keeps EXACT position and size after 2000px scroll', (tester) async {
+    testWidgets(
+        'stationary photo layer keeps EXACT position and size after 2000px scroll',
+        (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -181,10 +184,13 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: spotNoPhoto));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('theater_still_photo_dither')), findsOneWidget);
+      expect(
+          find.byKey(const Key('theater_still_photo_dither')), findsOneWidget);
     });
 
-    testWidgets('PLAY QUEST is shown only with questId; CREATE A QUEST HERE only for author', (tester) async {
+    testWidgets(
+        'PLAY QUEST is shown only with questId; CREATE A QUEST HERE only for author',
+        (tester) async {
       // 1. Full spot with questId, viewed by author
       final authorUser = UserModel(
         id: 'author-999',
@@ -207,7 +213,8 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('spot_create_quest_btn')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('spot_create_quest_btn')), findsOneWidget);
 
       // 2. Spot without questId, viewed by non-author
       final nonAuthorSpot = _fullSpot.copyWith(questId: null);
@@ -221,7 +228,8 @@ void main() {
         demoPoints: 20,
       );
 
-      await tester.pumpWidget(_wrapScreen(spot: nonAuthorSpot, user: nonAuthorUser));
+      await tester
+          .pumpWidget(_wrapScreen(spot: nonAuthorSpot, user: nonAuthorUser));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('theater_play_quest_btn')), findsNothing);
@@ -339,7 +347,9 @@ void main() {
       expect(find.text('AMENITIES'), findsNothing);
     });
 
-    testWidgets('gallery opens, navigates and closes without changing page photo', (tester) async {
+    testWidgets(
+        'gallery opens, navigates and closes without changing page photo',
+        (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -374,7 +384,9 @@ void main() {
       expect(find.byKey(const Key('theater_still_photo')), findsOneWidget);
     });
 
-    testWidgets('action buttons trigger handlers (Save, Share, Like, Directions)', (tester) async {
+    testWidgets(
+        'action buttons trigger handlers (Save, Share, Like, Directions)',
+        (tester) async {
       await tester.pumpWidget(_wrapScreen(spot: _fullSpot));
       await tester.pumpAndSettle();
 
@@ -383,7 +395,9 @@ void main() {
       expect(saveBtn, findsOneWidget);
       await tester.tap(saveBtn);
       await tester.pumpAndSettle();
-      expect(find.text('Added "Hundred Islands National Park" to saved places.'), findsOneWidget);
+      expect(
+          find.text('Added "Hundred Islands National Park" to saved places.'),
+          findsOneWidget);
 
       // Tap Share
       final shareBtn = find.byKey(const Key('theater_share_btn'));
@@ -456,6 +470,7 @@ void main() {
 
       final spot = _fullSpot.copyWith(
         sourceName: 'PHOTO: BIANCABRAZAL',
+        sourceUrl: 'https://example.com/photo',
         media: [_fullSpot.media.first],
         trustLevel: 'community',
       );
@@ -485,6 +500,15 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('PHOTO:'), findsNothing);
+      // The top credit chip is gone, so the footer credit carries the
+      // spot's source link.
+      expect(
+        tester
+            .widget<GestureDetector>(
+                find.byKey(const Key('theater_end_source_link')))
+            .onTap,
+        isNotNull,
+      );
       await tester.pumpAndSettle();
     });
 

@@ -6,6 +6,7 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../explore/spot_filter_state.dart';
 import '../models/spot_model.dart';
 import 'theater_gallery_dialog.dart';
 
@@ -19,25 +20,8 @@ String spotCreditName(String sourceName) {
   return match == null ? trimmed : trimmed.substring(match.end).trim();
 }
 
-const Map<String, String> _spotCategoryNames = {
-  'eat_drink': 'Food & Culinary',
-  'nature_outdoors': 'Nature & Outdoors',
-  'culture_heritage': 'Culture & Heritage',
-  'activities_wellness': 'Activities & Wellness',
-  'shopping_local': 'Local MSME Crafts',
-  'stay': 'Places to Stay',
-};
-
-/// Category label with the slug's `_` separators shown as `&`.
-String spotCategoryLabel(String? category) {
-  final id = (category ?? '').trim();
-  if (id.isEmpty) return 'Destination';
-  final known = _spotCategoryNames[id];
-  if (known != null) return known;
-  final label = id.replaceAll(RegExp(r'[_-]+'), ' & ').trim();
-  if (label.isEmpty) return 'Destination';
-  return label[0].toUpperCase() + label.substring(1);
-}
+/// Same label as the Explore filter chips, so a spot reads the same everywhere.
+String spotCategoryLabel(String? category) => categoryLabel(category);
 
 class TheaterFirstViewport extends StatelessWidget {
   const TheaterFirstViewport({

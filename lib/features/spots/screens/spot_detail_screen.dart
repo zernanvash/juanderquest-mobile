@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
@@ -367,6 +368,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   Widget _buildEndPanel(BuildContext context, SpotModel spot) {
     final grid = PixelGrid.of(context);
     final sourceName = spotCreditName(spot.sourceName);
+    final hasSourceLink =
+        spot.sourceUrl != null && spot.sourceUrl!.trim().isNotEmpty;
 
     return TheaterPanel(
       child: Column(
@@ -378,9 +381,22 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
           ),
           if (sourceName.isNotEmpty) ...[
             SizedBox(height: grid.px(1)),
-            Text(
-              'Photography & curation: $sourceName',
-              style: PixelType.small(context, color: PixelPalette.paperDim),
+            GestureDetector(
+              key: const Key('theater_end_source_link'),
+              onTap: hasSourceLink
+                  ? () => launchUrlString(spot.sourceUrl!.trim())
+                  : null,
+              child: Text(
+                'Photography & curation: $sourceName',
+                style: PixelType.small(
+                  context,
+                  color: hasSourceLink
+                      ? PixelPalette.paper
+                      : PixelPalette.paperDim,
+                ).copyWith(
+                  decoration: hasSourceLink ? TextDecoration.underline : null,
+                ),
+              ),
             ),
           ],
           SizedBox(height: grid.px(2)),

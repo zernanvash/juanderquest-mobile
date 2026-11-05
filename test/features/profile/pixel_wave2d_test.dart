@@ -755,7 +755,7 @@ void main() {
         const Size(56, 56),
       );
       expect(find.textContaining('Alaminos City'), findsOneWidget);
-      expect(find.textContaining('NATURE & OUTDOORS'), findsOneWidget);
+      expect(find.textContaining('Alaminos City · NATURE'), findsOneWidget);
       await tester.enterText(
           find.byKey(const ValueKey('saved_search')), 'zzz');
       await tester.pump();
