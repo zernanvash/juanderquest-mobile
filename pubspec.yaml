@@ -56,8 +56,11 @@ flutter:
   fonts:
     - family: Silkscreen
       fonts:
+        # Owner 2026-11-05: bold Silkscreen fills in W/M, so bold maps to
+        # the regular file. The regular file has no "&" glyph (it looked
+        # like a euro sign); Monocraft's "&" is used via fallback.
         - asset: assets/fonts/Silkscreen-Regular.ttf
-        - asset: assets/fonts/Silkscreen-Bold.ttf
+        - asset: assets/fonts/Silkscreen-Regular.ttf
           weight: 700
     - family: Monocraft
       fonts:

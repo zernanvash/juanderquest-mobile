@@ -14,10 +14,7 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
     await loader.load();
   }
 
-  await load('Silkscreen', [
-    'assets/fonts/Silkscreen-Regular.ttf',
-    'assets/fonts/Silkscreen-Bold.ttf'
-  ]);
+  await load('Silkscreen', ['assets/fonts/Silkscreen-Regular.ttf']);
   await load('Monocraft',
       ['assets/fonts/Monocraft.ttf', 'assets/fonts/Monocraft-Bold.ttf']);
   await testMain();
