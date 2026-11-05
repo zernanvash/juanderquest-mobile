@@ -39,7 +39,9 @@ class StudioCategoryGrid extends StatelessWidget {
             for (final category in spotPostingCategories)
               SizedBox(
                 width: tile,
-                height: tile,
+                // Compact tiles (owner phone check 2026-11-05: square tiles
+                // were a third of the screen tall each).
+                height: grid.px(34),
                 child: _CategoryTile(
                   id: category['id'] as String,
                   label: studioPlainLabel(category['label'] as String),
@@ -70,6 +72,10 @@ class _CategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
+    final icon = StudioIcons.forCategory(id);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final longest = icon.width > icon.height ? icon.width : icon.height;
+    final scale = (22 * dpr / longest).floor().clamp(1, 8).toInt();
     return Semantics(
       button: true,
       selected: selected,
@@ -86,13 +92,9 @@ class _CategoryTile extends StatelessWidget {
               children: [
                 Expanded(
                   child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: PixelSprite(
-                        StudioIcons.forCategory(id),
-                        scale: 3,
-                      ),
-                    ),
+                    // Same on-screen size for every icon, whole device
+                    // pixels per art pixel (no stretching).
+                    child: PixelSprite(icon, scale: scale),
                   ),
                 ),
                 SizedBox(height: grid.px(1)),
