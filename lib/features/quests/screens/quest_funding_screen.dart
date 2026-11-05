@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -54,10 +55,27 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
       if (response.data['success'] != true) {
         throw Exception('Could not load this funding plan.');
       }
-      setState(
-          () => _plan = response.data['data']['plan'] as Map<String, dynamic>?);
+      setState(() {
+        _plan = response.data['data']['plan'] as Map<String, dynamic>?;
+        _error = null;
+      });
+    } on DioException catch (dioError) {
+      if (dioError.response?.statusCode == 404) {
+        setState(() {
+          _plan = null;
+          _error = null;
+        });
+      } else {
+        final data = dioError.response?.data;
+        String? serverMsg;
+        if (data is Map && data['error'] is Map) {
+          serverMsg = data['error']['message']?.toString();
+        }
+        setState(
+            () => _error = serverMsg ?? 'Could not load this funding plan.');
+      }
     } catch (error) {
-      setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = 'Could not load this funding plan.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -76,8 +94,18 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
       await _load();
     } catch (error) {
       if (mounted) {
-        setState(
-            () => _error = error.toString().replaceFirst('Exception: ', ''));
+        if (error is DioException) {
+          final data = error.response?.data;
+          String? serverMsg;
+          if (data is Map && data['error'] is Map) {
+            serverMsg = data['error']['message']?.toString();
+          }
+          setState(
+              () => _error = serverMsg ?? 'Action could not be completed.');
+        } else {
+          setState(
+              () => _error = error.toString().replaceFirst('Exception: ', ''));
+        }
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -290,6 +318,9 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Set up this round', style: PixelType.title(context)),
+          SizedBox(height: grid.px(1)),
+          Text('No funding round yet — set one up below',
+              style: PixelType.body(context, color: PixelPalette.slate)),
           SizedBox(height: grid.px(2)),
           Text('FUNDING MODEL',
               style: PixelType.small(context, color: PixelPalette.slate)),

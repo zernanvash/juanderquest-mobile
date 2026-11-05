@@ -181,10 +181,25 @@ class TaskItemCard extends StatelessWidget {
             SizedBox(height: grid.px(1)),
             KeyedSubtree(
               key: Key('task_type_dropdown_$index'),
-              child: PixelSegmented(
-                items: _types.map((entry) => entry.$2).toList(),
-                selectedIndex: typeIndex < 0 ? 0 : typeIndex,
-                onChanged: (selected) => _changeType(_types[selected].$1),
+              child: Wrap(
+                spacing: grid.px(2),
+                runSpacing: grid.px(2),
+                children: [
+                  for (var i = 0; i < _types.length; i++)
+                    PixelChip(
+                      _types[i].$2,
+                      key: ValueKey('task_${index}_type_${_types[i].$1}'),
+                      style: (typeIndex == i || (typeIndex < 0 && i == 0))
+                          ? PixelBoxStyle.gold
+                          : PixelBoxStyle.slot.copyWith(
+                              outline: PixelPalette.stone,
+                            ),
+                      textColor: (typeIndex == i || (typeIndex < 0 && i == 0))
+                          ? PixelPalette.ink
+                          : PixelPalette.slate,
+                      onTap: () => _changeType(_types[i].$1),
+                    ),
+                ],
               ),
             ),
             SizedBox(height: grid.px(2)),

@@ -27,6 +27,7 @@ class PixelTextField extends StatefulWidget {
     this.autofillHints,
     this.autofocus = false,
     this.autovalidateMode,
+    this.prefix,
   });
 
   final TextEditingController? controller;
@@ -48,6 +49,7 @@ class PixelTextField extends StatefulWidget {
   final Iterable<String>? autofillHints;
   final bool autofocus;
   final AutovalidateMode? autovalidateMode;
+  final Widget? prefix;
 
   @override
   State<PixelTextField> createState() => _PixelTextFieldState();
@@ -117,30 +119,65 @@ class _PixelTextFieldState extends State<PixelTextField> {
               ),
               sunken: true,
               padding: 2,
-              child: TextField(
-                controller: _controller,
-                focusNode: widget.focusNode,
-                enabled: widget.enabled,
-                obscureText: widget.obscureText,
-                keyboardType: widget.keyboardType,
-                textInputAction: widget.textInputAction,
-                textCapitalization: widget.textCapitalization,
-                autofillHints: widget.autofillHints,
-                autofocus: widget.autofocus,
-                maxLines: widget.maxLines,
-                cursorColor: PixelPalette.ink,
-                cursorWidth: grid.unit,
-                cursorRadius: Radius.zero,
-                style: PixelType.body(context),
-                onChanged: (value) {
-                  field.didChange(value);
-                  widget.onChanged?.call(value);
-                },
-                decoration: InputDecoration.collapsed(
-                  hintText: widget.hint,
-                  hintStyle: PixelType.body(context, color: PixelPalette.stone),
-                ),
-              ),
+              child: widget.prefix == null
+                  ? TextField(
+                      controller: _controller,
+                      focusNode: widget.focusNode,
+                      enabled: widget.enabled,
+                      obscureText: widget.obscureText,
+                      keyboardType: widget.keyboardType,
+                      textInputAction: widget.textInputAction,
+                      textCapitalization: widget.textCapitalization,
+                      autofillHints: widget.autofillHints,
+                      autofocus: widget.autofocus,
+                      maxLines: widget.maxLines,
+                      cursorColor: PixelPalette.ink,
+                      cursorWidth: grid.unit,
+                      cursorRadius: Radius.zero,
+                      style: PixelType.body(context),
+                      onChanged: (value) {
+                        field.didChange(value);
+                        widget.onChanged?.call(value);
+                      },
+                      decoration: InputDecoration.collapsed(
+                        hintText: widget.hint,
+                        hintStyle: PixelType.body(context,
+                            color: PixelPalette.stone),
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        widget.prefix!,
+                        SizedBox(width: grid.px(2)),
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            focusNode: widget.focusNode,
+                            enabled: widget.enabled,
+                            obscureText: widget.obscureText,
+                            keyboardType: widget.keyboardType,
+                            textInputAction: widget.textInputAction,
+                            textCapitalization: widget.textCapitalization,
+                            autofillHints: widget.autofillHints,
+                            autofocus: widget.autofocus,
+                            maxLines: widget.maxLines,
+                            cursorColor: PixelPalette.ink,
+                            cursorWidth: grid.unit,
+                            cursorRadius: Radius.zero,
+                            style: PixelType.body(context),
+                            onChanged: (value) {
+                              field.didChange(value);
+                              widget.onChanged?.call(value);
+                            },
+                            decoration: InputDecoration.collapsed(
+                              hintText: widget.hint,
+                              hintStyle: PixelType.body(context,
+                                  color: PixelPalette.stone),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
             if (hasError) ...[
               SizedBox(height: grid.px(1)),

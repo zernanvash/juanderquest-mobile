@@ -76,7 +76,7 @@ class QuestTravelerPreviewCard extends StatelessWidget {
             runSpacing: grid.px(1),
             children: [
               PixelChip(
-                '${state.tasks.length} tasks',
+                '${state.tasks.length} ${state.tasks.length == 1 ? 'task' : 'tasks'}',
                 style: PixelBoxStyle.slot,
                 textColor: PixelPalette.slate,
               ),

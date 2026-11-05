@@ -24,6 +24,11 @@ import '../widgets/ar_overlay.dart';
 import '../widgets/world_ar_view.dart';
 import '../core/ar_math.dart';
 import '../core/geo_anchor.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_text.dart';
+import '../../map/pixel/map_marker_art.dart';
 
 /// Which AR tier is running (Plan 47 §2).
 enum ArTier {
@@ -543,11 +548,12 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton.filledTonal(
+          PixelIconButton(
             key: const ValueKey('ar_close'),
             onPressed: _close,
-            icon: const Icon(Icons.close_rounded),
-            tooltip: 'Close AR',
+            icon: MapMarkerArt.iconClose,
+            semanticLabel: 'Close AR',
+            style: PixelBoxStyle.parchment,
           ),
           const SizedBox(width: 10),
           if (task != null)
@@ -952,22 +958,27 @@ class _MessagePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFAF9F5),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 40, color: const Color(0xFF582F0E)),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: onAction, child: Text(actionLabel)),
-          ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 40, color: PixelPalette.woodDeep),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: PixelType.body(context),
+              ),
+              const SizedBox(height: 16),
+              PixelButton(
+                label: actionLabel,
+                onPressed: onAction,
+              ),
+            ],
+          ),
         ),
       ),
     );

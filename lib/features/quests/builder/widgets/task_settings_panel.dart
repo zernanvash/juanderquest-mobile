@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_input.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../map/pixel/map_marker_art.dart';
 import '../builder_models.dart';
 import 'location_fence_map_picker.dart';
 
@@ -51,8 +53,7 @@ class TaskSettingsPanel extends StatelessWidget {
             const Expanded(
               child: Row(
                 children: [
-                  Icon(Icons.location_on_rounded,
-                      size: 16, color: AppColors.primary),
+                  PixelSprite(MapMarkerArt.spotPin, scale: 1),
                   SizedBox(width: 6),
                   Flexible(
                     child: Text(
@@ -80,7 +81,7 @@ class TaskSettingsPanel extends StatelessWidget {
                       LocationVerification(fence: destinationDefaultFence),
                 ));
               },
-              icon: const Icon(Icons.refresh_rounded, size: 14),
+              icon: const PixelSprite(MapMarkerArt.iconRefresh, scale: 1),
               label: const Text('Reset', style: TextStyle(fontSize: 11)),
             ),
           ],
