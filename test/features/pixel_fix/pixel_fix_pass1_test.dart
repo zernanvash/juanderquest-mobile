@@ -245,7 +245,6 @@ void main() {
               onTapCard: () {},
               onToggleLike: () {},
               onToggleSave: () {},
-              onReport: () {},
               onPlayQuest: null,
             ),
           ),

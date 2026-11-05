@@ -14,21 +14,18 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../../cultural_quizzes/widgets/nearby_quiz_card.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../explore/juanchoice_placement.dart';
 import '../explore/spot_filter_state.dart';
 import '../explore/widgets/explore_featured_card.dart';
-import '../explore/widgets/explore_header_panel.dart';
 import '../explore/widgets/explore_juanchoice_card.dart';
 import '../explore/widgets/explore_spot_card.dart';
 import '../models/spot_model.dart';
 import '../providers/hidden_gem_provider.dart';
 import '../providers/spot_discovery_provider.dart';
 import '../widgets/hidden_gem_card.dart';
-import '../widgets/spot_community_section.dart';
 
 class SpotExploreScreen extends ConsumerStatefulWidget {
   const SpotExploreScreen({super.key});
@@ -96,34 +93,10 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     });
   }
 
-  void _openReportSheet(SpotModel spot) {
-    showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => SpotReportSheet(
-        spotName: spot.name,
-        onSubmit: (reason, details) async {
-          await ref.read(apiClientProvider).dio.post(
-            '/spots/${spot.id}/reports',
-            data: {
-              'reason': reason,
-              if (details.isNotEmpty) 'details': details,
-            },
-          );
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(spotDiscoveryProvider);
     final spotlight = ref.watch(choiceSpotlightProvider).valueOrNull;
-    final user = ref.watch(authProvider).user;
-    final userInitial = user?.displayName != null && user!.displayName.isNotEmpty
-        ? user.displayName.substring(0, 1).toUpperCase()
-        : 'U';
 
     return Theme(
       data: AppTheme.pixel,
@@ -132,8 +105,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
             final grid = PixelGrid.of(context);
 
             // 1. Initial extraction of categories & towns from all spots
-            final categories = SpotFilterState.extractCategories(state.spots);
-            final municipalities = SpotFilterState.extractMunicipalities(state.spots);
 
             // 2. Apply combined category and municipality filtering
             final visibleSpots = _filterState.apply(state.spots);
@@ -154,7 +125,10 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               spotlight: spotlight,
             );
 
-            final ordinarySpots = spotlightPlacement.ordinary;
+            // Plan 75m: the featured spot is not repeated right under itself.
+            final ordinarySpots = spotlightPlacement.ordinary
+                .where((s) => s.id != topHeroSpot?.id)
+                .toList();
             final pagedSpots = ordinarySpots.take(_visibleCount).toList();
             final hasMore = _visibleCount < ordinarySpots.length;
 
@@ -192,32 +166,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     vertical: grid.px(2),
                   ),
                   children: [
-                    // Header Filter Panel
-                    ExploreHeaderPanel(
-                      filterState: _filterState,
-                      categories: categories,
-                      municipalities: municipalities,
-                      onToggleCategory: (cat) {
-                        setState(() {
-                          _filterState = _filterState.toggleCategory(cat);
-                          _visibleCount = 10;
-                        });
-                      },
-                      onToggleMunicipality: (muni) {
-                        setState(() {
-                          _filterState = _filterState.toggleMunicipality(muni);
-                          _visibleCount = 10;
-                        });
-                      },
-                      onReset: () {
-                        setState(() {
-                          _filterState = _filterState.reset();
-                          _visibleCount = 10;
-                        });
-                      },
-                    ),
-                    SizedBox(height: grid.px(2)),
-
                     // App-only blocks preserved in order
                     // Offline Fallback Banner
                     if (state.isOfflineFallback) ...[
@@ -314,50 +262,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     const HiddenGemCard(),
                     SizedBox(height: grid.px(2)),
 
-                    // Post Creation Prompt Box
-                    PixelPanel(
-                      style: PixelBoxStyle.slot.copyWith(corner: 1, shadowPx: 0),
-                      padding: 2,
-                      child: Semantics(
-                        button: true,
-                        label: 'Share a video clip, spot, or food tip',
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () async {
-                            pixelTick(context);
-                            final added = await context.push<Object?>('/map/add-spot');
-                            if (added != null) _load(refresh: true);
-                          },
-                          child: Row(
-                            children: [
-                              PixelPanel(
-                                style: PixelBoxStyle.green.copyWith(corner: 0, shadowPx: 0),
-                                padding: 1,
-                                child: Text(
-                                  userInitial,
-                                  style: PixelType.body(context, color: PixelPalette.white),
-                                ),
-                              ),
-                              SizedBox(width: grid.px(2)),
-                              Expanded(
-                                child: Text(
-                                  'Share a video clip, spot, or food tip...',
-                                  style: PixelType.body(context, color: PixelPalette.slate),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                '+',
-                                style: PixelType.title(context, color: PixelPalette.green),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: grid.px(2)),
-
                     // Loading State
                     if (state.isInitialLoading && state.spots.isEmpty)
                       _buildLoadingSkeleton(context, grid)
@@ -413,7 +317,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                           onToggleSave: () => ref
                               .read(spotDiscoveryProvider.notifier)
                               .toggleSaved(pagedSpots[i]),
-                          onReport: () => _openReportSheet(pagedSpots[i]),
                           onPlayQuest: pagedSpots[i].questId != null &&
                                   pagedSpots[i].questId!.trim().isNotEmpty
                               ? () => context.push(

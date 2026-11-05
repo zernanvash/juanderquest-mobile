@@ -22,7 +22,6 @@ class ExploreSpotCard extends StatelessWidget {
     required this.onTapCard,
     required this.onToggleLike,
     required this.onToggleSave,
-    required this.onReport,
     required this.onPlayQuest,
   });
 
@@ -33,7 +32,6 @@ class ExploreSpotCard extends StatelessWidget {
   final VoidCallback onTapCard;
   final VoidCallback onToggleLike;
   final VoidCallback onToggleSave;
-  final VoidCallback onReport;
   final VoidCallback? onPlayQuest;
 
   @override
@@ -44,7 +42,6 @@ class ExploreSpotCard extends StatelessWidget {
     final cacheWidth =
         (cardWidth * MediaQuery.devicePixelRatioOf(context)).round();
     final recommendationReason = getTopRecommendationReason(spot);
-    final hasSourceName = spot.sourceName.trim().isNotEmpty;
     final hasQuest = spot.questId != null && spot.questId!.trim().isNotEmpty;
 
     return Semantics(
@@ -62,44 +59,8 @@ class ExploreSpotCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Top Meta Bar: SHARED BY (hidden if empty) & Report flag button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (hasSourceName)
-                  Expanded(
-                    child: Text(
-                      'SHARED BY ${spot.sourceName.trim().toUpperCase()}',
-                      style:
-                          PixelType.small(context, color: PixelPalette.slate),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  )
-                else
-                  const Spacer(),
-                Semantics(
-                  button: true,
-                  label: 'Report problem with ${spot.name}',
-                  child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(minWidth: 48, minHeight: 48),
-                    child: Center(
-                      child: PixelIconButton(
-                        icon: ExploreArt.flag,
-                        semanticLabel: 'Report problem',
-                        style: PixelBoxStyle.parchment
-                            .copyWith(corner: 0, shadowPx: 0),
-                        iconHeight: 16,
-                        onPressed: onReport,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: grid.px(1)),
-
+            // Plan 75m: credit and "Report a problem" live on the spot page;
+            // the card goes straight to the place.
             // Name (Tap opens theater)
             GestureDetector(
               behavior: HitTestBehavior.opaque,

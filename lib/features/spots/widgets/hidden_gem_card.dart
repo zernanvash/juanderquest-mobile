@@ -63,7 +63,9 @@ class _HiddenGemAd extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _open(context),
+        // Plan 75m: a dark spotlight frame so the gem stands out in the feed.
         child: PixelPanel(
+          style: PixelBoxStyle.inkDialogue,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -75,8 +77,8 @@ class _HiddenGemAd extends StatelessWidget {
                 children: const [
                   PixelChip(
                     'HIDDEN GEM',
-                    style: PixelBoxStyle.green,
-                    textColor: PixelPalette.white,
+                    style: PixelBoxStyle.gold,
+                    textColor: PixelPalette.ink,
                   ),
                   PixelChip(
                     'Not sponsored',
@@ -91,17 +93,23 @@ class _HiddenGemAd extends StatelessWidget {
                 sunken: true,
                 padding: 1,
                 child: ClipRect(
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: gem.imageUrl != null
-                        ? Image.network(
-                            gem.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _ImageFallback(town: gem.municipality),
-                          )
-                        : _ImageFallback(town: gem.municipality),
-                  ),
+                  // No photo: a compact banner, not a big empty 16:9 box.
+                  child: gem.imageUrl == null
+                      ? SizedBox(
+                          height: 72,
+                          child: _ImageFallback(town: gem.municipality),
+                        )
+                      : AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: gem.imageUrl != null
+                              ? Image.network(
+                                  gem.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _ImageFallback(town: gem.municipality),
+                                )
+                              : _ImageFallback(town: gem.municipality),
+                        ),
                 ),
               ),
               SizedBox(height: grid.px(2)),
@@ -109,7 +117,7 @@ class _HiddenGemAd extends StatelessWidget {
                 gem.name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: PixelType.body(context)
+                style: PixelType.body(context, color: PixelPalette.sun)
                     .copyWith(fontWeight: FontWeight.w700),
               ),
               SizedBox(height: grid.px(1)),
@@ -119,7 +127,7 @@ class _HiddenGemAd extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: PixelType.small(
                   context,
-                  color: PixelPalette.greenDark,
+                  color: PixelPalette.sunLight,
                 ),
               ),
               SizedBox(height: grid.px(1)),
@@ -127,7 +135,7 @@ class _HiddenGemAd extends StatelessWidget {
                 gem.reason,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: PixelType.small(context, color: PixelPalette.slate),
+                style: PixelType.small(context, color: PixelPalette.mist),
               ),
               SizedBox(height: grid.px(2)),
               Wrap(

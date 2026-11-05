@@ -299,7 +299,7 @@ void main() {
       expect(pushedRoutes, contains('/explore/spot-4'));
     });
 
-    testWidgets('action buttons work: like, save, report, PLAY QUEST, and card tap', (tester) async {
+    testWidgets('action buttons work: like, save, PLAY QUEST, and card tap', (tester) async {
       final pushedRoutes = <String>[];
       final spot = _makeSpot(
         id: 'spot-interactive',
@@ -320,10 +320,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // Check SHARED BY sourceName
-      final sharedByText = find.text('SHARED BY TOURISM BOARD');
-      await _scrollTo(tester, sharedByText);
-      expect(sharedByText, findsOneWidget);
+      // Plan 75m: the credit moved to the spot page's end panel.
+      expect(find.text('SHARED BY TOURISM BOARD'), findsNothing);
 
       // 1. Like button tap (initial likes: 45 + 16*3 = 93)
       final likeBtn = find.widgetWithText(PixelButton, '93');
@@ -342,17 +340,9 @@ void main() {
       await tester.pump();
       expect(notifier.toggledSpot?.id, equals('spot-interactive'));
 
-      // 3. Report button tap
-      final reportBtn = find.bySemanticsLabel('Report problem');
-      await _scrollTo(tester, reportBtn);
-      expect(reportBtn, findsOneWidget);
-      await tester.tap(reportBtn);
-      await tester.pumpAndSettle();
-      // Report bottom sheet is open
-      expect(find.text('REPORT A PROBLEM'), findsOneWidget);
-      // Close report sheet
-      await tester.tap(find.text('✕'));
-      await tester.pumpAndSettle();
+      // 3. Plan 75m: no report flag on the card; "Report a problem" is on
+      //    the spot page (theater_end_report_btn).
+      expect(find.bySemanticsLabel('Report problem'), findsNothing);
 
       // 4. PLAY QUEST button tap
       final playQuestBtn = find.text('PLAY QUEST');
