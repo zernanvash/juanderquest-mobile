@@ -165,9 +165,14 @@ class SettingsUpdatesScreen extends ConsumerWidget {
                                         label: 'Checking for updates'),
                                   )
                                 else if (updateState.hasUpdate)
-                                  const PixelChip('UPDATE',
-                                      style: PixelBoxStyle.green,
-                                      textColor: PixelPalette.white)
+                                  PixelButton(
+                                    key: const ValueKey(
+                                        'settings_updates_button'),
+                                    label: 'UPDATE',
+                                    expand: true,
+                                    variant: PixelButtonVariant.primary,
+                                    onPressed: isChecking ? null : check,
+                                  )
                                 else
                                   Text(
                                     'Tap to check',

@@ -79,7 +79,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Center(
         child: Text(
           initial,
-          style: PixelType.title(context, color: PixelPalette.paper),
+          style: PixelType.display(context, color: PixelPalette.paper),
         ),
       ),
     );
@@ -364,7 +364,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String value,
     PixelBoxStyle style,
   ) {
-    final dark = style == PixelBoxStyle.wood;
+    final dark = style == PixelBoxStyle.wood || style == PixelBoxStyle.green;
     final textColor = dark ? PixelPalette.white : PixelPalette.ink;
     return PixelPanel(
       style: style,

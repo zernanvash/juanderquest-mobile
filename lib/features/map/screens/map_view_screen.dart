@@ -1117,51 +1117,16 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Semantics(
-                          button: true,
-                          label: 'List places',
-                          child: GestureDetector(
-                            onTap: () {
-                              pixelTick(context);
-                              _openPlacesList();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                'LIST',
-                                style: PixelType.small(context,
-                                        color: PixelPalette.wood)
-                                    .copyWith(fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Semantics(
-                          button: true,
-                          label: 'Search spots',
-                          child: GestureDetector(
-                            onTap: () {
-                              pixelTick(context);
-                              context.push('/search');
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                'SEARCH',
-                                style: PixelType.small(context,
-                                        color: PixelPalette.greenDeep)
-                                    .copyWith(fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: PixelChip(
+                        'LIST',
+                        style: PixelBoxStyle.parchment,
+                        onTap: () {
+                          pixelTick(context);
+                          _openPlacesList();
+                        },
+                      ),
                     ),
                     const SizedBox(height: 6),
                     PixelSegmented(
@@ -1321,7 +1286,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               Positioned(
                 left: 12,
                 right: 64,
-                bottom: 16,
+                bottom: 28,
                 child: PinAimCard(
                   lat: _aimCenter?.latitude,
                   lng: _aimCenter?.longitude,
@@ -1337,7 +1302,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 _selectedQuest == null &&
                 _selectedSpot == null)
               Positioned(
-                bottom: 16,
+                bottom: 28,
                 left: 12,
                 right: 12,
                 child: _AreaBanner(
@@ -1351,7 +1316,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             // Marker Inspector Overlay Card
             if (_selectedQuest != null || _selectedSpot != null)
               Positioned(
-                bottom: 16,
+                bottom: 28,
                 left: 12,
                 right: 12,
                 child: _buildMarkerInspectorCard(),

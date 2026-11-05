@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -130,17 +131,21 @@ class _SubmissionHistoryScreenState
     if (state.submissions.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.symmetric(horizontal: grid.px(4)),
         children: [
-          SizedBox(height: grid.px(14)),
-          PixelEmptyState(
-            key: const ValueKey('submissions_empty'),
-            title: 'No submissions yet',
-            message:
-                'Complete quests or submit destination spots to earn reward points.',
-            action: PixelButton(
-              label: 'Refresh',
-              variant: PixelButtonVariant.secondary,
-              onPressed: () => _reload(),
+          SizedBox(height: grid.px(6)),
+          PixelPanel(
+            style: PixelBoxStyle.parchment,
+            child: PixelEmptyState(
+              key: const ValueKey('submissions_empty'),
+              title: 'No submissions yet',
+              message:
+                  'Complete quests or submit destination spots to earn reward points.',
+              action: PixelButton(
+                key: const ValueKey('submissions_browse_quests'),
+                label: 'Browse quests',
+                onPressed: () => context.go('/quests'),
+              ),
             ),
           ),
         ],

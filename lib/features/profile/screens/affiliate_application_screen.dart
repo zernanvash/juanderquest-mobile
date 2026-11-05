@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/config/map_config.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -19,6 +20,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/base_tile_layer.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../map/pixel/map_marker_art.dart';
 
 const _affiliateCategories = <String>[
   'dining',
@@ -51,8 +53,9 @@ class _AffiliateApplicationScreenState
   final _province = TextEditingController();
   final _placeSearch = TextEditingController();
   final _mapController = MapController();
-  LatLng _mapCenter = const LatLng(12.8797, 121.774);
-  double _mapZoom = 6;
+  LatLng _mapCenter =
+      const LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng);
+  double _mapZoom = MapConfig.defaultZoom;
   LatLng? _pin;
   List<Map<String, dynamic>> _places = const [];
   bool _searching = false;
@@ -678,6 +681,9 @@ class _AffiliateApplicationScreenState
                       ]),
                   ],
                 ),
+              ),
+              const Positioned.fill(
+                child: PixelCrosshairReticle(),
               ),
               Positioned(
                 right: grid.px(1),

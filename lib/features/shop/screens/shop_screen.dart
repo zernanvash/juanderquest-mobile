@@ -373,10 +373,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             spacing: grid.px(2),
             runSpacing: grid.px(1),
             children: [
-              PixelChip('$points points', style: PixelBoxStyle.gold),
+              PixelChip('$points mJDQ', style: PixelBoxStyle.gold),
               if (ref.watch(authProvider).user?.hasBoundWallet != true)
-                const PixelChip('No wallet',
-                    style: PixelBoxStyle.parchment),
+                GestureDetector(
+                  onTap: () => context.push('/wallet/connect'),
+                  child: const PixelChip(
+                    'Link wallet >',
+                    style: PixelBoxStyle.parchment,
+                  ),
+                ),
             ],
           ),
         ],
@@ -553,7 +558,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ),
           if (item.equipped)
             const PixelChip('Equipped', style: PixelBoxStyle.green,
-                textColor: PixelPalette.white),
+                textColor: PixelPalette.white)
+          else
+            const PixelChip('PREVIEW >', style: PixelBoxStyle.parchment),
         ],
       ),
     );
@@ -659,7 +666,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       return item.equipped ? 'Equipped' : 'Owned';
     }
     if (item.pricePoints != null) {
-      return '${item.pricePoints} points';
+      return '${item.pricePoints} mJDQ';
     }
     if (item.priceTjdq != null) {
       return 'tJDQ · Coming soon';
@@ -861,7 +868,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               PixelChip(voucher.category.replaceAll('_', ' '),
                   style: PixelBoxStyle.slot),
               PixelChip(
-                '${voucher.costPoints} pts',
+                '${voucher.costPoints} mJDQ',
                 style: canAfford
                     ? PixelBoxStyle.gold
                     : PixelBoxStyle.slot,
@@ -889,7 +896,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           SizedBox(height: grid.px(3)),
           if (!voucher.redeemable)
             Text(
-              'Planned offer · ${voucher.costPoints} points · not redeemable yet',
+              'Planned offer · ${voucher.costPoints} mJDQ · not redeemable yet',
               style: PixelType.body(
                 context,
                 color: PixelPalette.slate,
@@ -900,7 +907,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               key: ValueKey('shop_redeem_${voucher.id}'),
               label: canAfford
                   ? 'Redeem voucher'
-                  : 'Need ${voucher.costPoints - userPoints} more points',
+                  : 'Need ${voucher.costPoints - userPoints} more mJDQ',
               expand: true,
               onPressed: canAfford && voucher.redeemable
                   ? () async {
