@@ -70,6 +70,54 @@ class HomeStatSlot extends StatelessWidget {
   }
 }
 
+/// Stat slots two to a row (Plan 75n). Falls back to one column when the
+/// panel is too narrow for two labels side by side.
+class HomeStatGrid extends StatelessWidget {
+  const HomeStatGrid({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final gap = grid.px(1);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final columns = constraints.maxWidth / textScale >= 300 ? 2 : 1;
+        final rows = <Widget>[];
+        for (var i = 0; i < children.length; i += columns) {
+          if (rows.isNotEmpty) rows.add(SizedBox(height: gap));
+          if (columns == 1) {
+            rows.add(children[i]);
+            continue;
+          }
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: children[i]),
+                  SizedBox(width: gap),
+                  Expanded(
+                    child: i + 1 < children.length
+                        ? children[i + 1]
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: rows,
+        );
+      },
+    );
+  }
+}
+
 class HomePanel extends StatelessWidget {
   const HomePanel({
     super.key,

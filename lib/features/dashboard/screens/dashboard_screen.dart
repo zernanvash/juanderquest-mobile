@@ -47,7 +47,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(choiceOverviewProvider.future);
       ref.read(homeDailyProvider.future);
       ref.read(homeQotdProvider);
-      ref.read(homeProposalsProvider.future);
       ref.read(submissionProvider.notifier).fetchSubmissions();
       ref.read(spotDiscoveryProvider.notifier).load();
       ref.read(questProvider.notifier).fetchQuests();
@@ -60,7 +59,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.refresh(choiceEngagementProvider.future),
       ref.refresh(choiceOverviewProvider.future),
       ref.refresh(homeDailyProvider.future),
-      ref.refresh(homeProposalsProvider.future),
       ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
       ref.read(spotDiscoveryProvider.notifier).load(refresh: true),
       ref.read(questProvider.notifier).fetchQuests(),
