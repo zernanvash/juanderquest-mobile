@@ -95,10 +95,7 @@ class _HiddenGemAd extends StatelessWidget {
                 child: ClipRect(
                   // No photo: a compact banner, not a big empty 16:9 box.
                   child: gem.imageUrl == null
-                      ? SizedBox(
-                          height: 72,
-                          child: _ImageFallback(town: gem.municipality),
-                        )
+                      ? const SizedBox(height: 72, child: _ImageFallback())
                       : AspectRatio(
                           aspectRatio: 16 / 9,
                           child: gem.imageUrl != null
@@ -106,9 +103,9 @@ class _HiddenGemAd extends StatelessWidget {
                                   gem.imageUrl!,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) =>
-                                      _ImageFallback(town: gem.municipality),
+                                      const _ImageFallback(),
                                 )
-                              : _ImageFallback(town: gem.municipality),
+                              : const _ImageFallback(),
                         ),
                 ),
               ),
@@ -117,18 +114,17 @@ class _HiddenGemAd extends StatelessWidget {
                 gem.name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: PixelType.body(context, color: PixelPalette.sun)
-                    .copyWith(fontWeight: FontWeight.w700),
+                style: PixelType.body(
+                  context,
+                  color: PixelPalette.sun,
+                ).copyWith(fontWeight: FontWeight.w700),
               ),
               SizedBox(height: grid.px(1)),
               Text(
                 gem.municipality,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: PixelType.small(
-                  context,
-                  color: PixelPalette.sunLight,
-                ),
+                style: PixelType.small(context, color: PixelPalette.sunLight),
               ),
               SizedBox(height: grid.px(1)),
               PixelText.rich(
@@ -137,19 +133,21 @@ class _HiddenGemAd extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: PixelType.small(context, color: PixelPalette.mist),
               ),
-              SizedBox(height: grid.px(2)),
-              Wrap(
-                spacing: grid.px(2),
-                runSpacing: grid.px(1),
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  PixelChip(
-                    gem.crowdLabel,
-                    style: crowdStyle,
-                    textColor: crowdText,
-                  ),
-                ],
-              ),
+              if (gem.crowdStatus != 'unknown') ...[
+                SizedBox(height: grid.px(2)),
+                Wrap(
+                  spacing: grid.px(2),
+                  runSpacing: grid.px(1),
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    PixelChip(
+                      gem.crowdLabel,
+                      style: crowdStyle,
+                      textColor: crowdText,
+                    ),
+                  ],
+                ),
+              ],
               SizedBox(height: grid.px(2)),
               PixelButton(
                 label: 'View this gem',
@@ -164,12 +162,11 @@ class _HiddenGemAd extends StatelessWidget {
   }
 }
 
-/// Plan 75k: a gem without a photo gets a night-sky dither, a glinting
-/// marker and its town, instead of a pale grey box.
+/// Plan 75k: a gem without a photo gets a night-sky dither and a glinting
+/// marker. Plan 75n: the banner says "Local treasure" instead of repeating
+/// the town printed under the title.
 class _ImageFallback extends StatelessWidget {
-  const _ImageFallback({required this.town});
-
-  final String town;
+  const _ImageFallback();
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +174,7 @@ class _ImageFallback extends StatelessWidget {
     return DitherBackground(
       top: PixelPalette.ink,
       bottom: PixelPalette.woodDeep,
-      // Marker and town side by side: fits the compact 72 dp banner even
+      // Marker and label side by side: fits the compact 72 dp banner even
       // with large text.
       child: Center(
         child: Row(
@@ -197,7 +194,7 @@ class _ImageFallback extends StatelessWidget {
             SizedBox(width: grid.px(4)),
             Flexible(
               child: Text(
-                town,
+                'Local treasure',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: PixelType.small(context, color: PixelPalette.sunLight),
@@ -228,10 +225,7 @@ class _HiddenGemPlaceholder extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Loading Hidden Gem recommendation',
-                  style: PixelType.small(
-                    context,
-                    color: PixelPalette.slate,
-                  ),
+                  style: PixelType.small(context, color: PixelPalette.slate),
                 ),
               ),
             ],

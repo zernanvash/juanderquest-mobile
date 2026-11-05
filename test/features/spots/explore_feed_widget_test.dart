@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/core/dev/test_content.dart';
 import 'package:juanderquest_app/core/network/api_failure.dart';
 import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/pixel/pixel_feedback.dart';
@@ -70,6 +71,7 @@ SpotModel _makeSpot({
   String? questId,
   String? sourceName,
   bool saved = false,
+  bool isTest = false,
   String? crowdStatus,
   String? trustLevel,
 }) {
@@ -92,6 +94,7 @@ SpotModel _makeSpot({
     questId: questId,
     imageUrl: imageUrl,
     saved: saved,
+    isTest: isTest,
   );
 }
 
@@ -99,6 +102,7 @@ Widget _buildHarness({
   required _TestDiscoveryNotifier discoveryNotifier,
   ChoiceSpotlight? spotlight,
   List<String>? pushedRoutes,
+  bool showTest = false,
 }) {
   final testClient = ApiClient(enableRetries: false);
   final user = UserModel(
@@ -181,6 +185,7 @@ Widget _buildHarness({
       spotDiscoveryProvider.overrideWith((ref) => discoveryNotifier),
       choiceSpotlightProvider.overrideWith((ref) => spotlight),
       hiddenGemProvider.overrideWith((ref) async => const []),
+      showTestContentProvider.overrideWith((ref) => showTest),
     ],
     child: MaterialApp.router(
       theme: AppTheme.pixel,
@@ -364,6 +369,72 @@ void main() {
       await tester.tap(cardTapTarget.first);
       await tester.pumpAndSettle();
       expect(pushedRoutes, contains('/explore/interactive-spot'));
+    });
+
+    testWidgets('non-quest cards offer VIEW SPOT on the right',
+        (tester) async {
+      final pushedRoutes = <String>[];
+      final spot = _makeSpot(
+        id: 'plain-spot',
+        name: 'Plain Cove',
+        slug: 'plain-cove',
+      );
+      final notifier = _TestDiscoveryNotifier(
+        ProviderContainer().read(Provider((ref) => ref)),
+        SpotDiscoveryState(spots: [spot], isInitialLoading: false),
+      );
+
+      await tester.pumpWidget(_buildHarness(
+        discoveryNotifier: notifier,
+        pushedRoutes: pushedRoutes,
+      ));
+      await tester.pumpAndSettle();
+
+      final viewSpot =
+          find.byKey(const ValueKey('explore_view_spot_plain-spot'));
+      await _scrollTo(tester, viewSpot);
+      expect(viewSpot, findsOneWidget);
+      await tester.tap(viewSpot);
+      await tester.pumpAndSettle();
+      expect(pushedRoutes, contains('/explore/plain-cove'));
+    });
+
+    testWidgets('test spots appear only with the developer switch on',
+        (tester) async {
+      final normal = _makeSpot(id: 'normal', name: 'Normal Cove');
+      final testSpot = _makeSpot(
+        id: 'artest',
+        name: 'ARTEST Spot',
+        isTest: true,
+      );
+      final notifier = _TestDiscoveryNotifier(
+        ProviderContainer().read(Provider((ref) => ref)),
+        SpotDiscoveryState(
+          spots: [normal, testSpot],
+          isInitialLoading: false,
+        ),
+      );
+
+      await tester.pumpWidget(_buildHarness(discoveryNotifier: notifier));
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, find.text('Normal Cove'));
+      expect(find.text('Normal Cove'), findsWidgets);
+      expect(find.text('ARTEST Spot'), findsNothing);
+
+      final showNotifier = _TestDiscoveryNotifier(
+        ProviderContainer().read(Provider((ref) => ref)),
+        SpotDiscoveryState(
+          spots: [normal, testSpot],
+          isInitialLoading: false,
+        ),
+      );
+      await tester.pumpWidget(_buildHarness(
+        discoveryNotifier: showNotifier,
+        showTest: true,
+      ));
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, find.text('ARTEST Spot'));
+      expect(find.text('ARTEST Spot'), findsWidgets);
     });
 
     testWidgets('loading state displays PixelLoader', (tester) async {

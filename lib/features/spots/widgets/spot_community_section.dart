@@ -257,26 +257,6 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
     );
   }
 
-  Future<void> _openReport() async {
-    final sent = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => SpotReportSheet(
-        spotName: widget.spotName,
-        onSubmit: (reason, details) async {
-          await _dio.post('/spots/${widget.spotId}/reports', data: {
-            'reason': reason,
-            if (details.isNotEmpty) 'details': details,
-          });
-        },
-      ),
-    );
-    if (sent == true && mounted) {
-      _snack('Thanks. Our moderators will check this destination.');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
@@ -298,7 +278,7 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
           ),
           SizedBox(height: grid.px(2)),
 
-          // Top Action Buttons: Like & Report Problem
+          // Top action: Like (the report action lives in the page footer)
           Wrap(
             spacing: grid.px(2),
             runSpacing: grid.px(1),
@@ -333,43 +313,6 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                           style: PixelType.small(
                             context,
                             color: _liked ? PixelPalette.white : PixelPalette.paper,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Semantics(
-                button: true,
-                label: 'Report a problem',
-                child: InkWell(
-                  key: const ValueKey('spot_report'),
-                  onTap: _openReport,
-                  child: Container(
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                    alignment: Alignment.center,
-                    child: PixelPanel(
-                      style: PixelBoxStyle.inkDialogue.copyWith(
-                        fill: PixelPalette.ink,
-                        outline: PixelPalette.paper,
-                        corner: 0,
-                        shadowPx: 0,
-                      ),
-                      padding: 1,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: grid.px(3),
-                          vertical: grid.px(1),
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '⚑ REPORT A PROBLEM',
-                            style: PixelType.small(
-                              context,
-                              color: PixelPalette.paper,
-                            ),
                           ),
                         ),
                       ),

@@ -255,5 +255,34 @@ void main() {
       await tester.pumpAndSettle();
       _checkNoException(tester);
     });
+
+    for (final size in const [Size(320, 568), Size(568, 320)]) {
+      testWidgets(
+          'pinned bar fits at ${size.width.toInt()}x${size.height.toInt()} and 1.4x text',
+          (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1.0;
+        tester.platformDispatcher.textScaleFactorTestValue = 1.4;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        await tester.pumpWidget(_buildOverflowApp(spot: _testSpot));
+        await tester.pumpAndSettle();
+        _checkNoException(tester);
+
+        await tester.drag(
+          find.byType(CustomScrollView),
+          const Offset(0, -1000),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('theater_pinned_bar')), findsOneWidget);
+        _checkNoException(tester);
+
+        await tester.tap(find.byKey(const Key('theater_pinned_share')));
+        await tester.pumpAndSettle();
+        _checkNoException(tester);
+      });
+    }
   });
 }

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -9,6 +8,36 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../models/spot_model.dart';
 import 'theater_gallery_dialog.dart';
+
+/// Strips a leading `PHOTO:` (any case) from a spot credit name.
+String spotCreditName(String sourceName) {
+  final trimmed = sourceName.trim();
+  final match = RegExp(
+    r'^photo\s*:\s*',
+    caseSensitive: false,
+  ).firstMatch(trimmed);
+  return match == null ? trimmed : trimmed.substring(match.end).trim();
+}
+
+const Map<String, String> _spotCategoryNames = {
+  'eat_drink': 'Food & Culinary',
+  'nature_outdoors': 'Nature & Outdoors',
+  'culture_heritage': 'Culture & Heritage',
+  'activities_wellness': 'Activities & Wellness',
+  'shopping_local': 'Local MSME Crafts',
+  'stay': 'Places to Stay',
+};
+
+/// Category label with the slug's `_` separators shown as `&`.
+String spotCategoryLabel(String? category) {
+  final id = (category ?? '').trim();
+  if (id.isEmpty) return 'Destination';
+  final known = _spotCategoryNames[id];
+  if (known != null) return known;
+  final label = id.replaceAll(RegExp(r'[_-]+'), ' & ').trim();
+  if (label.isEmpty) return 'Destination';
+  return label[0].toUpperCase() + label.substring(1);
+}
 
 class TheaterFirstViewport extends StatelessWidget {
   const TheaterFirstViewport({
@@ -139,9 +168,14 @@ class _TopControls extends StatelessWidget {
             label: 'Open photo gallery',
             child: InkWell(
               key: const Key('theater_gallery_btn'),
-              onTap: () => TheaterGalleryDialog.show(context, media: spot.media),
+              onTap: () =>
+                  TheaterGalleryDialog.show(context, media: spot.media),
               child: Container(
-                constraints: const BoxConstraints(minWidth: 48, maxWidth: 96, minHeight: 48),
+                constraints: const BoxConstraints(
+                  minWidth: 48,
+                  maxWidth: 96,
+                  minHeight: 48,
+                ),
                 alignment: Alignment.center,
                 child: PixelPanel(
                   style: PixelBoxStyle.inkDialogue.copyWith(
@@ -159,8 +193,11 @@ class _TopControls extends StatelessWidget {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        '$photoCount PHOTOS',
-                        style: PixelType.small(context, color: PixelPalette.paper),
+                        photoCount == 1 ? '1 PHOTO' : '$photoCount PHOTOS',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.paper,
+                        ),
                       ),
                     ),
                   ),
@@ -169,39 +206,7 @@ class _TopControls extends StatelessWidget {
             ),
           ),
 
-        // Photo source credit chip
-        if (spot.sourceName.isNotEmpty) ...[
-          SizedBox(width: grid.px(1)),
-          Expanded(
-            child: GestureDetector(
-              onTap: spot.sourceUrl != null && spot.sourceUrl!.isNotEmpty
-                  ? () => launchUrlString(spot.sourceUrl!)
-                  : null,
-              child: PixelPanel(
-                style: PixelBoxStyle.inkDialogue.copyWith(
-                  fill: PixelPalette.ink,
-                  outline: PixelPalette.slate,
-                  corner: 0,
-                  shadowPx: 0,
-                ),
-                padding: 1,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: grid.px(2),
-                    vertical: grid.px(1),
-                  ),
-                  child: Text(
-                    spot.sourceName.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: PixelType.small(context, color: PixelPalette.mist),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ] else
-          const Spacer(),
+        const Spacer(),
 
         // Save heart button
         Semantics(
@@ -270,7 +275,10 @@ class _TopControls extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       'Share',
-                      style: PixelType.small(context, color: PixelPalette.paper),
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.paper,
+                      ),
                     ),
                   ),
                 ),
@@ -299,10 +307,10 @@ class _HeroTitleBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final categoryText = spot.category.replaceAll('_', ' ');
-    final townText = spot.municipality.isNotEmpty
-        ? spot.municipality
-        : 'Pangasinan';
+    final categoryText = spotCategoryLabel(spot.category);
+    final townText =
+        spot.municipality.isNotEmpty ? spot.municipality : 'Pangasinan';
+    final sourceName = spotCreditName(spot.sourceName);
 
     final trustChip = spot.isTest
         ? const PixelChip(
@@ -317,9 +325,7 @@ class _HeroTitleBlock extends StatelessWidget {
                 textColor: PixelPalette.ink,
               )
             : PixelChip(
-                spot.sourceName.isNotEmpty
-                    ? spot.sourceName
-                    : 'Community spot',
+                sourceName.isNotEmpty ? sourceName : 'Community spot',
                 style: PixelBoxStyle.stone,
                 textColor: PixelPalette.paper,
               );
@@ -339,10 +345,10 @@ class _HeroTitleBlock extends StatelessWidget {
         // Spot Name (title 24, wraps)
         Text(
           spot.name,
-          style: PixelType.title(context, color: PixelPalette.white).copyWith(
-            fontSize: 24,
-            height: 1.2,
-          ),
+          style: PixelType.title(
+            context,
+            color: PixelPalette.white,
+          ).copyWith(fontSize: 24, height: 1.2),
         ),
         SizedBox(height: grid.px(1)),
 

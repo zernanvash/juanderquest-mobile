@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -16,6 +19,7 @@ import '../theater/theater_nearby_section.dart';
 import '../theater/theater_overview_section.dart';
 import '../theater/theater_panel.dart';
 import '../theater/theater_still_photo.dart';
+import '../studio/pixel/studio_icons.dart';
 import '../theater/theater_title_block.dart';
 import '../theater/theater_venue_section.dart';
 import '../widgets/spot_community_section.dart';
@@ -41,6 +45,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   /// 0 at the top of the page, 1 once the details cover most of the screen.
   final ValueNotifier<double> _reveal = ValueNotifier(0.0);
 
+  /// True once the first (hero) viewport has scrolled away; shows the pinned bar.
+  final ValueNotifier<bool> _pastHero = ValueNotifier(false);
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +66,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     _scrollController.dispose();
     _scrolled.dispose();
     _reveal.dispose();
+    _pastHero.dispose();
     super.dispose();
   }
 
@@ -66,7 +74,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     if (!mounted || !_scrollController.hasClients) return;
     final offset = _scrollController.offset;
     _scrolled.value = offset >= 10;
-    final span = _scrollController.position.viewportDimension * 0.6;
+    final viewport = _scrollController.position.viewportDimension;
+    final heroHeight = viewport < 520 ? 520.0 : viewport;
+    _pastHero.value = offset >= heroHeight - 1;
+    final span = viewport * 0.6;
     final reveal = span > 0 ? (offset / span).clamp(0.0, 1.0) : 0.0;
     if ((_reveal.value - reveal).abs() > 0.02 || reveal == 0 || reveal == 1) {
       _reveal.value = reveal;
@@ -75,25 +86,27 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
   Future<void> _logInteraction(String type) async {
     try {
-      await ref.read(apiClientProvider).dio.post(
-        '/spots/${widget.spot.id}/interactions',
-        data: {'type': type},
-      );
+      await ref
+          .read(apiClientProvider)
+          .dio
+          .post('/spots/${widget.spot.id}/interactions', data: {'type': type});
     } catch (_) {}
   }
 
   Future<void> _loadAlternatives() async {
     try {
-      final response = await ref.read(apiClientProvider).dio.get(
-            '/spots/${widget.spot.slug}/alternatives',
-          );
+      final response = await ref
+          .read(apiClientProvider)
+          .dio
+          .get('/spots/${widget.spot.slug}/alternatives');
       if (mounted &&
           response.statusCode == 200 &&
           response.data['data'] is List) {
         setState(() {
           _alternatives = (response.data['data'] as List)
               .map(
-                  (item) => SpotModel.fromJson(Map<String, dynamic>.from(item)))
+                (item) => SpotModel.fromJson(Map<String, dynamic>.from(item)),
+              )
               .toList();
         });
       }
@@ -252,7 +265,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   // Story content sections with generous spacing revealing photo between panels
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 24),
+                      horizontal: 16,
+                      vertical: 24,
+                    ),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         // Chapter 1: OVERVIEW
@@ -303,6 +318,46 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                 ],
               ),
             ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _pastHero,
+                builder: (context, past, _) => past
+                    ? KeyedSubtree(
+                        key: const Key('theater_pinned_bar'),
+                        child: PixelAppBar(
+                          title: spot.name,
+                          onBack: () => Navigator.of(context).maybePop(),
+                          actions: [
+                            PixelIconButton(
+                              key: const Key('theater_pinned_save'),
+                              icon: _isSaved
+                                  ? DesignerArt.heartLiked
+                                  : DesignerArt.heartUnliked,
+                              semanticLabel: _isSaved
+                                  ? 'Remove from saved spots'
+                                  : 'Save spot',
+                              iconHeight: 20,
+                              style: _isSaved
+                                  ? PixelBoxStyle.red
+                                  : PixelBoxStyle.parchment,
+                              onPressed: _toggleSaved,
+                            ),
+                            PixelIconButton(
+                              key: const Key('theater_pinned_share'),
+                              icon: StudioIcons.share,
+                              semanticLabel: 'Share spot link',
+                              iconHeight: 20,
+                              onPressed: _shareSpot,
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
           ],
         ),
       ),
@@ -311,6 +366,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
   Widget _buildEndPanel(BuildContext context, SpotModel spot) {
     final grid = PixelGrid.of(context);
+    final sourceName = spotCreditName(spot.sourceName);
 
     return TheaterPanel(
       child: Column(
@@ -320,10 +376,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
             'JuanDerQuest destination story',
             style: PixelType.small(context, color: PixelPalette.mist),
           ),
-          if (spot.sourceName.isNotEmpty) ...[
+          if (sourceName.isNotEmpty) ...[
             SizedBox(height: grid.px(1)),
             Text(
-              'Photography & curation: ${spot.sourceName}',
+              'Photography & curation: $sourceName',
               style: PixelType.small(context, color: PixelPalette.paperDim),
             ),
           ],

@@ -224,6 +224,7 @@ class _SpotDiscoveryStudioScreenState
   @override
   Widget build(BuildContext context) {
     final initial = _initial;
+    final user = ref.watch(authProvider).user;
     return Theme(
       data: AppTheme.pixel,
       child: Builder(
@@ -269,7 +270,8 @@ class _SpotDiscoveryStudioScreenState
                               footerBuilder: (draft, media, isVideo) =>
                                   SpotPostcard(
                                 draft: draft,
-                                handle: ref.watch(authProvider).user?.handle,
+                                handle:
+                                    user?.publicHandle ?? user?.displayName,
                                 coverPath: isVideo ? null : media?.path,
                               ),
                               onDraftChanged: _onDraftChanged,
@@ -407,7 +409,9 @@ class SpotPostcard extends StatelessWidget {
     final place = [draft.barangay, draft.municipality]
         .where((p) => p.isNotEmpty)
         .join(', ');
-    final discovered = 'Discovered by ${handle != null ? '@$handle' : 'you'}';
+    final credit = handle?.trim();
+    final discovered =
+        'Discovered by ${credit == null || credit.isEmpty ? 'you' : credit}';
     Widget cover;
     if (coverPath != null) {
       cover = Image.file(File(coverPath!),
@@ -513,7 +517,8 @@ class _Celebration extends ConsumerWidget {
         SizedBox(height: grid.px(3)),
         SpotPostcard(
           stamp: true,
-          handle: ref.watch(authProvider).user?.handle,
+          handle: ref.watch(authProvider).user?.publicHandle ??
+              ref.watch(authProvider).user?.displayName,
           coverUrl: spot.imageUrl,
           draft: SpotPostingDraft(
               name: spot.name,

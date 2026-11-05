@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../explore/explore_art.dart';
 import '../models/spot_model.dart';
 import 'theater_panel.dart';
+import 'theater_title_block.dart';
 
 class TheaterNearbySection extends StatelessWidget {
   const TheaterNearbySection({
@@ -57,8 +60,7 @@ class TheaterNearbySection extends StatelessWidget {
               children: [
                 for (final alt in alternatives) ...[
                   _AlternativeRow(alt: alt),
-                  if (alt != alternatives.last)
-                    SizedBox(height: grid.px(2)),
+                  if (alt != alternatives.last) SizedBox(height: grid.px(2)),
                 ],
               ],
             ),
@@ -77,7 +79,8 @@ class _AlternativeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     final hasPhoto = alt.imageUrl != null && alt.imageUrl!.isNotEmpty;
-    final isQuiet = alt.crowdStatus == 'estimated_quiet' || alt.crowdStatus == 'quiet';
+    final isQuiet =
+        alt.crowdStatus == 'estimated_quiet' || alt.crowdStatus == 'quiet';
 
     return Semantics(
       button: true,
@@ -112,14 +115,24 @@ class _AlternativeRow extends StatelessWidget {
                         ? Image.network(
                             alt.imageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const DitherBackground(
+                            errorBuilder: (_, __, ___) =>
+                                const DitherBackground(
                               top: PixelPalette.greenDeep,
                               bottom: PixelPalette.ink,
                             ),
                           )
-                        : const DitherBackground(
+                        : DitherBackground(
                             top: PixelPalette.greenDeep,
                             bottom: PixelPalette.ink,
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: PixelSprite(
+                                  ExploreArt.categoryStrip(alt.category),
+                                  scale: 3,
+                                ),
+                              ),
+                            ),
                           ),
                   ),
                 ),
@@ -135,14 +148,20 @@ class _AlternativeRow extends StatelessWidget {
                         alt.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: PixelType.small(context, color: PixelPalette.paper),
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.paper,
+                        ),
                       ),
                       SizedBox(height: grid.px(1)),
                       Text(
                         alt.municipality.isNotEmpty
                             ? alt.municipality.toUpperCase()
                             : 'PANGASINAN',
-                        style: PixelType.small(context, color: PixelPalette.mist),
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.mist,
+                        ),
                       ),
                       SizedBox(height: grid.px(1)),
                       Row(
@@ -160,7 +179,7 @@ class _AlternativeRow extends StatelessWidget {
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: PixelChip(
-                                alt.category.replaceAll('_', ' ').toUpperCase(),
+                                spotCategoryLabel(alt.category).toUpperCase(),
                                 style: PixelBoxStyle.stone.copyWith(
                                   fill: PixelPalette.slate,
                                   outline: PixelPalette.mist,

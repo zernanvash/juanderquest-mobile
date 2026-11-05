@@ -13,6 +13,7 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../../../core/dev/test_content.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../../cultural_quizzes/widgets/nearby_quiz_card.dart';
@@ -97,6 +98,11 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(spotDiscoveryProvider);
     final spotlight = ref.watch(choiceSpotlightProvider).valueOrNull;
+    final spots = withoutTestContent(
+      state.spots,
+      (spot) => spot.isTest,
+      showTest: ref.watch(showTestContentProvider),
+    );
 
     return Theme(
       data: AppTheme.pixel,
@@ -107,7 +113,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
             // 1. Initial extraction of categories & towns from all spots
 
             // 2. Apply combined category and municipality filtering
-            final visibleSpots = _filterState.apply(state.spots);
+            final visibleSpots = _filterState.apply(spots);
 
             // 3. Featured Destination: first ordinary spot with a photo
             SpotModel? topHeroSpot;
@@ -134,7 +140,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
             final winnerSpots = spotlight == null
                 ? const <SpotModel>[]
-                : state.spots
+                : spots
                     .where((s) => spotlight.winnerSpotIds.contains(s.id))
                     .toList();
 

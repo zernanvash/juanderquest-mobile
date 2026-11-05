@@ -399,12 +399,118 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
+      // The pinned bar covers the top strip once the hero is gone; nudge the
+      // note back into the tappable area under it.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 120));
+      await tester.pumpAndSettle();
 
       final likeBtn = find.byKey(const ValueKey('spot_like'));
       expect(likeBtn, findsOneWidget);
       await tester.tap(likeBtn);
       await tester.pumpAndSettle();
-      expect(find.text('♥ LIKED'), findsOneWidget);
+      expect(find.textContaining('LIKED'), findsOneWidget);
+    });
+
+    testWidgets('pinned bar replaces the scrolled-away hero controls',
+        (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_wrapScreen(spot: _fullSpot));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('theater_pinned_bar')), findsNothing);
+
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, -900),
+      );
+      await tester.pumpAndSettle();
+
+      final bar = find.byKey(const Key('theater_pinned_bar'));
+      expect(bar, findsOneWidget);
+      expect(tester.getTopLeft(bar).dy, 0);
+      expect(find.byKey(const Key('theater_pinned_save')), findsOneWidget);
+      expect(find.byKey(const Key('theater_pinned_share')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('theater_pinned_save')));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Added "Hundred Islands National Park"'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('theater_pinned_share')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Share link copied:'), findsOneWidget);
+    });
+
+    testWidgets('one photo is singular and credits strip the PHOTO: prefix',
+        (tester) async {
+      tester.view.physicalSize = const Size(400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final spot = _fullSpot.copyWith(
+        sourceName: 'PHOTO: BIANCABRAZAL',
+        media: [_fullSpot.media.first],
+        trustLevel: 'community',
+      );
+
+      await tester.pumpWidget(_wrapScreen(spot: spot));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 PHOTO'), findsOneWidget);
+      expect(find.text('1 PHOTOS'), findsNothing);
+      expect(find.textContaining('PHOTO: BIANCABRAZAL'), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('Shared by BIANCABRAZAL'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Shared by BIANCABRAZAL'), findsOneWidget);
+      expect(find.textContaining('PHOTO:'), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('Photography & curation: BIANCABRAZAL'),
+        500,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(
+        find.text('Photography & curation: BIANCABRAZAL'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('PHOTO:'), findsNothing);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('the notes header no longer duplicates Report a problem',
+        (tester) async {
+      tester.view.physicalSize = const Size(400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_wrapScreen(spot: _fullSpot));
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('spot_like')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.byKey(const ValueKey('spot_report')), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('theater_end_report_btn')),
+        500,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.byKey(const Key('theater_end_report_btn')), findsOneWidget);
     });
   });
 }

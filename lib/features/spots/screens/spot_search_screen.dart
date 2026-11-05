@@ -15,6 +15,7 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../../../core/dev/test_content.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
@@ -73,7 +74,6 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
 
     Future.microtask(() {
       ref.read(spotDiscoveryProvider.notifier).initialize();
-      _focusNode.requestFocus();
     });
   }
 
@@ -124,15 +124,25 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(spotDiscoveryProvider);
+    final showTest = ref.watch(showTestContentProvider);
+    final spots = withoutTestContent(
+      state.spots,
+      (spot) => spot.isTest,
+      showTest: showTest,
+    );
+    final trending = withoutTestContent(
+      state.trending,
+      (spot) => spot.isTest,
+      showTest: showTest,
+    );
     final query = _searchController.text.trim().toLowerCase();
-    final featuredSearches =
-        (state.trending.isNotEmpty ? state.trending : state.spots)
-            .map((spot) => spot.name.trim())
-            .where((name) => name.isNotEmpty)
-            .toSet()
-            .take(8)
-            .toList();
-    final municipalities = state.spots
+    final featuredSearches = (trending.isNotEmpty ? trending : spots)
+        .map((spot) => spot.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .take(8)
+        .toList();
+    final municipalities = spots
         .map((spot) => spot.municipality.trim())
         .where((name) => name.isNotEmpty)
         .toSet()
@@ -144,7 +154,7 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
             ? _selectedMunicipality
             : 'All Municipalities';
 
-    final filteredSpots = state.spots.where((spot) {
+    final filteredSpots = spots.where((spot) {
       final matchesQuery = query.isEmpty ||
           spot.name.toLowerCase().contains(query) ||
           spot.description.toLowerCase().contains(query) ||
@@ -216,9 +226,42 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                           ),
                         ],
                         SizedBox(height: grid.px(3)),
+                        Text('Categories', style: PixelType.title(context)),
+                        SizedBox(height: grid.px(1)),
+                        Wrap(
+                          spacing: grid.px(1),
+                          runSpacing: grid.px(1),
+                          children: [
+                            for (final cat in _categories)
+                              GestureDetector(
+                                key: ValueKey('search_cat_${cat['id']}'),
+                                onTap: () => setState(
+                                  () => _selectedCategory = cat['id']!,
+                                ),
+                                child: PixelPanel(
+                                  style: _selectedCategory == cat['id']
+                                      ? PixelBoxStyle.green
+                                      : PixelBoxStyle.parchment,
+                                  padding: 1,
+                                  child: Text(
+                                    cat['label']!,
+                                    style: PixelType.small(
+                                      context,
+                                      color: _selectedCategory == cat['id']
+                                          ? PixelPalette.white
+                                          : PixelPalette.ink,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        SizedBox(height: grid.px(3)),
                         if (query.isEmpty && featuredSearches.isNotEmpty) ...[
-                          Text('Explore Current Destinations',
-                              style: PixelType.title(context)),
+                          Text(
+                            'Explore Current Destinations',
+                            style: PixelType.title(context),
+                          ),
                           SizedBox(height: grid.px(1)),
                           Wrap(
                             spacing: grid.px(1),
@@ -243,38 +286,12 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                           ),
                           SizedBox(height: grid.px(3)),
                         ],
-                        Text('Categories', style: PixelType.title(context)),
-                        SizedBox(height: grid.px(1)),
-                        Wrap(
-                          spacing: grid.px(1),
-                          runSpacing: grid.px(1),
-                          children: [
-                            for (final cat in _categories)
-                              GestureDetector(
-                                key: ValueKey('search_cat_${cat['id']}'),
-                                onTap: () => setState(
-                                    () => _selectedCategory = cat['id']!),
-                                child: PixelPanel(
-                                  style: _selectedCategory == cat['id']
-                                      ? PixelBoxStyle.green
-                                      : PixelBoxStyle.parchment,
-                                  padding: 1,
-                                  child: Text(
-                                    cat['label']!,
-                                    style: PixelType.small(
-                                      context,
-                                      color: _selectedCategory == cat['id']
-                                          ? PixelPalette.white
-                                          : PixelPalette.ink,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                        _municipalityField(
+                          context,
+                          grid,
+                          selectedMunicipality,
+                          municipalityOptions,
                         ),
-                        SizedBox(height: grid.px(3)),
-                        _municipalityField(context, grid, selectedMunicipality,
-                            municipalityOptions),
                         SizedBox(height: grid.px(2)),
                         Wrap(
                           spacing: grid.px(2),
@@ -351,13 +368,19 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
     );
   }
 
-  Widget _municipalityField(BuildContext context, PixelGrid grid,
-      String selected, List<String> options) {
+  Widget _municipalityField(
+    BuildContext context,
+    PixelGrid grid,
+    String selected,
+    List<String> options,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('MUNICIPALITY',
-            style: PixelType.small(context, color: PixelPalette.slate)),
+        Text(
+          'MUNICIPALITY',
+          style: PixelType.small(context, color: PixelPalette.slate),
+        ),
         SizedBox(height: grid.px(1)),
         Wrap(
           spacing: grid.px(1),
@@ -380,11 +403,14 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
     );
   }
 
-  Widget _toggle(BuildContext context, PixelGrid grid,
-      {required Key key,
-      required String label,
-      required bool on,
-      required VoidCallback onTap}) {
+  Widget _toggle(
+    BuildContext context,
+    PixelGrid grid, {
+    required Key key,
+    required String label,
+    required bool on,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       key: key,
       onTap: onTap,
@@ -430,8 +456,11 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                 style: PixelType.small(context, color: PixelPalette.slate),
               ),
               if (spot.trustLevel == 'lgu_verified')
-                const PixelChip('LGU Verified',
-                    style: PixelBoxStyle.green, textColor: PixelPalette.white),
+                const PixelChip(
+                  'LGU Verified',
+                  style: PixelBoxStyle.green,
+                  textColor: PixelPalette.white,
+                ),
             ],
           ),
           SizedBox(height: grid.px(2)),

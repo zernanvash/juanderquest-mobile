@@ -750,6 +750,12 @@ void main() {
         spotsNotifier: (ref) => fixture = _SpotsFixture(ref, state),
       );
       expect(find.text('Hundred Islands National Park'), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('saved_thumb_s1'))),
+        const Size(56, 56),
+      );
+      expect(find.textContaining('Alaminos City'), findsOneWidget);
+      expect(find.textContaining('NATURE & OUTDOORS'), findsOneWidget);
       await tester.enterText(
           find.byKey(const ValueKey('saved_search')), 'zzz');
       await tester.pump();

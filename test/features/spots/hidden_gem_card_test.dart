@@ -14,6 +14,14 @@ const _gem = HiddenGemModel(
   crowdStatus: 'quiet',
 );
 
+const _unknownGem = HiddenGemModel(
+  id: 'spot-unknown',
+  name: 'Hidden Spring',
+  municipality: 'Sison',
+  reason: 'Discover somewhere different',
+  crowdStatus: 'unknown',
+);
+
 Widget _harness(Future<List<HiddenGemModel>> Function() load) {
   final router = GoRouter(routes: [
     GoRoute(
@@ -55,6 +63,16 @@ void main() {
     expect(find.text('Antong Falls & Mountain Brook'), findsOneWidget);
     expect(find.text('Matches your travel interests'), findsOneWidget);
     expect(find.text('Estimated quiet'), findsOneWidget);
+  });
+
+  testWidgets('unknown crowd is hidden and the fallback header is Local treasure',
+      (tester) async {
+    await tester.pumpWidget(_harness(() async => const [_unknownGem]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Local treasure'), findsOneWidget);
+    expect(find.text('Crowd level unknown'), findsNothing);
+    expect(find.text('Sison'), findsOneWidget);
   });
 
   testWidgets('tapping the CTA opens the destination by id', (tester) async {

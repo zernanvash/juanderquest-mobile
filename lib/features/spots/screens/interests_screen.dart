@@ -243,7 +243,7 @@ class _InterestsScreenState extends ConsumerState<InterestsScreen> {
                         SizedBox(height: grid.px(2)),
                         PixelButton(
                           key: const ValueKey('interests_skip'),
-                          label: 'Skip for now',
+                          label: canPop ? 'Cancel' : 'Skip for now',
                           variant: PixelButtonVariant.secondary,
                           expand: true,
                           onPressed: _saving ? null : () => _finish(false),

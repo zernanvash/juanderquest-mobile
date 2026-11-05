@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +15,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
+import '../theater/theater_title_block.dart';
 
 class SavedSpotsScreen extends ConsumerStatefulWidget {
   const SavedSpotsScreen({super.key});
@@ -228,8 +229,9 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: grid.px(18),
-              height: grid.px(18),
+              key: ValueKey('saved_thumb_${spot.id}'),
+              width: 56,
+              height: 56,
               child: ClipRect(
                 child: image == null || image.isEmpty
                     ? const DitherBackground(
@@ -255,7 +257,7 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
                   Text(spot.name, style: PixelType.title(context)),
                   SizedBox(height: grid.px(1)),
                   Text(
-                    '${spot.municipality} · ${spot.category.replaceAll('_', ' ')}',
+                    '${spot.municipality} · ${spotCategoryLabel(spot.category).toUpperCase()}',
                     style: PixelType.body(context, color: PixelPalette.slate),
                   ),
                   SizedBox(height: grid.px(1)),
