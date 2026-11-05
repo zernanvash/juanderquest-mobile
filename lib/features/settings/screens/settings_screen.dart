@@ -221,7 +221,7 @@ class SettingsScreen extends ConsumerWidget {
                   style: PixelType.body(context, color: PixelPalette.slate),
                 ),
                 Text(
-                  'Pangasinan Explorer #${user != null ? (user.id.length > 8 ? user.id.substring(0, 8) : user.id) : 'demo'}',
+                  'Pangasinan Explorer',
                   maxLines: 2,
                   style: PixelType.small(
                     context,

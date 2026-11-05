@@ -101,8 +101,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         : (widget.username ?? 'Pangasinan Explorer');
 
     final displayHandle = isMine
-        ? (currentUser?.handle ?? '@demo-traveler')
-        : '@${widget.username}';
+        ? currentUser?.publicHandle
+        : (widget.username != null &&
+                !RegExp(r'^usr-[0-9a-f-]+$', caseSensitive: false)
+                    .hasMatch(widget.username!.trim())
+            ? (widget.username!.trim().startsWith('@')
+                ? widget.username!.trim()
+                : '@${widget.username!.trim()}')
+            : null);
     final cosmetics = isMine ? currentUser?.cosmetics : null;
     final titleAsset = _cosmeticAsset(cosmetics, 'title');
     final nameColorAsset = _cosmeticAsset(cosmetics, 'nameColor');
@@ -198,7 +204,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     PixelGrid grid,
     bool isMine,
     String displayName,
-    String displayHandle,
+    String? displayHandle,
     UserModel? currentUser,
     Map<String, dynamic>? cosmetics,
     Map<String, dynamic>? titleAsset,
@@ -246,15 +252,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       style:
                           PixelType.title(context).copyWith(color: nameColor),
                     ),
-                    SizedBox(height: grid.px(1)),
-                    Text(
-                      displayHandle,
-                      maxLines: 2,
-                      style: PixelType.body(
-                        context,
-                        color: PixelPalette.slate,
+                    if (displayHandle != null) ...[
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        displayHandle,
+                        maxLines: 2,
+                        style: PixelType.body(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
                       ),
-                    ),
+                    ],
                     if ((titleAsset?['text']?.toString() ?? '').isNotEmpty) ...[
                       SizedBox(height: grid.px(1)),
                       PixelPanel(
