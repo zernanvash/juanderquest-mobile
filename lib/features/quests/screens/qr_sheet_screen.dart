@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,30 +181,56 @@ class _QrSheetScreenState extends ConsumerState<QrSheetScreen> {
                           );
                         }
                         if (snapshot.hasError) {
+                          final error = snapshot.error;
+                          final bool is403 = (error is DioException &&
+                                  error.response?.statusCode == 403) ||
+                              (error?.toString().contains('403') ?? false);
+                          final String message;
+                          if (is403) {
+                            message =
+                                'Only the quest creator or an LGU admin can print QR placards for this quest';
+                          } else if (error is DioException) {
+                            final data = error.response?.data;
+                            String? serverMsg;
+                            if (data is Map && data['error'] is Map) {
+                              serverMsg = data['error']['message']?.toString();
+                            }
+                            message = serverMsg ??
+                                'Could not load QR placards. Please check your connection.';
+                          } else {
+                            message =
+                                'Could not load QR placards. Please check your connection.';
+                          }
                           return ListView(
                             padding: EdgeInsets.all(grid.px(4)),
                             children: [
                               PixelPanel(
-                                style: PixelBoxStyle.red,
+                                style: is403
+                                    ? PixelBoxStyle.parchment
+                                    : PixelBoxStyle.red,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Failed to load QR sheet: ${snapshot.error}',
+                                      message,
                                       style: PixelType.body(
                                         context,
-                                        color: PixelPalette.white,
+                                        color: is403
+                                            ? PixelPalette.ink
+                                            : PixelPalette.white,
                                       ),
                                     ),
-                                    SizedBox(height: grid.px(3)),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: PixelButton(
-                                        key: const ValueKey('qr_sheet_retry'),
-                                        label: 'Retry',
-                                        onPressed: _reload,
+                                    if (!is403) ...[
+                                      SizedBox(height: grid.px(3)),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: PixelButton(
+                                          key: const ValueKey('qr_sheet_retry'),
+                                          label: 'Retry',
+                                          onPressed: _reload,
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ],
                                 ),
                               ),
