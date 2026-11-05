@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_discovery_studio_screen.dart';
 import 'package:juanderquest_app/features/spots/utils/spot_location_handoff.dart';
@@ -80,6 +81,15 @@ Widget _sheet(ApiClient client) => ProviderScope(
         ),
       ),
     );
+
+class _InertAuth extends AuthNotifier {
+  _InertAuth(super.apiClient, super.refreshNotifier, UserModel user) {
+    state = AuthState(user: user, token: 'inert');
+  }
+
+  @override
+  Future<void> refreshProfile() async {}
+}
 
 class _MemoryDraftStore extends SpotDraftStore {
   @override
@@ -170,6 +180,70 @@ void main() {
       find.textContaining('+ The light is best just before the sun goes down.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets(
+      'postcard credit hides an auto id and the visitor summary keeps three lines',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final user = UserModel(
+      id: 'user-1',
+      seedId: 'usr-a9ff511e-e63',
+      displayName: 'Kaizero',
+      email: 'kaizero@juanderquest.app',
+      avatarUrl: '',
+      role: 'explorer',
+      demoPoints: 0,
+    );
+    final api = _fakeClient();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          apiClientProvider.overrideWithValue(api),
+          spotDraftStoreProvider.overrideWithValue(_MemoryDraftStore()),
+          authProvider.overrideWith(
+            (ref) => _InertAuth(
+              ref.watch(apiClientProvider),
+              ref.watch(authRefreshProvider.notifier),
+              user,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          home: SpotDiscoveryStudioScreen(
+            routePin: const StudioPin(16.3268, 119.7842, 17),
+            routeRecognition: SpotRecognitionResult.fromJson(_recognition),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final details = find.byKey(const ValueKey('studio_details_toggle'));
+    await tester.scrollUntilVisible(
+      details,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(details);
+    await tester.pump();
+
+    final summary =
+        tester.widget<Text>(find.byKey(const ValueKey('studio_details_summary')));
+    expect(summary.maxLines, 3);
+    expect(summary.data, contains('06:00 AM'));
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('spot_postcard')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    expect(find.text('Discovered by Kaizero'), findsOneWidget);
+    expect(find.textContaining('@@'), findsNothing);
   });
 
   for (final size in [const Size(320, 568), const Size(568, 320)]) {

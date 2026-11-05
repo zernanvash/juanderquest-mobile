@@ -1003,7 +1003,8 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
                             if (summary.isNotEmpty)
                               Text(
                                 summary,
-                                maxLines: 2,
+                                key: const ValueKey('studio_details_summary'),
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                                 style: PixelType.small(context),
                               ),
