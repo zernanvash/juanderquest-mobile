@@ -550,15 +550,30 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
             style: PixelType.small(context, color: PixelPalette.slate),
           ),
           SizedBox(height: grid.px(1)),
-          PixelSegmented(
+          Wrap(
             key: const ValueKey('builder_category_segmented'),
-            items: questCategories.map((c) => c.label).toList(),
-            selectedIndex: categoryIndex < 0 ? 0 : categoryIndex,
-            onChanged: (index) => setState(
-              () => _state = _state.copyWith(
-                category: questCategories[index].value,
-              ),
-            ),
+            spacing: grid.px(2),
+            runSpacing: grid.px(2),
+            children: [
+              for (var i = 0; i < questCategories.length; i++)
+                PixelChip(
+                  questCategories[i].label,
+                  key: ValueKey('category_${questCategories[i].value}'),
+                  style: categoryIndex == i
+                      ? PixelBoxStyle.gold
+                      : PixelBoxStyle.slot.copyWith(
+                          outline: PixelPalette.stone,
+                        ),
+                  textColor: categoryIndex == i
+                      ? PixelPalette.ink
+                      : PixelPalette.slate,
+                  onTap: () => setState(
+                    () => _state = _state.copyWith(
+                      category: questCategories[i].value,
+                    ),
+                  ),
+                ),
+            ],
           ),
           SizedBox(height: grid.px(3)),
           Text(
