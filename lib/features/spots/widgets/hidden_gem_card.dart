@@ -177,8 +177,10 @@ class _ImageFallback extends StatelessWidget {
     return DitherBackground(
       top: PixelPalette.ink,
       bottom: PixelPalette.woodDeep,
+      // Marker and town side by side: fits the compact 72 dp banner even
+      // with large text.
       child: Center(
-        child: Column(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
@@ -192,12 +194,14 @@ class _ImageFallback extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: grid.px(2)),
-            Text(
-              town,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: PixelType.small(context, color: PixelPalette.sunLight),
+            SizedBox(width: grid.px(4)),
+            Flexible(
+              child: Text(
+                town,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.small(context, color: PixelPalette.sunLight),
+              ),
             ),
           ],
         ),
