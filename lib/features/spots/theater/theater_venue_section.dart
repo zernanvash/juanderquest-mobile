@@ -70,45 +70,49 @@ class TheaterVenueSection extends StatelessWidget {
               child: SizedBox(
                 height: 160,
                 width: double.infinity,
-                child: ClipRect(
-                  child: IgnorePointer(
-                    child: FlutterMap(
-                      options: MapOptions(
-                        initialCenter: spotCoord,
-                        initialZoom: 16.0,
-                        interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.none,
+                // Plan 75m: story panels scrolling past must not repaint the
+                // map tiles.
+                child: RepaintBoundary(
+                  child: ClipRect(
+                    child: IgnorePointer(
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: spotCoord,
+                          initialZoom: 16.0,
+                          interactionOptions: const InteractionOptions(
+                            flags: InteractiveFlag.none,
+                          ),
                         ),
-                      ),
-                      children: [
-                        buildBaseTileLayer(),
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: spotCoord,
-                              width: 36,
-                              height: 36,
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  color: PixelPalette.red,
-                                  border: Border.fromBorderSide(
-                                    BorderSide(
-                                      color: PixelPalette.white,
-                                      width: 2,
+                        children: [
+                          buildBaseTileLayer(),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: spotCoord,
+                                width: 36,
+                                height: 36,
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: PixelPalette.red,
+                                    border: Border.fromBorderSide(
+                                      BorderSide(
+                                        color: PixelPalette.white,
+                                        width: 2,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.location_on,
-                                  size: 20,
-                                  color: PixelPalette.white,
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    size: 20,
+                                    color: PixelPalette.white,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

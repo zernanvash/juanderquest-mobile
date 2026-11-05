@@ -34,9 +34,13 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   bool _loadingAlternatives = true;
   bool _isSaved = false;
 
-  SpotTheaterChapter _currentChapter = SpotTheaterChapter.overview;
-  double _readingProgress = 0.0;
-  double _scrollOffset = 0.0;
+  // Plan 75m: scroll state lives in notifiers so scrolling rebuilds only the
+  // chapter bar and the scroll hint, never the whole page.
+  final ValueNotifier<SpotTheaterChapter> _chapter =
+      ValueNotifier(SpotTheaterChapter.overview);
+  final ValueNotifier<double> _progress = ValueNotifier(0.0);
+  final ValueNotifier<bool> _scrolled = ValueNotifier(false);
+  DateTime _lastSpy = DateTime.fromMillisecondsSinceEpoch(0);
 
   final _overviewKey = GlobalKey();
   final _aboutKey = GlobalKey();
@@ -60,21 +64,34 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _chapter.dispose();
+    _progress.dispose();
+    _scrolled.dispose();
     super.dispose();
   }
 
   void _onScroll() {
     if (!mounted) return;
-    final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+    final offset =
+        _scrollController.hasClients ? _scrollController.offset : 0.0;
     final maxScroll = _scrollController.hasClients
         ? _scrollController.position.maxScrollExtent
         : 1.0;
     final progress = maxScroll > 0 ? (offset / maxScroll).clamp(0.0, 1.0) : 0.0;
 
-    // Scroll-spy to determine the active chapter
-    SpotTheaterChapter active = _currentChapter;
-    final available =
-        SpotTheaterChapter.getAvailable(hasAlternatives: _alternatives.isNotEmpty);
+    _scrolled.value = offset >= 10;
+    if ((_progress.value - progress).abs() > 0.01 ||
+        progress == 0 ||
+        progress == 1) {
+      _progress.value = progress;
+    }
+
+    // Scroll-spy: the section positions are read at most every 120 ms.
+    final now = DateTime.now();
+    if (now.difference(_lastSpy).inMilliseconds < 120) return;
+    _lastSpy = now;
+    final available = SpotTheaterChapter.getAvailable(
+        hasAlternatives: _alternatives.isNotEmpty);
 
     double getSectionTop(GlobalKey key) {
       final ctx = key.currentContext;
@@ -85,6 +102,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     }
 
     const barThreshold = 180.0;
+    final SpotTheaterChapter active;
     if (available.contains(SpotTheaterChapter.nearby) &&
         getSectionTop(_nearbyKey) <= barThreshold) {
       active = SpotTheaterChapter.nearby;
@@ -97,19 +115,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     } else {
       active = SpotTheaterChapter.overview;
     }
-
-    final offsetCrossed10 = (_scrollOffset < 10 && offset >= 10) ||
-        (_scrollOffset >= 10 && offset < 10);
-    final progressChanged = (_readingProgress - progress).abs() > 0.01;
-    final chapterChanged = active != _currentChapter;
-
-    if (offsetCrossed10 || progressChanged || chapterChanged) {
-      setState(() {
-        _scrollOffset = offset;
-        _readingProgress = progress;
-        _currentChapter = active;
-      });
-    }
+    _chapter.value = active;
   }
 
   void _scrollToChapter(SpotTheaterChapter chapter) {
@@ -155,12 +161,15 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   Future<void> _loadAlternatives() async {
     try {
       final response = await ref.read(apiClientProvider).dio.get(
-        '/spots/${widget.spot.slug}/alternatives',
-      );
-      if (mounted && response.statusCode == 200 && response.data['data'] is List) {
+            '/spots/${widget.spot.slug}/alternatives',
+          );
+      if (mounted &&
+          response.statusCode == 200 &&
+          response.data['data'] is List) {
         setState(() {
           _alternatives = (response.data['data'] as List)
-              .map((item) => SpotModel.fromJson(Map<String, dynamic>.from(item)))
+              .map(
+                  (item) => SpotModel.fromJson(Map<String, dynamic>.from(item)))
               .toList();
         });
       }
@@ -273,118 +282,122 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     final isAuthor = _isSpotAuthor(ref, spot);
     final hasAlternatives = _alternatives.isNotEmpty;
 
-    return PixelScope(
-      settings: const PixelSettings(),
-      child: Theme(
-        data: AppTheme.pixel,
-        child: Scaffold(
-          backgroundColor: PixelPalette.ink,
-          body: Stack(
-            children: [
-              // 1. Stationary background photo layer: never scrolls, pans or zooms
-              Positioned.fill(
-                key: const Key('theater_still_photo'),
-                child: SpotStillPhoto(spot: spot),
-              ),
+    // The app-wide PixelScope applies (it carries the traveler's text size);
+    // this page used to override it with defaults.
+    return Theme(
+      data: AppTheme.pixel,
+      child: Scaffold(
+        backgroundColor: PixelPalette.ink,
+        body: Stack(
+          children: [
+            // 1. Stationary background photo layer: never scrolls, pans or zooms
+            Positioned.fill(
+              key: const Key('theater_still_photo'),
+              child: RepaintBoundary(child: SpotStillPhoto(spot: spot)),
+            ),
 
-              // 2. Story content: scrolls over the stationary photo
-              CustomScrollView(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // First Viewport: unobstructed photo, top controls, hero block, scroll hint
-                  SliverToBoxAdapter(
-                    child: TheaterFirstViewport(
+            // 2. Story content: scrolls over the stationary photo
+            CustomScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // First Viewport: unobstructed photo, top controls, hero block, scroll hint
+                SliverToBoxAdapter(
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _scrolled,
+                    builder: (context, scrolled, _) => TheaterFirstViewport(
                       spot: spot,
                       isSaved: _isSaved,
-                      scrollOffset: _scrollOffset,
+                      // Only whether the page has left the top matters here.
+                      scrollOffset: scrolled ? 10 : 0,
                       onToggleSave: _toggleSaved,
                       onShare: _shareSpot,
                       onDirections: _openDirections,
                       onPlayQuest: _playQuest,
                     ),
                   ),
+                ),
 
-                  // Sticky pixel chapter bar
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _TheaterChapterBarDelegate(
-                      currentChapter: _currentChapter,
-                      hasAlternatives: hasAlternatives,
-                      readingProgress: _readingProgress,
-                      onSelectChapter: _scrollToChapter,
-                    ),
+                // Sticky pixel chapter bar
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _TheaterChapterBarDelegate(
+                    chapter: _chapter,
+                    hasAlternatives: hasAlternatives,
+                    progress: _progress,
+                    onSelectChapter: _scrollToChapter,
                   ),
+                ),
 
-                  // Story content sections with generous spacing revealing photo between panels
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        // Chapter 1: OVERVIEW
+                // Story content sections with generous spacing revealing photo between panels
+                SliverPadding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // Chapter 1: OVERVIEW
+                      Container(
+                        key: _overviewKey,
+                        child: TheaterOverviewSection(
+                          spot: spot,
+                          isAuthor: isAuthor,
+                          onPlayQuest: _playQuest,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Chapter 2: ABOUT
+                      Container(
+                        key: _aboutKey,
+                        child: TheaterAboutSection(spot: spot),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Chapter 3: NOTES
+                      Container(
+                        key: _notesKey,
+                        child: SpotCommunitySection(
+                          spotId: spot.id,
+                          spotName: spot.name,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Chapter 4: VENUE & MAP
+                      Container(
+                        key: _venueKey,
+                        child: TheaterVenueSection(
+                          spot: spot,
+                          onDirections: _openDirections,
+                        ),
+                      ),
+
+                      // Chapter 5: NEARBY (only when alternatives exist)
+                      if (hasAlternatives) ...[
+                        const SizedBox(height: 28),
                         Container(
-                          key: _overviewKey,
-                          child: TheaterOverviewSection(
-                            spot: spot,
-                            isAuthor: isAuthor,
-                            onPlayQuest: _playQuest,
+                          key: _nearbyKey,
+                          child: TheaterNearbySection(
+                            alternatives: _alternatives,
+                            isLoading: _loadingAlternatives,
                           ),
                         ),
-                        const SizedBox(height: 28),
+                      ],
 
-                        // Chapter 2: ABOUT
-                        Container(
-                          key: _aboutKey,
-                          child: TheaterAboutSection(spot: spot),
-                        ),
-                        const SizedBox(height: 28),
+                      const SizedBox(height: 28),
 
-                        // Chapter 3: NOTES
-                        Container(
-                          key: _notesKey,
-                          child: SpotCommunitySection(
-                            spotId: spot.id,
-                            spotName: spot.name,
-                          ),
-                        ),
-                        const SizedBox(height: 28),
+                      // End panel: photo credit, report problem, safe area
+                      _buildEndPanel(context, spot),
 
-                        // Chapter 4: VENUE & MAP
-                        Container(
-                          key: _venueKey,
-                          child: TheaterVenueSection(
-                            spot: spot,
-                            onDirections: _openDirections,
-                          ),
-                        ),
-
-                        // Chapter 5: NEARBY (only when alternatives exist)
-                        if (hasAlternatives) ...[
-                          const SizedBox(height: 28),
-                          Container(
-                            key: _nearbyKey,
-                            child: TheaterNearbySection(
-                              alternatives: _alternatives,
-                              isLoading: _loadingAlternatives,
-                            ),
-                          ),
-                        ],
-
-                        const SizedBox(height: 28),
-
-                        // End panel: photo credit, report problem, safe area
-                        _buildEndPanel(context, spot),
-
-                        SizedBox(
-                          height: MediaQuery.paddingOf(context).bottom + 24,
-                        ),
-                      ]),
-                    ),
+                      SizedBox(
+                        height: MediaQuery.paddingOf(context).bottom + 24,
+                      ),
+                    ]),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -430,15 +443,15 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
 class _TheaterChapterBarDelegate extends SliverPersistentHeaderDelegate {
   _TheaterChapterBarDelegate({
-    required this.currentChapter,
+    required this.chapter,
     required this.hasAlternatives,
-    required this.readingProgress,
+    required this.progress,
     required this.onSelectChapter,
   });
 
-  final SpotTheaterChapter currentChapter;
+  final ValueNotifier<SpotTheaterChapter> chapter;
   final bool hasAlternatives;
-  final double readingProgress;
+  final ValueNotifier<double> progress;
   final ValueChanged<SpotTheaterChapter> onSelectChapter;
 
   @override
@@ -453,17 +466,20 @@ class _TheaterChapterBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return TheaterChapterBar(
-      currentChapter: currentChapter,
-      hasAlternatives: hasAlternatives,
-      readingProgress: readingProgress,
-      onSelectChapter: onSelectChapter,
+    return ListenableBuilder(
+      listenable: Listenable.merge([chapter, progress]),
+      builder: (context, _) => TheaterChapterBar(
+        currentChapter: chapter.value,
+        hasAlternatives: hasAlternatives,
+        readingProgress: progress.value,
+        onSelectChapter: onSelectChapter,
+      ),
     );
   }
 
   @override
   bool shouldRebuild(_TheaterChapterBarDelegate oldDelegate) =>
-      oldDelegate.currentChapter != currentChapter ||
-      oldDelegate.hasAlternatives != hasAlternatives ||
-      oldDelegate.readingProgress != readingProgress;
+      oldDelegate.chapter != chapter ||
+      oldDelegate.progress != progress ||
+      oldDelegate.hasAlternatives != hasAlternatives;
 }
