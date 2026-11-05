@@ -810,7 +810,19 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     final quest = widget.quest;
     final displaySteps = _attempt != null && _attempt!.steps.isNotEmpty
         ? _attempt!.steps
-        : quest.steps;
+        : (quest.steps.isNotEmpty
+            ? quest.steps
+            : const [
+                QuestStepModel(
+                  order: 1,
+                  title: 'Destination check-in',
+                  description:
+                      'Submit location proof for independent review.',
+                  checkpointType: 'location',
+                  required: true,
+                  status: 'ready',
+                ),
+              ]);
     final saved = ref.watch(savedQuestsProvider).contains(quest.id);
     final user = ref.watch(authProvider).user;
     final isAuthor = user != null && quest.authorId == user.id;
@@ -883,13 +895,23 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     );
   }
 
+  bool _isMismatchedSofa(String? url, String title) {
+    if (url == null) return false;
+    final lowerTitle = title.toLowerCase();
+    final lowerUrl = url.toLowerCase();
+    return lowerUrl.contains('photo-1513694203232-719a280e022f') ||
+        (lowerTitle.contains('lingayen') && lowerTitle.contains('liberation'));
+  }
+
   Widget _hero(
     BuildContext context,
     PixelGrid grid,
     QuestModel quest,
     bool saved,
   ) {
-    final hasImage = quest.imageUrl != null &&
+    final isSofa = _isMismatchedSofa(quest.imageUrl, quest.title);
+    final hasImage = !isSofa &&
+        quest.imageUrl != null &&
         quest.imageUrl!.isNotEmpty &&
         (quest.imageUrl!.startsWith('http://') ||
             quest.imageUrl!.startsWith('https://'));
@@ -1054,7 +1076,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     grid,
                     width,
                     'Base reward',
-                    'P$base',
+                    '₱$base',
                     semantics: '$base pesos',
                   ),
                   _statSlot(
