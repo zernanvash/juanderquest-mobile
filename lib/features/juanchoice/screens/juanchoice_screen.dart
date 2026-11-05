@@ -11,6 +11,7 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
+import '../utils/juanchoice_dates.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/juanchoice_provider.dart';
 
@@ -178,7 +179,7 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                             style: PixelType.title(context)),
                         SizedBox(height: grid.px(1)),
                         Text(
-                          'Voting closes ${_manilaDate(data.current!.closesAt)} PHT',
+                          'Voting closes ${choiceDate(data.current!.closesAt)}',
                           style: PixelType.body(
                             context,
                             color: PixelPalette.slate,
@@ -208,12 +209,12 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                 Text(
                   data.nextOpensAt == null
                       ? 'The next date has not been confirmed yet.'
-                      : 'Opens ${_manilaDate(data.nextOpensAt!)} PHT',
+                      : 'Opens ${choiceDate(data.nextOpensAt!)}',
                   style: PixelType.body(context, color: PixelPalette.slate),
                 ),
                 if (data.nextClosesAt != null)
                   Text(
-                    'Closes ${_manilaDate(data.nextClosesAt!)} PHT',
+                    'Closes ${choiceDate(data.nextClosesAt!)}',
                     style: PixelType.body(context, color: PixelPalette.slate),
                   ),
                 if (data.nextTheme != null)
@@ -345,7 +346,7 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
             style: PixelType.body(context, color: PixelPalette.cream),
           ),
           Text(
-            '+${quest.explorerXp} Explorer XP · expires ${quest.expiresAt.toLocal()}',
+            '+${quest.explorerXp} Explorer XP · expires ${choiceDate(quest.expiresAt)}',
             style: PixelType.body(context, color: PixelPalette.cream),
           ),
           SizedBox(height: grid.px(2)),
@@ -422,13 +423,6 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
       ),
     );
   }
-
-  String _manilaDate(DateTime value) => value
-      .toUtc()
-      .add(const Duration(hours: 8))
-      .toIso8601String()
-      .substring(0, 16)
-      .replaceFirst('T', ' ');
 }
 
 class JuanChoiceDetailScreen extends ConsumerStatefulWidget {
@@ -616,24 +610,29 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         PixelPanel(
+          key: const ValueKey('choice_week_header'),
           style: PixelBoxStyle.wood,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                data.campaign.theme,
-                style: PixelType.title(context, color: PixelPalette.paper),
-              ),
-              SizedBox(height: grid.px(1)),
-              Text(
-                '${data.campaign.region} · ${overview?.isCampaignOpen(data.campaign) == true ? 'Voting open' : data.campaign.status}',
-                style: PixelType.body(context, color: PixelPalette.cream),
-              ),
-              Text(
-                'Closes ${data.campaign.closesAt.toLocal()}',
-                style: PixelType.body(context, color: PixelPalette.cream),
-              ),
-            ],
+          // Full width: a short theme left the panel narrower than the page.
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.campaign.theme,
+                  style: PixelType.title(context, color: PixelPalette.paper),
+                ),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  '${data.campaign.region} · ${overview?.isCampaignOpen(data.campaign) == true ? 'Voting open' : data.campaign.status}',
+                  style: PixelType.body(context, color: PixelPalette.cream),
+                ),
+                Text(
+                  'Closes ${choiceDate(data.campaign.closesAt)}',
+                  style: PixelType.body(context, color: PixelPalette.cream),
+                ),
+              ],
+            ),
           ),
         ),
         SizedBox(height: grid.px(3)),

@@ -7,6 +7,7 @@ import '../../../../core/pixel/pixel_grid.dart';
 import '../../../../core/pixel/pixel_text.dart';
 import '../../../juanchoice/models/juanchoice_models.dart';
 import '../../models/spot_model.dart';
+import '../../../juanchoice/utils/juanchoice_dates.dart';
 
 class ExploreJuanChoiceCard extends StatelessWidget {
   const ExploreJuanChoiceCard({
@@ -107,14 +108,13 @@ class ExploreJuanChoiceCard extends StatelessWidget {
             ],
 
             // Footer
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: grid.px(1),
-              runSpacing: grid.px(1),
+            // Date and link on separate lines so they never run together.
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'EXPIRES ${_formatDate(spotlight.expiresAt)}',
+                  'Spotlight until ${choiceDate(spotlight.expiresAt, withYear: false)}',
+                  key: const ValueKey('explore_choice_until'),
                   style: PixelType.small(context, color: PixelPalette.stone),
                 ),
                 Semantics(
@@ -141,10 +141,5 @@ class ExploreJuanChoiceCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime dt) {
-    final local = dt.toLocal();
-    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
   }
 }
