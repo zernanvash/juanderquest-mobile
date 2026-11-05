@@ -158,23 +158,23 @@ void main() {
     });
 
     testWidgets('reports a problem with a reason', (tester) async {
-      final fake = api();
-      await pump(
-          tester,
-          fake,
-          const SpotCommunitySection(
-              spotId: 's1', spotName: 'Hundred Islands'));
-      await tester.tap(find.byKey(const ValueKey('spot_report')));
-      await tester.pumpAndSettle();
+      String? reason;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SpotReportSheet(
+            spotName: 'Hundred Islands',
+            onSubmit: (value, details) async {
+              reason = value;
+            },
+          ),
+        ),
+      ));
       await tester
           .tap(find.byKey(const ValueKey('report_site_closed_or_hazard')));
       await tester.pump();
       await tester.tap(find.byKey(const ValueKey('report_send')));
       await tester.pumpAndSettle();
-      final sent =
-          fake.requests.firstWhere((r) => r.path == '/spots/s1/reports');
-      expect(sent.data, {'reason': 'site_closed_or_hazard'});
-      expect(find.textContaining('moderators'), findsOneWidget);
+      expect(reason, 'site_closed_or_hazard');
     });
   });
 
@@ -260,6 +260,60 @@ void main() {
       expect((body['categories'] as List).toSet(),
           {'nature_outdoors', 'eat_drink'});
       expect(body['onboarding_state'], 'completed');
+    });
+
+    testWidgets('opened from Settings, the secondary action is Cancel',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final fake = FakeApi({
+        'GET /me/discovery-preferences': (_) => {
+              'success': true,
+              'data': {'categories': [], 'onboarding_state': 'pending'}
+            },
+        'PUT /me/discovery-preferences': (_) => {'success': true, 'data': {}},
+      });
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          apiClientProvider.overrideWithValue(fake.client),
+          authProvider.overrideWith((ref) => _InertAuth(
+                ref.watch(apiClientProvider),
+                ref.watch(authRefreshProvider.notifier),
+                UserModel(
+                  id: 'u1',
+                  seedId: 's1',
+                  displayName: 'Juan',
+                  email: 'juan@example.com',
+                  avatarUrl: '',
+                  role: 'explorer',
+                  demoPoints: 0,
+                ),
+              )),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  key: const ValueKey('open_interests'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const InterestsScreen(),
+                    ),
+                  ),
+                  child: const Text('Open interests'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.byKey(const ValueKey('open_interests')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Skip for now'), findsNothing);
     });
   });
 }

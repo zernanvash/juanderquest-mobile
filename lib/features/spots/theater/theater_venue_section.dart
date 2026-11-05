@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/widgets/base_tile_layer.dart';
+import '../../map/pixel/map_marker_art.dart';
 import '../models/spot_model.dart';
 import 'theater_panel.dart';
 
@@ -102,10 +104,9 @@ class TheaterVenueSection extends StatelessWidget {
                                     ),
                                   ),
                                   alignment: Alignment.center,
-                                  child: const Icon(
-                                    Icons.location_on,
-                                    size: 20,
-                                    color: PixelPalette.white,
+                                  child: const PixelSprite(
+                                    MapMarkerArt.spotPin,
+                                    scale: 2,
                                   ),
                                 ),
                               ),
