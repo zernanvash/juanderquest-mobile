@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -213,7 +214,13 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
       });
     }
 
-    final filteredQuests = questState.quests.where(_questMatches).toList();
+    final showTest = ref.watch(showTestContentProvider);
+    final visibleQuests = withoutTestContent(
+      questState.quests,
+      (q) => q.isTest,
+      showTest: showTest,
+    );
+    final filteredQuests = visibleQuests.where(_questMatches).toList();
     final filteredCampaigns =
         campaignState.campaigns.where(_campaignMatches).toList();
     _filteredCount =
@@ -277,7 +284,12 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                                   MediaQuery.paddingOf(context).bottom,
                             ),
                             children: [
-                              _intro(context, grid, questState, campaignState),
+                              _intro(
+                                context,
+                                grid,
+                                visibleQuests.length,
+                                campaignState.campaigns.length,
+                              ),
                               SizedBox(height: grid.px(3)),
                               _categoryChips(context, grid),
                               SizedBox(height: grid.px(2)),
@@ -329,8 +341,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
   Widget _intro(
     BuildContext context,
     PixelGrid grid,
-    QuestState questState,
-    CampaignState campaignState,
+    int questCount,
+    int campaignCount,
   ) {
     return PixelPanel(
       style: PixelBoxStyle.wood,
@@ -356,8 +368,8 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
           SizedBox(height: grid.px(3)),
           PixelSegmented(
             items: [
-              'Quests · ${questState.quests.length}',
-              'Events · ${campaignState.campaigns.length}',
+              'Quests · $questCount',
+              'Events · $campaignCount',
             ],
             selectedIndex: _activeTabIndex,
             onChanged: _selectTab,
