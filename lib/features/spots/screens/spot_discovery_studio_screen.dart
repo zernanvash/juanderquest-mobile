@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -24,6 +25,8 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/spot_model.dart';
 import '../utils/exif_gps.dart';
 import '../utils/spot_location_handoff.dart';
+import '../studio/pixel/studio_icons.dart';
+import '../studio/pixel/studio_text.dart';
 import '../utils/spot_posting.dart';
 import '../widgets/spot_posting_sheet.dart';
 
@@ -237,7 +240,7 @@ class _SpotDiscoveryStudioScreenState
                   actions: [
                     if (_draftSaved && _published == null)
                       Text(
-                        '✓ Draft saved',
+                        'Draft saved',
                         style: PixelType.small(
                           context,
                           color: PixelPalette.paper,
@@ -315,10 +318,7 @@ class _SpotDiscoveryStudioScreenState
             child: Center(
               child: Padding(
                 padding: EdgeInsets.only(bottom: 36),
-                child: Icon(Icons.location_pin,
-                    size: 40,
-                    color: PixelPalette.sun,
-                    shadows: [Shadow(blurRadius: 6, color: Colors.black38)]),
+                child: PixelSprite(StudioIcons.pin, scale: 3),
               ),
             ),
           ),
@@ -403,11 +403,7 @@ class SpotPostcard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final category = spotPostingCategories
-            .where((c) => c['id'] == draft.category)
-            .map((c) => c['label'] as String)
-            .firstOrNull ??
-        draft.category;
+    final category = studioCategoryName(draft.category);
     final place = [draft.barangay, draft.municipality]
         .where((p) => p.isNotEmpty)
         .join(', ');
@@ -441,7 +437,7 @@ class SpotPostcard extends StatelessWidget {
       padding: 2,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (!stamp) ...[
-          Text('LIVE ATLAS POSTCARD',
+          Text('Live atlas postcard',
               style: PixelType.small(context, color: PixelPalette.greenDark)),
           SizedBox(height: grid.px(1)),
         ],
@@ -456,7 +452,7 @@ class SpotPostcard extends StatelessWidget {
               child:
                   Wrap(spacing: grid.px(1), runSpacing: grid.px(1), children: [
                 PixelChip(
-                  '$category · ${draft.subcategory.replaceAll('_', ' ')}',
+                  '$category · ${studioSubcategoryName(draft.subcategory)}',
                   style: PixelBoxStyle.slot,
                 ),
                 if (stamp) PixelChip(discovered),
@@ -503,7 +499,7 @@ class _Celebration extends ConsumerWidget {
       key: const ValueKey('studio_celebration'),
       padding: EdgeInsets.all(grid.px(4)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('PINNED TO THE PANGASINAN ATLAS',
+        Text('Pinned to the Pangasinan atlas',
             textAlign: TextAlign.center,
             style: PixelType.small(context, color: PixelPalette.goldDeep)),
         SizedBox(height: grid.px(1)),

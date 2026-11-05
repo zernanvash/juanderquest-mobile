@@ -3,9 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../providers/spot_recognition_provider.dart';
+import '../studio/pixel/studio_icons.dart';
+import '../studio/pixel/studio_text.dart';
 import '../utils/spot_posting.dart';
 
 const Duration kRecognizeDebounce = Duration(milliseconds: 450);
@@ -21,7 +28,7 @@ class PinReticle extends StatelessWidget {
         child: Padding(
           // Lift the pin so its tip, not its middle, marks the map center.
           padding: EdgeInsets.only(bottom: 40),
-          child: Icon(Icons.location_on_rounded, size: 44, color: AppColors.woodBrown, semanticLabel: 'Pin aim'),
+          child: PixelSprite(StudioIcons.pin, scale: 3),
         ),
       ),
     );
@@ -32,7 +39,8 @@ class PinReticle extends StatelessWidget {
 class PinAimCard extends ConsumerStatefulWidget {
   final double? lat;
   final double? lng;
-  final void Function(double lat, double lng, SpotRecognitionResult? recognition) onContinue;
+  final void Function(
+      double lat, double lng, SpotRecognitionResult? recognition) onContinue;
   final VoidCallback onUseMyLocation;
   final VoidCallback onCancel;
   final bool locating;
@@ -87,7 +95,9 @@ class _PinAimCardState extends ConsumerState<PinAimCard> {
     final key = _key;
     _debounce = Timer(kRecognizeDebounce, () async {
       final request = ++_request;
-      final result = await ref.read(spotRecognitionApiProvider).recognizeLocation(lat: lat, lng: lng);
+      final result = await ref
+          .read(spotRecognitionApiProvider)
+          .recognizeLocation(lat: lat, lng: lng);
       if (!mounted || request != _request) return;
       setState(() {
         _result = result;
@@ -98,95 +108,120 @@ class _PinAimCardState extends ConsumerState<PinAimCard> {
 
   @override
   Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
     final current = _resultKey == _key ? _result : null;
-    final duplicate = current?.nearbyDuplicates.isNotEmpty == true ? current!.nearbyDuplicates.first : null;
-    return Material(
-      color: Colors.white,
-      elevation: 6,
-      borderRadius: AppSpacing.roundedXl,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final duplicate = current?.nearbyDuplicates.isNotEmpty == true
+        ? current!.nearbyDuplicates.first
+        : null;
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      padding: 2,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Move the map to aim the pin',
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.goldDeep,
+                  ).copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              PixelIconButton(
+                icon: StudioIcons.close,
+                semanticLabel: 'Cancel adding a spot',
+                iconHeight: 16,
+                onPressed: widget.onCancel,
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(1)),
+          if (current == null)
             Row(
               children: [
-                const Expanded(
+                const PixelLoader(artPx: 4),
+                SizedBox(width: grid.px(2)),
+                Expanded(
                   child: Text(
-                    'MOVE THE MAP TO AIM THE PIN',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFB45309), letterSpacing: 0.8),
+                    'Recognizing this place',
+                    style: PixelType.small(
+                      context,
+                      color: PixelPalette.slate,
+                    ),
                   ),
                 ),
-                IconButton(
-                  onPressed: widget.onCancel,
-                  tooltip: 'Cancel adding a spot',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                ),
               ],
+            )
+          else ...[
+            Text(
+              current.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: PixelType.title(context),
             ),
-            if (current == null)
-              const Row(
-                children: [
-                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-                  SizedBox(width: 8),
-                  Flexible(child: Text('Recognizing this place…', style: TextStyle(fontWeight: FontWeight.w800))),
-                ],
-              )
-            else ...[
-              Text(current.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
-              if (current.formattedAddress.isNotEmpty)
-                Text(current.formattedAddress, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: AppSpacing.roundedLg),
-                child: Text(
-                  '${categoryLabel(current.suggestedCategory)} · ${current.suggestedSubcategory.replaceAll('_', ' ')}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+            if (current.formattedAddress.isNotEmpty)
+              Text(
+                current.formattedAddress,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+            SizedBox(height: grid.px(1)),
+            PixelChip(
+              '${studioCategoryName(current.suggestedCategory)} · ${studioSubcategoryName(current.suggestedSubcategory)}',
+              style: PixelBoxStyle.slot,
+              textColor: PixelPalette.greenDark,
+            ),
+            if (current.outsidePangasinan) ...[
+              SizedBox(height: grid.px(1)),
+              Text(
+                'Outside Pangasinan; double-check the pin.',
+                style: PixelType.small(
+                  context,
+                  color: PixelPalette.goldDeep,
                 ),
               ),
-              if (current.outsidePangasinan)
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Text('Outside Pangasinan — double-check the pin.',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF92400E))),
-                ),
             ],
-            if (duplicate != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6, right: 6),
-                child: Text(
-                  'Looks close to ${duplicate.name} (${duplicate.distanceMeters} m away). Continue only if it is a different place.',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF92400E)),
-                ),
-              ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: widget.locating ? null : widget.onUseMyLocation,
-                  icon: widget.locating
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.my_location_rounded, size: 16),
-                  label: const Text('Use my GPS'),
-                ),
-                FilledButton.icon(
-                  onPressed: widget.lat == null || widget.lng == null
-                      ? null
-                      : () => widget.onContinue(widget.lat!, widget.lng!, current),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                  label: const Text('Continue with this place'),
-                ),
-              ],
+          ],
+          if (duplicate != null) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Looks close to ${duplicate.name} (${duplicate.distanceMeters} m away). Continue only if it is a different place.',
+              style: PixelType.small(context, color: PixelPalette.goldDeep),
             ),
           ],
-        ),
+          SizedBox(height: grid.px(2)),
+          Row(
+            children: [
+              Expanded(
+                child: PixelButton(
+                  label: 'Use my GPS',
+                  variant: PixelButtonVariant.secondary,
+                  loading: widget.locating,
+                  onPressed: widget.locating ? null : widget.onUseMyLocation,
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              Expanded(
+                child: PixelButton(
+                  label: 'Continue',
+                  onPressed: widget.lat == null || widget.lng == null
+                      ? null
+                      : () => widget.onContinue(
+                            widget.lat!,
+                            widget.lng!,
+                            current,
+                          ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
