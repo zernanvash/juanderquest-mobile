@@ -39,9 +39,6 @@ class StudioCategoryGrid extends StatelessWidget {
             for (final category in spotPostingCategories)
               SizedBox(
                 width: tile,
-                // Compact tiles (owner phone check 2026-11-05: square tiles
-                // were a third of the screen tall each).
-                height: grid.px(34),
                 child: _CategoryTile(
                   id: category['id'] as String,
                   label: studioPlainLabel(category['label'] as String),
@@ -88,24 +85,27 @@ class _CategoryTile extends StatelessWidget {
           child: PixelPanel(
             style: selected ? PixelBoxStyle.gold : PixelBoxStyle.parchment,
             padding: 2,
-            child: Column(
-              children: [
-                Expanded(
-                  child: Center(
-                    // Same on-screen size for every icon, whole device
-                    // pixels per art pixel (no stretching).
-                    child: PixelSprite(icon, scale: scale),
+            // Compact (phone check 2026-11-05: square tiles were a third of
+            // the screen tall); grows only when the text is large.
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: grid.px(28)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Same on-screen size for every icon, whole device pixels per
+                  // art pixel (no stretching).
+                  PixelSprite(icon, scale: scale),
+                  SizedBox(height: grid.px(1)),
+                  Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: PixelType.small(context, color: PixelPalette.ink),
                   ),
-                ),
-                SizedBox(height: grid.px(1)),
-                Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: PixelType.small(context, color: PixelPalette.ink),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
