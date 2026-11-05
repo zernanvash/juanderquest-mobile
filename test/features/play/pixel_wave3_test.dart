@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -926,6 +927,37 @@ void main() {
       expect(feed.setScopeValue, 'following');
       await tester.tap(find.text('All Time'));
       await tester.pump();
+    });
+
+    testWidgets('Plan 75n: feed filter fits at 320 px and 1 quest is singular',
+        (tester) async {
+      final one = <String, dynamic>{
+        ..._standings,
+        'me': <String, dynamic>{
+          ...(_standings['me'] as Map<String, dynamic>),
+          'quests': 1,
+        },
+      };
+      await pumpPlaza(
+        tester,
+        feed: _PlazaFeedFixture(ApiClient(), AsyncValue.data([_activity])),
+        standings: one,
+      );
+      tester.view.physicalSize = const Size(640, 6000);
+      tester.platformDispatcher.textScaleFactorTestValue = 1.4;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pump();
+
+      final following = find.descendant(
+        of: find.byKey(const ValueKey('plaza_feed_scope')),
+        matching: find.text('Following'),
+      );
+      expect(following, findsOneWidget);
+      final paragraph =
+          tester.renderObject<RenderParagraph>(following);
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(find.text('1500 pts · 1 quest'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('empty feed and retry paths', (tester) async {

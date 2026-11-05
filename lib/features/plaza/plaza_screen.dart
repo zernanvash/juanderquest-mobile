@@ -308,16 +308,15 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
   }
 
   Widget _feedHeader(BuildContext context, PixelGrid grid) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // Filter under the title, full width: squeezed beside it, "Following"
+    // was cut to "FOLLOW…".
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Text('Live explorer activity',
-              style: PixelType.title(context)),
-        ),
-        SizedBox(width: grid.px(2)),
+        Text('Live explorer activity', style: PixelType.title(context)),
+        SizedBox(height: grid.px(1)),
         SizedBox(
-          width: grid.px(70),
+          key: const ValueKey('plaza_feed_scope'),
           child: PixelSegmented(
             items: const ['All', 'Following'],
             selectedIndex: ref.watch(plazaFeedProvider.notifier).scope == 'mixed'
@@ -364,7 +363,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                         ),
                       ),
                       Text(
-                        '${me.score} pts · ${me.quests} quests',
+                        '${me.score} pts · ${me.quests} ${me.quests == 1 ? 'quest' : 'quests'}',
                         style: PixelType.body(
                           context,
                           color: PixelPalette.cream,
@@ -417,7 +416,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                         ),
                       ),
                       Text(
-                        '${scout.homeTown ?? 'Pangasinan'} · ${scout.quests} quests',
+                        '${scout.homeTown ?? 'Pangasinan'} · ${scout.quests} ${scout.quests == 1 ? 'quest' : 'quests'}',
                         style: PixelType.body(
                           context,
                           color: scout.isSelf
