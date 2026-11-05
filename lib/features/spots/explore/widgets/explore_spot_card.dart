@@ -155,7 +155,10 @@ class ExploreSpotCard extends StatelessWidget {
                 // LIKE Button with Count
                 ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 48),
+                  // widthFactor 1: sized to the button, so the actions
+                  // sit in one row instead of a full-width line each.
                   child: Center(
+                    widthFactor: 1,
                     child: PixelButton(
                       label: '$likeCount',
                       icon: isLiked
@@ -177,15 +180,19 @@ class ExploreSpotCard extends StatelessWidget {
                 // SAVE Bookmark Button
                 ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 48),
+                  // widthFactor 1: sized to the button, so the actions
+                  // sit in one row instead of a full-width line each.
                   child: Center(
+                    widthFactor: 1,
                     child: PixelIconButton(
                       icon: isSaved
                           ? ExploreArt.bookmarkSaved
                           : ExploreArt.bookmarkUnsaved,
                       semanticLabel:
                           isSaved ? 'Remove bookmark' : 'Save bookmark',
+                      // Saved: gold bookmark on wood (gold on gold was invisible).
                       style: isSaved
-                          ? PixelBoxStyle.gold
+                          ? PixelBoxStyle.wood
                           : PixelBoxStyle.parchment,
                       iconHeight: 20,
                       onPressed: onToggleSave,
@@ -197,7 +204,10 @@ class ExploreSpotCard extends StatelessWidget {
                 if (hasQuest && onPlayQuest != null)
                   ConstrainedBox(
                     constraints: const BoxConstraints(minHeight: 48),
+                    // widthFactor 1: sized to the button, so the actions
+                    // sit in one row instead of a full-width line each.
                     child: Center(
+                      widthFactor: 1,
                       child: PixelButton(
                         label: 'PLAY QUEST',
                         variant: PixelButtonVariant.primary,
