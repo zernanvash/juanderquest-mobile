@@ -196,10 +196,10 @@ class _QrSheetScreenState extends ConsumerState<QrSheetScreen> {
                               serverMsg = data['error']['message']?.toString();
                             }
                             message = serverMsg ??
-                                'Could not load QR placards. Please check your connection.';
+                                'Failed to load QR sheet. Please check your connection.';
                           } else {
                             message =
-                                'Could not load QR placards. Please check your connection.';
+                                'Failed to load QR sheet. Please check your connection.';
                           }
                           return ListView(
                             padding: EdgeInsets.all(grid.px(4)),

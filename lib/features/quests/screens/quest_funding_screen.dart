@@ -317,8 +317,10 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('Set up this round', style: PixelType.title(context)),
+          SizedBox(height: grid.px(1)),
           Text('No funding round yet — set one up below',
-              style: PixelType.title(context)),
+              style: PixelType.body(context, color: PixelPalette.slate)),
           SizedBox(height: grid.px(2)),
           Text('FUNDING MODEL',
               style: PixelType.small(context, color: PixelPalette.slate)),
