@@ -16,12 +16,17 @@ class PixelProgressBar extends StatelessWidget {
     this.segments = 10,
     this.color = PixelPalette.greenBright,
     this.height = 5,
+    this.showTipGlint = false,
   });
 
   final double value;
   final int segments;
   final Color color;
   final int height;
+
+  /// Plan 75k: a 1 art px sun-light cap on the leading filled segment, so XP
+  /// bars read like glowing RPG gauges.
+  final bool showTipGlint;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +41,7 @@ class PixelProgressBar extends StatelessWidget {
             segments,
             color,
             height,
+            showTipGlint,
           ),
           size: Size.infinite,
         ),
@@ -45,13 +51,15 @@ class PixelProgressBar extends StatelessWidget {
 }
 
 class _BarPainter extends CustomPainter {
-  _BarPainter(this.grid, this.value, this.segments, this.color, this.h);
+  _BarPainter(
+      this.grid, this.value, this.segments, this.color, this.h, this.glint);
 
   final PixelGrid grid;
   final double value;
   final int segments;
   final Color color;
   final int h;
+  final bool glint;
 
   Rect _r(num x, num y, num w, num hh) => Rect.fromLTRB(
         grid.snap(x * grid.unit),
@@ -94,6 +102,11 @@ class _BarPainter extends CustomPainter {
         canvas.drawRect(_r(x, h, segW, 1), paint);
       }
     }
+    if (glint && filled > 0 && filled <= segments) {
+      final x = 1 + (filled - 1) * (segW + 1);
+      paint.color = PixelPalette.sunLight;
+      canvas.drawRect(_r(x + segW - 1, 1, 1, h - 1), paint);
+    }
   }
 
   @override
@@ -101,7 +114,8 @@ class _BarPainter extends CustomPainter {
       old.value != value ||
       old.grid.unit != grid.unit ||
       old.color != color ||
-      old.segments != segments;
+      old.segments != segments ||
+      old.glint != glint;
 }
 
 class PixelDialogue extends StatefulWidget {

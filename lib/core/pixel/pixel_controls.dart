@@ -8,6 +8,7 @@ import 'generated/pixel_palette.g.dart';
 import 'pixel_art.dart';
 import 'pixel_box.dart';
 import 'pixel_grid.dart';
+import 'pixel_rpg.dart';
 import 'pixel_text.dart';
 
 void pixelTick(BuildContext context) {
@@ -244,44 +245,41 @@ class PixelChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final child = PixelPanel(
-      style: style.copyWith(corner: 1, shadowPx: onTap == null ? 0 : 1),
-      padding: 2,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            PixelSprite(icon!, scale: iconScale),
-            SizedBox(width: grid.px(1)),
-          ],
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                label,
-                maxLines: 1,
-                softWrap: false,
-                style: PixelType.small(context, color: textColor),
-              ),
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          PixelSprite(icon!, scale: iconScale),
+          SizedBox(width: grid.px(1)),
+        ],
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: PixelType.small(context, color: textColor),
             ),
           ),
-        ],
-      ),
-    );
-    if (onTap == null) return child;
-    return Semantics(
-      button: true,
-      label: label,
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          onTap: () {
-            pixelTick(context);
-            onTap!();
-          },
-          child: child,
         ),
-      ),
+      ],
+    );
+    if (onTap == null) {
+      return PixelPanel(
+        style: style.copyWith(corner: 1, shadowPx: 0),
+        padding: 2,
+        child: content,
+      );
+    }
+    // Plan 75k: tappable chips press like inventory slots.
+    return PixelTappableSlot(
+      style: style.copyWith(corner: 1, shadowPx: 1),
+      padding: 2,
+      semanticLabel: label,
+      onTap: onTap,
+      child: ExcludeSemantics(child: content),
     );
   }
 }

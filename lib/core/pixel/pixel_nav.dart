@@ -7,6 +7,7 @@ import 'pixel_art.dart';
 import 'pixel_box.dart';
 import 'pixel_controls.dart';
 import 'pixel_grid.dart';
+import 'pixel_rpg.dart';
 import 'pixel_text.dart';
 
 class PixelHotbarItem {
@@ -87,9 +88,8 @@ class _PixelHotbarState extends State<PixelHotbar> {
           // Square side: an equal share of the width, capped, rounded down to
           // whole art pixels so every slot is exactly the same size.
           final share = (constraints.maxWidth - gap * (n - 1)) / n;
-          final side =
-              (share.clamp(0, _maxSide) / grid.unit).floorToDouble() *
-                  grid.unit;
+          final side = (share.clamp(0, _maxSide) / grid.unit).floorToDouble() *
+              grid.unit;
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -162,7 +162,11 @@ class _PixelHotbarState extends State<PixelHotbar> {
                           clipBehavior: Clip.none,
                           alignment: Alignment.center,
                           children: [
-                            PixelSprite(icon, scale: iconScale),
+                            // Plan 75k: the active tab's icon breathes.
+                            PixelIdleBob(
+                              enabled: selected,
+                              child: PixelSprite(icon, scale: iconScale),
+                            ),
                             if (badgeText != null)
                               Positioned(
                                 top: -2,
