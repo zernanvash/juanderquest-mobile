@@ -34,13 +34,18 @@ class PixelSettings {
   }) : _artPx = artPx;
 
   static const double defaultArtPx = 2;
-  static const String defaultFont = 'Monocraft';
+  // Owner 2026-11-05: Silkscreen is the main font (was Monocraft).
+  static const String defaultFont = 'Silkscreen';
+
+  /// Bumped when the default font changes, so a font saved under an
+  /// older default moves to the new one.
+  static const int fontVersion = 2;
 
   static const artSizes = <double>[1.5, 2, 2.5, 3, 4];
 
   static const fonts = <String, String>{
-    'Monocraft': 'Minecraft-like, uniform — default',
-    'Silkscreen': 'Chunky, all caps',
+    'Silkscreen': 'Chunky, all caps — default',
+    'Monocraft': 'Minecraft-like, uniform',
     'PixelifySans': 'Readable pixel sans, proportional',
     'VT323': 'Terminal / Undertale-ish',
     'PressStart2P': '8-bit arcade (NES)',
@@ -62,7 +67,7 @@ class PixelSettings {
 
   double fontScale() => switch (font) {
         'PressStart2P' => 0.61,
-        'Silkscreen' => 0.85,
+        'Silkscreen' => 1.0,
         'VT323' => 1.31,
         'PixelifySans' => 1.04,
         'Monocraft' => 1.0,
@@ -92,6 +97,7 @@ class PixelSettings {
   Map<String, Object?> toJson() => <String, Object?>{
         'artPx': _artPx,
         'font': font,
+        'fontV': fontVersion,
         'haptics': haptics,
         'textSize': textSize.name,
       };
@@ -115,7 +121,11 @@ class PixelSettings {
       }
       return PixelSettings(
         artPx: art != null && artSizes.contains(art) ? art : null,
-        font: font is String && fonts.containsKey(font) ? font : defaultFont,
+        font: font is String &&
+                fonts.containsKey(font) &&
+                decoded['fontV'] == fontVersion
+            ? font
+            : defaultFont,
         haptics: haptics is bool ? haptics : true,
         textSize: parsedTextSize,
       );

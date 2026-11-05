@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../pixel/pixel_theme.dart';
+
 class DeviceGuard extends StatefulWidget {
   final Widget child;
 
@@ -63,7 +65,7 @@ class _DeviceGuardState extends State<DeviceGuard> {
                   ),
                   child: const Text(
                     'JUANDERQUEST WEB • DESKTOP ONLY',
-                    style: TextStyle(fontFamily: 'Monocraft', 
+                    style: TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                       color: Color(0xFF3F6653),
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
@@ -76,7 +78,7 @@ class _DeviceGuardState extends State<DeviceGuard> {
                 const Text(
                   'Optimized for Desktop End-to-End Testing',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Monocraft', 
+                  style: TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                     color: Color(0xFF582F0E),
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -88,7 +90,7 @@ class _DeviceGuardState extends State<DeviceGuard> {
                 const Text(
                   'The web version of JuanDerQuest is specifically tailored for desktop evaluation and end-to-end testing. For real-time GPS location tracking and AR camera marker validation, please download and install the official Android mobile app.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Monocraft', 
+                  style: TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                     color: Color(0xFF514532),
                     fontSize: 14,
                     height: 1.5,
@@ -101,7 +103,7 @@ class _DeviceGuardState extends State<DeviceGuard> {
                   icon: const Icon(Icons.android_rounded, size: 22),
                   label: const Text(
                     'Download Android Mobile App (APK)',
-                    style: TextStyle(fontFamily: 'Monocraft', 
+                    style: TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -127,7 +129,7 @@ class _DeviceGuardState extends State<DeviceGuard> {
                   icon: const Icon(Icons.open_in_new_rounded, size: 16, color: Color(0xFF7D5800)),
                   label: const Text(
                     'Continue in Web Test Mode anyway',
-                    style: TextStyle(fontFamily: 'Monocraft', 
+                    style: TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                       color: Color(0xFF7D5800),
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -139,7 +141,7 @@ class _DeviceGuardState extends State<DeviceGuard> {
                 const Text(
                   'JuanDerQuest • School of Information Technology Education • Universidad de Dagupan',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Monocraft', 
+                  style: TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                     color: Color(0xFF837560),
                     fontSize: 11,
                   ),

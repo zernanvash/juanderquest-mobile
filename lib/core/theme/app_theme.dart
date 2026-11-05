@@ -12,8 +12,10 @@ abstract class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      // Owner 2026-11-05: Monocraft everywhere, also on snackbars and dialogs.
-      fontFamily: 'Monocraft',
+      // Owner 2026-11-05: Silkscreen everywhere (Monocraft fills missing
+      // symbols), also on snackbars and dialogs.
+      fontFamily: 'Silkscreen',
+      fontFamilyFallback: PixelFonts.fallback,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,

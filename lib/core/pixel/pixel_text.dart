@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'generated/pixel_palette.g.dart';
 import 'pixel_grid.dart';
+import 'pixel_theme.dart';
 
 abstract final class PixelType {
   static TextStyle _base(
@@ -14,6 +15,7 @@ abstract final class PixelType {
     final settings = PixelScope.of(context);
     return TextStyle(
       fontFamily: settings.font,
+      fontFamilyFallback: PixelFonts.fallback,
       fontSize: size * settings.fontScale(),
       height: 1.25,
       color: color,

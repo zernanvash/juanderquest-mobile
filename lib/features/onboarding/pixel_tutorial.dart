@@ -286,7 +286,11 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
           Positioned(
             left: grid.px(2),
             top: 0,
-            child: const PixelAnimation(DesignerArt.juanIdle, scale: 6),
+            // Juan overlaps the box; he must not swallow taps meant for
+            // the choice buttons under him.
+            child: const IgnorePointer(
+              child: PixelAnimation(DesignerArt.juanIdle, scale: 6),
+            ),
           ),
           Positioned(
             left: grid.px(40),

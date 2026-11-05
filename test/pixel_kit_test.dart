@@ -123,10 +123,13 @@ void main() {
 
   test('PixelSettings decodes only known kit values', () {
     final stored = PixelSettings.fromJson(
-      '{"artPx":4,"font":"VT323","haptics":false}',
+      '{"artPx":4,"font":"VT323","fontV":2,"haptics":false}',
     );
     expect(
         stored, const PixelSettings(artPx: 4, font: 'VT323', haptics: false));
+    // A font saved before Silkscreen became the default moves to it.
+    final legacy = PixelSettings.fromJson('{"font":"Monocraft"}');
+    expect(legacy?.font, 'Silkscreen');
     final fallback = PixelSettings.fromJson(
       '{"artPx":99,"font":"Comic Sans","haptics":"yes"}',
     );

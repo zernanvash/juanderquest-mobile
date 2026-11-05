@@ -5,6 +5,10 @@ import 'package:flutter/services.dart';
 import 'generated/pixel_palette.g.dart';
 
 abstract final class PixelFonts {
+  /// Glyphs Silkscreen does not have (→ ◀ ▶ ▼ ♥ ♡ ⚑ ₱ …) come from
+  /// Monocraft, so they stay pixel-style instead of the phone's font.
+  static const fallback = <String>['Monocraft'];
+
   static const families = <String>[
     'Silkscreen',
     'Monocraft',
@@ -44,7 +48,8 @@ abstract final class PixelTheme {
     bool bold = false,
   }) =>
       TextStyle(
-        fontFamily: 'Monocraft',
+        fontFamily: 'Silkscreen',
+        fontFamilyFallback: PixelFonts.fallback,
         fontSize: size,
         height: 1.25,
         letterSpacing: 0,
@@ -56,7 +61,8 @@ abstract final class PixelTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      fontFamily: 'Monocraft',
+      fontFamily: 'Silkscreen',
+      fontFamilyFallback: PixelFonts.fallback,
       scaffoldBackgroundColor: PixelPalette.paper,
       primaryColor: PixelPalette.green,
       colorScheme: const ColorScheme.light(

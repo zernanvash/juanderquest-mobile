@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../pixel/pixel_theme.dart';
+
 class GlobalErrorDialog extends StatelessWidget {
   final String title;
   final String message;
@@ -72,7 +74,7 @@ class GlobalErrorDialog extends StatelessWidget {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'Monocraft', 
+                style: const TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                   color: Color(0xFF582F0E),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -84,7 +86,7 @@ class GlobalErrorDialog extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'Monocraft', 
+                style: const TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                   color: Color(0xFF514532),
                   fontSize: 14,
                   height: 1.5,
@@ -109,7 +111,7 @@ class GlobalErrorDialog extends StatelessWidget {
                 ),
                 child: Text(
                   buttonText,
-                  style: const TextStyle(fontFamily: 'Monocraft', 
+                  style: const TextStyle(fontFamily: 'Silkscreen', fontFamilyFallback: PixelFonts.fallback, 
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
