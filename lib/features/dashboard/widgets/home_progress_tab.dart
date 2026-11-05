@@ -499,7 +499,9 @@ class _WalletSection extends ConsumerWidget {
           HomeStatSlot(
             key: const ValueKey('home_wallet_mjdq'),
             label: 'mJDQ balance',
-            value: homeNumber(user?.mjdqBalance ?? 0),
+            // Same number as Profile and Shop (owner 2026-11-05: "150 is right");
+            // mjdqBalance is a different, larger field.
+            value: homeNumber(user?.points ?? 0),
             onTap: () => context.go('/profile'),
           ),
           SizedBox(height: grid.px(1)),

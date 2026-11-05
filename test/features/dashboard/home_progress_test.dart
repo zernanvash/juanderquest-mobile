@@ -849,7 +849,8 @@ void main() {
     expect(find.text('Heritage Keeper'), findsOneWidget);
     expect(find.text('Level 3'), findsOneWidget);
     expect(_textContaining('25 / 50 XP'), findsOneWidget);
-    _expectSlot('home_wallet_mjdq', 'mJDQ balance', '125,400');
+    // The spendable balance Profile and Shop show (points), not mjdqBalance.
+    _expectSlot('home_wallet_mjdq', 'mJDQ balance', '125');
     _expectSlot('home_wallet_jdq', 'JDQ governance', '12');
     _expectSlot('home_wallet_rep', 'Scout reputation', '350');
     expect(tester.takeException(), isNull);
