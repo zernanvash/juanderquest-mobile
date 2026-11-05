@@ -175,6 +175,14 @@ class _QuestLogTabs extends StatelessWidget {
 
   static const _labels = ['Progress', 'Quests', 'Collection'];
 
+  /// Plan 75k: the active tab is the panel's own tab: sun-lit top edge, no
+  /// shadow, and it sits 1 art px into the panel so they read as one piece.
+  static final _activeStyle = PixelBoxStyle.wood.copyWith(
+    highlight: PixelPalette.sun,
+    corner: 1,
+    shadowPx: 0,
+  );
+
   static final _idleStyle = PixelBoxStyle.wood.copyWith(
     fill: PixelPalette.woodDeep,
     highlight: PixelPalette.wood,
@@ -193,6 +201,7 @@ class _QuestLogTabs extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             for (var i = 0; i < _labels.length; i++) ...[
               if (i > 0) SizedBox(width: grid.px(1)),
@@ -205,7 +214,6 @@ class _QuestLogTabs extends StatelessWidget {
             ],
           ],
         ),
-        SizedBox(height: grid.px(1)),
         PixelPanel(style: PixelBoxStyle.parchment, child: content),
       ],
     );
@@ -222,16 +230,22 @@ class _QuestLogTabs extends StatelessWidget {
           key: ValueKey('home_tab_${_labels[index].toLowerCase()}'),
           behavior: HitTestBehavior.opaque,
           onTap: () => onSelect(index),
-          child: PixelPanel(
-            style: active ? PixelBoxStyle.wood : _idleStyle,
-            padding: 1,
-            pressed: !active,
-            child: Center(
-              child: Text(
-                _labels[index],
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: PixelType.small(context, color: PixelPalette.paper),
+          child: Transform.translate(
+            offset: Offset(0, active ? grid.unit : 0),
+            child: PixelPanel(
+              style: active ? _activeStyle : _idleStyle,
+              padding: active ? 2 : 1,
+              pressed: !active,
+              child: Center(
+                child: Text(
+                  _labels[index],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(
+                    context,
+                    color: active ? PixelPalette.sunLight : PixelPalette.paper,
+                  ),
+                ),
               ),
             ),
           ),

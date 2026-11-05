@@ -7,6 +7,7 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../auth/models/user_model.dart';
 
@@ -121,6 +122,8 @@ class HomeHero extends StatelessWidget {
                           style: PixelBoxStyle.gold,
                           textColor: PixelPalette.ink,
                         ),
+                        // Plan 75k: a glint on the level, like an RPG badge.
+                        const PixelMicro(PixelMicroArt.sparkle, scale: 3),
                         if (cosmeticTitle.isNotEmpty)
                           _chip(
                             context,
@@ -148,12 +151,32 @@ class HomeHero extends StatelessWidget {
                   value: xpInLevel / 50,
                   segments: 10,
                   color: PixelPalette.greenBright,
+                  showTipGlint: true,
                 ),
                 SizedBox(height: grid.px(1)),
                 PixelText.rich(
                   '{sun:$xpInLevel / 50 XP} to level {paper:${level + 1}} · {paper:$points total XP}',
                   maxLines: 2,
                   style: PixelType.small(context, color: PixelPalette.cream),
+                ),
+                SizedBox(height: grid.px(1)),
+                // Plan 75k: a Hypixel-style scoreboard line.
+                Row(
+                  key: const ValueKey('home_hero_scoreboard'),
+                  children: [
+                    const PixelMicro(PixelMicroArt.coin, scale: 3),
+                    SizedBox(width: grid.px(1)),
+                    Expanded(
+                      child: PixelText.rich(
+                        'Purse: {sun:$points mJDQ} · Rep: {green:${user?.scoutReputation ?? 0}}',
+                        maxLines: 1,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.cream,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

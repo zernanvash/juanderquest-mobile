@@ -1,3 +1,6 @@
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_rpg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,9 +98,9 @@ class _HiddenGemAd extends StatelessWidget {
                             gem.imageUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
-                                const _ImageFallback(),
+                                _ImageFallback(town: gem.municipality),
                           )
-                        : const _ImageFallback(),
+                        : _ImageFallback(town: gem.municipality),
                   ),
                 ),
               ),
@@ -153,14 +156,46 @@ class _HiddenGemAd extends StatelessWidget {
   }
 }
 
+/// Plan 75k: a gem without a photo gets a night-sky dither, a glinting
+/// marker and its town, instead of a pale grey box.
 class _ImageFallback extends StatelessWidget {
-  const _ImageFallback();
+  const _ImageFallback({required this.town});
+
+  final String town;
 
   @override
-  Widget build(BuildContext context) => const DitherBackground(
-        top: PixelPalette.paperDim,
-        bottom: PixelPalette.paper,
-      );
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return DitherBackground(
+      top: PixelPalette.ink,
+      bottom: PixelPalette.woodDeep,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const PixelSprite(DesignerArt.questMarker, scale: 3),
+                Positioned(
+                  top: -grid.px(2),
+                  right: -grid.px(3),
+                  child: const PixelMicro(PixelMicroArt.sparkle, scale: 2),
+                ),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(
+              town,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: PixelType.small(context, color: PixelPalette.sunLight),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _HiddenGemPlaceholder extends StatelessWidget {

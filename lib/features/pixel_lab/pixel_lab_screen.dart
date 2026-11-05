@@ -18,6 +18,7 @@ import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
 import '../dashboard/home_tips.dart';
 import 'home_options.dart';
+import 'rpg_feel_section.dart';
 import 'tutorial_preview.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
@@ -86,6 +87,9 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           ],
                           SizedBox(height: grid.px(3)),
                           _readableText(context, grid, settings),
+                          SizedBox(height: grid.px(3)),
+                          _section(context, 'RPG feel (75k)',
+                              const RpgFeelSection()),
                           SizedBox(height: grid.px(3)),
                           _homeOptions(context, grid),
                           SizedBox(height: grid.px(3)),

@@ -384,9 +384,11 @@ abstract final class PixelMicroArt {
   ]);
 }
 
-/// A looping micro sprite that sits still on its first frame when motion is
-/// off (reduced motion, tests).
-class PixelMicro extends StatelessWidget {
+/// A looping micro sprite. It steps with a timer at the sprite's fps and
+/// repaints only when the frame changes (no per-frame ticker, so it costs
+/// almost nothing and never keeps a test's pumpAndSettle waiting). It sits
+/// on its first frame when motion is off (reduced motion).
+class PixelMicro extends StatefulWidget {
   const PixelMicro(this.frames,
       {super.key, this.scale = 2, this.animate = true});
 
@@ -395,9 +397,53 @@ class PixelMicro extends StatelessWidget {
   final bool animate;
 
   @override
-  Widget build(BuildContext context) => pixelMotion(context, animate: animate)
-      ? PixelAnimation(frames, scale: scale)
-      : PixelSprite(frames.frames.first, scale: scale);
+  State<PixelMicro> createState() => _PixelMicroState();
+}
+
+class _PixelMicroState extends State<PixelMicro> {
+  Timer? _timer;
+  int _frame = 0;
+
+  void _sync() {
+    final run = pixelMotion(context, animate: widget.animate) &&
+        widget.frames.frames.length > 1;
+    if (run && _timer == null) {
+      _timer = Timer.periodic(
+        Duration(milliseconds: 1000 ~/ widget.frames.fps),
+        (_) {
+          if (mounted) {
+            setState(() => _frame = (_frame + 1) % widget.frames.frames.length);
+          }
+        },
+      );
+    } else if (!run && _timer != null) {
+      _timer!.cancel();
+      _timer = null;
+      _frame = 0;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(PixelMicro old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      PixelSprite(widget.frames.frames[_frame], scale: widget.scale);
 }
 
 /// A number that rolls to its new value in steps (16 fps over 350 ms) and

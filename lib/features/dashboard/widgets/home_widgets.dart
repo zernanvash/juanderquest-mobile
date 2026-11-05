@@ -1,3 +1,4 @@
+import '../../../core/pixel/pixel_rpg.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
@@ -30,49 +31,41 @@ class HomeStatSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final slot = PixelPanel(
-      style: PixelBoxStyle.parchment,
-      padding: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 32),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: PixelType.body(context),
+    final content = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 32),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: PixelType.body(context),
+            ),
+          ),
+          SizedBox(width: grid.px(1)),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 2,
+              textAlign: TextAlign.end,
+              style: PixelType.numbers(
+                context,
+                color: valueColor ?? PixelPalette.greenDark,
               ),
             ),
-            SizedBox(width: grid.px(1)),
-            Flexible(
-              child: Text(
-                value,
-                maxLines: 2,
-                textAlign: TextAlign.end,
-                style: PixelType.numbers(
-                  context,
-                  color: valueColor ?? PixelPalette.greenDark,
-                ),
-              ),
-            ),
-            if (trailing != null) ...[SizedBox(width: grid.px(1)), trailing!],
-          ],
-        ),
+          ),
+          if (trailing != null) ...[SizedBox(width: grid.px(1)), trailing!],
+        ],
       ),
     );
-    if (onTap == null) return slot;
-    return Semantics(
-      button: true,
-      label: '$label: $value',
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: slot,
-        ),
-      ),
+    // Plan 75k: tappable stat rows press like inventory slots.
+    return PixelTappableSlot(
+      style: PixelBoxStyle.parchment,
+      padding: 1,
+      semanticLabel: '$label: $value',
+      onTap: onTap,
+      child: ExcludeSemantics(child: content),
     );
   }
 }

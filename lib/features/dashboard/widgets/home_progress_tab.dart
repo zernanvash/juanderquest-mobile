@@ -1,3 +1,6 @@
+import '../../../core/pixel/pixel_rpg.dart';
+import '../../../core/pixel/pixel_art.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -79,18 +82,30 @@ class _QotdSection extends ConsumerWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (state.quizTitle.isNotEmpty)
-                Text(
-                  state.quizTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: PixelType.small(
-                    context,
-                    color: PixelPalette.greenDark,
-                  ),
+              // Plan 75k: the question as an RPG encounter box.
+              PixelLorePanel(
+                key: const ValueKey('home_qotd_prompt'),
+                padding: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (state.quizTitle.isNotEmpty) ...[
+                      Text(
+                        '* ${state.quizTitle}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            PixelType.small(context, color: PixelPalette.sun),
+                      ),
+                      SizedBox(height: grid.px(1)),
+                    ],
+                    Text(
+                      state.questionText,
+                      style: PixelType.body(context, color: PixelPalette.paper),
+                    ),
+                  ],
                 ),
-              SizedBox(height: grid.px(1)),
-              Text(state.questionText, style: PixelType.body(context)),
+              ),
               SizedBox(height: grid.px(2)),
               for (var i = 0; i < state.options.length; i++) ...[
                 if (i > 0) SizedBox(height: grid.px(1)),
@@ -185,52 +200,50 @@ class _QotdOptionRow extends StatelessWidget {
                 : PixelBoxStyle.parchment;
     final textColor = correct || wrong ? PixelPalette.white : PixelPalette.ink;
     final letter = String.fromCharCode(64 + option.ordinal);
-    final row = PixelPanel(
-      style: style,
-      padding: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 34),
-        child: Row(
-          children: [
-            PixelPanel(
-              style: PixelBoxStyle.slot,
-              padding: 1,
-              child: SizedBox(
-                width: grid.px(8),
-                child: Center(
-                  child: Text(
-                    letter,
-                    style: PixelType.small(
-                      context,
-                    ).copyWith(fontWeight: FontWeight.w700),
-                  ),
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 34),
+      child: Row(
+        children: [
+          // Keycap letter: stone, gold once chosen.
+          PixelPanel(
+            style:
+                selected || correct ? PixelBoxStyle.gold : PixelBoxStyle.stone,
+            padding: 1,
+            child: SizedBox(
+              width: grid.px(8),
+              child: Center(
+                child: Text(
+                  letter,
+                  style: PixelType.small(
+                    context,
+                    color: selected || correct
+                        ? PixelPalette.ink
+                        : PixelPalette.white,
+                  ).copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ),
-            SizedBox(width: grid.px(2)),
-            Expanded(
-              child: Text(
-                option.text,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: PixelType.small(context, color: textColor),
-              ),
+          ),
+          SizedBox(width: grid.px(2)),
+          Expanded(
+            child: Text(
+              option.text,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: PixelType.small(context, color: textColor),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
-    return Semantics(
-      button: onTap != null,
-      label: 'Option $letter: ${option.text}',
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          key: ValueKey('home_qotd_option_${option.id}'),
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: row,
-        ),
-      ),
+    // Plan 75k: answers press like inventory slots.
+    return PixelTappableSlot(
+      key: ValueKey('home_qotd_option_${option.id}'),
+      style: style,
+      padding: 1,
+      semanticLabel: 'Option $letter: ${option.text}',
+      onTap: onTap,
+      child: ExcludeSemantics(child: row),
     );
   }
 }
@@ -292,7 +305,13 @@ class _DailyStampsSection extends ConsumerWidget {
                   children: [
                     for (var i = 0; i < state.calendar.length; i++) ...[
                       if (i > 0) SizedBox(width: grid.px(1)),
-                      Expanded(child: _StampDaySlot(day: state.calendar[i])),
+                      Expanded(
+                        child: _StampDaySlot(
+                          day: state.calendar[i],
+                          today:
+                              !claimed && state.calendar[i].day == claimedDay,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -363,40 +382,136 @@ class _DailyStampsSection extends ConsumerWidget {
   }
 }
 
-class _StampDaySlot extends StatelessWidget {
-  const _StampDaySlot({required this.day});
+/// Plan 75k: the 7-day strip as RPG inventory slots. Unclaimed days are
+/// recessed slots; a claimed day carries a green stamp seal; today's claimable
+/// day pulses gold (2 fps, stepped); D7 is a rare gold slot with a sparkle.
+class _StampDaySlot extends StatefulWidget {
+  const _StampDaySlot({required this.day, required this.today});
 
   final HomeStampDay day;
+
+  /// Today's day, still unclaimed.
+  final bool today;
+
+  @override
+  State<_StampDaySlot> createState() => _StampDaySlotState();
+}
+
+class _StampDaySlotState extends State<_StampDaySlot> {
+  Timer? _pulse;
+  bool _bright = false;
+
+  static const _seal = PixelArt('homeStampSeal', [
+    '..999..',
+    '.9aaa9.',
+    '9aaa6a9',
+    '9a6a6a9',
+    '9aa6aa9',
+    '.9aaa9.',
+    '..999..',
+  ]);
+
+  static const _rare = PixelBoxStyle(
+    fill: PixelPalette.goldDeep,
+    highlight: PixelPalette.sun,
+    shade: PixelPalette.woodDeep,
+    outline: PixelPalette.sun,
+    corner: 1,
+    shadowPx: 0,
+  );
+
+  void _sync() {
+    final run = widget.today && pixelMotion(context);
+    if (run && _pulse == null) {
+      _pulse = Timer.periodic(const Duration(milliseconds: 500), (_) {
+        if (mounted) setState(() => _bright = !_bright);
+      });
+    } else if (!run && _pulse != null) {
+      _pulse!.cancel();
+      _pulse = null;
+      _bright = false;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_StampDaySlot old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    _pulse?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    return PixelPanel(
-      style: day.claimed ? PixelBoxStyle.green : PixelBoxStyle.slot,
-      padding: 1,
-      child: Column(
-        children: [
-          Text(
-            'D${day.day}',
-            style: PixelType.small(
-              context,
-              color: day.claimed ? PixelPalette.white : PixelPalette.slate,
+    final day = widget.day;
+    final rare = day.day == 7;
+    final style = widget.today
+        ? PixelBoxStyle.gold.copyWith(
+            outline: _bright ? PixelPalette.white : PixelPalette.ink,
+            corner: 1,
+            shadowPx: 0,
+          )
+        : rare
+            ? _rare
+            : PixelBoxStyle.slot;
+    final labelColor = widget.today
+        ? PixelPalette.ink
+        : rare
+            ? PixelPalette.sunLight
+            : PixelPalette.slate;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        PixelPanel(
+          style: style,
+          padding: 1,
+          sunken: !widget.today && !rare,
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              children: [
+                Text(
+                  'D${day.day}',
+                  style: PixelType.small(context, color: labelColor),
+                ),
+                SizedBox(height: grid.px(1)),
+                if (day.claimed)
+                  const PixelSprite(_seal, scale: 3, semanticLabel: 'Claimed')
+                else
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '+${day.stamps}',
+                      style: PixelType.small(
+                        context,
+                        color: widget.today || rare
+                            ? labelColor
+                            : PixelPalette.greenDark,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-          SizedBox(height: grid.px(1)),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              day.claimed ? 'OK' : '+${day.stamps}',
-              style: PixelType.small(
-                context,
-                color:
-                    day.claimed ? PixelPalette.white : PixelPalette.greenDark,
-              ),
-            ),
+        ),
+        if (rare && !day.claimed)
+          Positioned(
+            top: -grid.px(2),
+            right: -grid.px(1),
+            child: const PixelMicro(PixelMicroArt.sparkle, scale: 2),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
