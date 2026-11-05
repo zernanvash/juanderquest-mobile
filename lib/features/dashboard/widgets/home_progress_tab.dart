@@ -301,7 +301,7 @@ class _DailyStampsSection extends ConsumerWidget {
               PixelButton(
                 key: const ValueKey('home_daily_claim'),
                 label: claimed
-                    ? 'Claimed today A� Day $claimedDay'
+                    ? 'Claimed today · Day $claimedDay'
                     : 'Claim +${state.nominalStamps} stamps',
                 iconScale: 2,
                 expand: true,
@@ -442,7 +442,7 @@ class _DailyMissionRow extends StatelessWidget {
                   ),
                   if (progress.isNotEmpty)
                     Text(
-                      mission.completed ? 'Done A� $progress' : progress,
+                      mission.completed ? 'Done · $progress' : progress,
                       style: PixelType.small(
                         context,
                         color: mission.completed
@@ -612,6 +612,8 @@ class _NearbySection extends ConsumerWidget {
               : shown.isEmpty
                   ? const HomeEmptyText('No destinations nearby yet.')
                   : Column(
+                      // Every card full width (a short name made one narrower).
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (var i = 0; i < shown.length; i++) ...[
                           if (i > 0) SizedBox(height: grid.px(1)),
@@ -633,7 +635,7 @@ class _NearbySpotRow extends StatelessWidget {
     final grid = PixelGrid.of(context);
     final distance = spot.distanceKm == null
         ? spot.municipality
-        : '${spot.municipality} A� ${spot.distanceKm!.toStringAsFixed(1)} km';
+        : '${spot.municipality} · ${spot.distanceKm!.toStringAsFixed(1)} km';
     return Semantics(
       button: true,
       label: 'Open ${spot.name}',
@@ -897,7 +899,7 @@ class _ProposalRow extends StatelessWidget {
                 ),
                 SizedBox(height: grid.px(0.5)),
                 PixelText.rich(
-                  '{green:Yes ${proposal.yesVotes}} A� {red:No ${proposal.noVotes}} A� {grey:${proposal.locationName}}',
+                  '{green:Yes ${proposal.yesVotes}} · {red:No ${proposal.noVotes}} · {grey:${proposal.locationName}}',
                   maxLines: 2,
                   style: PixelType.small(context),
                 ),

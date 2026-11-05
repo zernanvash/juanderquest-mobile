@@ -137,7 +137,7 @@ class _QuestProgressCard extends StatelessWidget {
             ),
             SizedBox(height: grid.px(0.5)),
             Text(
-              'Step $step of $total A� ${quest.categoryDisplay}',
+              'Step $step of $total · ${quest.categoryDisplay}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: PixelType.small(context, color: PixelPalette.slate),
@@ -262,7 +262,7 @@ class _QuizRow extends StatelessWidget {
                   ),
                   SizedBox(height: grid.px(0.5)),
                   Text(
-                    '${quiz.destinationName} A� $distance',
+                    '${quiz.destinationName} · $distance',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: PixelType.small(context, color: PixelPalette.slate),
@@ -338,7 +338,7 @@ class _EventRow extends StatelessWidget {
     final grid = PixelGrid.of(context);
     final range = event.endDate == null
         ? _EventsSection._date(event.date)
-        : '${_EventsSection._date(event.date)} A� ${_EventsSection._date(event.endDate!)}';
+        : '${_EventsSection._date(event.date)} · ${_EventsSection._date(event.endDate!)}';
     return Semantics(
       button: true,
       label: 'Open event ${event.title}',
@@ -376,7 +376,7 @@ class _EventRow extends StatelessWidget {
                 ),
                 SizedBox(height: grid.px(0.5)),
                 Text(
-                  '$range A� ${event.municipality}',
+                  '$range · ${event.municipality}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: PixelType.small(context, color: PixelPalette.slate),

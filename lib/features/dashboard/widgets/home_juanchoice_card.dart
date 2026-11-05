@@ -148,7 +148,7 @@ class _JuanChoiceContent extends StatelessWidget {
                   ),
                   SizedBox(height: grid.px(1)),
                   PixelText.rich(
-                    '{paper:${_daysLabel(_daysLeft(overview, campaign))}} A� ${_ballotLabel(detail)}',
+                    '{paper:${_daysLabel(_daysLeft(overview, campaign))}} · ${_ballotLabel(detail)}',
                     maxLines: 2,
                     style: PixelType.small(context, color: PixelPalette.cream),
                   ),
@@ -170,7 +170,7 @@ class _JuanChoiceContent extends StatelessWidget {
                   else
                     for (final winner in winners.take(2))
                       PixelText.rich(
-                        '{paper:${winner.spotName}} A� {sun:${winner.votes} votes}',
+                        '{paper:${winner.spotName}} · {sun:${winner.votes} votes}',
                         maxLines: 2,
                         style: PixelType.small(
                           context,

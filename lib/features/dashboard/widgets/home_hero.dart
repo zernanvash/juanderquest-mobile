@@ -151,7 +151,7 @@ class HomeHero extends StatelessWidget {
                 ),
                 SizedBox(height: grid.px(1)),
                 PixelText.rich(
-                  '{sun:$xpInLevel / 50 XP} to level {paper:${level + 1}} A� {paper:$points total XP}',
+                  '{sun:$xpInLevel / 50 XP} to level {paper:${level + 1}} · {paper:$points total XP}',
                   maxLines: 2,
                   style: PixelType.small(context, color: PixelPalette.cream),
                 ),

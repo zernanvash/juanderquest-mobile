@@ -118,11 +118,15 @@ class HomePanel extends StatelessWidget {
               if (actionLabel != null && onAction != null) ...[
                 SizedBox(width: grid.px(1)),
                 Flexible(
-                  child: PixelChip(
-                    actionLabel!,
-                    style: PixelBoxStyle.slot,
-                    textColor: PixelPalette.greenDark,
-                    onTap: onAction,
+                  // Right edge of the header, not the middle of the row.
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: PixelChip(
+                      actionLabel!,
+                      style: PixelBoxStyle.slot,
+                      textColor: PixelPalette.greenDark,
+                      onTap: onAction,
+                    ),
                   ),
                 ),
               ],
