@@ -12,6 +12,8 @@ abstract class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      // Owner 2026-11-05: Monocraft everywhere, also on snackbars and dialogs.
+      fontFamily: 'Monocraft',
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,

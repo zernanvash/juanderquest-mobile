@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DeviceGuard extends StatefulWidget {
@@ -62,10 +61,10 @@ class _DeviceGuardState extends State<DeviceGuard> {
                     color: const Color(0xFF3F6653).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
+                  child: const Text(
                     'JUANDERQUEST WEB • DESKTOP ONLY',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF3F6653),
+                    style: TextStyle(fontFamily: 'Monocraft', 
+                      color: Color(0xFF3F6653),
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
                       letterSpacing: 1.0,
@@ -74,11 +73,11 @@ class _DeviceGuardState extends State<DeviceGuard> {
                 ),
                 const SizedBox(height: 16),
 
-                Text(
+                const Text(
                   'Optimized for Desktop End-to-End Testing',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.epilogue(
-                    color: const Color(0xFF582F0E),
+                  style: TextStyle(fontFamily: 'Monocraft', 
+                    color: Color(0xFF582F0E),
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     height: 1.2,
@@ -86,11 +85,11 @@ class _DeviceGuardState extends State<DeviceGuard> {
                 ),
                 const SizedBox(height: 12),
 
-                Text(
+                const Text(
                   'The web version of JuanDerQuest is specifically tailored for desktop evaluation and end-to-end testing. For real-time GPS location tracking and AR camera marker validation, please download and install the official Android mobile app.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF514532),
+                  style: TextStyle(fontFamily: 'Monocraft', 
+                    color: Color(0xFF514532),
                     fontSize: 14,
                     height: 1.5,
                   ),
@@ -100,9 +99,9 @@ class _DeviceGuardState extends State<DeviceGuard> {
                 ElevatedButton.icon(
                   onPressed: _launchApkUrl,
                   icon: const Icon(Icons.android_rounded, size: 22),
-                  label: Text(
+                  label: const Text(
                     'Download Android Mobile App (APK)',
-                    style: GoogleFonts.epilogue(
+                    style: TextStyle(fontFamily: 'Monocraft', 
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -126,10 +125,10 @@ class _DeviceGuardState extends State<DeviceGuard> {
                     });
                   },
                   icon: const Icon(Icons.open_in_new_rounded, size: 16, color: Color(0xFF7D5800)),
-                  label: Text(
+                  label: const Text(
                     'Continue in Web Test Mode anyway',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF7D5800),
+                    style: TextStyle(fontFamily: 'Monocraft', 
+                      color: Color(0xFF7D5800),
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -137,11 +136,11 @@ class _DeviceGuardState extends State<DeviceGuard> {
                 ),
                 const SizedBox(height: 24),
 
-                Text(
+                const Text(
                   'JuanDerQuest • School of Information Technology Education • Universidad de Dagupan',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF837560),
+                  style: TextStyle(fontFamily: 'Monocraft', 
+                    color: Color(0xFF837560),
                     fontSize: 11,
                   ),
                 ),

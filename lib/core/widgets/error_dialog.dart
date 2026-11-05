@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class GlobalErrorDialog extends StatelessWidget {
   final String title;
@@ -73,8 +72,8 @@ class GlobalErrorDialog extends StatelessWidget {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.epilogue(
-                  color: const Color(0xFF582F0E),
+                style: const TextStyle(fontFamily: 'Monocraft', 
+                  color: Color(0xFF582F0E),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -85,8 +84,8 @@ class GlobalErrorDialog extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  color: const Color(0xFF514532),
+                style: const TextStyle(fontFamily: 'Monocraft', 
+                  color: Color(0xFF514532),
                   fontSize: 14,
                   height: 1.5,
                 ),
@@ -110,7 +109,7 @@ class GlobalErrorDialog extends StatelessWidget {
                 ),
                 child: Text(
                   buttonText,
-                  style: GoogleFonts.epilogue(
+                  style: const TextStyle(fontFamily: 'Monocraft', 
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
