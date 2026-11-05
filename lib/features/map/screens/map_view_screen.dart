@@ -886,6 +886,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             height: 48,
             alignment: Alignment.center,
             child: PixelSelectedMarkerHopper(
+              key: ValueKey('map_marker_${quest.id}'),
               selected: isSelected,
               child: Semantics(
                 button: true,
@@ -923,6 +924,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           height: 48,
           alignment: Alignment.center,
           child: PixelSelectedMarkerHopper(
+            key: ValueKey('map_marker_${spot.id}'),
             selected: isSelected,
             child: Semantics(
               button: true,

@@ -315,6 +315,7 @@ class PixelAppBar extends StatelessWidget {
               children: [
                 if (effectiveBack != null) ...[
                   PixelIconButton(
+                    key: const ValueKey('pixel_app_bar_back'),
                     icon: _backIcon,
                     semanticLabel: 'Back',
                     style: PixelBoxStyle.parchment,
