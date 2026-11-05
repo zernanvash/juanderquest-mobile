@@ -9,6 +9,7 @@ import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_rpg.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../models/spot_model.dart';
 import 'theater_panel.dart';
 import 'theater_still_photo.dart';
@@ -62,7 +63,10 @@ class TheaterBackdropLayers extends ConsumerWidget {
             _Fade(
               reveal: reveal,
               child: RepaintBoundary(
-                child: TheaterBackdropTreatment(spot: spot, mode: mode),
+                child: TheaterBackdropTreatment(
+                  image: TheaterBackdropTreatment.imageFor(spot),
+                  mode: mode,
+                ),
               ),
             ),
           ],
@@ -96,52 +100,69 @@ class _Fade extends StatelessWidget {
   }
 }
 
-/// The treated photo (full screen). Also used by the Pixel lab preview.
+/// The treated photo. Full screen on the spot page; small tiles in the
+/// Pixel lab preview.
 class TheaterBackdropTreatment extends StatelessWidget {
   const TheaterBackdropTreatment({
     super.key,
-    required this.spot,
+    required this.image,
     required this.mode,
+    this.blurSigma = 16,
   });
 
-  final SpotModel spot;
+  /// The photo, or null when the place has none (then it is only dimmed).
+  final ImageProvider? image;
   final TheaterBackdrop mode;
+  final double blurSigma;
+
+  /// The spot page's photo as an image provider.
+  static ImageProvider? imageFor(SpotModel spot) {
+    final url = SpotStillPhoto.urlFor(spot);
+    return url == null ? null : NetworkImage(url);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final url = SpotStillPhoto.urlFor(spot);
+    final source = image;
+    Widget plain(ImageProvider img) => Image(
+          image: img,
+          fit: BoxFit.cover,
+          alignment: SpotStillPhoto.alignment,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        );
     final dim = ColoredBox(
       color: PixelPalette.ink.withValues(
         alpha: mode == TheaterBackdrop.dark ? 0.82 : 0.5,
       ),
     );
-    if (url == null || mode == TheaterBackdrop.dark) return dim;
+    if (mode == TheaterBackdrop.off) {
+      return source == null ? const SizedBox.shrink() : plain(source);
+    }
+    if (source == null || mode == TheaterBackdrop.dark) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [if (source != null) plain(source), dim],
+      );
+    }
 
     final Widget photo;
     if (mode == TheaterBackdrop.pixel) {
       // ~36 art pixels across, scaled up with no smoothing.
-      photo = Image.network(
-        url,
+      photo = Image(
+        image: ResizeImage(source, width: 36),
         fit: BoxFit.cover,
         alignment: SpotStillPhoto.alignment,
-        cacheWidth: 36,
         filterQuality: FilterQuality.none,
         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       );
     } else {
       photo = ImageFiltered(
         imageFilter: ui.ImageFilter.blur(
-          sigmaX: 16,
-          sigmaY: 16,
+          sigmaX: blurSigma,
+          sigmaY: blurSigma,
           tileMode: TileMode.clamp,
         ),
-        child: Image.network(
-          url,
-          fit: BoxFit.cover,
-          alignment: SpotStillPhoto.alignment,
-          cacheWidth: 240,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-        ),
+        child: plain(ResizeImage(source, width: 240)),
       );
     }
     return Stack(
@@ -151,6 +172,134 @@ class TheaterBackdropTreatment extends StatelessWidget {
         photo,
         dim,
       ],
+    );
+  }
+}
+
+/// Pixel lab: the four choices as tappable previews over a real place photo,
+/// each with a pretend details panel on top.
+class TheaterBackdropPicker extends ConsumerWidget {
+  const TheaterBackdropPicker({super.key, required this.image});
+
+  final ImageProvider image;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(theaterBackdropProvider);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 8.0;
+        final w = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final mode in TheaterBackdrop.values)
+              GestureDetector(
+                key: ValueKey('lab_backdrop_${mode.name}'),
+                onTap: () =>
+                    ref.read(theaterBackdropProvider.notifier).state = mode,
+                child: _PreviewTile(
+                  width: w,
+                  image: image,
+                  mode: mode,
+                  selected: mode == current,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PreviewTile extends StatelessWidget {
+  const _PreviewTile({
+    required this.width,
+    required this.image,
+    required this.mode,
+    required this.selected,
+  });
+
+  final double width;
+  final ImageProvider image;
+  final TheaterBackdrop mode;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = width * 1.35;
+    Widget line([double factor = 1]) => FractionallySizedBox(
+          widthFactor: factor,
+          child: Container(
+            height: 5,
+            margin: const EdgeInsets.only(top: 5),
+            color: PixelPalette.mist,
+          ),
+        );
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: PixelPalette.ink,
+        border: Border.all(
+          color: selected ? PixelPalette.sun : PixelPalette.ink,
+          width: selected ? 4 : 2,
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          TheaterBackdropTreatment(
+            image: image,
+            mode: mode,
+            // The full-screen blur, scaled down to the tile.
+            blurSigma: 16 * width / MediaQuery.sizeOf(context).width,
+          ),
+          // A pretend details panel, like the spot page's.
+          Positioned(
+            left: 10,
+            right: 10,
+            top: height * 0.22,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: PixelPalette.ink,
+                border: Border.all(color: PixelPalette.slate, width: 2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(height: 7, width: 50, color: PixelPalette.paper),
+                  line(),
+                  line(),
+                  line(0.6),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: selected ? PixelPalette.sun : PixelPalette.ink,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              alignment: Alignment.center,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  selected ? '${mode.label} ✓' : mode.label,
+                  style: PixelType.small(
+                    context,
+                    color: selected ? PixelPalette.ink : PixelPalette.paper,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

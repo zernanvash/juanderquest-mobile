@@ -279,6 +279,31 @@ void main() {
       }
     });
 
+    testWidgets('Pixel lab preview tiles switch the backdrop', (tester) async {
+      tester.view.physicalSize = const Size(400, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: TheaterBackdropPicker(
+                image: AssetImage('assets/images/pangasinan_banner.png'),
+              ),
+            ),
+          ),
+        ),
+      ));
+      expect(find.byType(TheaterBackdropTreatment), findsNWidgets(4));
+      await tester.tap(find.byKey(const ValueKey('lab_backdrop_blur')));
+      await tester.pump();
+      expect(container.read(theaterBackdropProvider), TheaterBackdrop.blur);
+    });
+
     testWidgets('empty about sub-blocks are hidden', (tester) async {
       const minimalSpot = SpotModel(
         id: 'minimal-spot',
