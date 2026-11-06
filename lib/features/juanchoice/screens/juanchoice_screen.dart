@@ -179,7 +179,7 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                             style: PixelType.title(context)),
                         SizedBox(height: grid.px(1)),
                         Text(
-                          'Voting closes ${choiceDate(data.current!.closesAt)}',
+                          'Voting ends ${choiceVotingEnds(data.current!.closesAt)}',
                           style: PixelType.body(
                             context,
                             color: PixelPalette.slate,
@@ -214,7 +214,7 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                 ),
                 if (data.nextClosesAt != null)
                   Text(
-                    'Closes ${choiceDate(data.nextClosesAt!)}',
+                    'Voting ends ${choiceVotingEnds(data.nextClosesAt!)}',
                     style: PixelType.body(context, color: PixelPalette.slate),
                   ),
                 if (data.nextTheme != null)
@@ -628,7 +628,7 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                   style: PixelType.body(context, color: PixelPalette.cream),
                 ),
                 Text(
-                  'Closes ${choiceDate(data.campaign.closesAt)}',
+                  'Voting ends ${choiceVotingEnds(data.campaign.closesAt)}',
                   style: PixelType.body(context, color: PixelPalette.cream),
                 ),
               ],

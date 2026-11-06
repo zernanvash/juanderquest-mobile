@@ -48,7 +48,7 @@ void main() {
       choiceSupporterQuestProvider.overrideWith((ref) async => null),
     ], child: const MaterialApp(home: JuanChoiceScreen())));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Voting closes ${choiceDate(campaign.closesAt)}'),
+    expect(find.textContaining('Voting ends ${choiceVotingEnds(campaign.closesAt)}'),
         findsOneWidget);
     expect(find.textContaining('PHT'), findsNothing);
     expect(find.textContaining(RegExp(r'\d{4}-\d{2}-\d{2}')), findsNothing);
