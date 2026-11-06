@@ -1,31 +1,45 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_text.dart';
+
 class DisplayName extends StatelessWidget {
-  const DisplayName(
-      {super.key, required this.name, this.title, this.color, this.style});
+  const DisplayName({
+    super.key,
+    required this.name,
+    this.title,
+    this.color,
+    this.style,
+  });
+
   final String name;
   final String? title;
   final Color? color;
   final TextStyle? style;
+
   @override
   Widget build(BuildContext context) => Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 6,
-          children: [
-            Text(name,
-                style: (style ?? const TextStyle(fontWeight: FontWeight.bold))
-                    .copyWith(color: color ?? style?.color)),
-            if (title != null && title!.isNotEmpty)
-              Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(20)),
-                  child: Text(title!,
-                      style: TextStyle(
-                          color: Colors.brown.shade800,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700)))
-          ]);
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 6,
+        children: [
+          Text(
+            name,
+            style: (style ?? PixelType.title(context))
+                .copyWith(color: color ?? style?.color),
+          ),
+          if (title != null && title!.isNotEmpty)
+            PixelPanel(
+              style: PixelBoxStyle.gold,
+              padding: 1,
+              child: Text(
+                title!,
+                style: PixelType.small(
+                  context,
+                  color: PixelPalette.woodDeep,
+                ),
+              ),
+            ),
+        ],
+      );
 }

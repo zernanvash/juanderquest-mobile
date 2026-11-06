@@ -308,52 +308,60 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                         ],
                       ),
 
-                      // 2. Top-Left Floating Controls Card (Collapsible)
+                      // 2. Top Controls & Docked Action Buttons
                       Positioned(
                         top: grid.px(5),
                         left: grid.px(5),
-                        right:
-                            grid.px(32), // Space for right-side action buttons
-                        child: _controlsPanel(
-                            context, grid, navState, notifier, route),
-                      ),
-
-                      // 3. Top-Right Floating Action Buttons
-                      Positioned(
-                        top: grid.px(5),
                         right: grid.px(5),
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            PixelButton(
-                              key: const ValueKey('nav_fit_route'),
-                              label: 'Fit',
-                              variant: PixelButtonVariant.secondary,
-                              onPressed: route != null
-                                  ? () => _fitRouteBounds(route, userLocation)
-                                  : null,
-                            ),
+                            _controlsPanel(
+                                context, grid, navState, notifier, route),
                             SizedBox(height: grid.px(2)),
-                            if (route?.isStraightLineFallback != true)
-                              PixelButton(
-                                key: const ValueKey('nav_locate'),
-                                label: 'Locate',
-                                variant: PixelButtonVariant.secondary,
-                                loading: navState.isLocating,
-                                onPressed: navState.isLocating
-                                    ? null
-                                    : () => notifier.acquireCurrentLocation(),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Wrap(
+                                spacing: grid.px(2),
+                                runSpacing: grid.px(1),
+                                alignment: WrapAlignment.end,
+                                children: [
+                                  PixelButton(
+                                    key: const ValueKey('nav_fit_route'),
+                                    label: 'Fit',
+                                    variant: PixelButtonVariant.secondary,
+                                    onPressed: route != null
+                                        ? () =>
+                                            _fitRouteBounds(route, userLocation)
+                                        : null,
+                                  ),
+                                  if (route?.isStraightLineFallback != true)
+                                    PixelButton(
+                                      key: const ValueKey('nav_locate'),
+                                      label: 'Locate',
+                                      variant: PixelButtonVariant.secondary,
+                                      loading: navState.isLocating,
+                                      onPressed: navState.isLocating
+                                          ? null
+                                          : () => notifier
+                                              .acquireCurrentLocation(),
+                                    ),
+                                  if (!_showDirectionsDrawer &&
+                                      route != null &&
+                                      !route.isStraightLineFallback &&
+                                      route.maneuvers.isNotEmpty)
+                                    PixelButton(
+                                      key: const ValueKey('nav_toggle_steps'),
+                                      label: 'Steps',
+                                      variant: PixelButtonVariant.secondary,
+                                      onPressed: () {
+                                        setState(() =>
+                                            _showDirectionsDrawer = true);
+                                      },
+                                    ),
+                                ],
                               ),
-                            SizedBox(height: grid.px(2)),
-                            PixelButton(
-                              key: const ValueKey('nav_toggle_steps'),
-                              label: _showDirectionsDrawer ? 'Hide' : 'Steps',
-                              variant: _showDirectionsDrawer
-                                  ? PixelButtonVariant.primary
-                                  : PixelButtonVariant.secondary,
-                              onPressed: () {
-                                setState(() => _showDirectionsDrawer =
-                                    !_showDirectionsDrawer);
-                              },
                             ),
                           ],
                         ),

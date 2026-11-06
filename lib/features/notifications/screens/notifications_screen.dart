@@ -209,11 +209,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       );
     }
     if (_items.isEmpty) {
-      return const PixelEmptyState(
-        key: ValueKey('notifications_empty'),
-        title: 'All caught up',
-        message:
-            'You’re all caught up. Funding and quest updates will appear here.',
+      return PixelPanel(
+        style: PixelBoxStyle.parchment,
+        child: PixelEmptyState(
+          key: const ValueKey('notifications_empty'),
+          title: 'All caught up',
+          message:
+              'You’re all caught up. Funding and quest updates will appear here.',
+          action: PixelButton(
+            key: const ValueKey('notifications_browse_quests'),
+            label: 'Browse quests',
+            onPressed: () => context.go('/quests'),
+          ),
+        ),
       );
     }
     return Column(

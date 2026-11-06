@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../procedural/procedural_banner_painter.dart';
 
@@ -127,43 +128,34 @@ class _ProfileBannerState extends State<ProfileBanner>
     return SizedBox(
       height: widget.height,
       width: double.infinity,
-      child: ValueListenableBuilder<double>(
-        valueListenable: _time,
-        builder: (context, t, child) => DecoratedBox(
-          decoration: BoxDecoration(gradient: gradientAt(t)),
-          child: child,
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (procedural)
-              CustomPaint(painter: _painter)
-            else
-              CustomPaint(
-                painter: _PatternPainter(
-                  (asset?['pattern'] ?? 'none').toString(),
-                  PixelGrid.of(context).unit,
-                ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (asset == null)
+            const DitherBackground(
+              top: PixelPalette.greenMid,
+              bottom: PixelPalette.greenDeep,
+            )
+          else
+            ValueListenableBuilder<double>(
+              valueListenable: _time,
+              builder: (context, t, child) => DecoratedBox(
+                decoration: BoxDecoration(gradient: gradientAt(t)),
+                child: child,
               ),
-            if (widget.child != null) ...[
-              const Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Color(0x99000000)],
-                        stops: [0.40, 1],
+              child: procedural
+                  ? CustomPaint(painter: _painter)
+                  : CustomPaint(
+                      painter: _PatternPainter(
+                        (asset['pattern'] ?? 'none').toString(),
+                        PixelGrid.of(context).unit,
                       ),
                     ),
-                  ),
-                ),
-              ),
-              widget.child!,
-            ],
+            ),
+          if (widget.child != null) ...[
+            widget.child!,
           ],
-        ),
+        ],
       ),
     );
   }

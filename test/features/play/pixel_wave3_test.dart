@@ -815,50 +815,34 @@ void main() {
       expect(fixture.loads, greaterThanOrEqualTo(1));
     });
 
-    testWidgets('suggest modal validates and submits', (tester) async {
-      late _GovFixture fixture;
+    testWidgets('renders read-only archive with no suggest button',
+        (tester) async {
       await _pump(
         tester,
         const VoteScreen(),
-        governance: (ref) => fixture = _GovFixture(ref, GovernanceState()),
+        governance: (ref) => _GovFixture(ref, GovernanceState()),
       );
-      await tester.tap(find.bySemanticsLabel('Suggest Location'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('Suggest New Location'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('suggest_submit')));
-      await tester.pump();
-      expect(find.text('Please fill out the destination title and location.'),
-          findsOneWidget);
-      await tester.enterText(
-          find.byKey(const ValueKey('suggest_title')), 'New Spot');
-      await tester.enterText(
-          find.byKey(const ValueKey('suggest_location')), 'Bolinao');
-      await tester.tap(find.byKey(const ValueKey('suggest_submit')));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(fixture.creates, 1);
+      expect(find.bySemanticsLabel('Suggest Location'), findsNothing);
+      expect(find.text('Historical Proposals (Archive)'), findsOneWidget);
     });
   });
 
   group('ProposalListScreen', () {
-    testWidgets('renders and casts a yes vote', (tester) async {
-      late _GovFixture fixture;
+    testWidgets('renders read-only archive without vote buttons',
+        (tester) async {
       await _pump(
         tester,
         const ProposalListScreen(),
-        governance: (ref) => fixture = _GovFixture(
+        governance: (ref) => _GovFixture(
           ref,
           GovernanceState(proposals: [_proposal]),
         ),
       );
       expect(find.text('All Proposals'), findsOneWidget);
       expect(find.text('Patar White Beach Eco Trail'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('proposal_yes_p1')));
-      await tester.pump();
-      expect(find.text('Confirm Vote (YES)'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('proposal_cast_yes')));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(fixture.casts, 1);
+      expect(find.byKey(const ValueKey('proposal_yes_p1')), findsNothing);
+      expect(find.byKey(const ValueKey('proposal_no_p1')), findsNothing);
+      expect(find.text('Archived Proposal · Voting Closed'), findsOneWidget);
     });
 
     testWidgets('empty and error states retry', (tester) async {

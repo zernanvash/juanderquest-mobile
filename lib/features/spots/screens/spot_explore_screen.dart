@@ -150,6 +150,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 preferredSize: const Size.fromHeight(56),
                 child: PixelAppBar(
                   title: 'Explore',
+                  isTab: true,
                   actions: [
                     PixelIconButton(
                       icon: DesignerArt.search,

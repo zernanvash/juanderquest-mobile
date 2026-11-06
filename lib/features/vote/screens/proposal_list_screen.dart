@@ -9,7 +9,6 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../wallet/providers/wallet_provider.dart';
 import '../models/governance_proposal_model.dart';
 import '../providers/governance_provider.dart';
 
@@ -31,106 +30,6 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
 
   Future<void> _reload() =>
       ref.read(governanceProvider.notifier).loadGovernanceData();
-
-  void _showVoteConfirmationDialog(GovernanceProposalModel prop, String choice) {
-    final walletAsync = ref.read(walletProvider);
-    final wallet = walletAsync.asData?.value;
-    final currentBalance = wallet?.balanceMjdq ?? 1000;
-    final config = ref.read(governanceProvider).config;
-    final fee = config?.voteFeeMjdq ?? 10;
-    final burnAmount = (fee * (config?.burnPercent ?? 20) / 100).round();
-    final escrowAmount = fee - burnAmount;
-    final remaining = currentBalance - fee;
-    final isYes = choice == 'yes';
-
-    showPixelDialog<void>(
-      context: context,
-      title: 'Confirm Vote (${choice.toUpperCase()})',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Target: "${prop.title}"',
-            style: PixelType.body(context),
-          ),
-          SizedBox(height: PixelGrid.of(context).px(2)),
-          PixelPanel(
-            style: PixelBoxStyle.slot,
-            child: Column(
-              children: [
-                _feeRow(context, 'Vote Fee:', '$fee mJDQ (${(fee / 1000.0).toStringAsFixed(2)} JDQ)'),
-                _feeRow(
-                  context,
-                  'Burn Allocation (${config?.burnPercent.toStringAsFixed(0) ?? '20'}%):',
-                  '$burnAmount mJDQ',
-                ),
-                _feeRow(
-                  context,
-                  'Reward Escrow (${config?.escrowPercent.toStringAsFixed(0) ?? '80'}%):',
-                  '$escrowAmount mJDQ',
-                ),
-                _feeRow(context, 'Balance After:', '$remaining mJDQ'),
-              ],
-            ),
-          ),
-          SizedBox(height: PixelGrid.of(context).px(3)),
-          Wrap(
-            spacing: PixelGrid.of(context).px(2),
-            runSpacing: PixelGrid.of(context).px(2),
-            alignment: WrapAlignment.end,
-            children: [
-              PixelButton(
-                label: 'Cancel',
-                variant: PixelButtonVariant.secondary,
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              PixelButton(
-                key: ValueKey('proposal_cast_$choice'),
-                label: 'Cast ${choice.toUpperCase()} Vote',
-                variant:
-                    isYes ? PixelButtonVariant.primary : PixelButtonVariant.danger,
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  final success = await ref
-                      .read(governanceProvider.notifier)
-                      .castVote(proposalId: prop.id, choice: choice);
-                  if (!mounted) return;
-                  final error = ref.read(governanceProvider).error;
-                  showPixelToast(
-                    context,
-                    success
-                        ? 'Vote cast successfully! $fee mJDQ fee processed.'
-                        : 'Vote failed: ${error ?? "Check balance and eligibility."}',
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _feeRow(BuildContext context, String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: PixelGrid.of(context).px(1)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Text(label, style: PixelType.body(context))),
-          SizedBox(width: PixelGrid.of(context).px(2)),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: PixelType.numbers(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -326,28 +225,14 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
               ),
             )
           else
-            Row(
-              children: [
-                Expanded(
-                  child: PixelButton(
-                    key: ValueKey('proposal_yes_${prop.id}'),
-                    label: 'Vote yes',
-                    expand: true,
-                    onPressed: () =>
-                        _showVoteConfirmationDialog(prop, 'yes'),
-                  ),
-                ),
-                SizedBox(width: grid.px(2)),
-                Expanded(
-                  child: PixelButton(
-                    key: ValueKey('proposal_no_${prop.id}'),
-                    label: 'Vote no',
-                    variant: PixelButtonVariant.danger,
-                    expand: true,
-                    onPressed: () => _showVoteConfirmationDialog(prop, 'no'),
-                  ),
-                ),
-              ],
+            PixelPanel(
+              style: PixelBoxStyle.slot,
+              padding: 2,
+              child: Text(
+                'Archived Proposal · Voting Closed',
+                textAlign: TextAlign.center,
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
             ),
         ],
       ),

@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../core/widgets/primary_button.dart';
+
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_input.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../engine/style_loader.dart';
 
 class MapOriginCard extends StatefulWidget {
@@ -12,6 +18,7 @@ class _MapOriginCardState extends State<MapOriginCard> {
   final _controller = TextEditingController();
   String? _message;
   bool _busy = false;
+
   @override
   void initState() {
     super.initState();
@@ -49,28 +56,50 @@ class _MapOriginCardState extends State<MapOriginCard> {
   }
 
   @override
-  Widget build(BuildContext context) => Card(
-      child: Padding(
-          padding: const EdgeInsets.all(12),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Developer — map site (debug only)'),
-            TextField(
-                controller: _controller,
-                keyboardType: TextInputType.url,
-                decoration: const InputDecoration(
-                    labelText: 'Map site origin',
-                    hintText: 'http://127.0.0.1:3120')),
-            if (_message != null) Text(_message!),
-            Wrap(spacing: 8, children: [
-              SecondaryButton(
-                  onPressed: _busy ? null : _save,
-                  fullWidth: false,
-                  label: 'Save map site'),
-              SecondaryButton(
-                  onPressed: _busy ? null : () => _save(reset: true),
-                  fullWidth: false,
-                  label: 'Reset map site'),
-            ]),
-          ])));
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Developer — map site (debug only)',
+            style: PixelType.title(context),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelTextField(
+            controller: _controller,
+            keyboardType: TextInputType.url,
+            label: 'Map site origin',
+            hint: 'http://127.0.0.1:3120',
+          ),
+          if (_message != null) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              _message!,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+          ],
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              PixelButton(
+                onPressed: _busy ? null : _save,
+                variant: PixelButtonVariant.secondary,
+                label: 'Save map site',
+              ),
+              PixelButton(
+                onPressed: _busy ? null : () => _save(reset: true),
+                variant: PixelButtonVariant.secondary,
+                label: 'Reset map site',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

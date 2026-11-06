@@ -8,7 +8,6 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
-import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
@@ -25,157 +24,12 @@ class VoteScreen extends ConsumerStatefulWidget {
 }
 
 class _VoteScreenState extends ConsumerState<VoteScreen> {
-  final _titleController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  String _selectedCategory = 'eco';
-
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       ref.read(governanceProvider.notifier).loadGovernanceData();
     });
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _locationController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _showSubmitLocationModal(BuildContext context) async {
-    _titleController.clear();
-    _locationController.clear();
-    _descriptionController.clear();
-    _selectedCategory = 'eco';
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          final grid = PixelGrid.of(context);
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-              grid.px(3),
-              grid.px(3),
-              grid.px(3),
-              grid.px(3) + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: SingleChildScrollView(
-              child: PixelPanel(
-                style: PixelBoxStyle.parchment,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text('Suggest New Location',
-                        style: PixelType.title(context)),
-                    SizedBox(height: grid.px(1)),
-                    Text(
-                      'Suggest a destination for community review. The current pilot reviews Pangasinan locations.',
-                      style:
-                          PixelType.body(context, color: PixelPalette.slate),
-                    ),
-                    SizedBox(height: grid.px(3)),
-                    PixelTextField(
-                      key: const ValueKey('suggest_title'),
-                      controller: _titleController,
-                      label: 'Destination spot title',
-                      hint: 'e.g. Patar White Beach Eco Trail',
-                    ),
-                    SizedBox(height: grid.px(2)),
-                    PixelTextField(
-                      key: const ValueKey('suggest_location'),
-                      controller: _locationController,
-                      label: 'Municipality / Location',
-                      hint: 'e.g. Municipality, province',
-                    ),
-                    SizedBox(height: grid.px(2)),
-                    Text('Category',
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
-                        )),
-                    SizedBox(height: grid.px(1)),
-                    PixelSegmented(
-                      items: const ['Eco-Tourism', 'Cultural', 'Food'],
-                      selectedIndex: _selectedCategory == 'eco'
-                          ? 0
-                          : _selectedCategory == 'cultural'
-                              ? 1
-                              : 2,
-                      onChanged: (index) => setSheetState(() {
-                        _selectedCategory = switch (index) {
-                          0 => 'eco',
-                          1 => 'cultural',
-                          _ => 'food_trade',
-                        };
-                      }),
-                    ),
-                    SizedBox(height: grid.px(2)),
-                    PixelTextField(
-                      key: const ValueKey('suggest_description'),
-                      controller: _descriptionController,
-                      label: 'Description & significance',
-                      hint: 'Describe why this destination should be featured',
-                      maxLines: 3,
-                    ),
-                    SizedBox(height: grid.px(3)),
-                    PixelButton(
-                      key: const ValueKey('suggest_submit'),
-                      label: 'Submit proposal to screening',
-                      expand: true,
-                      onPressed: () async {
-                        if (_titleController.text.trim().isEmpty ||
-                            _locationController.text.trim().isEmpty) {
-                          showPixelToast(
-                            context,
-                            'Please fill out the destination title and location.',
-                          );
-                          return;
-                        }
-
-                        final title = _titleController.text.trim();
-                        final location = _locationController.text.trim();
-                        final desc =
-                            _descriptionController.text.trim().isEmpty
-                                ? 'Community-suggested destination.'
-                                : _descriptionController.text.trim();
-
-                        Navigator.of(sheetContext).pop();
-
-                        final success = await ref
-                            .read(governanceProvider.notifier)
-                            .createAndSubmitProposal(
-                              title: title,
-                              locationName: location,
-                              category: _selectedCategory,
-                              description: desc,
-                            );
-
-                        if (!mounted || !context.mounted) return;
-                        final err = ref.read(governanceProvider).error;
-                        showPixelToast(
-                          context,
-                          success
-                              ? 'Proposal "$title" submitted for admin screening!'
-                              : 'Submission failed: ${err ?? "Unknown error."}',
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 
   @override
@@ -200,11 +54,6 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                         ? () => Navigator.of(context).maybePop()
                         : null,
                     actions: [
-                      PixelIconButton(
-                        icon: Wave3Art.plus,
-                        semanticLabel: 'Suggest Location',
-                        onPressed: () => _showSubmitLocationModal(context),
-                      ),
                       PixelIconButton(
                         icon: Wave3Art.list,
                         semanticLabel: 'View All Proposals',
