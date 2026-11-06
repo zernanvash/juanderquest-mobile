@@ -227,6 +227,11 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
     ];
   }
 
+  static const _juanScale = 6;
+
+  /// Art pixels between the top of Juan's area and the wood box.
+  static const _boxTop = 30;
+
   /// Juan large at the bottom left, a gold name tab over a wood text box.
   /// When the spotlight is low, the box sits just above it.
   Widget _box(BuildContext context, PixelGrid grid, Rect? target) {
@@ -247,7 +252,7 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
         children: [
           Padding(
             padding:
-                EdgeInsets.fromLTRB(grid.px(3), grid.px(30), grid.px(3), 0),
+                EdgeInsets.fromLTRB(grid.px(3), grid.px(_boxTop), grid.px(3), 0),
             child: PixelPanel(
               style: PixelBoxStyle.wood,
               padding: 4,
@@ -285,11 +290,16 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
           ),
           Positioned(
             left: grid.px(2),
-            top: 0,
-            // Juan overlaps the box; he must not swallow taps meant for
-            // the choice buttons under him.
+            // Juan stands on the box's top edge: his drawn height depends on
+            // the screen density (scale is in device pixels), so anchor his
+            // feet instead of his head or he covers the text on some phones.
+            top: grid.px(_boxTop + 2) -
+                DesignerArt.juanIdle.frames.first.height *
+                    _juanScale /
+                    MediaQuery.devicePixelRatioOf(context),
+            // He must not swallow taps meant for the choice buttons under him.
             child: const IgnorePointer(
-              child: PixelAnimation(DesignerArt.juanIdle, scale: 6),
+              child: PixelAnimation(DesignerArt.juanIdle, scale: _juanScale),
             ),
           ),
           Positioned(

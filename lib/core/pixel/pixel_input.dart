@@ -28,6 +28,7 @@ class PixelTextField extends StatefulWidget {
     this.autofocus = false,
     this.autovalidateMode,
     this.prefix,
+    this.plainFont = false,
   });
 
   final TextEditingController? controller;
@@ -50,6 +51,11 @@ class PixelTextField extends StatefulWidget {
   final bool autofocus;
   final AutovalidateMode? autovalidateMode;
   final Widget? prefix;
+
+  /// Types in the phone's normal font instead of the pixel font. For login and
+  /// sign-up: Silkscreen has no real lowercase, so typed passwords looked like
+  /// Caps Lock was on (owner 2026-11-06).
+  final bool plainFont;
 
   @override
   State<PixelTextField> createState() => _PixelTextFieldState();
@@ -86,6 +92,14 @@ class _PixelTextFieldState extends State<PixelTextField> {
     super.dispose();
   }
 
+  TextStyle _inputStyle(TextStyle pixel) => widget.plainFont
+      ? pixel.copyWith(
+          fontFamily: 'Roboto',
+          fontFamilyFallback: const ['sans-serif'],
+          letterSpacing: 0.2,
+        )
+      : pixel;
+
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
@@ -115,14 +129,15 @@ class _PixelTextFieldState extends State<PixelTextField> {
           cursorColor: PixelPalette.ink,
           cursorWidth: grid.unit,
           cursorRadius: Radius.zero,
-          style: PixelType.body(context),
+          style: _inputStyle(PixelType.body(context)),
           onChanged: (value) {
             field.didChange(value);
             widget.onChanged?.call(value);
           },
           decoration: InputDecoration.collapsed(
             hintText: widget.hint,
-            hintStyle: PixelType.body(context, color: PixelPalette.stone),
+            hintStyle:
+                _inputStyle(PixelType.body(context, color: PixelPalette.stone)),
           ),
         );
         return Column(

@@ -13,6 +13,8 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../services/wallet_signature_service.dart';
+import '../utils/password_strength.dart';
+import '../widgets/password_strength_meter.dart';
 
 enum _AuthStep { signIn, signUp, verifyEmail, completeWallet }
 
@@ -74,6 +76,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
+  PasswordCheck get _passwordCheck => PasswordCheck.of(
+        _password.text,
+        email: _email.text.trim(),
+        name: _name.text.trim(),
+      );
+
   Future<void> _register() async {
     final email = _email.text.trim();
     if (_name.text.trim().length < 2) {
@@ -84,8 +92,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _error = 'Enter a valid email address.');
       return;
     }
-    if (_password.text.length < 8) {
-      setState(() => _error = 'Use a password with at least 8 characters.');
+    if (!_passwordCheck.isStrongEnough) {
+      setState(() => _error =
+          'Choose a stronger password: tick every item in the list below the password.');
       return;
     }
     if (!_ageEligible || !_termsAccepted) {
@@ -447,6 +456,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 16),
                           PixelTextField(
+                            plainFont: true,
                             key: const ValueKey('auth_wallet_name'),
                             controller: _name,
                             label: 'Name',
@@ -456,6 +466,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 12),
                           PixelTextField(
+                            plainFont: true,
                             key: const ValueKey('auth_wallet_email'),
                             controller: _email,
                             label: 'Email address',
@@ -465,6 +476,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 12),
                           PixelTextField(
+                            plainFont: true,
                             key: const ValueKey('auth_wallet_password'),
                             controller: _password,
                             label: 'Password (8+ characters)',
@@ -548,6 +560,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 16),
                           if (_step == _AuthStep.signUp) ...[
                             PixelTextField(
+                              plainFont: true,
                               key: const ValueKey('auth_display_name'),
                               controller: _name,
                               label: 'Name',
@@ -558,6 +571,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(height: 12),
                           ],
                           PixelTextField(
+                            plainFont: true,
                             key: const ValueKey('auth_email'),
                             controller: _email,
                             label: 'Email address',
@@ -567,11 +581,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 12),
                           PixelTextField(
+                            plainFont: true,
                             key: const ValueKey('auth_password'),
                             controller: _password,
-                            label: _step == _AuthStep.signUp
-                                ? 'Password (8+ characters)'
-                                : 'Password',
+                            label: 'Password',
+                            onChanged: _step == _AuthStep.signUp
+                                ? (_) => setState(() {})
+                                : null,
                             hint: '••••••••',
                             obscureText: !_passwordVisible,
                             autofillHints: [
@@ -580,6 +596,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   : AutofillHints.password
                             ],
                           ),
+                          if (_step == _AuthStep.signUp) ...[
+                            const SizedBox(height: 8),
+                            PasswordStrengthMeter(check: _passwordCheck),
+                          ],
                           const SizedBox(height: 4),
                           Align(
                             alignment: Alignment.centerRight,
@@ -687,6 +707,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ] else ...[
                           PixelTextField(
+                            plainFont: true,
                             key: const ValueKey('auth_email_otp'),
                             controller: _otp,
                             label: '6-digit email code',

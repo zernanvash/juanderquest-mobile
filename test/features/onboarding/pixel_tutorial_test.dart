@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
+import 'package:juanderquest_app/core/pixel/pixel_art.dart';
+import 'package:juanderquest_app/core/pixel/pixel_box.dart';
 import 'package:juanderquest_app/features/onboarding/pixel_tutorial.dart';
 import 'package:juanderquest_app/features/pixel_lab/tutorial_preview.dart';
 
 // Owner 2026-11-04: B's dark spotlight with C's Juan at the bottom left.
 void main() {
   Future<void> pumpPreview(WidgetTester tester,
-      {Size size = const Size(390, 844), double textScale = 1}) async {
-    tester.view.physicalSize = size;
-    tester.view.devicePixelRatio = 1;
+      {Size size = const Size(390, 844),
+      double textScale = 1,
+      double dpr = 1}) async {
+    tester.view.physicalSize = size * dpr;
+    tester.view.devicePixelRatio = dpr;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
       child: MaterialApp(
@@ -73,6 +78,27 @@ void main() {
         await tester.pump();
         await finishLine(tester);
         expect(tester.takeException(), isNull);
+      });
+    }
+
+    // Owner 2026-11-06 (phone screenshot): Juan's legs covered "HEY, I'M JUAN".
+    // He is drawn in device pixels, so he is taller on low-density screens.
+    for (final dpr in const [1.0, 2.25, 3.0]) {
+      testWidgets('Juan stands on the box, clear of the text (dpr $dpr)',
+          (tester) async {
+        await pumpPreview(tester, dpr: dpr);
+        await finishLine(tester);
+        final juan = tester.getRect(find.byWidgetPredicate(
+            (w) => w is PixelAnimation && w.frames == DesignerArt.juanIdle));
+        final box = tester.getRect(find.descendant(
+            of: find.byType(PixelTutorialOverlay),
+            matching: find.byWidgetPredicate(
+                (w) => w is PixelPanel && w.style == PixelBoxStyle.wood)));
+        final text = tester.getRect(find.textContaining('First time'));
+        expect(juan.bottom, lessThanOrEqualTo(box.top + 8),
+            reason: 'feet on the top edge of the box');
+        expect(juan.bottom, greaterThan(box.top - 8));
+        expect(juan.bottom, lessThan(text.top));
       });
     }
   });

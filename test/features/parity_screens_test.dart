@@ -218,8 +218,20 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('recovery_verify')));
       await tester.pumpAndSettle();
 
+      // A weak new password is refused (owner 2026-11-06).
       await tester.enterText(
           find.byKey(const ValueKey('recovery_password')), 'newpass123');
+      await tester.enterText(
+          find.byKey(const ValueKey('recovery_confirm')), 'newpass123');
+      await tester.ensureVisible(find.byKey(const ValueKey('recovery_reset')));
+      await tester.tap(find.byKey(const ValueKey('recovery_reset')));
+      await tester.pump();
+      expect(
+          find.text('Choose a stronger password: tick every item in the list below it.'),
+          findsOneWidget);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('recovery_password')), 'Tr4vel-Bolinao!');
       await tester.enterText(
           find.byKey(const ValueKey('recovery_confirm')), 'different1');
       await tester.tap(find.byKey(const ValueKey('recovery_reset')));
@@ -227,7 +239,8 @@ void main() {
       expect(find.text('The two passwords do not match.'), findsOneWidget);
 
       await tester.enterText(
-          find.byKey(const ValueKey('recovery_confirm')), 'newpass123');
+          find.byKey(const ValueKey('recovery_confirm')), 'Tr4vel-Bolinao!');
+      await tester.ensureVisible(find.byKey(const ValueKey('recovery_reset')));
       await tester.tap(find.byKey(const ValueKey('recovery_reset')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('recovery_done')), findsOneWidget);
@@ -235,7 +248,7 @@ void main() {
           fake.requests.firstWhere((r) => r.path == '/auth/password/reset');
       expect(reset.data, {
         'reset_grant': '7d1f3c6e-1111-4222-8333-944455556666',
-        'new_password': 'newpass123',
+        'new_password': 'Tr4vel-Bolinao!',
       });
     });
   });

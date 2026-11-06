@@ -193,12 +193,26 @@ void main() {
       await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
       await tester.tap(find.byKey(const ValueKey('auth_create_account')));
       await tester.pumpAndSettle();
-      expect(
-          find.text('Use a password with at least 8 characters.'), findsOneWidget);
+      const weak =
+          'Choose a stronger password: tick every item in the list below the password.';
+      expect(find.text(weak), findsOneWidget);
 
-      // Enter password, tap submit without checking terms
+      // A weak password (no uppercase, no symbol) is refused too (owner 2026-11-06).
       await tester.enterText(
           find.byKey(const ValueKey('auth_password')), 'securepass123');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('password_strength_meter')), findsOneWidget);
+      expect(find.text('Strength: fair'), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
+      await tester.tap(find.byKey(const ValueKey('auth_create_account')));
+      await tester.pumpAndSettle();
+      expect(find.text(weak), findsOneWidget);
+
+      // Enter a strong password, tap submit without checking terms
+      await tester.enterText(
+          find.byKey(const ValueKey('auth_password')), 'Tr4vel-Bolinao!');
+      await tester.pumpAndSettle();
+      expect(find.text('Strength: strong'), findsOneWidget);
       await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
       await tester.tap(find.byKey(const ValueKey('auth_create_account')));
       await tester.pumpAndSettle();
@@ -206,6 +220,27 @@ void main() {
           find.text('Confirm age eligibility and accept the terms to continue.'),
           findsOneWidget);
     });
+
+    for (final size in const [Size(320, 568), Size(568, 320)]) {
+      testWidgets(
+          'sign-up with the strength meter fits ${size.width.toInt()}x${size.height.toInt()} at 1.4x text',
+          (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = 1.4;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await tester.pumpWidget(_buildAuthTestApp(child: const LoginScreen()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab_signup')));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+            find.byKey(const ValueKey('auth_password')), 'abc');
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('password_strength_meter')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('valid registration calls registerWithEmail', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
@@ -228,7 +263,7 @@ void main() {
       await tester.enterText(
           find.byKey(const ValueKey('auth_email')), 'juan@example.com');
       await tester.enterText(
-          find.byKey(const ValueKey('auth_password')), 'securepass123');
+          find.byKey(const ValueKey('auth_password')), 'Tr4vel-Bolinao!');
       await tester.ensureVisible(find.byKey(const ValueKey('auth_age_eligibility')));
       await tester.tap(find.byKey(const ValueKey('auth_age_eligibility')));
       await tester.pumpAndSettle();

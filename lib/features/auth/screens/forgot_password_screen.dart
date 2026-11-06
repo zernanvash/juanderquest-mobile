@@ -12,6 +12,8 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../utils/password_strength.dart';
+import '../widgets/password_strength_meter.dart';
 
 enum _RecoveryStep { email, code, password, done }
 
@@ -119,8 +121,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   Future<void> _reset() async {
     final pw = _password.text;
-    if (pw.length < 8) {
-      setState(() => _error = 'Use at least 8 characters.');
+    if (!PasswordCheck.of(pw, email: _email.text.trim()).isStrongEnough) {
+      setState(() => _error =
+          'Choose a stronger password: tick every item in the list below it.');
       return;
     }
     if (pw != _confirm.text) {
@@ -231,6 +234,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       case _RecoveryStep.email:
         return [
           PixelTextField(
+            plainFont: true,
             key: const ValueKey('recovery_email'),
             controller: _email,
             label: 'Email',
@@ -242,6 +246,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       case _RecoveryStep.code:
         return [
           PixelTextField(
+            plainFont: true,
             key: const ValueKey('recovery_code'),
             controller: _code,
             label: '6-digit code',
@@ -253,15 +258,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       case _RecoveryStep.password:
         return [
           PixelTextField(
+            plainFont: true,
             key: const ValueKey('recovery_password'),
             controller: _password,
-            label: 'New password (8+ characters)',
+            label: 'New password',
             hint: '••••••••',
             obscureText: true,
             autofillHints: const [AutofillHints.newPassword],
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 8),
+          PasswordStrengthMeter(
+            check: PasswordCheck.of(_password.text, email: _email.text.trim()),
           ),
           const SizedBox(height: 12),
           PixelTextField(
+            plainFont: true,
             key: const ValueKey('recovery_confirm'),
             controller: _confirm,
             label: 'Repeat new password',
