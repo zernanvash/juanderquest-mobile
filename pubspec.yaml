@@ -51,6 +51,7 @@ flutter:
   assets:
     - assets/images/
     - assets/licenses/
+    - assets/ar_sprites/
   shaders:
     - shaders/dither_bg.frag
   fonts:

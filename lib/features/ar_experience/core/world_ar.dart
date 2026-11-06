@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../games/ar_sprites.dart';
 import 'ar_math.dart';
 
 /// ARCore status on this phone.
@@ -253,6 +254,33 @@ class WorldArSession {
       await _methods.invokeMethod<bool>('setNativeObject', {
         'visible': visible,
         if (color != null) 'color': [color.r, color.g, color.b],
+      });
+    } catch (_) {}
+  }
+
+  /// Plan 77: uploads one sprite strip for the native sprite renderer.
+  Future<bool> loadSpriteSheet(ArSpriteSheet sheet, Uint8List png) async {
+    try {
+      return await _methods.invokeMethod<bool>('loadSpriteSheet', {
+            'name': sheet.name,
+            'png': png,
+            'frames': sheet.frames,
+            'frameW': sheet.frameW,
+            'frameH': sheet.frameH,
+            'pivotX': sheet.pivotX,
+            'pivotY': sheet.pivotY,
+          }) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Plan 77: replaces the native sprite scene (empty list = draw nothing).
+  Future<void> setSprites(List<ArSprite> sprites) async {
+    try {
+      await _methods.invokeMethod<bool>('setSprites', {
+        'sprites': [for (final s in sprites) s.toMap()],
       });
     } catch (_) {}
   }

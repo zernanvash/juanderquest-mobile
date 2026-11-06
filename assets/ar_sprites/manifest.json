@@ -1,0 +1,101 @@
+{
+ "lata_stand": {
+  "file": "lata_stand.png",
+  "frames": 1,
+  "frameW": 64,
+  "frameH": 64,
+  "pivot": [
+   32.0,
+   53.0
+  ],
+  "fps": 12
+ },
+ "lata_tumble": {
+  "file": "lata_tumble.png",
+  "frames": 8,
+  "frameW": 64,
+  "frameH": 64,
+  "pivot": [
+   32.0,
+   32.0
+  ],
+  "fps": 12
+ },
+ "lata_down": {
+  "file": "lata_down.png",
+  "frames": 1,
+  "frameW": 64,
+  "frameH": 64,
+  "pivot": [
+   32.0,
+   47.0
+  ],
+  "fps": 12
+ },
+ "tsinelas_spin": {
+  "file": "tsinelas_spin.png",
+  "frames": 8,
+  "frameW": 96,
+  "frameH": 96,
+  "pivot": [
+   48.0,
+   48.0
+  ],
+  "fps": 12
+ },
+ "tsinelas_ground": {
+  "file": "tsinelas_ground.png",
+  "frames": 1,
+  "frameW": 96,
+  "frameH": 96,
+  "pivot": [
+   48.0,
+   54.0
+  ],
+  "fps": 12
+ },
+ "chalk_circle": {
+  "file": "chalk_circle.png",
+  "frames": 1,
+  "frameW": 256,
+  "frameH": 256,
+  "pivot": [
+   128,
+   128
+  ],
+  "fps": 12
+ },
+ "shadow": {
+  "file": "shadow.png",
+  "frames": 1,
+  "frameW": 48,
+  "frameH": 14,
+  "pivot": [
+   24,
+   7
+  ],
+  "fps": 12
+ },
+ "fx_sparkle": {
+  "file": "fx_sparkle.png",
+  "frames": 6,
+  "frameW": 32,
+  "frameH": 32,
+  "pivot": [
+   16,
+   16
+  ],
+  "fps": 15
+ },
+ "fx_dust": {
+  "file": "fx_dust.png",
+  "frames": 6,
+  "frameW": 48,
+  "frameH": 32,
+  "pivot": [
+   24,
+   28
+  ],
+  "fps": 12
+ }
+}

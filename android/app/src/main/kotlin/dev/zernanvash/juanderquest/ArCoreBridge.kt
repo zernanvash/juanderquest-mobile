@@ -107,6 +107,8 @@ private class ArCoreView(
     // AR screen still draws its object in Flutter until the AR Lab work is integrated.
     private val gem = ArGemRenderer()
     @Volatile private var nativeObject = false
+    // AR mini-games (Plan 77): pixel-art sprites in the same frame. Empty unless Dart sends a scene.
+    private val sprites = ArSpriteRenderer()
     private val startNs = System.nanoTime()
     private val view = FloatArray(16)
     private val proj = FloatArray(16)
@@ -143,6 +145,26 @@ private class ArCoreView(
                     call.argument<List<Number>>("color")?.takeIf { it.size >= 3 }?.let { c ->
                         gem.color = floatArrayOf(c[0].toFloat(), c[1].toFloat(), c[2].toFloat())
                     }
+                    result.success(true)
+                }
+                // Plan 77: one PNG strip (bytes) + its frame layout from the sprite manifest.
+                "loadSpriteSheet" -> {
+                    val png = call.argument<ByteArray>("png")
+                    val ok = png != null && sprites.loadSheet(
+                        call.argument<String>("name") ?: "",
+                        png,
+                        call.argument<Int>("frames") ?: 1,
+                        call.argument<Int>("frameW") ?: 1,
+                        call.argument<Int>("frameH") ?: 1,
+                        (call.argument<Number>("pivotX") ?: 0).toFloat(),
+                        (call.argument<Number>("pivotY") ?: 0).toFloat(),
+                    )
+                    result.success(ok)
+                }
+                // Plan 77: replace the sprite scene (anchor-relative); motion restarts now.
+                "setSprites" -> {
+                    val list = call.argument<List<Map<*, *>>>("sprites") ?: emptyList()
+                    sprites.setScene(list.map { ArSpriteRenderer.parse(it) })
                     result.success(true)
                 }
                 "clearAnchor" -> {
@@ -226,6 +248,7 @@ private class ArCoreView(
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         background.create()
         gem.create()
+        sprites.create()
         session?.setCameraTextureName(background.textureId)
     }
 
@@ -292,6 +315,9 @@ private class ArCoreView(
             payload["anchor"] = anchorMatrix.map { it.toDouble() }
             if (nativeObject && tracking) {
                 gem.draw(anchorMatrix, view, proj, 0.35f, (System.nanoTime() - startNs) / 1e9f)
+            }
+            if (tracking && sprites.hasScene) {
+                sprites.draw(anchorMatrix, view, proj)
             }
         }
         main.post { sink?.success(payload) }
