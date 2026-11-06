@@ -67,7 +67,7 @@ void main() {
   test('every sprite the game draws is in the bundled manifest', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final sheets = await ArSpriteSheet.loadManifest(rootBundle);
-    final cam = const V3(0, 1.4, 3.5);
+    const cam = V3(0, 1.4, 3.5);
     final z = TumbangPresoGame.sweetSpot(cam)!;
     final used = {
       for (final s in [

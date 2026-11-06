@@ -77,6 +77,14 @@ class ArSprite {
     this.delay = 0,
     this.life = 0,
     this.floor = false,
+    this.roll = 0,
+    this.rollAmp = 0,
+    this.oscPeriod = 0,
+    this.oscPhase = 0,
+    this.ox = 0,
+    this.oy = 0,
+    this.oz = 0,
+    this.align = false,
   });
 
   final String sheet;
@@ -86,6 +94,14 @@ class ArSprite {
 
   /// Lies flat on the floor (chalk circle, shadows) instead of standing up facing you.
   final bool floor;
+
+  /// Swing/sway: s = sin(2π·age/[oscPeriod] + [oscPhase]) moves the sprite by
+  /// ([ox], [oy], [oz])·s metres and turns it by [roll] + [rollAmp]·s radians about
+  /// its pivot (anticlockwise as you look at it). [oscPeriod] 0 = no swing.
+  final double roll, rollAmp, oscPeriod, oscPhase, ox, oy, oz;
+
+  /// Point the sprite's +x along its on-screen motion (a flying arrow).
+  final bool align;
 
   Map<String, Object> toMap() => {
         'sheet': sheet,
@@ -103,5 +119,13 @@ class ArSprite {
         'delay': delay,
         'life': life,
         'floor': floor,
+        'roll': roll,
+        'rollAmp': rollAmp,
+        'oscPeriod': oscPeriod,
+        'oscPhase': oscPhase,
+        'ox': ox,
+        'oy': oy,
+        'oz': oz,
+        'align': align,
       };
 }

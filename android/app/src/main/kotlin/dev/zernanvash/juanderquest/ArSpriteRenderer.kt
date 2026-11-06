@@ -9,7 +9,12 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -23,6 +28,12 @@ import kotlin.math.sqrt
  * axes, y up from the anchor's floor point).
  *
  * Art scale: 320 sprite pixels per metre, times the sprite's own scale.
+ *
+ * Swing and sway (Plan 77 mini-games): s = sin(2π·age/oscPeriod + oscPhase) moves the
+ * sprite by (ox, oy, oz)·s and turns it by roll + rollAmp·s radians about its pivot, in
+ * its own plane (positive = anticlockwise as you look at it). Dart sends oscPhase from
+ * its game clock, so a new scene continues a swing instead of restarting it. With
+ * align, the sprite's +x points along its on-screen motion (a flying arrow).
  */
 class ArSpriteRenderer {
     class Sheet(
@@ -48,6 +59,12 @@ class ArSpriteRenderer {
         val loop: Boolean,
         val delay: Float,
         val life: Float,
+        val roll: Float = 0f,
+        val rollAmp: Float = 0f,
+        val oscPeriod: Float = 0f,
+        val oscPhase: Float = 0f,
+        val ox: Float = 0f, val oy: Float = 0f, val oz: Float = 0f,
+        val align: Boolean = false,
     )
 
     private val sheets = ConcurrentHashMap<String, Sheet>()
@@ -61,6 +78,12 @@ class ArSpriteRenderer {
     private var uTex = 0
     private var uCutout = 0
     private val vp = FloatArray(16)
+    private var aspect = 1f
+    private var lastAlign = 0f
+    private val clipA = FloatArray(4)
+    private val clipB = FloatArray(4)
+    private val worldA = FloatArray(4)
+    private val worldB = FloatArray(4)
     private val quad: FloatBuffer =
         ByteBuffer.allocateDirect(4 * 5 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
 
@@ -131,6 +154,7 @@ class ArSpriteRenderer {
         val ay = anchor[13]
         val az = anchor[14]
         Matrix.multiplyMM(vp, 0, proj, 0, view, 0)
+        aspect = if (abs(proj[0]) > 1e-6f) proj[5] / proj[0] else 1f
 
         // Camera right / forward, flattened to the ground plane (upright sprites turn only about y).
         var rx = view[0]
@@ -172,9 +196,18 @@ class ArSpriteRenderer {
         if (age < 0f || (s.life > 0f && age > s.life)) return
         if (sheet.texture == 0) upload(sheet)
 
-        val px = ax + s.x + s.vx * age
-        val py = ay + s.y + s.vy * age - 0.5f * s.gravity * age * age
-        val pz = az + s.z + s.vz * age
+        var px = ax + s.x + s.vx * age
+        var py = ay + s.y + s.vy * age - 0.5f * s.gravity * age * age
+        var pz = az + s.z + s.vz * age
+        var roll = s.roll
+        if (s.oscPeriod > 0f) {
+            val o = sin(2f * PI.toFloat() * age / s.oscPeriod + s.oscPhase)
+            px += s.ox * o; py += s.oy * o; pz += s.oz * o
+            roll += s.rollAmp * o
+        }
+        if (s.align) roll = screenAngle(px, py, pz, s.vx, s.vy - s.gravity * age, s.vz)
+        val c = cos(roll)
+        val sn = sin(roll)
 
         var f = s.frame
         if (s.fps > 0f) {
@@ -196,25 +229,43 @@ class ArSpriteRenderer {
         val v1 = (texH - 0.5f) / texH
 
         quad.position(0)
-        if (s.floor) {
-            // Flat on the floor (2 mm up): image right = camera right, image top = away from the camera.
-            val y = py + 0.002f
-            corner(px + rx * left + fx * bottom, y, pz + rz * left + fz * bottom, u0, v1)
-            corner(px + rx * right + fx * bottom, y, pz + rz * right + fz * bottom, u1, v1)
-            corner(px + rx * left + fx * top, y, pz + rz * left + fz * top, u0, v0)
-            corner(px + rx * right + fx * top, y, pz + rz * right + fz * top, u1, v0)
-        } else {
-            corner(px + rx * left, py + bottom, pz + rz * left, u0, v1)
-            corner(px + rx * right, py + bottom, pz + rz * right, u1, v1)
-            corner(px + rx * left, py + top, pz + rz * left, u0, v0)
-            corner(px + rx * right, py + top, pz + rz * right, u1, v0)
+        // Corner (a along image right, b along image up), turned by roll about the pivot.
+        fun put(a: Float, b: Float, u: Float, v: Float) {
+            val a2 = a * c - b * sn
+            val b2 = a * sn + b * c
+            if (s.floor) {
+                // Flat on the floor (2 mm up): image right = camera right, image up = away from the camera.
+                corner(px + rx * a2 + fx * b2, py + 0.002f, pz + rz * a2 + fz * b2, u, v)
+            } else {
+                corner(px + rx * a2, py + b2, pz + rz * a2, u, v)
+            }
         }
+        put(left, bottom, u0, v1)
+        put(right, bottom, u1, v1)
+        put(left, top, u0, v0)
+        put(right, top, u1, v0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, sheet.texture)
         quad.position(0)
         GLES20.glVertexAttribPointer(aPos, 3, GLES20.GL_FLOAT, false, 20, quad)
         quad.position(3)
         GLES20.glVertexAttribPointer(aUv, 2, GLES20.GL_FLOAT, false, 20, quad)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+    }
+
+    /** On-screen direction (radians, anticlockwise from screen right) of velocity v at p. */
+    private fun screenAngle(px: Float, py: Float, pz: Float, vx: Float, vy: Float, vz: Float): Float {
+        val dt = 0.05f
+        worldA[0] = px; worldA[1] = py; worldA[2] = pz; worldA[3] = 1f
+        worldB[0] = px + vx * dt; worldB[1] = py + vy * dt; worldB[2] = pz + vz * dt; worldB[3] = 1f
+        Matrix.multiplyMV(clipA, 0, vp, 0, worldA, 0)
+        Matrix.multiplyMV(clipB, 0, vp, 0, worldB, 0)
+        if (clipA[3] <= 1e-3f || clipB[3] <= 1e-3f) return lastAlign
+        val dx = (clipB[0] / clipB[3] - clipA[0] / clipA[3]) * aspect
+        val dy = clipB[1] / clipB[3] - clipA[1] / clipA[3]
+        // Flying straight away barely moves on screen: keep the last angle instead of jittering.
+        if (dx * dx + dy * dy < 1e-6f) return lastAlign
+        lastAlign = atan2(dy, dx)
+        return lastAlign
     }
 
     private fun corner(x: Float, y: Float, z: Float, u: Float, v: Float) {
@@ -252,6 +303,12 @@ class ArSpriteRenderer {
                 loop = m["loop"] == true,
                 delay = f("delay"),
                 life = f("life"),
+                roll = f("roll"),
+                rollAmp = f("rollAmp"),
+                oscPeriod = f("oscPeriod"),
+                oscPhase = f("oscPhase"),
+                ox = f("ox"), oy = f("oy"), oz = f("oz"),
+                align = m["align"] == true,
             )
         }
     }

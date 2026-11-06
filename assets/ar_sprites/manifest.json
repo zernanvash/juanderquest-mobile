@@ -97,5 +97,137 @@
    28
   ],
   "fps": 12
+ },
+ "hoop": {
+  "file": "hoop.png",
+  "frames": 1,
+  "frameW": 352,
+  "frameH": 864,
+  "pivot": [
+   176.0,
+   857.6
+  ],
+  "fps": 12
+ },
+ "hoop_swish": {
+  "file": "hoop_swish.png",
+  "frames": 4,
+  "frameW": 352,
+  "frameH": 864,
+  "pivot": [
+   176.0,
+   857.6
+  ],
+  "fps": 12
+ },
+ "ball_spin": {
+  "file": "ball_spin.png",
+  "frames": 8,
+  "frameW": 96,
+  "frameH": 96,
+  "pivot": [
+   48.0,
+   48.0
+  ],
+  "fps": 12
+ },
+ "bilao_target": {
+  "file": "bilao_target.png",
+  "frames": 1,
+  "frameW": 208,
+  "frameH": 208,
+  "pivot": [
+   104.0,
+   104.0
+  ],
+  "fps": 12
+ },
+ "arrow_flight": {
+  "file": "arrow_flight.png",
+  "frames": 1,
+  "frameW": 256,
+  "frameH": 32,
+  "pivot": [
+   243.2,
+   16.0
+  ],
+  "fps": 12
+ },
+ "arrow_stuck": {
+  "file": "arrow_stuck.png",
+  "frames": 1,
+  "frameW": 128,
+  "frameH": 128,
+  "pivot": [
+   25.6,
+   92.8
+  ],
+  "fps": 12
+ },
+ "palayok_whole": {
+  "file": "palayok_whole.png",
+  "frames": 1,
+  "frameW": 96,
+  "frameH": 192,
+  "pivot": [
+   48.0,
+   6.4
+  ],
+  "fps": 12
+ },
+ "palayok_crack1": {
+  "file": "palayok_crack1.png",
+  "frames": 1,
+  "frameW": 96,
+  "frameH": 192,
+  "pivot": [
+   48.0,
+   6.4
+  ],
+  "fps": 12
+ },
+ "palayok_crack2": {
+  "file": "palayok_crack2.png",
+  "frames": 1,
+  "frameW": 96,
+  "frameH": 192,
+  "pivot": [
+   48.0,
+   6.4
+  ],
+  "fps": 12
+ },
+ "palayok_break": {
+  "file": "palayok_break.png",
+  "frames": 8,
+  "frameW": 224,
+  "frameH": 320,
+  "pivot": [
+   112.0,
+   6.4
+  ],
+  "fps": 12
+ },
+ "coin_spin": {
+  "file": "coin_spin.png",
+  "frames": 8,
+  "frameW": 25,
+  "frameH": 25,
+  "pivot": [
+   12.8,
+   12.8
+  ],
+  "fps": 12
+ },
+ "sipa": {
+  "file": "sipa.png",
+  "frames": 4,
+  "frameW": 83,
+  "frameH": 83,
+  "pivot": [
+   41.6,
+   41.6
+  ],
+  "fps": 10
  }
 }
