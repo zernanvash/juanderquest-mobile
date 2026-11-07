@@ -166,6 +166,11 @@ void main() {
         expect((hunt.phase, hunt.objectPosition), (ArHuntPhase.seeking, null));
       });
 
+      test('distance hint: whole metres up close, steps of 5 m further out', () {
+        expect([for (final d in [0.4, 4.6, 9.4, 12.0, 13.0, 47.9]) ArHuntRules.distanceHint(d)],
+            ['about 1 m', 'about 5 m', 'about 9 m', 'about 10 m', 'about 15 m', 'about 50 m']);
+      });
+
       test('heat bands', () {
         expect([for (final d in [5.0, 15.0, 30.0, 60.0]) ArHuntRules.heat(d)], ['HOT', 'WARM', 'COOL', 'COLD']);
       });

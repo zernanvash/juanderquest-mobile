@@ -93,6 +93,14 @@ class ArHuntRules {
     return 'COLD';
   }
 
+  /// Distance hint while seeking (owner 2026-11-08: "add a hint distance like
+  /// 5m away from [item]"): whole metres up close, steps of 5 m further out, so
+  /// GPS jitter doesn't make the number jump about.
+  static String distanceHint(double distanceM) {
+    final m = distanceM < 10 ? math.max(1, distanceM.round()) : (distanceM / 5).round() * 5;
+    return 'about $m m';
+  }
+
   /// Short direction hint, e.g. "ahead", "to your left".
   static String directionHint(double relativeDeg) {
     final a = relativeDeg.abs();
