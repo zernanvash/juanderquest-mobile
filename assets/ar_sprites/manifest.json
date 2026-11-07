@@ -241,17 +241,6 @@
   ],
   "fps": 0
  },
- "taya_walk": {
-  "file": "taya_walk.png",
-  "frames": 6,
-  "frameW": 256,
-  "frameH": 435,
-  "pivot": [
-   121.6,
-   425.6
-  ],
-  "fps": 10
- },
  "chalk_line": {
   "file": "chalk_line.png",
   "frames": 1,
@@ -284,5 +273,27 @@
    48.0
   ],
   "fps": 10
+ },
+ "taya_guard": {
+  "file": "taya_guard.png",
+  "frames": 4,
+  "frameW": 435,
+  "frameH": 409,
+  "pivot": [
+   217.6,
+   401.2
+  ],
+  "fps": 8
+ },
+ "bow_draw": {
+  "file": "bow_draw.png",
+  "frames": 6,
+  "frameW": 422,
+  "frameH": 499,
+  "pivot": [
+   211.2,
+   230.4
+  ],
+  "fps": 0
  }
 }

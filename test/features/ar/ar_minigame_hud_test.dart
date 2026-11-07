@@ -104,6 +104,64 @@ void main() {
     expect(find.byKey(const ValueKey('hit_pip_2')), findsOneWidget);
   });
 
+  testWidgets('Ring Shoot: swipe up on the pad throws; a downward drag does not', (tester) async {
+    final g = RingShootGame()..place(0, null);
+    final swipes = <double>[];
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.pixel,
+      home: Scaffold(
+        body: ArMiniGameHud(
+          game: g,
+          now: 1,
+          pose: pose,
+          callout: null,
+          onPlace: () {},
+          onMove: () {},
+          onRestart: () {},
+          onPress: () {},
+          onRelease: () {},
+          onSwipe: swipes.add,
+        ),
+      ),
+    ));
+    final pad = find.byKey(const ValueKey('game_button'));
+    await tester.drag(pad, const Offset(0, 120));
+    expect(swipes, isEmpty);
+    await tester.drag(pad, const Offset(30, -150));
+    expect(swipes, hasLength(1));
+    expect(swipes.single, closeTo(11.3, 0.5));
+  });
+
+  testWidgets('Pana: drag the bow down to pull, let go to shoot', (tester) async {
+    final g = PanaGame(random: math.Random(1))..place(0, null);
+    final events = <String>[];
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.pixel,
+      home: Scaffold(
+        body: ArMiniGameHud(
+          game: g,
+          now: 1,
+          pose: pose,
+          callout: null,
+          onPlace: () {},
+          onMove: () {},
+          onRestart: () {},
+          onPress: () => events.add('press'),
+          onRelease: () => events.add('release'),
+          onPull: (v) => events.add('pull ${v.toStringAsFixed(1)}'),
+        ),
+      ),
+    ));
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(const ValueKey('game_button'))));
+    for (var i = 0; i < 10; i++) {
+      await gesture.moveBy(const Offset(0, 20));
+    }
+    await gesture.up();
+    expect(events.first, 'press');
+    expect(events, contains('pull 1.0'));
+    expect(events.last, 'release');
+  });
+
   testWidgets('piring darkens the screen; the end panel says whether you passed', (tester) async {
     const onLine = V3(0, 1.4, 1.5);
     final g = PalayokGame(random: math.Random(1))
@@ -137,7 +195,7 @@ void main() {
       ..place(0, tCam)
       ..hits = TumbangGame.tayaAfter;
     take(tum);
-    for (var t = 0.0; t < TumbangGame.tayaPeriod; t += 0.1) {
+    for (var t = 0.0; t < 20; t += 0.1) {
       used.addAll(tum.scene(t, tum.throwAt(t, tCam, (tz.from + tz.to) / 2)).map((s) => s.sheet));
     }
     used.addAll(tum.scene(0, tum.throwAt(0, tCam, 0)).map((s) => s.sheet));
@@ -145,11 +203,8 @@ void main() {
     final ring = RingShootGame()..place(0, null);
     take(ring);
     const rCam = V3(0, 1.4, 4.2);
-    final rz = RingShootGame.sweetSpot(rCam)!;
-    for (final p in [(rz.from + rz.to) / 2, 0.0]) {
-      used.addAll(ring
-          .scene(0, shot: RingShootGame.shootFrom(camera: rCam, forward: const V3(0, 0.1, -1), power: p))
-          .map((s) => s.sheet));
+    for (final f in [const V3(0, 0.1, -1), const V3(1, 0.1, -1)]) {
+      used.addAll(ring.scene(0, shot: RingShootGame.shootFrom(camera: rCam, forward: f)).map((s) => s.sheet));
     }
     // Pana: a hit, a miss into the ground, and the golden bangus.
     final pana = PanaGame(random: math.Random(1))
@@ -157,7 +212,11 @@ void main() {
       ..place(0, null)
       ..bangusOut = true;
     final fish = pana.fish((pana.fish(0) - const V3(0, 1.4, 8)).length / PanaGame.maxSpeed);
-    for (final (aim, draw) in [(const V3(0, 1.56, 0), 1.0), (const V3(0, 0, 4), 0.5), (fish + const V3(0, 0.06, 0), 1.0)]) {
+    for (final (aim, draw) in [
+      (const V3(0, 1.56, 0), 1.0),
+      (const V3(0, 0, 4), 0.5),
+      (fish + const V3(0, 0.06, 0), 1.0)
+    ]) {
       final s = pana.shoot(0, ArPose(const V3(0, 1.4, 8), (aim - const V3(0, 1.4, 8)).unit), draw);
       used.addAll(pana.scene(0, shot: s).map((e) => e.sheet));
     }
@@ -179,8 +238,23 @@ void main() {
     sipa.update(10, null);
     take(sipa);
 
-    expect(used, containsAll(['chalk_line', 'taya_walk', 'lata_tumble', 'hoop_swish', 'windsock', 'bilao_target',
-        'arrow_flight', 'arrow_stuck', 'bangus_target', 'bangus_wiggle', 'palayok_break', 'coin_spin', 'sipa']));
+    expect(
+        used,
+        containsAll([
+          'chalk_line',
+          'taya_guard',
+          'lata_tumble',
+          'hoop_swish',
+          'windsock',
+          'bilao_target',
+          'arrow_flight',
+          'arrow_stuck',
+          'bangus_target',
+          'bangus_wiggle',
+          'palayok_break',
+          'coin_spin',
+          'sipa'
+        ]));
     expect(sheets.keys, containsAll(used));
     for (final s in sheets.values) {
       final png = await s.loadPng(rootBundle);

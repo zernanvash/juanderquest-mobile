@@ -18,7 +18,9 @@ class ArPose {
   final V3 forward;
 }
 
-enum ArButtonMode { hold, tap }
+/// How the player throws: hold-and-release, tap, swipe up (Ring Shoot), or
+/// pull the bow string back (Pana).
+enum ArButtonMode { hold, tap, swipe, pull }
 
 enum ArHaptic { none, light, heavy }
 
@@ -177,6 +179,12 @@ abstract class ArMiniGame {
   void restart(double now, ArPose? pose);
   void press(double now, ArPose? pose);
   void release(double now, ArPose? pose) {}
+
+  /// Swipe up to throw; [sideDeg] is how far the swipe leaned from straight up.
+  void swipe(double now, ArPose? pose, double sideDeg) {}
+
+  /// Bow string pulled back by [amount] (0..1) while held.
+  void pull(double now, double amount) {}
   void update(double now, ArPose? pose);
 
   List<ArSprite>? _scene;

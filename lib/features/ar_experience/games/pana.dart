@@ -42,7 +42,9 @@ class PanaShot {
 }
 
 /// "Pana" (Plan 77 `pana`): from the line, 8 m from a woven bilao bullseye.
-/// Hold to draw the bow, aim, let go. The arrow drops a little (full draw flies
+/// Pull the bow string down (back) on screen to draw, aim with the phone, let go
+/// (owner 2026-11-07: "sling back pulling the bow action"); the HUD bow bends with
+/// the pull. The arrow drops a little (full draw flies
 /// flattest) and the wind pushes it sideways; the windsock shows how hard.
 /// 9 arrows: 1–3 still, 4–6 the bilao sways, 7–9 it sways in wind (inspired by
 /// Archery King: wind changes every shot, aim about one ring into it per point).
@@ -59,7 +61,6 @@ class PanaGame extends ArMiniGame {
   /// Painted rings (radius in metres at targetScale) and their points; the
   /// woven edge out to [targetRadius] is worth 2.
   static const rings = [(0.10, 10), (0.20, 8), (0.30, 6), (0.40, 4), (targetRadius, 2)];
-  static const drawS = 0.8;
   static const minSpeed = 8.0;
   static const maxSpeed = 22.0;
   static const swayPeriod = 3.2;
@@ -102,12 +103,12 @@ class PanaGame extends ArMiniGame {
   @override
   bool get passed => score >= passScore;
   @override
-  ArButtonMode get buttonMode => ArButtonMode.hold;
+  ArButtonMode get buttonMode => ArButtonMode.pull;
 
   final Swing _swing = Swing(swayPeriod, 0);
   final Swing _fish = Swing(bangusPeriod, 0);
   bool _drawing = false;
-  double _drawStart = 0;
+  double _pull = 0;
   PanaShot? shot;
   double _releasedAt = 0;
   bool _resolved = false;
@@ -131,20 +132,21 @@ class PanaGame extends ArMiniGame {
 
   V3 get windPush => across * (windPerStep * wind);
 
-  double draw(double now) => _drawing ? ((now - _drawStart) / drawS).clamp(0.0, 1.0) : 0;
+  /// How far the string is pulled back now (0..1).
+  double draw(double now) => _drawing ? _pull : 0;
 
   @override
   bool canPress(double now) => placed && !over && shot == null;
 
   @override
-  String buttonLabel(double now) => !_drawing ? 'HOLD TO DRAW' : (draw(now) >= 1 ? 'LET GO!' : 'DRAWING…');
+  String buttonLabel(double now) => !_drawing ? 'PULL BACK TO DRAW' : (draw(now) >= 0.9 ? 'LET GO!' : 'PULL MORE…');
 
   @override
   ArMeter? meter(double now, ArPose? pose) => (value: draw(now), from: 0.9, to: 1.0);
 
   @override
   String? meterCaption(double now, ArPose? pose) {
-    if (wind == 0) return 'Draw to FULL, aim at the bullseye, let go.';
+    if (wind == 0) return 'Pull the bow down to FULL, aim at the bullseye, let go.';
     final arrows = (wind > 0 ? '▶' : '◀') * wind.abs();
     return 'WIND $arrows  Aim into the wind.';
   }
@@ -204,7 +206,12 @@ class PanaGame extends ArMiniGame {
       return;
     }
     _drawing = true;
-    _drawStart = now;
+    _pull = 0;
+  }
+
+  @override
+  void pull(double now, double amount) {
+    if (_drawing) _pull = amount.clamp(0.0, 1.0);
   }
 
   @override

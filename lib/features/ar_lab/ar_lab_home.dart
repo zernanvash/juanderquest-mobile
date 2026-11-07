@@ -6,6 +6,7 @@ import '../ar_experience/games/pana.dart';
 import '../ar_experience/games/ring_shoot.dart';
 import '../ar_experience/games/sipa.dart';
 import '../ar_experience/games/tumbang_preso.dart';
+import 'ar_collect_lab_screen.dart';
 import 'ar_lab_screen.dart';
 import 'ar_minigame_screen.dart';
 
@@ -57,6 +58,15 @@ class _ArLabHomeState extends State<ArLabHome> {
               onTap: () => open(ArMiniGameScreen(create: create)),
             ),
           ),
+        Card(
+          child: ListTile(
+            key: const ValueKey('lab_collect'),
+            title: const Text('Collect objects (AR task)'),
+            subtitle: const Text('The quest AR models: token, gem, crate, beacon, orb, pyramid. Tap to collect.'),
+            trailing: const Icon(Icons.diamond_outlined),
+            onTap: () => open(const ArCollectLabScreen()),
+          ),
+        ),
         Card(
           child: ListTile(
             key: const ValueKey('lab_world_spawn'),

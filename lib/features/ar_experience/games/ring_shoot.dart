@@ -44,10 +44,13 @@ class RingShot {
       );
 }
 
-/// "Barangay Ring Shoot" (Plan 77 `shooting_hoop`): from the line, hold to charge
-/// and release in the green to arc the ball through the ring. 10 balls; after 3
-/// baskets the hoop starts sliding side to side, faster after 6 (like Messenger's
-/// basketball). A basket is 2 points, a swish 3; 4 baskets pass.
+/// "Barangay Ring Shoot" (Plan 77 `shooting_hoop`): from the line, point at the
+/// ring and SWIPE UP to shoot (owner 2026-11-07: "make the basketball more
+/// forgiving, so the user has to just throw the ball no need to think about ball
+/// throw power"). The power is always right for the ring as it is now; a swipe
+/// that leans far sideways pulls the ball off line. 10 balls; after 3 baskets the
+/// hoop slides side to side, faster after 6 (like Messenger's basketball), so you
+/// time the swipe. A basket is 2 points, a swish 3; 4 baskets pass.
 class RingShootGame extends ArMiniGame {
   RingShootGame({super.rangeScale});
 
@@ -60,9 +63,12 @@ class RingShootGame extends ArMiniGame {
   static const swishRadius = 0.10;
   static const ballScale = 1.2;
   static const ballRadius = 0.12 * ballScale;
-  static const minRange = 1.0;
-  static const maxRange = 8.0;
-  static const chargeCycleS = 1.6;
+
+  /// Pointing within this many degrees of the ring snaps the shot onto it.
+  static const assistDeg = 15.0;
+
+  /// A swipe may lean this far from straight up and still fly straight.
+  static const swipeDeadDeg = 15.0;
   static const balls = 10;
   static const passHits = 4;
   static const slide = 0.8;
@@ -89,10 +95,8 @@ class RingShootGame extends ArMiniGame {
   @override
   bool get passed => hits >= passHits;
   @override
-  ArButtonMode get buttonMode => ArButtonMode.hold;
+  ArButtonMode get buttonMode => ArButtonMode.swipe;
 
-  bool _charging = false;
-  double _chargeStart = 0;
   RingShot? shot;
   double _releasedAt = 0;
   bool _resolved = false;
@@ -108,27 +112,18 @@ class RingShootGame extends ArMiniGame {
     return p == null ? const V3(0, 0, 0) : across * (slide * _swing.sinAt(now));
   }
 
-  double power(double now) {
-    if (!_charging) return 0;
-    final c = ((now - _chargeStart) / (chargeCycleS / 2)) % 2;
-    return c <= 1 ? c : 2 - c;
-  }
-
   @override
   bool canPress(double now) => placed && !over && shot == null;
 
   @override
-  String buttonLabel(double now) => _charging ? 'RELEASE TO SHOOT!' : 'HOLD TO SHOOT';
+  String buttonLabel(double now) => 'SWIPE UP TO SHOOT';
 
   @override
-  ArMeter? meter(double now, ArPose? pose) {
-    final z = pose == null ? null : sweetSpot(pose.camera);
-    return (value: power(now), from: z?.from, to: z?.to);
-  }
+  ArMeter? meter(double now, ArPose? pose) => null;
 
   @override
   String? meterCaption(double now, ArPose? pose) =>
-      slidePeriod == null ? 'Release in the GREEN to shoot.' : 'The ring moves: shoot where it will be.';
+      slidePeriod == null ? 'Point at the ring and swipe up.' : 'The ring moves: swipe as it comes to the middle.';
 
   @override
   bool? reticle(double now, ArPose? pose) => null;
@@ -143,7 +138,6 @@ class RingShootGame extends ArMiniGame {
   void place(double now, ArPose? pose) {
     placed = true;
     shot = null;
-    _charging = false;
     _swing.epoch = now;
     show(scene(now));
   }
@@ -152,7 +146,6 @@ class RingShootGame extends ArMiniGame {
   void unplace() {
     placed = false;
     shot = null;
-    _charging = false;
     show(const []);
   }
 
@@ -166,23 +159,16 @@ class RingShootGame extends ArMiniGame {
   }
 
   @override
-  void press(double now, ArPose? pose) {
-    if (!canPress(now)) return;
-    if (pose != null && !onLine(pose)) {
+  void press(double now, ArPose? pose) {}
+
+  @override
+  void swipe(double now, ArPose? pose, double sideDeg) {
+    if (!canPress(now) || pose == null) return;
+    if (!onLine(pose)) {
       say('BALIK SA LINYA!');
       return;
     }
-    _charging = true;
-    _chargeStart = now;
-  }
-
-  @override
-  void release(double now, ArPose? pose) {
-    if (!_charging) return;
-    final p = power(now);
-    _charging = false;
-    if (pose == null || shot != null) return;
-    final s = shootFrom(camera: pose.camera, forward: pose.forward, power: p, hoopAt: (t) => hoop(now + t));
+    final s = shootFrom(camera: pose.camera, forward: pose.forward, sideDeg: sideDeg, hoopAt: (t) => hoop(now + t));
     shot = s;
     left--;
     _releasedAt = now;
@@ -228,21 +214,29 @@ class RingShootGame extends ArMiniGame {
   /// Time a made ball takes to drop from the rim to the ground.
   static double get _dropS => timeToFallTo(rimHeight, -1.5, gravity, ballRadius)!;
 
-  /// A shot from [camera] along [forward]; [hoopAt] is where the rim centre is
-  /// [t] seconds after release (still hoop by default). Aiming within a few
-  /// degrees of the hoop as it is now snaps the throw onto it.
+  /// A swipe shot from [camera] along [forward]; [hoopAt] is where the rim centre
+  /// is [t] seconds after release (still hoop by default). Pointing within
+  /// [assistDeg] of the ring snaps onto it, and the power is always right for the
+  /// ring as it is at release. A swipe leaning more than [swipeDeadDeg] turns the
+  /// shot by half the extra angle.
   static RingShot shootFrom({
     required V3 camera,
     required V3 forward,
-    required double power,
+    double sideDeg = 0,
     V3 Function(double t)? hoopAt,
   }) {
     final at = hoopAt ?? (_) => const V3(0, 0, 0);
     final h0 = at(0);
     final rel = camera - h0;
-    final dir = TumbangPresoGame.aimDirection(rel, forward, assist: 6);
+    var dir = TumbangPresoGame.aimDirection(rel, forward, assist: assistDeg);
+    final extra = sideDeg.abs() > swipeDeadDeg ? (sideDeg.abs() - swipeDeadDeg) * sideDeg.sign / 2 : 0.0;
+    if (extra != 0) {
+      final a = extra * math.pi / 180;
+      dir = V3(dir.x * math.cos(a) - dir.z * math.sin(a), 0, dir.x * math.sin(a) + dir.z * math.cos(a));
+    }
     final start = TumbangPresoGame.handOf(camera, dir);
-    final range = minRange + power.clamp(0.0, 1.0) * (maxRange - minRange);
+    // Always enough power to reach the ring as it is now.
+    final range = V3(h0.x - start.x, 0, h0.z - start.z).dot(dir);
     final apex = math.max(rimHeight + 0.9, start.y + 0.5);
     final vy = math.sqrt(2 * gravity * (apex - start.y));
     final cross = timeToFallTo(start.y, vy, gravity, rimHeight)!;
@@ -258,20 +252,6 @@ class RingShootGame extends ArMiniGame {
       offset: (down - rim).horizontalLength,
       rim: rim,
     );
-  }
-
-  /// The powers (0..1) that score from here at a still ring, or null.
-  static ({double from, double to})? sweetSpot(V3 camera) {
-    final toRing = V3(-camera.x, 0, -camera.z);
-    double? lo, hi;
-    for (var i = 0; i <= 100; i++) {
-      final p = i / 100;
-      if (shootFrom(camera: camera, forward: toRing, power: p).make) {
-        lo ??= p;
-        hi = p;
-      }
-    }
-    return lo == null ? null : (from: lo, to: hi!);
   }
 
   static const _swishS = 4 / 12;

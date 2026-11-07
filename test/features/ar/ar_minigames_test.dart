@@ -45,26 +45,19 @@ void main() {
       ..stand = const V3(0, 0, 4.2)
       ..place(0, atHoop);
 
-    double mid() {
-      final z = RingShootGame.sweetSpot(cam)!;
-      return (z.from + z.to) / 2;
-    }
-
-    void shoot(RingShootGame g, double now, double power) {
-      g.press(now, atHoop);
-      g.release(now + power * RingShootGame.chargeCycleS / 2, atHoop);
-    }
-
-    test('the sweet spot scores; too soft and too hard miss', () {
-      final z = RingShootGame.sweetSpot(cam)!;
-      expect(z.to - z.from, inInclusiveRange(0.02, 0.25));
-      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: mid()).make, isTrue);
-      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: 0).make, isFalse);
-      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: 1).make, isFalse);
+    test('just swipe: pointing roughly at the ring scores (no power to judge)', () {
+      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward).make, isTrue);
+      expect(RingShootGame.shootFrom(camera: cam, forward: lookOff(cam, const V3(0, 2, 0), 12).forward).make, isTrue,
+          reason: 'aim help snaps 12 degrees');
+      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, sideDeg: 12).make, isTrue,
+          reason: 'a slightly crooked swipe still flies straight');
+      expect(RingShootGame.shootFrom(camera: cam, forward: lookOff(cam, const V3(0, 2, 0), 40).forward).make, isFalse);
+      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, sideDeg: 45).make, isFalse,
+          reason: 'a swipe leaning far sideways goes wide');
     });
 
     test('the ball comes down through rim height at the cross time', () {
-      final s = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: 0.4);
+      final s = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward);
       expect(s.at(s.crossS).y, closeTo(RingShootGame.rimHeight, 1e-6));
       expect(s.at(s.endS).y, closeTo(RingShootGame.ballRadius, 1e-6));
     });
@@ -74,7 +67,7 @@ void main() {
       var now = 1.0;
       expect(g.slidePeriod, isNull);
       for (var i = 1; i <= 3; i++) {
-        shoot(g, now, mid());
+        g.swipe(now, atHoop, 0);
         expect(g.shot!.make, isTrue);
         g.update(now + 5, atHoop);
         g.update(now + 10, atHoop);
@@ -90,22 +83,22 @@ void main() {
       expect(g.slidePeriod, 2.5);
     });
 
-    test('a moving ring must be led: the same shot misses when the ring has moved away', () {
-      final s1 = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: mid());
-      final s2 = RingShootGame.shootFrom(
-          camera: cam, forward: atHoop.forward, power: mid(), hoopAt: (t) => const V3(0.8, 0, 0));
+    test('a moving ring must be timed: the same swipe misses when the ring has moved away', () {
+      final s1 = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward);
+      final s2 = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, hoopAt: (t) => V3(0.8 * t, 0, 0));
       expect((s1.make, s2.make), (true, false));
     });
 
     test('10 balls, then it is over; off the line does not shoot', () {
       final g = newGame();
-      g.press(0.5, look(const V3(2, 1.4, 4.2), const V3(0, 2, 0)));
-      expect(g.takeCallout(), 'BALIK SA LINYA!');
+      g.swipe(0.5, look(const V3(0, 1.4, 3.6), const V3(0, 2, 0)), 0);
+      expect((g.shot, g.takeCallout()), (null, 'BALIK SA LINYA!'));
       var now = 1.0;
+      final wide = lookOff(cam, const V3(0, 2, 0), 40);
       for (var i = 0; i < RingShootGame.balls; i++) {
-        shoot(g, now, 0);
-        g.update(now + 5, atHoop);
-        g.update(now + 10, atHoop);
+        g.swipe(now, wide, 0);
+        g.update(now + 5, wide);
+        g.update(now + 10, wide);
         now += 20;
       }
       expect((g.over, g.passed, g.left), (true, false, 0));
@@ -113,7 +106,7 @@ void main() {
 
     test('a make swishes the net and drops the ball in front of the hoop', () {
       final g = newGame();
-      shoot(g, 1, mid());
+      g.swipe(1, atHoop, 0);
       final s = g.shot!;
       final scene = g.takeScene()!;
       expect(scene.firstWhere((e) => e.sheet == 'hoop').life, s.crossS);
@@ -129,6 +122,19 @@ void main() {
     PanaGame newGame({int seed = 1}) => PanaGame(random: math.Random(seed))
       ..stand = const V3(0, 0, 8)
       ..place(0, look(cam, centre));
+
+    test('pulling the bow string sets the draw; letting go shoots with it', () {
+      final g = newGame();
+      final pose = look(cam, centre + const V3(0, 0.16, 0));
+      g.press(1, pose);
+      g.pull(1.2, 0.5);
+      expect(g.draw(1.2), 0.5);
+      g.pull(1.3, 1.4);
+      expect(g.draw(1.3), 1.0);
+      g.release(1.4, pose);
+      expect(g.shot!.points, 10);
+      expect(g.draw(1.5), 0);
+    });
 
     test('rings score 10/8/6/4 and the woven edge 2', () {
       expect([for (final d in [0.05, 0.15, 0.25, 0.35, 0.5, 0.7]) PanaGame.pointsAt(d)], [10, 8, 6, 4, 2, 0]);

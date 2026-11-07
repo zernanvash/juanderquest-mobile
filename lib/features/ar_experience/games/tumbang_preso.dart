@@ -154,6 +154,59 @@ class TumbangPresoGame {
   }
 }
 
+/// One leg of the taya's route: from [a] at [t0] to [b] at [t1] (a == b: standing guard).
+typedef TayaLeg = ({double t0, double t1, V3 a, V3 b});
+
+/// The taya's random guarding route (owner 2026-11-07: "make the taya move not
+/// just left and right create a random pattern"): quick dashes between random
+/// spots in front of the can, sideways and nearer/further, with short stops.
+/// Built ahead of time so the native renderer can draw it from one scene.
+class TayaPath {
+  TayaPath(this.random);
+  final math.Random random;
+  final List<TayaLeg> legs = [];
+
+  /// Picks the next spot: [lateral] metres either side, [nearFrom]..[nearTo]
+  /// metres in front of the can.
+  late V3 Function(double lateral, double front) toWorld;
+  double lateral = 1.1;
+  double nearFrom = 0.7, nearTo = 1.9;
+
+  V3 _spot() => toWorld((random.nextDouble() * 2 - 1) * lateral, nearFrom + random.nextDouble() * (nearTo - nearFrom));
+
+  void start(double now) {
+    legs.clear();
+    final p = _spot();
+    legs.add((t0: now, t1: now + 0.5, a: p, b: p));
+  }
+
+  /// Makes sure the route reaches [until].
+  void extend(double until) {
+    while (legs.last.t1 < until) {
+      final from = legs.last.b;
+      final to = _spot();
+      final speed = 0.9 + random.nextDouble() * 0.9;
+      final t0 = legs.last.t1;
+      final t1 = t0 + math.max(0.25, (to - from).horizontalLength / speed);
+      legs.add((t0: t0, t1: t1, a: from, b: to));
+      if (random.nextBool()) legs.add((t0: t1, t1: t1 + 0.15 + random.nextDouble() * 0.65, a: to, b: to));
+    }
+  }
+
+  V3 at(double now) {
+    if (legs.isEmpty) return const V3(0, 0, 0);
+    extend(now);
+    for (final l in legs) {
+      if (now <= l.t1) {
+        if (now <= l.t0) return l.a;
+        final f = (now - l.t0) / (l.t1 - l.t0);
+        return l.a + (l.b - l.a) * f;
+      }
+    }
+    return legs.last.b;
+  }
+}
+
 /// One slipper, decided at release, with the taya maybe in the way.
 class TumbangThrow {
   const TumbangThrow(this.shot, this.blockS);
@@ -169,17 +222,17 @@ class TumbangThrow {
 }
 
 class TumbangGame extends ArMiniGame {
-  TumbangGame({super.rangeScale});
+  TumbangGame({super.rangeScale, math.Random? random}) : path = TayaPath(random ?? math.Random());
 
   static const slippers = 10;
   static const passHits = 4;
 
-  /// The taya walks this far in front of the can, side to side.
-  static const tayaFront = 1.2;
-  static const tayaSway = 0.9;
-  static const tayaPeriod = 3.2;
-  static const tayaHalfWidth = 0.22;
-  static const tayaHeight = 1.25;
+  /// The taya guards with arms spread: this wide either side, this tall.
+  static const tayaHalfWidth = 0.45;
+  static const tayaHeight = 1.2;
+
+  /// How far ahead the native scene draws the route; resent before it runs out.
+  static const _horizonS = 30.0;
 
   /// Knock-downs before the taya comes in.
   static const tayaAfter = 2;
@@ -218,7 +271,8 @@ class TumbangGame extends ArMiniGame {
   double _releasedAt = 0;
   bool _resolved = false;
   double _settleUntil = 0;
-  final Swing _taya = Swing(tayaPeriod, 0);
+  final TayaPath path;
+  double _sceneUntil = 0;
 
   int get _level => math.min(streak, 4);
   double get chargeCycle => TumbangPresoGame.chargeCycleS * math.pow(0.88, _level);
@@ -226,7 +280,16 @@ class TumbangGame extends ArMiniGame {
   bool get tayaOn => hits >= tayaAfter;
 
   /// Middle of the taya at [now] (on the ground).
-  V3 taya(double now) => downrange * (-tayaFront * rangeScale) + across * (tayaSway * _taya.sinAt(now));
+  V3 taya(double now) {
+    if (path.legs.isEmpty) _startTaya(now);
+    return path.at(now);
+  }
+
+  void _startTaya(double now) {
+    path
+      ..toWorld = ((lateral, front) => downrange * (-front * rangeScale) + across * lateral)
+      ..start(now);
+  }
 
   double power(double now) {
     if (!_charging) return 0;
@@ -280,7 +343,7 @@ class TumbangGame extends ArMiniGame {
     placed = true;
     current = null;
     _charging = false;
-    _taya.epoch = now;
+    path.legs.clear();
     show(scene(now));
   }
 
@@ -349,7 +412,11 @@ class TumbangGame extends ArMiniGame {
   @override
   void update(double now, ArPose? pose) {
     final t = current;
-    if (t == null) return;
+    if (t == null) {
+      // Keep the taya's route drawn ahead while waiting for a throw.
+      if (placed && !over && tayaOn && now > _sceneUntil - 10) show(scene(now));
+      return;
+    }
     if (!_resolved && now >= _releasedAt + t.endS) {
       _resolved = true;
       if (t.knocks) {
@@ -396,14 +463,23 @@ class TumbangGame extends ArMiniGame {
       ArSprite('lata_stand', x: 0, y: 0, z: 0, scale: TumbangPresoGame.canScale, life: canLife),
     ];
     if (tayaOn && !over) {
-      final base = downrange * (-tayaFront * rangeScale);
-      final sway = across * tayaSway;
-      out.addAll([
-        ArSprite('shadow', x: base.x, y: 0, z: base.z, scale: 3, floor: true,
-            oscPeriod: tayaPeriod, oscPhase: _taya.phaseAt(now), ox: sway.x, oz: sway.z),
-        ArSprite('taya_walk', x: base.x, y: 0, z: base.z, fps: 10, loop: true, oscFlip: true,
-            oscPeriod: tayaPeriod, oscPhase: _taya.phaseAt(now), ox: sway.x, oz: sway.z),
-      ]);
+      taya(now);
+      path.extend(now + _horizonS);
+      _sceneUntil = now + _horizonS;
+      for (final l in path.legs) {
+        if (l.t1 <= now || l.t0 >= now + _horizonS) continue;
+        final from = math.max(l.t0, now);
+        final p = path.at(from);
+        final dur = l.t1 - from;
+        final v = (l.b - l.a) * (1 / (l.t1 - l.t0));
+        final moving = v.horizontalLength > 1e-6;
+        final delay = from - now;
+        out.addAll([
+          ArSprite('shadow', x: p.x, y: 0, z: p.z, vx: v.x, vz: v.z, scale: 4, floor: true, delay: delay, life: dur),
+          ArSprite('taya_guard', x: p.x, y: 0, z: p.z, vx: v.x, vz: v.z, scale: 1.0,
+              fps: moving ? 8 : 0, loop: moving, delay: delay, life: dur),
+        ]);
+      }
     }
     if (t == null || shot == null) return out;
     final v = shot.velocity;

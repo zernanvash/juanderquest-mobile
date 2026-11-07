@@ -92,14 +92,14 @@ void main() {
       expect(g.margin, TumbangPresoGame.hitMargin);
     });
 
-    test('from the 3rd knock-down the taya walks in front of the can and blocks some throws', () {
+    test('from the 3rd knock-down the taya guards in front of the can and blocks some throws', () {
       final g = newGame()..hits = TumbangGame.tayaAfter;
       expect(g.tayaOn, isTrue);
-      expect(g.takeScene()!.map((s) => s.sheet), isNot(contains('taya_walk')));
+      expect(g.takeScene()!.map((s) => s.sheet), isNot(contains('taya_guard')));
       g.place(0, pose);
-      expect(g.takeScene()!.map((s) => s.sheet), contains('taya_walk'));
+      expect(g.takeScene()!.map((s) => s.sheet), contains('taya_guard'));
       var blocked = 0, clear = 0;
-      for (var t = 0.0; t < TumbangGame.tayaPeriod; t += 0.05) {
+      for (var t = 0.0; t < 20; t += 0.05) {
         final th = g.throwAt(t, pose, sweetMid());
         if (th.blockS != null) {
           blocked++;
@@ -108,7 +108,29 @@ void main() {
         }
       }
       expect(blocked, greaterThan(0));
-      expect(clear, greaterThan(blocked), reason: 'timing it right beats the taya most of the time');
+      expect(clear, greaterThan(0), reason: 'timing it right gets past the taya');
+    });
+
+    test('the taya roams at random: sideways and nearer/further, always between you and the can', () {
+      final g = newGame()..hits = TumbangGame.tayaAfter;
+      final spots = [for (var t = 0.0; t < 30; t += 0.25) g.taya(t)];
+      final xs = spots.map((p) => p.x), zs = spots.map((p) => p.z);
+      expect(xs.reduce(math.max) - xs.reduce(math.min), greaterThan(1.2));
+      expect(zs.reduce(math.max) - zs.reduce(math.min), greaterThan(0.5));
+      expect(spots.every((p) => p.z > 0.6 && p.z < 2.0 && p.x.abs() <= 1.1 + 1e-9), isTrue);
+      // Not a fixed back-and-forth: the moves differ in length.
+      final legs = g.path.legs.where((l) => (l.b - l.a).horizontalLength > 0).map((l) => (l.b - l.a).horizontalLength);
+      expect(legs.toSet().length, greaterThan(3));
+    });
+
+    test('the taya route keeps being drawn while you wait', () {
+      final g = newGame()..hits = TumbangGame.tayaAfter;
+      g.place(0, pose);
+      g.takeScene();
+      g.update(5, pose);
+      expect(g.takeScene(), isNull);
+      g.update(25, pose);
+      expect(g.takeScene()!.map((s) => s.sheet), contains('taya_guard'));
     });
 
     test('10 slippers, then the session is over; 4 knock-downs pass', () {

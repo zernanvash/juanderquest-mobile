@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
@@ -20,6 +23,8 @@ class ArMiniGameHud extends StatelessWidget {
     required this.onRestart,
     required this.onPress,
     required this.onRelease,
+    this.onSwipe,
+    this.onPull,
     this.placing = false,
     this.pressed = false,
   });
@@ -35,6 +40,12 @@ class ArMiniGameHud extends StatelessWidget {
   final VoidCallback onRestart;
   final VoidCallback onPress;
   final VoidCallback onRelease;
+
+  /// Swipe-up throw: how far the swipe leaned from straight up, in degrees.
+  final ValueChanged<double>? onSwipe;
+
+  /// Bow string pulled back, 0..1.
+  final ValueChanged<double>? onPull;
 
   @override
   Widget build(BuildContext context) {
@@ -224,24 +235,42 @@ class ArMiniGameHud extends StatelessWidget {
         ),
       ],
       const SizedBox(height: 6),
-      Listener(
-        key: const ValueKey('game_button'),
-        onPointerDown: can ? (_) => onPress() : null,
-        onPointerUp: can && hold ? (_) => onRelease() : null,
-        onPointerCancel: can && hold ? (_) => onRelease() : null,
-        child: PixelPanel(
-          style: can ? PixelBoxStyle.green : PixelBoxStyle.stone,
-          pressed: pressed,
-          child: SizedBox(
-            height: 52,
-            child: Center(
-              child: FittedBox(
-                child: Text(game.buttonLabel(now), style: PixelType.title(context, color: PixelPalette.white)),
+      if (game.buttonMode == ArButtonMode.swipe)
+        _SwipePad(
+          key: const ValueKey('game_button'),
+          enabled: can,
+          label: game.buttonLabel(now),
+          onSwipe: (deg) => onSwipe?.call(deg),
+        )
+      else if (game.buttonMode == ArButtonMode.pull)
+        _BowPad(
+          key: const ValueKey('game_button'),
+          enabled: can,
+          draw: meter?.value ?? 0,
+          label: game.buttonLabel(now),
+          onPress: onPress,
+          onPull: (v) => onPull?.call(v),
+          onRelease: onRelease,
+        )
+      else
+        Listener(
+          key: const ValueKey('game_button'),
+          onPointerDown: can ? (_) => onPress() : null,
+          onPointerUp: can && hold ? (_) => onRelease() : null,
+          onPointerCancel: can && hold ? (_) => onRelease() : null,
+          child: PixelPanel(
+            style: can ? PixelBoxStyle.green : PixelBoxStyle.stone,
+            pressed: pressed,
+            child: SizedBox(
+              height: 52,
+              child: Center(
+                child: FittedBox(
+                  child: Text(game.buttonLabel(now), style: PixelType.title(context, color: PixelPalette.white)),
+                ),
               ),
             ),
           ),
         ),
-      ),
       const SizedBox(height: 6),
       Align(child: PixelButton(label: 'MOVE IT', variant: PixelButtonVariant.ghost, onPressed: onMove)),
     ]);
@@ -304,4 +333,174 @@ class _ReticlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ReticlePainter old) => old.on != on;
+}
+
+/// Swipe up anywhere on the pad to throw (Ring Shoot).
+class _SwipePad extends StatefulWidget {
+  const _SwipePad({super.key, required this.enabled, required this.label, required this.onSwipe});
+  final bool enabled;
+  final String label;
+  final ValueChanged<double> onSwipe;
+
+  @override
+  State<_SwipePad> createState() => _SwipePadState();
+}
+
+class _SwipePadState extends State<_SwipePad> {
+  Offset _d = Offset.zero;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: (_) => _d = Offset.zero,
+      onPanUpdate: (e) => _d += e.delta,
+      onPanEnd: (_) {
+        // An upward flick of at least 40 px throws; the lean is its angle from straight up.
+        if (widget.enabled && _d.dy < -40) widget.onSwipe(math.atan2(_d.dx, -_d.dy) * 180 / math.pi);
+      },
+      child: PixelPanel(
+        style: widget.enabled ? PixelBoxStyle.green : PixelBoxStyle.stone,
+        child: SizedBox(
+          height: 72,
+          child: Center(
+            child: FittedBox(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text('▲ ▲ ▲', style: PixelType.title(context, color: PixelPalette.sun)),
+                Text(widget.label, style: PixelType.title(context, color: PixelPalette.white)),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The bow at the bottom of the screen: drag down to pull the string back,
+/// let go to shoot (Pana). The picture bends with the pull.
+class _BowPad extends StatefulWidget {
+  const _BowPad({
+    super.key,
+    required this.enabled,
+    required this.draw,
+    required this.label,
+    required this.onPress,
+    required this.onPull,
+    required this.onRelease,
+  });
+  final bool enabled;
+  final double draw;
+  final String label;
+  final VoidCallback onPress;
+  final ValueChanged<double> onPull;
+  final VoidCallback onRelease;
+
+  /// Drag this far down for a full draw.
+  static const fullPullPx = 160.0;
+
+  @override
+  State<_BowPad> createState() => _BowPadState();
+}
+
+class _BowPadState extends State<_BowPad> {
+  double _dy = 0;
+  bool _down = false;
+
+  void _end() {
+    if (!_down) return;
+    _down = false;
+    widget.onRelease();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: (_) {
+        if (!widget.enabled) return;
+        _dy = 0;
+        _down = true;
+        widget.onPress();
+      },
+      onPanUpdate: (e) {
+        if (!_down) return;
+        _dy = math.max(0, _dy + e.delta.dy);
+        widget.onPull((_dy / _BowPad.fullPullPx).clamp(0.0, 1.0));
+      },
+      onPanEnd: (_) => _end(),
+      onPanCancel: _end,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(
+            height: 110,
+            child: _StripFrame(asset: 'assets/ar_sprites/bow_draw.png', frames: 6, frame: (widget.draw * 5).round())),
+        Text(widget.label,
+            textAlign: TextAlign.center,
+            style: PixelType.title(context, color: widget.enabled ? PixelPalette.sun : PixelPalette.mist)
+                .copyWith(shadows: const [Shadow(color: PixelPalette.ink, offset: Offset(2, 2))])),
+      ]),
+    );
+  }
+}
+
+/// One frame of a horizontal pixel-art strip, drawn crisp (nearest pixel).
+class _StripFrame extends StatefulWidget {
+  const _StripFrame({required this.asset, required this.frames, required this.frame});
+  final String asset;
+  final int frames;
+  final int frame;
+
+  @override
+  State<_StripFrame> createState() => _StripFrameState();
+}
+
+class _StripFrameState extends State<_StripFrame> {
+  static final Map<String, ui.Image> _cache = {};
+  ui.Image? _image;
+
+  @override
+  void initState() {
+    super.initState();
+    _image = _cache[widget.asset];
+    if (_image == null) _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await DefaultAssetBundle.of(context).load(widget.asset);
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      final img = (await codec.getNextFrame()).image;
+      _cache[widget.asset] = img;
+      if (mounted) setState(() => _image = img);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final img = _image;
+    if (img == null) return const SizedBox.expand();
+    return CustomPaint(
+      size: Size.infinite,
+      painter: _StripPainter(img, widget.frames, widget.frame.clamp(0, widget.frames - 1)),
+    );
+  }
+}
+
+class _StripPainter extends CustomPainter {
+  _StripPainter(this.image, this.frames, this.frame);
+  final ui.Image image;
+  final int frames;
+  final int frame;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fw = image.width / frames, fh = image.height.toDouble();
+    final k = math.min(size.width / fw, size.height / fh);
+    final w = fw * k, h = fh * k;
+    final dst = Rect.fromLTWH((size.width - w) / 2, (size.height - h) / 2, w, h);
+    canvas.drawImageRect(image, Rect.fromLTWH(fw * frame, 0, fw, fh), dst, Paint()..filterQuality = FilterQuality.none);
+  }
+
+  @override
+  bool shouldRepaint(_StripPainter old) => old.frame != frame || old.image != image;
 }

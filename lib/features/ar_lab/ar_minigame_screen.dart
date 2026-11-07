@@ -221,6 +221,11 @@ class _ArMiniGameScreenState extends State<ArMiniGameScreen> with SingleTickerPr
                         onRestart: _restart,
                         onPress: _press,
                         onRelease: _release,
+                        onSwipe: (deg) {
+                          _game.swipe(_now, _pose, deg);
+                          _flush();
+                        },
+                        onPull: (v) => _game.pull(_now, v),
                       ),
                     ),
                   ]),
