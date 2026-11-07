@@ -18,6 +18,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../providers/profile_stats_provider.dart';
+import '../providers/user_spots_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   final String? username;
@@ -124,16 +125,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final savedSpots = spotsState.spots.where((s) => s.saved).length;
 
-    final userSpots = spotsState.spots.where((s) {
-      if (isMine) {
-        return s.createdBy != null &&
-            (s.createdBy == currentUser?.id || s.createdBy == currentUser?.seedId);
-      } else {
-        final target = widget.username?.toLowerCase() ?? '';
-        return (s.createdBy != null && s.createdBy!.toLowerCase() == target) ||
-            s.sourceName.toLowerCase() == target;
-      }
-    }).toList();
+    final targetHandle = isMine
+        ? (currentUser?.handle.replaceFirst('@', '') ?? currentUser?.id ?? '')
+        : (widget.username ?? '').replaceFirst('@', '');
+    final userSpotsAsync = targetHandle.isNotEmpty
+        ? ref.watch(userSpotsProvider(targetHandle))
+        : const AsyncValue<List<SpotModel>>.data([]);
 
     return Theme(
       data: AppTheme.pixel,
@@ -194,7 +191,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         SizedBox(height: grid.px(3)),
                         _actionButtons(context, grid, isMine, earnedBadges, savedSpots),
                         SizedBox(height: grid.px(4)),
-                        _postedDestinations(context, grid, isMine, userSpots),
+                        _postedDestinations(
+                          context,
+                          grid,
+                          isMine,
+                          targetHandle,
+                          userSpotsAsync,
+                        ),
                       ],
                     ),
                   ),
@@ -415,8 +418,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     BuildContext context,
     PixelGrid grid,
     bool isMine,
-    List<SpotModel> userSpots,
+    String targetHandle,
+    AsyncValue<List<SpotModel>> userSpotsAsync,
   ) {
+    final countSuffix = userSpotsAsync.maybeWhen(
+      data: (spots) => ' (${spots.length})',
+      orElse: () => '',
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -425,7 +433,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             Expanded(
               child: Text(
-                'Posted Destinations (${userSpots.length})',
+                'Posted Destinations$countSuffix',
                 style: PixelType.title(context),
               ),
             ),
@@ -438,35 +446,75 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
         SizedBox(height: grid.px(2)),
-        if (userSpots.isEmpty)
-          PixelPanel(
-            key: const ValueKey('profile_no_spots'),
+        userSpotsAsync.when(
+          loading: () => PixelPanel(
+            key: const ValueKey('profile_spots_loading'),
             style: PixelBoxStyle.parchment,
+            padding: 2,
+            child: Center(
+              child: Text(
+                'Loading destinations...',
+                style: PixelType.body(context, color: PixelPalette.slate),
+              ),
+            ),
+          ),
+          error: (_, __) => PixelPanel(
+            key: const ValueKey('profile_spots_error'),
+            style: PixelBoxStyle.parchment,
+            padding: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  isMine
-                      ? 'No destinations posted yet. Share a hidden spot in Pangasinan!'
-                      : 'No destinations posted yet by this explorer.',
+                  'Unable to load destinations.',
                   style: PixelType.body(context, color: PixelPalette.slate),
                 ),
-                if (isMine) ...[
-                  SizedBox(height: grid.px(2)),
-                  PixelButton(
-                    key: const ValueKey('profile_post_spot_empty'),
-                    label: '+ Post a Destination',
-                    onPressed: () => context.push('/map/add-spot'),
-                  ),
-                ],
+                SizedBox(height: grid.px(2)),
+                PixelButton(
+                  key: const ValueKey('profile_spots_retry'),
+                  label: 'RETRY',
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: () => ref.invalidate(userSpotsProvider(targetHandle)),
+                ),
               ],
             ),
-          )
-        else
-          for (final spot in userSpots) ...[
-            _spotCard(context, grid, spot),
-            SizedBox(height: grid.px(2)),
-          ],
+          ),
+          data: (userSpots) {
+            if (userSpots.isEmpty) {
+              return PixelPanel(
+                key: const ValueKey('profile_no_spots'),
+                style: PixelBoxStyle.parchment,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      isMine
+                          ? 'No destinations posted yet. Share a hidden spot in Pangasinan!'
+                          : 'No destinations posted yet by this explorer.',
+                      style: PixelType.body(context, color: PixelPalette.slate),
+                    ),
+                    if (isMine) ...[
+                      SizedBox(height: grid.px(2)),
+                      PixelButton(
+                        key: const ValueKey('profile_post_spot_empty'),
+                        label: '+ Post a Destination',
+                        onPressed: () => context.push('/map/add-spot'),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }
+            return Column(
+              children: [
+                for (final spot in userSpots) ...[
+                  _spotCard(context, grid, spot),
+                  SizedBox(height: grid.px(2)),
+                ],
+              ],
+            );
+          },
+        ),
       ],
     );
   }

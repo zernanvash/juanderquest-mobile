@@ -13,7 +13,6 @@ import 'package:juanderquest_app/features/dashboard/data/home_events.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_dashboard_providers.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
-import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/quests/providers/quest_provider.dart';

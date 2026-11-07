@@ -10,6 +10,7 @@ import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/cosmetics/screens/appearance_screen.dart';
 import 'package:juanderquest_app/features/profile/providers/profile_stats_provider.dart';
+import 'package:juanderquest_app/features/profile/providers/user_spots_provider.dart';
 import 'package:juanderquest_app/features/profile/screens/affiliate_application_screen.dart';
 import 'package:juanderquest_app/features/profile/screens/profile_screen.dart';
 import 'package:juanderquest_app/features/shop/models/cosmetic_item.dart';
@@ -322,6 +323,7 @@ Future<void> _pump(
   VoucherNotifier Function(Ref ref)? voucherNotifier,
   SubmissionNotifier Function(ApiClient client)? submissionNotifier,
   SpotDiscoveryNotifier Function(Ref ref)? spotsNotifier,
+  List<Override> extraOverrides = const [],
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -345,6 +347,8 @@ Future<void> _pump(
                 ref.read(apiClientProvider), submissions ?? SubmissionState())),
         spotDiscoveryProvider.overrideWith((ref) =>
             spotsNotifier?.call(ref) ?? _SpotsFixture(ref, spots)),
+        userSpotsProvider.overrideWith((ref, handle) => Future.value(const [])),
+        ...extraOverrides,
       ],
       child: MaterialApp.router(routerConfig: _router(home, initial: initial)),
     ),
@@ -450,6 +454,108 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('profile_follow')));
       await tester.pump();
       expect(find.text('Following'), findsOneWidget);
+    });
+
+    testWidgets('own profile loads posted destinations and tap opens /explore/:slug', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('scale-01').overrideWith((ref) => Future.value([_spot])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Posted Destinations (1)'), findsOneWidget);
+      expect(find.text('Hundred Islands National Park'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot')), findsOneWidget);
+
+      await tester.tap(find.text('Hundred Islands National Park'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('route:/explore'), findsOneWidget);
+    });
+
+    testWidgets('own profile empty state shows + Post a Destination CTA', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('scale-01').overrideWith((ref) => Future.value([])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Posted Destinations (0)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_no_spots')), findsOneWidget);
+      expect(find.text('No destinations posted yet. Share a hidden spot in Pangasinan!'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot_empty')), findsOneWidget);
+    });
+
+    testWidgets('own profile error state shows retry button', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('scale-01').overrideWith((ref) => Future.error(Exception('network error'))),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byKey(const ValueKey('profile_spots_error')), findsOneWidget);
+      expect(find.text('Unable to load destinations.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_spots_retry')), findsOneWidget);
+    });
+
+    testWidgets('other profile loads posted destinations and tap opens /explore/:slug', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(username: 'maya'),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('maya').overrideWith((ref) => Future.value([_spot])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Posted Destinations (1)'), findsOneWidget);
+      expect(find.text('Hundred Islands National Park'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot')), findsNothing);
+
+      await tester.tap(find.text('Hundred Islands National Park'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('route:/explore'), findsOneWidget);
+    });
+
+    testWidgets('other profile empty state shows no destinations by this explorer and no CTA', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(username: 'maya'),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('maya').overrideWith((ref) => Future.value([])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Posted Destinations (0)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_no_spots')), findsOneWidget);
+      expect(find.text('No destinations posted yet by this explorer.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot_empty')), findsNothing);
     });
   });
   group('ShopScreen', () {

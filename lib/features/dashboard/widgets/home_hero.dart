@@ -256,7 +256,7 @@ class HomeHero extends ConsumerWidget {
                     Text('·', style: PixelType.small(context, color: PixelPalette.slate)),
                     _statItem(context, 'TOWNS', '$townsCount'),
                     Text('·', style: PixelType.small(context, color: PixelPalette.slate)),
-                    _statItem(context, 'STREAK', '${streakDays}D 🔥'),
+                    _statItem(context, 'STREAK', '${streakDays}D'),
                   ],
                 ),
               ),

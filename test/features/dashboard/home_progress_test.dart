@@ -3,14 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:juanderquest_app/core/dev/test_content.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
-import 'package:juanderquest_app/features/dashboard/data/home_events.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
-import 'package:juanderquest_app/features/dashboard/providers/home_dashboard_providers.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
@@ -294,11 +293,46 @@ final _submissions = [
   ),
 ];
 
+const _emptyQotd = HomeQotdState(
+  date: '',
+  questionId: '',
+  questionText: '',
+  quizTitle: '',
+  options: [],
+);
+
+Map<String, dynamic> _qotdJson() => {
+      'date': '2026-11-05',
+      'question': {
+        'id': 'q1',
+        'text':
+            'Which town is home to the Minor Basilica of Our Lady of Manaoag?',
+        'quiz_title': 'Pangasinan 101',
+        'options': [
+          {'id': 'o1', 'ordinal': 1, 'text': 'Manaoag'},
+          {'id': 'o2', 'ordinal': 2, 'text': 'San Fabian'},
+        ],
+      },
+      'answered': false,
+      'answer': null,
+    };
+
+Map<String, dynamic> _answerJson() => {
+      'date': '2026-11-05',
+      'correct': true,
+      'correct_option_id': 'o1',
+      'explanation': 'Manaoag is home to the Minor Basilica.',
+      'source_url': null,
+    };
+
 List<Override> _overrides({
   _FakeApi? api,
   UserModel? user,
   HomeDailyState? daily,
+  AsyncValue<HomeDailyState>? dailyState,
   AsyncValue<HomeQotdState>? qotd,
+  bool realQotd = false,
+  AsyncValue<ChoiceOverview>? choiceOverview,
   QuestState? quests,
   SubmissionState? submissions,
 }) {
@@ -314,27 +348,40 @@ List<Override> _overrides({
     ),
     choiceEngagementProvider.overrideWith((ref) async => _summary),
     choiceOverviewProvider.overrideWith(
-      (ref) async => ChoiceOverview(
-        current: ChoiceCampaign(
-          id: 'camp-1',
-          theme: 'Bangus Festival Spotlight',
-          region: 'Pangasinan',
-          status: 'voting',
-          opensAt: DateTime.now().subtract(const Duration(days: 1)),
-          closesAt: DateTime.now().add(const Duration(days: 5)),
-        ),
-        nextOpensAt: null,
-        nextClosesAt: null,
-        nextTheme: null,
-        previous: null,
-        notice: null,
-        votingEnabled: true,
+      (ref) => choiceOverview != null
+          ? (choiceOverview.hasError
+              ? Future.error(choiceOverview.error!, choiceOverview.stackTrace)
+              : Future.value(choiceOverview.value!))
+          : Future.value(
+              ChoiceOverview(
+                current: ChoiceCampaign(
+                  id: 'camp-1',
+                  theme: 'Bangus Festival Spotlight',
+                  region: 'Pangasinan',
+                  status: 'voting',
+                  opensAt: DateTime.now().subtract(const Duration(days: 1)),
+                  closesAt: DateTime.now().add(const Duration(days: 5)),
+                ),
+                nextOpensAt: null,
+                nextClosesAt: null,
+                nextTheme: null,
+                previous: null,
+                notice: null,
+                votingEnabled: true,
+              ),
+            ),
+    ),
+    homeDailyProvider.overrideWith(
+      (ref) => dailyState != null
+          ? (dailyState.hasError
+              ? Future.error(dailyState.error!, dailyState.stackTrace)
+              : Future.value(dailyState.value!))
+          : Future.value(daily ?? _daily),
+    ),
+    if (!realQotd)
+      homeQotdProvider.overrideWith(
+        (ref) => _FixedQotdNotifier(ref, qotd ?? const AsyncValue.data(_qotd)),
       ),
-    ),
-    homeDailyProvider.overrideWith((ref) async => daily ?? _daily),
-    homeQotdProvider.overrideWith(
-      (ref) => _FixedQotdNotifier(ref, qotd ?? const AsyncValue.data(_qotd)),
-    ),
     questProvider.overrideWith(
       (ref) => _QuestFixture(
         ref.read(apiClientProvider),
@@ -407,6 +454,13 @@ GoRouter _router() => GoRouter(
         GoRoute(
           path: '/choice',
           builder: (_, __) => const _RouteProbe('/choice'),
+          routes: [
+            GoRoute(
+              path: ':id',
+              builder: (_, state) =>
+                  _RouteProbe('/choice/${state.pathParameters['id']}'),
+            ),
+          ],
         ),
         GoRoute(
           path: '/plaza',
@@ -499,7 +553,7 @@ void main() {
       expect(find.byKey(const ValueKey('home_hero_stats_strip')), findsOneWidget);
       expect(find.text('VISITS: 18'), findsOneWidget);
       expect(find.text('TOWNS: 5'), findsOneWidget);
-      expect(find.text('STREAK: 4D 🔥'), findsOneWidget);
+      expect(find.text('STREAK: 4D'), findsOneWidget);
 
       expect(tester.takeException(), isNull);
     });
@@ -613,7 +667,7 @@ void main() {
 
       await _tapRoute(tester, find.byKey(const ValueKey('home_menu_quests')), '/quests');
       await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_menu_choice')), '/choice');
+      await _tapRoute(tester, find.byKey(const ValueKey('home_menu_choice')), '/choice/camp-1');
       await _pump(tester);
       await _tapRoute(tester, find.byKey(const ValueKey('home_menu_plaza')), '/plaza');
       await _pump(tester);
@@ -633,6 +687,163 @@ void main() {
         find.bySemanticsLabel('Notifications'),
         '/notifications',
       );
+    });
+
+    testWidgets('QOTD answer posts once using real API and shows result',
+        (tester) async {
+      final fake = _FakeApi(qotd: _qotdJson(), answer: _answerJson());
+      await _pump(tester, overrides: _overrides(api: fake, realQotd: true));
+      await tester.tap(find.byKey(const ValueKey('home_qotd_answer')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
+      expect(
+        find.text('Which town is home to the Minor Basilica of Our Lady of Manaoag?'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('home_qotd_option_o1')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(fake.calls['/qotd/answer'], 1);
+      expect(find.text('Manaoag is home to the Minor Basilica.'), findsOneWidget);
+    });
+
+    testWidgets('QOTD empty and error states', (tester) async {
+      await _pump(
+        tester,
+        overrides: _overrides(
+          qotd: const AsyncValue.data(_emptyQotd),
+        ),
+      );
+      expect(find.text('No question today.'), findsOneWidget);
+
+      await _pump(
+        tester,
+        overrides: _overrides(
+          qotd: AsyncValue.error(Exception('qotd down'), StackTrace.empty),
+        ),
+      );
+      expect(find.text('Question of the Day is unavailable.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_qotd_retry')), findsOneWidget);
+    });
+
+    testWidgets('daily claim empty and error states', (tester) async {
+      await _pump(
+        tester,
+        overrides: _overrides(
+          daily: const HomeDailyState(stamps: 0, missions: []),
+        ),
+      );
+      expect(find.text('No daily missions today.'), findsOneWidget);
+
+      await _pump(
+        tester,
+        overrides: _overrides(
+          dailyState: AsyncValue.error(Exception('daily down'), StackTrace.empty),
+        ),
+      );
+      expect(find.text('Daily missions unavailable.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_daily_retry')), findsOneWidget);
+    });
+
+    testWidgets('test quests stay off Home unless Developer mode shows them',
+        (tester) async {
+      final testQuest = QuestModel(
+        id: 'q-sim',
+        title: 'SIM Lingayen heritage walk',
+        description: 'QA sample.',
+        category: 'heritage',
+        locationName: 'Lingayen',
+        gpsLat: 16.0,
+        gpsLng: 120.2,
+        radiusMeters: 100,
+        rewardPoints: 10,
+        markerImageUrl: '',
+        isTest: true,
+        steps: const [
+          QuestStepModel(
+            order: 1,
+            title: 'Step 1',
+            description: 'Check in',
+            checkpointType: 'location',
+            required: true,
+            status: 'verified',
+          ),
+          QuestStepModel(
+            order: 2,
+            title: 'Step 2',
+            description: 'Photo',
+            checkpointType: 'photo',
+            required: true,
+            status: 'pending',
+          ),
+        ],
+      );
+      final state = QuestState(quests: [_quests.first, testQuest], isLoading: false);
+      await _pump(tester, overrides: _overrides(quests: state));
+      expect(find.text('1 Quests · 1 Active'), findsOneWidget);
+
+      await _pump(
+        tester,
+        overrides: [
+          ..._overrides(quests: state),
+          showTestContentProvider.overrideWith((ref) => true),
+        ],
+      );
+      expect(find.text('2 Quests · 2 Active'), findsOneWidget);
+    });
+
+    testWidgets('JuanChoice launcher reflects active campaign, results, and error states',
+        (tester) async {
+      // 1. Active voting campaign
+      await _pump(tester);
+      expect(find.text('Voting now: Bangus Festival Spotlight'), findsOneWidget);
+      await _tapRoute(
+        tester,
+        find.byKey(const ValueKey('home_menu_choice')),
+        '/choice/camp-1',
+      );
+
+      // 2. Closed / previous results state
+      await _pump(
+        tester,
+        overrides: _overrides(
+          choiceOverview: const AsyncValue.data(
+            ChoiceOverview(
+              current: null,
+              nextOpensAt: null,
+              nextClosesAt: null,
+              nextTheme: null,
+              previous: ChoicePreviousResult(
+                periodLabel: 'Week 44',
+                validBallots: 70,
+                coWinnerIds: {'cand-1'},
+                standings: [],
+              ),
+              notice: null,
+              votingEnabled: true,
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Last results: Week 44'), findsOneWidget);
+      await _tapRoute(
+        tester,
+        find.byKey(const ValueKey('home_menu_choice')),
+        '/choice',
+      );
+
+      // 3. Error state
+      await _pump(
+        tester,
+        overrides: _overrides(
+          choiceOverview: AsyncValue.error(Exception('choice down'), StackTrace.empty),
+        ),
+      );
+      expect(find.text('JuanChoice is unavailable.'), findsOneWidget);
     });
   });
 }

@@ -212,10 +212,94 @@ class _TodaysPulsePanel extends ConsumerWidget {
         daily != null && daily.nominalStamps > 0 ? daily.nominalStamps : 5;
     final streak = daily?.streak ?? 0;
     final dayNumber = daily?.claimDay ?? 1;
+    final dailyHasError = dailyAsync.hasError && claimState.latest == null;
+    final dailyIsEmpty = daily != null && daily.stamps == 0 && daily.missions.isEmpty;
+
+    final String dailyTitle;
+    final String dailySubtitle;
+    final String dailyActionLabel;
+    final Key dailyActionKey;
+    final bool dailyIsPrimary;
+    final VoidCallback dailyOnAction;
+
+    if (dailyHasError) {
+      dailyTitle = 'DAILY STAMP';
+      dailySubtitle = 'Daily missions unavailable.';
+      dailyActionLabel = 'RETRY';
+      dailyActionKey = const ValueKey('home_daily_retry');
+      dailyIsPrimary = false;
+      dailyOnAction = () => ref.refresh(homeDailyProvider);
+    } else if (dailyIsEmpty) {
+      dailyTitle = 'DAILY STAMP';
+      dailySubtitle = 'No daily missions today.';
+      dailyActionLabel = 'DETAILS ›';
+      dailyActionKey = const ValueKey('home_daily_details');
+      dailyIsPrimary = false;
+      dailyOnAction = () => _showStampCalendarSheet(context, daily);
+    } else if (isClaimed) {
+      dailyTitle = 'STAMP CLAIMED · DAY $dayNumber';
+      dailySubtitle = '$streak-day streak alive · Great job!';
+      dailyActionLabel = 'CALENDAR ›';
+      dailyActionKey = const ValueKey('home_daily_details');
+      dailyIsPrimary = false;
+      dailyOnAction = () => _showStampCalendarSheet(context, daily!);
+    } else {
+      dailyTitle = 'DAILY STAMP: +$nominalStamps READY';
+      dailySubtitle = 'Keep your $streak-day streak active today';
+      dailyActionLabel = 'CLAIM TODAY ›';
+      dailyActionKey = const ValueKey('home_daily_claim');
+      dailyIsPrimary = true;
+      dailyOnAction = () {
+        if (daily != null) {
+          ref.read(homeDailyClaimProvider.notifier).claim(daily);
+        }
+      };
+    }
 
     final qotd = qotdAsync.asData?.value;
     final qotdAnswered = qotd?.answered == true;
     final qotdCorrect = qotd?.correct == true;
+    final qotdHasError = qotdAsync.hasError;
+    final qotdIsEmpty = qotd != null && (qotd.questionText.isEmpty || qotd.options.isEmpty);
+
+    final String qotdTitle;
+    final String qotdSubtitle;
+    final String qotdActionLabel;
+    final Key qotdActionKey;
+    final bool qotdIsPrimary;
+    final VoidCallback qotdOnAction;
+
+    if (qotdHasError) {
+      qotdTitle = 'QUESTION OF THE DAY';
+      qotdSubtitle = 'Question of the Day is unavailable.';
+      qotdActionLabel = 'RETRY';
+      qotdActionKey = const ValueKey('home_qotd_retry');
+      qotdIsPrimary = false;
+      qotdOnAction = () => ref.invalidate(homeQotdProvider);
+    } else if (qotdIsEmpty) {
+      qotdTitle = 'QUESTION OF THE DAY';
+      qotdSubtitle = 'No question today.';
+      qotdActionLabel = 'WAIT';
+      qotdActionKey = const ValueKey('home_qotd_wait');
+      qotdIsPrimary = false;
+      qotdOnAction = () {};
+    } else if (qotdAnswered) {
+      qotdTitle = 'QOTD ANSWERED (+5 STAMPS)';
+      qotdSubtitle = qotdCorrect
+          ? '✓ Correct answer recorded'
+          : 'Answer recorded';
+      qotdActionLabel = 'REVIEW ›';
+      qotdActionKey = const ValueKey('home_qotd_review');
+      qotdIsPrimary = false;
+      qotdOnAction = () => _showQotdSheet(context, ref, qotd);
+    } else {
+      qotdTitle = 'QUESTION OF THE DAY';
+      qotdSubtitle = 'Unanswered · Earn +5 passport stamps';
+      qotdActionLabel = 'ANSWER ›';
+      qotdActionKey = const ValueKey('home_qotd_answer');
+      qotdIsPrimary = true;
+      qotdOnAction = () => _showQotdSheet(context, ref, qotd);
+    }
 
     return PixelPanel(
       key: const ValueKey('home_todays_pulse'),
@@ -248,27 +332,13 @@ class _TodaysPulsePanel extends ConsumerWidget {
             iconWidget: isClaimed
                 ? const PixelMicro(PixelMicroArt.sparkle, scale: 2)
                 : const PixelMicro(PixelMicroArt.coin, scale: 2),
-            title: isClaimed
-                ? 'STAMP CLAIMED · DAY $dayNumber'
-                : 'DAILY STAMP: +$nominalStamps READY',
-            subtitle: isClaimed
-                ? '$streak-day streak alive · Great job!'
-                : 'Keep your $streak-day streak active today',
-            actionLabel: isClaimed ? 'CALENDAR ›' : 'CLAIM TODAY ›',
-            actionKey: isClaimed
-                ? const ValueKey('home_daily_details')
-                : const ValueKey('home_daily_claim'),
-            isPrimary: !isClaimed,
+            title: dailyTitle,
+            subtitle: dailySubtitle,
+            actionLabel: dailyActionLabel,
+            actionKey: dailyActionKey,
+            isPrimary: dailyIsPrimary,
             loading: claimState.claiming,
-            onAction: () {
-              if (isClaimed) {
-                if (daily != null) _showStampCalendarSheet(context, daily);
-              } else {
-                if (daily != null) {
-                  ref.read(homeDailyClaimProvider.notifier).claim(daily);
-                }
-              }
-            },
+            onAction: dailyOnAction,
           ),
           SizedBox(height: grid.px(1)),
 
@@ -278,20 +348,12 @@ class _TodaysPulsePanel extends ConsumerWidget {
             grid,
             key: const ValueKey('pulse_row_qotd'),
             iconWidget: const PixelMicro(PixelMicroArt.sparkle, scale: 2),
-            title: qotdAnswered
-                ? 'QOTD ANSWERED (+5 STAMPS)'
-                : 'QUESTION OF THE DAY',
-            subtitle: qotdAnswered
-                ? (qotdCorrect
-                    ? '✓ Correct answer recorded'
-                    : 'Answer recorded')
-                : 'Unanswered · Earn +5 passport stamps',
-            actionLabel: qotdAnswered ? 'REVIEW ›' : 'ANSWER ›',
-            actionKey: qotdAnswered
-                ? const ValueKey('home_qotd_review')
-                : const ValueKey('home_qotd_answer'),
-            isPrimary: !qotdAnswered,
-            onAction: () => _showQotdSheet(context, ref, qotd),
+            title: qotdTitle,
+            subtitle: qotdSubtitle,
+            actionLabel: qotdActionLabel,
+            actionKey: qotdActionKey,
+            isPrimary: qotdIsPrimary,
+            onAction: qotdOnAction,
           ),
           SizedBox(height: grid.px(1)),
 
@@ -644,6 +706,31 @@ class _ExplorerMenuGrid extends ConsumerWidget {
         ? 'Verified ${walletAddress.substring(0, 6)}…'
         : 'Off-Chain · Link ›';
 
+    final choiceAsync = ref.watch(choiceOverviewProvider);
+    final String choiceSubtitle;
+    final VoidCallback choiceOnTap;
+
+    if (choiceAsync.hasError) {
+      choiceSubtitle = 'JuanChoice is unavailable.';
+      choiceOnTap = () => ref.refresh(choiceOverviewProvider);
+    } else {
+      final overview = choiceAsync.asData?.value;
+      final current = overview?.current;
+      final open = current != null &&
+          (current.status == 'voting' ||
+              overview?.isCampaignOpen(current) == true);
+      if (open) {
+        choiceSubtitle = 'Voting now: ${current.theme}';
+        choiceOnTap = () => context.push('/choice/${current.id}');
+      } else if (overview?.previous != null) {
+        choiceSubtitle = 'Last results: ${overview!.previous!.periodLabel}';
+        choiceOnTap = () => context.push('/choice');
+      } else {
+        choiceSubtitle = 'Weekly Vote · Vote ›';
+        choiceOnTap = () => context.push('/choice');
+      }
+    }
+
     return PixelPanel(
       key: const ValueKey('home_explorer_menu'),
       style: PixelBoxStyle.wood,
@@ -689,8 +776,8 @@ class _ExplorerMenuGrid extends ConsumerWidget {
                   tileKey: const ValueKey('home_menu_choice'),
                   icon: const PixelSprite(DesignerArt.juanChoice, scale: 2),
                   title: 'JUANCHOICE',
-                  subtitle: 'Weekly Vote · Vote ›',
-                  onTap: () => context.push('/choice'),
+                  subtitle: choiceSubtitle,
+                  onTap: choiceOnTap,
                 ),
               ),
             ],
