@@ -489,7 +489,9 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       // Warmer/colder: how close you are, never which way.
       final heat = hunt.heat ?? 'COLD';
       final trend = hunt.trend.isEmpty ? '' : ' · ${hunt.trend}';
-      searchingHint = '$heat$trend. Walk around the area; it appears when you are a few steps away.';
+      final d = hunt.relicDistance;
+      final away = d == null ? '' : ' · ${ArHuntRules.distanceHint(d)} from the ${task.objectLabel}';
+      searchingHint = '$heat$away$trend. It appears when you are a few steps away.';
     }
     if (waitingForGround) {
       final tracking = frame?.tracking ?? false;
