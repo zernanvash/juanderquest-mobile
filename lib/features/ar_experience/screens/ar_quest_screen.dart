@@ -485,6 +485,12 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     final frame = _world?.frame.value;
     final waitingForGround = world && unlocked && frame?.anchor == null;
     String? searchingHint;
+    if (phase == ArHuntPhase.seeking) {
+      // Warmer/colder: how close you are, never which way.
+      final heat = hunt.heat ?? 'COLD';
+      final trend = hunt.trend.isEmpty ? '' : ' · ${hunt.trend}';
+      searchingHint = '$heat$trend. Walk around the area; it appears when you are a few steps away.';
+    }
     if (waitingForGround) {
       final tracking = frame?.tracking ?? false;
       searchingHint = !tracking
@@ -668,7 +674,7 @@ class ArStatusCard extends StatelessWidget {
   static int stageOf(ArHuntPhase phase) => switch (phase) {
         ArHuntPhase.locating => 0,
         ArHuntPhase.outside || ArHuntPhase.unlocking => 1,
-        ArHuntPhase.searching => 2,
+        ArHuntPhase.seeking || ArHuntPhase.searching => 2,
         ArHuntPhase.aligned || ArHuntPhase.submitting => 3,
         ArHuntPhase.verified => 4,
         ArHuntPhase.failed => -1,
@@ -689,13 +695,18 @@ class ArStatusCard extends StatelessWidget {
         break;
       case ArHuntPhase.outside:
         title = 'Walk to the AR area';
-        detail = 'Follow the arrow. The $objectLabel appears when you arrive.';
+        detail = 'Follow the arrow. Watch your step: stay off roads and away from crowds.';
         icon = Icons.directions_walk_rounded;
         break;
       case ArHuntPhase.unlocking:
         title = 'You have arrived';
         detail = 'Unlocking the $objectLabel…';
         icon = Icons.lock_open_rounded;
+        break;
+      case ArHuntPhase.seeking:
+        title = 'Search for the $objectLabel';
+        detail = '${searchingHint ?? 'Walk around the area.'}\nLook up while you walk: mind traffic, people, steps and trees.';
+        icon = Icons.explore_rounded;
         break;
       case ArHuntPhase.searching:
         title = 'Find the $objectLabel';

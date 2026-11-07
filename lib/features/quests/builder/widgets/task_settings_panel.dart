@@ -450,9 +450,37 @@ class TaskSettingsPanel extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Mobile-Exclusive AR Experience: Travelers use their smartphone camera in the JuanDerQuest Android app to find and collect the 3D model on-site.',
+                  'Mobile-Exclusive AR Experience: Travelers use their smartphone camera in the JuanDerQuest Android app to find and collect the 3D model on-site. '
+                  'It hides at a random spot inside the circle you set, different for each traveler, and only shows when they are a few steps away.',
                   style: TextStyle(
                       fontSize: 11, height: 1.4, color: PixelPalette.blueDeep),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Owner 2026-11-07: "add a disclaimer for the creators and users ... avoid
+        // crowded structure like trees ... if possible do it on open areas".
+        Container(
+          key: const ValueKey('ar_safety_note'),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: PixelPalette.sunLight,
+            borderRadius: BorderRadius.zero,
+            border: Border.all(color: PixelPalette.goldDeep),
+          ),
+          child: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.health_and_safety_rounded, size: 18, color: PixelPalette.goldDeep),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Safety first: pick an open, flat area such as a plaza, park lawn or field. '
+                  'Avoid roads and parking lots, crowded spots, water edges, and places with many trees, posts or structures. '
+                  'Travelers will be walking while looking at their phone.',
+                  style: TextStyle(fontSize: 11, height: 1.4, color: PixelPalette.woodDeep),
                 ),
               ),
             ],

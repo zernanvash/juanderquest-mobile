@@ -102,6 +102,9 @@ class ArQuestApi {
 
   ArQuestApi(this.dio, this.task);
 
+  /// The last challenge came with a hidden relic spot: the collect says so.
+  bool _hiddenSpot = false;
+
   Future<ArServerResult<ArChallenge>> requestChallenge(ArFix fix) async {
     try {
       final res = await dio.post(
@@ -114,10 +117,20 @@ class ArQuestApi {
       );
       final data = res.data is Map ? res.data['data'] : null;
       if (data is Map && data['challenge_token'] is String) {
+        // Newer servers hide the relic at a random spot in the area.
+        final r = data['relic'];
+        final relic = r is Map && r['lat'] is num && r['lng'] is num
+            ? ArFence(
+                lat: (r['lat'] as num).toDouble(),
+                lng: (r['lng'] as num).toDouble(),
+                radiusMeters: (data['relic_reach_meters'] as num?)?.toDouble() ?? 12)
+            : null;
+        _hiddenSpot = relic != null;
         return ArServerResult.ok(ArChallenge(
           token: data['challenge_token'] as String,
           expiresAt: DateTime.tryParse('${data['expires_at']}') ??
               DateTime.now().add(const Duration(minutes: 10)),
+          relic: relic,
         ));
       }
       return const ArServerResult.error(
@@ -138,6 +151,7 @@ class ArQuestApi {
           'captured_lng': fix.lng,
           'captured_accuracy': fix.accuracy,
           'challenge_token': challengeToken,
+          if (_hiddenSpot) 'relic_mode': 'hidden_spot',
         },
       );
       return const ArServerResult.ok(null);
@@ -168,6 +182,8 @@ class ArQuestApi {
         return 'You already completed this AR task.';
       case 'NOT_AR_TASK':
         return 'This task is not an AR task.';
+      case 'RELIC_NOT_HERE':
+        return 'The relic is not here. Keep searching the area.';
       case 'CHALLENGE_TOKEN_EXPIRED':
       case 'CHALLENGE_NONCE_REUSED':
       case 'INVALID_CHALLENGE_TOKEN':

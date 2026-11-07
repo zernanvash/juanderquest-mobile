@@ -79,9 +79,9 @@ void main() {
       }
     });
 
-    test('spawn position is 3.5 m away and below eye level', () {
+    test('spawn position is 2.5 m away and below eye level', () {
       final p = ArHuntRules.spawnPosition(90);
-      expect(p.x, closeTo(3.5, 1e-9));
+      expect(p.x, closeTo(2.5, 1e-9));
       expect(p.y.abs(), lessThan(1e-9));
       expect(p.z, ArHuntRules.spawnHeightM);
     });
@@ -112,6 +112,64 @@ void main() {
       now = now.add(const Duration(milliseconds: 700));
       hunt.onCamera(facing(target));
     }
+
+    group('hidden relic (owner 2026-11-07)', () {
+      // The relic hides ~22 m north-east of the centre.
+      const relic = ArFence(lat: 16.04314, lng: 120.33345, radiusMeters: 12);
+
+      setUp(() {
+        server.challenge = ArServerResult.ok(
+            ArChallenge(token: 'tok-r', expiresAt: DateTime(2026, 10, 21, 12, 10), relic: relic));
+      });
+
+      test('arriving in the area does not spawn it next to you: seek it with warmer/colder', () async {
+        await hunt.onFix(fixAt(16.0430, 120.3333, now), cameraBearing: 0);
+        expect(hunt.phase, ArHuntPhase.seeking);
+        expect(hunt.objectPosition, isNull);
+        expect(hunt.relicDistance, greaterThan(15));
+        expect(hunt.heat, anyOf('WARM', 'COOL'));
+        // Walk towards it: warmer.
+        await hunt.onFix(fixAt(16.04305, 120.33338, now), cameraBearing: 0);
+        expect(hunt.trend, 'WARMER');
+        // Walk away: colder.
+        await hunt.onFix(fixAt(16.0428, 120.3331, now), cameraBearing: 0);
+        expect(hunt.trend, 'COLDER');
+        expect(hunt.phase, ArHuntPhase.seeking);
+      });
+
+      test('a few steps away it appears 2.5 m ahead in the direction of its spot', () async {
+        await hunt.onFix(fixAt(16.0430, 120.3333, now), cameraBearing: 0);
+        // ~5 m south-west of the spot, accurate fix.
+        final near = fixAt(16.04311, 120.33342, now, accuracy: 3);
+        await hunt.onFix(near, cameraBearing: 0);
+        expect(hunt.phase, ArHuntPhase.searching);
+        final pos = hunt.objectPosition!;
+        expect(ArGeo.bearingOf(pos), closeTo(ArHuntRules.bearingTo(near, relic), 1));
+        expect(math.sqrt(pos.x * pos.x + pos.y * pos.y), closeTo(2.5, 1e-6));
+      });
+
+      test('the reveal distance is 3 m plus GPS accuracy, never more than 8 m', () {
+        expect(ArHuntRules.revealDistance(0), 3);
+        expect(ArHuntRules.revealDistance(4), 7);
+        expect(ArHuntRules.revealDistance(30), 8);
+      });
+
+      test('server says it is not here: back to searching the area', () async {
+        server.submits = [const ArServerResult.error('RELIC_NOT_HERE', 'not here')];
+        await hunt.onFix(fixAt(16.0430, 120.3333, now), cameraBearing: 0);
+        await hunt.onFix(fixAt(16.04312, 120.33344, now, accuracy: 3), cameraBearing: 0);
+        final target = ArGeo.bearingOf(hunt.objectPosition!);
+        hunt.onCamera(facing(target));
+        now = now.add(const Duration(milliseconds: 700));
+        hunt.onCamera(facing(target));
+        await hunt.collect();
+        expect((hunt.phase, hunt.objectPosition), (ArHuntPhase.seeking, null));
+      });
+
+      test('heat bands', () {
+        expect([for (final d in [5.0, 15.0, 30.0, 60.0]) ArHuntRules.heat(d)], ['HOT', 'WARM', 'COOL', 'COLD']);
+      });
+    });
 
     test('outside the fence shows the finder and does not call the server',
         () async {

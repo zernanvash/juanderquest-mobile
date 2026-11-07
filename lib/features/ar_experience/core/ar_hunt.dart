@@ -43,12 +43,14 @@ class ArHuntRules {
   static double bearingToCentre(ArFix fix, ArFence fence) =>
       ArGeo.bearingDegrees(fix.lat, fix.lng, fence.lat, fence.lng);
 
-  /// Object distance from the traveler and height relative to the phone.
-  static const double spawnDistanceM = 3.5;
+  /// Object distance from the traveler and height relative to the phone
+  /// (owner 2026-11-07: "users should be 2-3 m near the object").
+  static const double spawnDistanceM = 2.5;
   static const double spawnHeightM = -0.45;
 
   /// Degrees between view direction and object that count as "centred".
-  static const double alignDegrees = 9;
+  /// (12: the object now shows 2.5 m away, about 10 degrees below eye level.)
+  static const double alignDegrees = 12;
   static const Duration holdToCollect = Duration(milliseconds: 600);
 
   /// Bearing for the object. Far from the centre it lies towards the
@@ -73,6 +75,24 @@ class ArHuntRules {
       ArGeo.directionFor(bearingDeg) * spawnDistanceM +
       const Vec3(0, 0, spawnHeightM);
 
+  /// Hidden relic (owner 2026-11-07): it appears once GPS says you are this
+  /// close to its spot. Phone GPS is only good to about ±5–10 m, so it is 3 m
+  /// plus the reading's accuracy, capped at 8 m; it then shows 2.5 m ahead in
+  /// the spot's direction.
+  static double revealDistance(double accuracy) => math.min(8.0, 3 + accuracy.clamp(0, 5));
+
+  static double distanceTo(ArFix fix, ArFence point) => ArGeo.distanceMeters(fix.lat, fix.lng, point.lat, point.lng);
+
+  static double bearingTo(ArFix fix, ArFence point) => ArGeo.bearingDegrees(fix.lat, fix.lng, point.lat, point.lng);
+
+  /// Warmer/colder: how close you are, never which way.
+  static String heat(double distanceM) {
+    if (distanceM <= 10) return 'HOT';
+    if (distanceM <= 20) return 'WARM';
+    if (distanceM <= 35) return 'COOL';
+    return 'COLD';
+  }
+
   /// Short direction hint, e.g. "ahead", "to your left".
   static String directionHint(double relativeDeg) {
     final a = relativeDeg.abs();
@@ -91,6 +111,9 @@ enum ArHuntPhase {
 
   /// Inside the fence, asking the server for the one-time AR challenge.
   unlocking,
+
+  /// Inside the area, searching for the hidden relic spot (warmer/colder).
+  seeking,
 
   /// Object spawned; traveler is looking for it.
   searching,
@@ -126,7 +149,11 @@ class ArChallenge {
   final String token;
   final DateTime expiresAt;
 
-  const ArChallenge({required this.token, required this.expiresAt});
+  /// Where the relic hides for this attempt (radius = how close a collect
+  /// must be); null from older servers, which spawn it next to the traveler.
+  final ArFence? relic;
+
+  const ArChallenge({required this.token, required this.expiresAt, this.relic});
 }
 
 typedef RequestChallenge = Future<ArServerResult<ArChallenge>> Function(
@@ -157,6 +184,8 @@ class ArHuntController extends ChangeNotifier {
   ArHuntPhase _phase = ArHuntPhase.locating;
   ArFix? _fix;
   ArChallenge? _challenge;
+  double? _lastRelicDistance;
+  String _trend = '';
   Vec3? _objectPosition;
   DateTime? _alignedSince;
   String? _error;
@@ -175,6 +204,22 @@ class ArHuntController extends ChangeNotifier {
       _fix == null ? null : ArHuntRules.bearingToCentre(_fix!, fence);
 
   bool get canCollect => _phase == ArHuntPhase.aligned;
+
+  /// Distance to the hidden relic spot, while seeking it.
+  double? get relicDistance {
+    final relic = _challenge?.relic;
+    final fix = _fix;
+    return relic == null || fix == null ? null : ArHuntRules.distanceTo(fix, relic);
+  }
+
+  /// 'HOT', 'WARM', 'COOL' or 'COLD' while seeking.
+  String? get heat {
+    final d = relicDistance;
+    return d == null ? null : ArHuntRules.heat(d);
+  }
+
+  /// 'WARMER', 'COLDER' or '' compared with the last reading.
+  String get trend => _trend;
 
   /// Progress (0.0..1.0) towards locking onto the AR target inside the reticle.
   double get alignmentProgress {
@@ -202,6 +247,9 @@ class ArHuntController extends ChangeNotifier {
         } else {
           _set(ArHuntPhase.outside);
         }
+        break;
+      case ArHuntPhase.seeking:
+        _seek(fix);
         break;
       case ArHuntPhase.failed:
         // A GPS error clears itself once the traveler is back inside.
@@ -263,6 +311,13 @@ class ArHuntController extends ChangeNotifier {
       _set(ArHuntPhase.verified);
       return;
     }
+    if (result.code == 'RELIC_NOT_HERE') {
+      // The server says the spot is elsewhere: keep looking.
+      _objectPosition = null;
+      _alignedSince = null;
+      _set(ArHuntPhase.seeking);
+      return;
+    }
     if (result.code == 'CHALLENGE_TOKEN_EXPIRED' ||
         result.code == 'CHALLENGE_NONCE_REUSED') {
       // Get a fresh token and let the traveler collect again.
@@ -305,11 +360,41 @@ class ArHuntController extends ChangeNotifier {
       return;
     }
     _challenge = result.data;
+    if (_challenge!.relic != null) {
+      // Hidden relic: search the area first; it shows only when close.
+      _lastRelicDistance = null;
+      _trend = '';
+      _set(ArHuntPhase.seeking);
+      _seek(fix);
+      return;
+    }
     final bearing = ArHuntRules.spawnBearing(
         fix: fix, fence: fence, cameraBearing: cameraBearing, rng: _rng);
     _objectPosition = ArHuntRules.spawnPosition(bearing);
     _alignedSince = null;
     _set(ArHuntPhase.searching);
+  }
+
+  /// Seeking: update warmer/colder; close enough → the relic appears ahead,
+  /// in the direction of its spot.
+  void _seek(ArFix fix) {
+    final relic = _challenge?.relic;
+    if (relic == null) return;
+    final d = ArHuntRules.distanceTo(fix, relic);
+    final last = _lastRelicDistance;
+    if (last != null && (d - last).abs() >= 1.5) {
+      _trend = d < last ? 'WARMER' : 'COLDER';
+      _lastRelicDistance = d;
+    } else {
+      _lastRelicDistance ??= d;
+    }
+    if (d <= ArHuntRules.revealDistance(fix.accuracy)) {
+      _objectPosition = ArHuntRules.spawnPosition(ArHuntRules.bearingTo(fix, relic));
+      _alignedSince = null;
+      _set(ArHuntPhase.searching);
+      return;
+    }
+    notifyListeners();
   }
 
   void _fail(String? code, String? message) {
