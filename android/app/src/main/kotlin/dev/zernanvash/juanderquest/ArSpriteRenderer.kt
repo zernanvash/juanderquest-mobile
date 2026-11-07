@@ -34,6 +34,8 @@ import kotlin.math.sqrt
  * its own plane (positive = anticlockwise as you look at it). Dart sends oscPhase from
  * its game clock, so a new scene continues a swing instead of restarting it. With
  * align, the sprite's +x points along its on-screen motion (a flying arrow).
+ * flipX mirrors the picture; oscFlip mirrors it while the sway moves backwards (a
+ * walking kid turning round). ax/az add a sideways push (wind): ½·a·t².
  */
 class ArSpriteRenderer {
     class Sheet(
@@ -65,6 +67,10 @@ class ArSpriteRenderer {
         val oscPhase: Float = 0f,
         val ox: Float = 0f, val oy: Float = 0f, val oz: Float = 0f,
         val align: Boolean = false,
+        val flipX: Boolean = false,
+        val oscFlip: Boolean = false,
+        val ax: Float = 0f,
+        val az: Float = 0f,
     )
 
     private val sheets = ConcurrentHashMap<String, Sheet>()
@@ -196,16 +202,19 @@ class ArSpriteRenderer {
         if (age < 0f || (s.life > 0f && age > s.life)) return
         if (sheet.texture == 0) upload(sheet)
 
-        var px = ax + s.x + s.vx * age
+        var px = ax + s.x + s.vx * age + 0.5f * s.ax * age * age
         var py = ay + s.y + s.vy * age - 0.5f * s.gravity * age * age
-        var pz = az + s.z + s.vz * age
+        var pz = az + s.z + s.vz * age + 0.5f * s.az * age * age
         var roll = s.roll
+        var flip = s.flipX
         if (s.oscPeriod > 0f) {
-            val o = sin(2f * PI.toFloat() * age / s.oscPeriod + s.oscPhase)
+            val arg = 2f * PI.toFloat() * age / s.oscPeriod + s.oscPhase
+            val o = sin(arg)
             px += s.ox * o; py += s.oy * o; pz += s.oz * o
             roll += s.rollAmp * o
+            if (s.oscFlip && cos(arg) < 0f) flip = !flip
         }
-        if (s.align) roll = screenAngle(px, py, pz, s.vx, s.vy - s.gravity * age, s.vz)
+        if (s.align) roll = screenAngle(px, py, pz, s.vx + s.ax * age, s.vy - s.gravity * age, s.vz + s.az * age)
         val c = cos(roll)
         val sn = sin(roll)
 
@@ -217,14 +226,16 @@ class ArSpriteRenderer {
         f = f.coerceIn(0, sheet.frames - 1)
 
         val m = s.scale / 320f
-        val left = -sheet.pivotX * m
-        val right = (sheet.frameW - sheet.pivotX) * m
+        // Mirrored: the pivot mirrors too, so the pole/hips stay on the sprite's position.
+        val left = -(if (flip) sheet.frameW - sheet.pivotX else sheet.pivotX) * m
+        val right = (if (flip) sheet.pivotX else sheet.frameW - sheet.pivotX) * m
         val top = sheet.pivotY * m
         val bottom = -(sheet.frameH - sheet.pivotY) * m
         val texW = sheet.bitmap.width.toFloat()
         val texH = sheet.bitmap.height.toFloat()
-        val u0 = (f * sheet.frameW + 0.5f) / texW
-        val u1 = ((f + 1) * sheet.frameW - 0.5f) / texW
+        var u0 = (f * sheet.frameW + 0.5f) / texW
+        var u1 = ((f + 1) * sheet.frameW - 0.5f) / texW
+        if (flip) { val u = u0; u0 = u1; u1 = u }
         val v0 = 0.5f / texH
         val v1 = (texH - 0.5f) / texH
 
@@ -309,6 +320,9 @@ class ArSpriteRenderer {
                 oscPhase = f("oscPhase"),
                 ox = f("ox"), oy = f("oy"), oz = f("oz"),
                 align = m["align"] == true,
+                flipX = m["flipX"] == true,
+                oscFlip = m["oscFlip"] == true,
+                ax = f("ax"), az = f("az"),
             )
         }
     }

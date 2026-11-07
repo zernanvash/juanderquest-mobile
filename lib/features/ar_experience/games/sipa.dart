@@ -7,9 +7,10 @@ import 'tumbang_preso.dart';
 /// "Sipa Rally" (Plan 77 `sipa`): keep the sipa up. It floats up and falls
 /// slowly over the anchor, drifting a little each time; follow it with the
 /// circle and tap SIPA when it turns green (falling, low enough, in the circle).
-/// A drop resets the rally; [targetHits] kicks in a row win.
+/// A drop resets the rally; [targetHits] kicks in a row win. You kick from the
+/// line, 2 m from where the sipa starts.
 class SipaGame extends ArMiniGame {
-  SipaGame({this.targetHits = 5, math.Random? random}) : _random = random ?? math.Random();
+  SipaGame({this.targetHits = 5, super.rangeScale, math.Random? random}) : _random = random ?? math.Random();
 
   /// Floaty gravity: plastic plumes slow the real sipa down.
   static const gravity = 3.0;
@@ -37,8 +38,11 @@ class SipaGame extends ArMiniGame {
   int best = 0;
   @override
   bool placed = false;
-  @override
   bool won = false;
+  @override
+  bool get over => won;
+  @override
+  bool get passed => won;
 
   V3 _start = const V3(0, restY, 0);
   V3 _velocity = const V3(0, 0, 0);
@@ -51,11 +55,12 @@ class SipaGame extends ArMiniGame {
   @override
   String get title => 'SIPA RALLY';
   @override
-  String get placeLabel => 'PLACE SIPA';
+  double get fullDistance => 2.0;
   @override
-  String get placeHint => 'Point at open ground 2–3 steps away, then place the sipa.';
+  String get placeHint =>
+      'Stand where you will play, face open ground, then tap STAND HERE. The sipa appears ${standDistance.toStringAsFixed(1)} m ahead.';
   @override
-  String get wonText => '$targetHits kicks in a row!';
+  String get endText => '$targetHits kicks in a row!';
   @override
   ArButtonMode get buttonMode => ArButtonMode.tap;
 
@@ -126,6 +131,10 @@ class SipaGame extends ArMiniGame {
   @override
   void press(double now, ArPose? pose) {
     if (!canPress(now) || pose == null) return;
+    if (!onLine(pose)) {
+      say('BALIK SA LINYA!');
+      return;
+    }
     _nextTap = now + tapCooldownS;
     if (!kickable(now, pose)) {
       final p = at(now);
@@ -183,12 +192,14 @@ class SipaGame extends ArMiniGame {
     final p = _start;
     if (!flying) {
       return [
+        lineSprite,
         ArSprite('shadow', x: p.x, y: 0, z: p.z, scale: 1.6, floor: true),
         ArSprite('sipa', x: p.x, y: p.y, z: p.z, scale: scale),
       ];
     }
     final v = _velocity;
     return [
+      lineSprite,
       ArSprite('shadow', x: p.x, y: 0, z: p.z, vx: v.x, vz: v.z, scale: 1.6, floor: true, life: _landS),
       ArSprite('sipa', x: p.x, y: p.y, z: p.z, vx: v.x, vy: v.y, vz: v.z, gravity: gravity,
           scale: scale, fps: 10, loop: true, life: _landS),

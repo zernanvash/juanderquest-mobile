@@ -4,11 +4,13 @@ import 'ar_minigame.dart';
 import 'ar_sprites.dart';
 import 'tumbang_preso.dart';
 
-/// "Pukpok Palayok" (Plan 77 `pabitin_palayok`): a clay pot hangs on a rope over
-/// the anchor and swings. Walk close, keep the circle where the pot passes and
-/// tap HAMPAS when it is inside. Three hits crack it open and the coins fall.
+/// "Pukpok Palayok" (Plan 77 `pabitin_palayok`): a clay pot hangs on a rope
+/// 1.5 m in front of the line and swings. Keep the circle where the pot passes
+/// and tap HAMPAS when it is inside. After the first hit you play blindfolded
+/// (piring, like the real game): tap PIRING, the screen goes dark, and you strike
+/// from memory of the swing. Three hits crack it open and the coins fall.
 class PalayokGame extends ArMiniGame {
-  PalayokGame({math.Random? random}) : _random = random ?? math.Random();
+  PalayokGame({super.rangeScale, math.Random? random}) : _random = random ?? math.Random();
 
   static const gravity = 9.8;
   static const potScale = 2.0;
@@ -21,7 +23,7 @@ class PalayokGame extends ArMiniGame {
   static const potRadius = 0.125 * potScale;
   static const swingRad = 0.35;
   static const periodByHits = [2.4, 2.0, 1.6];
-  static const reachM = 2.5;
+  static const blindS = 2.5;
   static const aimDeg = 4.0;
   static const strikeCooldownS = 0.6;
   static const coins = 14;
@@ -35,23 +37,37 @@ class PalayokGame extends ArMiniGame {
   int hits = 0;
   @override
   bool placed = false;
-  @override
   bool won = false;
+  @override
+  bool get over => won;
+  @override
+  bool get passed => won;
 
   final Swing _swing = Swing(periodByHits[0], 0);
   double _nextStrike = 0;
   double _wonAt = double.infinity;
+  double _blindUntil = 0;
+  double _startedAt = 0;
+  double _brokeAt = 0;
+  int swings = 0;
 
   @override
   String get title => 'PUKPOK PALAYOK';
   @override
-  String get placeLabel => 'HANG PALAYOK';
+  double get fullDistance => 1.5;
   @override
-  String get placeHint => 'Point at open ground 2 steps away, then hang the palayok.';
+  String get placeHint =>
+      'Stand where you will swing, face open ground, then tap STAND HERE. The palayok hangs ${standDistance.toStringAsFixed(1)} m ahead.';
   @override
-  String get wonText => 'The palayok broke open. Coins!';
+  String get endText => 'Broke it in ${(_brokeAt - _startedAt).toStringAsFixed(1)} s with $swings swings. Coins!';
   @override
   ArButtonMode get buttonMode => ArButtonMode.tap;
+
+  @override
+  bool blind(double now) => now < _blindUntil;
+
+  /// Blindfolded from the second strike on.
+  bool get piring => hits >= 1 && !broken;
 
   bool get broken => hits >= targetHits;
 
@@ -65,32 +81,31 @@ class PalayokGame extends ArMiniGame {
     return const V3(0, pivotHeight, 0) + r * (ropeLength * math.sin(a)) + V3(0, -ropeLength * math.cos(a), 0);
   }
 
-  bool close(ArPose pose) => pose.camera.horizontalLength <= reachM;
-
-  bool onTarget(double now, ArPose pose) =>
-      close(pose) && inReticle(pose, pot(now, pose), radius: potRadius, coneDeg: aimDeg);
+  bool onTarget(double now, ArPose pose) => inReticle(pose, pot(now, pose), radius: potRadius, coneDeg: aimDeg);
 
   @override
   bool canPress(double now) => placed && !broken && now >= _nextStrike;
 
   @override
-  String buttonLabel(double now) => 'HAMPAS!';
+  String buttonLabel(double now) => piring && !blind(now) ? 'PIRING (BLINDFOLD)' : 'HAMPAS!';
 
   @override
   ArMeter? meter(double now, ArPose? pose) => null;
 
   @override
-  String? meterCaption(double now, ArPose? pose) =>
-      pose != null && !close(pose) ? 'Walk closer: within ${reachM.toStringAsFixed(1)} m.' : 'Tap HAMPAS when the palayok is in the circle.';
-
-  @override
-  bool? reticle(double now, ArPose? pose) => placed && !broken ? (pose != null && onTarget(now, pose)) : null;
-
-  @override
-  String? status(ArPose? pose) {
-    final d = ArMiniGame.distance(pose);
-    return d == null ? null : 'PALAYOK ${d.toStringAsFixed(1)} m';
+  String? meterCaption(double now, ArPose? pose) {
+    if (blind(now)) return 'Blindfolded! Tap HAMPAS when you think it is in front of you.';
+    if (piring) return 'Watch the swing, then tap PIRING and strike blind.';
+    return 'Tap HAMPAS when the palayok is in the circle.';
   }
+
+  /// The aim circle; it shows nothing while blindfolded or for blind swings.
+  @override
+  bool? reticle(double now, ArPose? pose) =>
+      placed && !broken && !blind(now) ? (!piring && pose != null && onTarget(now, pose)) : null;
+
+  @override
+  String? status(ArPose? pose) => 'SWINGS $swings';
 
   @override
   String? hint(double now, ArPose? pose) {
@@ -101,6 +116,8 @@ class PalayokGame extends ArMiniGame {
   @override
   void place(double now, ArPose? pose) {
     placed = true;
+    _startedAt = now;
+    _blindUntil = 0;
     _swing
       ..period = periodByHits[hits.clamp(0, 2)]
       ..epoch = now;
@@ -116,6 +133,7 @@ class PalayokGame extends ArMiniGame {
   @override
   void restart(double now, ArPose? pose) {
     hits = 0;
+    swings = 0;
     won = false;
     _wonAt = double.infinity;
     place(now, pose);
@@ -124,11 +142,18 @@ class PalayokGame extends ArMiniGame {
   @override
   void press(double now, ArPose? pose) {
     if (!canPress(now) || pose == null) return;
-    _nextStrike = now + strikeCooldownS;
-    if (!close(pose)) {
-      say('LAPIT PA!');
+    if (!onLine(pose)) {
+      say('BALIK SA LINYA!');
       return;
     }
+    if (piring && !blind(now)) {
+      _blindUntil = now + blindS;
+      say('PIRING!');
+      return;
+    }
+    _blindUntil = 0;
+    _nextStrike = now + strikeCooldownS;
+    swings++;
     if (!onTarget(now, pose)) {
       say('MINTIS!');
       buzz(ArHaptic.light);
@@ -138,6 +163,7 @@ class PalayokGame extends ArMiniGame {
     hits++;
     buzz(ArHaptic.heavy);
     if (broken) {
+      _brokeAt = now;
       say('BASAG!');
       _wonAt = now + 1.8;
       show(breakScene(angle: swingRad * _swing.sinAt(now), at: at));
@@ -150,6 +176,11 @@ class PalayokGame extends ArMiniGame {
 
   @override
   void update(double now, ArPose? pose) {
+    if (_blindUntil > 0 && now >= _blindUntil) {
+      // Waited too long with the blindfold on: take it off, no swing.
+      _blindUntil = 0;
+      say('MINTIS!');
+    }
     if (!won && now >= _wonAt) {
       won = true;
       buzz(ArHaptic.heavy);
@@ -158,6 +189,7 @@ class PalayokGame extends ArMiniGame {
 
   /// The pot swinging from [now].
   List<ArSprite> scene(double now) => [
+        lineSprite,
         const ArSprite('shadow', x: 0, y: 0, z: 0, scale: 4, floor: true),
         ArSprite(_sheets[hits.clamp(0, 2)],
             x: 0, y: pivotHeight, z: 0, scale: potScale,
@@ -167,6 +199,7 @@ class PalayokGame extends ArMiniGame {
   /// The pot bursting where it was hit, and the coins falling from [at].
   List<ArSprite> breakScene({required double angle, required V3 at}) {
     final out = <ArSprite>[
+      lineSprite,
       const ArSprite('shadow', x: 0, y: 0, z: 0, scale: 4, floor: true),
       ArSprite('palayok_break', x: 0, y: pivotHeight, z: 0, scale: potScale, roll: angle, fps: 12),
       ArSprite('fx_sparkle', x: at.x, y: at.y, z: at.z, scale: 5, fps: 15, life: 0.4),

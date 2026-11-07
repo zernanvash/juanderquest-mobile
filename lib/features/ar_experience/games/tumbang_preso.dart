@@ -1,16 +1,19 @@
 import 'dart:math' as math;
 
+import 'ar_minigame.dart';
 import 'ar_sprites.dart';
 
 /// Plan 77 throwing game, "Tumbang Preso": knock the tin can (lata) with a
 /// slipper (tsinelas). Pure logic, no Flutter: the screen feeds it the camera
-/// pose and the time, and sends [TumbangPresoScene] to the native renderer.
+/// pose and the time, and sends the scenes to the native renderer.
 ///
-/// Rules (owner 2026-11-06: "lets try do the throwing game first"):
-/// - hold to charge, release to throw; power ping-pongs, so holding never fails;
-/// - power sets how far the slipper lands; aiming within [assistDeg] of the can
-///   snaps the throw onto it (one-thumb + viewfinder control);
-/// - a miss costs nothing: throw again; [targetHits] hits win.
+/// Rules (owner 2026-11-06: "lets try do the throwing game first"; 2026-11-07:
+/// "more challenging ... without it being too hard"):
+/// - stand on the chalk line, 5 m from the can; hold to charge, release to throw;
+/// - power sets how far the slipper lands; only a near-perfect aim snaps on;
+/// - 10 slippers; every knock-down in a row speeds the meter up and narrows the
+///   green; from the 3rd knock-down the taya walks in front of the can and blocks;
+/// - 4 knock-downs pass; the score counts streaks.
 ///
 /// Coordinates: metres relative to the can's anchor (world axes, y up, the can
 /// stands at the origin).
@@ -58,118 +61,30 @@ class ThrowShot {
       );
 }
 
-enum TumbangPhase { placing, ready, charging, flying, settling, won }
-
-enum TumbangEvent { none, hit, miss, reset, won }
-
+/// Throw maths for Tumbang Preso (the can stands at the origin).
 class TumbangPresoGame {
-  TumbangPresoGame({this.targetHits = 3});
-
   // Game-size objects (owner: bigger than life so they're easy to see).
   static const canScale = 2.5;
   static const slipperScale = 2.0;
   static const canHeight = 0.14 * canScale;
   static const canRadius = 0.05 * canScale;
 
-  /// Easy mode: how forgiving a hit is around the can, in metres.
+  /// How forgiving a hit is around the can, in metres (shrinks with a streak).
   static const hitMargin = 0.18;
-  static const assistDeg = 10.0;
+
+  /// Aim help: throws within this many degrees of the can snap onto it.
+  static const assistDeg = 3.0;
   static const minRange = 0.5;
   static const maxRange = 8.0;
 
-  /// Full charge up and back down takes this long.
+  /// Full charge up and back down takes this long (shortens with a streak).
   static const chargeCycleS = 1.6;
-
-  final int targetHits;
-  TumbangPhase phase = TumbangPhase.placing;
-  int hits = 0;
-  ThrowShot? shot;
-  double _chargeStart = 0;
-  double _releasedAt = 0;
-  double _settleUntil = 0;
-  bool _resolved = false;
-
-  /// The can is anchored: start playing.
-  void placed() {
-    phase = TumbangPhase.ready;
-    shot = null;
-  }
-
-  /// The can was removed (move it): back to placing, hits kept.
-  void unplaced() {
-    phase = TumbangPhase.placing;
-    shot = null;
-  }
-
-  void restart() {
-    hits = 0;
-    shot = null;
-    phase = TumbangPhase.ready;
-  }
-
-  /// Power 0..1 while holding: rises, then falls, then rises again.
-  double power(double now) {
-    if (phase != TumbangPhase.charging) return 0;
-    final c = ((now - _chargeStart) / (chargeCycleS / 2)) % 2;
-    return c <= 1 ? c : 2 - c;
-  }
-
-  void startCharge(double now) {
-    if (phase != TumbangPhase.ready) return;
-    phase = TumbangPhase.charging;
-    _chargeStart = now;
-  }
-
-  /// Lets go without throwing (e.g. the can is out of view).
-  void cancelCharge() {
-    if (phase == TumbangPhase.charging) phase = TumbangPhase.ready;
-  }
-
-  /// Releases the slipper from [camera] (position) aiming along [forward].
-  ThrowShot? release(double now, {required V3 camera, required V3 forward}) {
-    if (phase != TumbangPhase.charging) return null;
-    final s = TumbangPresoGame.throwFrom(camera: camera, forward: forward, power: power(now));
-    shot = s;
-    phase = TumbangPhase.flying;
-    _releasedAt = now;
-    _resolved = false;
-    return s;
-  }
-
-  /// Advances time; returns what just happened (the screen re-sends the scene on reset).
-  TumbangEvent update(double now) {
-    final s = shot;
-    if (phase == TumbangPhase.flying && s != null) {
-      final at = _releasedAt + (s.hitS ?? s.flightS);
-      if (now >= at && !_resolved) {
-        _resolved = true;
-        phase = TumbangPhase.settling;
-        if (s.hit) {
-          hits++;
-          _settleUntil = _releasedAt + s.hitS! + TumbangPresoScene.canFlightS + 1.2;
-          return TumbangEvent.hit;
-        }
-        _settleUntil = _releasedAt + s.flightS + 0.8;
-        return TumbangEvent.miss;
-      }
-    }
-    if (phase == TumbangPhase.settling && now >= _settleUntil) {
-      shot = null;
-      if (hits >= targetHits) {
-        phase = TumbangPhase.won;
-        return TumbangEvent.won;
-      }
-      phase = TumbangPhase.ready;
-      return TumbangEvent.reset;
-    }
-    return TumbangEvent.none;
-  }
 
   /// The hand: 40 cm in front of the camera, 25 cm lower.
   static V3 handOf(V3 camera, V3 aim) => camera + aim * 0.4 + const V3(0, -0.25, 0);
 
-  /// Unit horizontal aim, snapped onto the can when within [assistDeg].
-  static V3 aimDirection(V3 camera, V3 forward) {
+  /// Unit horizontal aim, snapped onto the can when within [assist] degrees.
+  static V3 aimDirection(V3 camera, V3 forward, {double assist = assistDeg}) {
     final f = V3(forward.x, 0, forward.z);
     final fl = f.horizontalLength;
     final aim = fl < 1e-6 ? const V3(0, 0, -1) : f * (1 / fl);
@@ -177,7 +92,7 @@ class TumbangPresoGame {
     final cl = toCan.horizontalLength;
     if (cl < 1e-6) return aim;
     final c = toCan * (1 / cl);
-    return offAimDegrees(camera, forward).abs() <= assistDeg ? c : aim;
+    return offAimDegrees(camera, forward).abs() <= assist ? c : aim;
   }
 
   /// Signed horizontal angle from the aim to the can (degrees, + = can is to the right).
@@ -194,8 +109,14 @@ class TumbangPresoGame {
     return d;
   }
 
-  static ThrowShot throwFrom({required V3 camera, required V3 forward, required double power}) {
-    final dir = aimDirection(camera, forward);
+  static ThrowShot throwFrom({
+    required V3 camera,
+    required V3 forward,
+    required double power,
+    double margin = hitMargin,
+    double assist = assistDeg,
+  }) {
+    final dir = aimDirection(camera, forward, assist: assist);
     final start = handOf(camera, dir);
     final range = minRange + power.clamp(0.0, 1.0) * (maxRange - minRange);
     final land = V3(start.x + dir.x * range, 0, start.z + dir.z * range);
@@ -209,7 +130,7 @@ class TumbangPresoGame {
     double? hitS;
     for (var t = 0.0; t <= flight; t += 1 / 120) {
       final p = probe.at(t);
-      if (p.horizontalLength <= canRadius + hitMargin && p.y <= canHeight + 0.12 && p.y >= -0.05) {
+      if (p.horizontalLength <= canRadius + margin && p.y <= canHeight + 0.12 && p.y >= -0.05) {
         hitS = t;
         break;
       }
@@ -219,12 +140,12 @@ class TumbangPresoGame {
 
   /// The powers (0..1) that hit from here when aimed at the can, as (from, to),
   /// or null when no power hits (too close or too far).
-  static ({double from, double to})? sweetSpot(V3 camera) {
+  static ({double from, double to})? sweetSpot(V3 camera, {double margin = hitMargin}) {
     final toCan = V3(-camera.x, 0, -camera.z);
     double? lo, hi;
     for (var i = 0; i <= 100; i++) {
       final p = i / 100;
-      if (throwFrom(camera: camera, forward: toCan, power: p).hit) {
+      if (throwFrom(camera: camera, forward: toCan, power: p, margin: margin).hit) {
         lo ??= p;
         hi = p;
       }
@@ -233,12 +154,217 @@ class TumbangPresoGame {
   }
 }
 
-/// What the native renderer draws for each moment of the game.
-class TumbangPresoScene {
-  static const circleScale = 2.0;
+/// One slipper, decided at release, with the taya maybe in the way.
+class TumbangThrow {
+  const TumbangThrow(this.shot, this.blockS);
+  final ThrowShot shot;
+
+  /// Seconds after release when the taya blocks it; null = not blocked.
+  final double? blockS;
+
+  bool get knocks => shot.hit && blockS == null;
+
+  /// When the throw is decided (knock, block, or landing).
+  double get endS => blockS ?? shot.hitS ?? shot.flightS;
+}
+
+class TumbangGame extends ArMiniGame {
+  TumbangGame({super.rangeScale});
+
+  static const slippers = 10;
+  static const passHits = 4;
+
+  /// The taya walks this far in front of the can, side to side.
+  static const tayaFront = 1.2;
+  static const tayaSway = 0.9;
+  static const tayaPeriod = 3.2;
+  static const tayaHalfWidth = 0.22;
+  static const tayaHeight = 1.25;
+
+  /// Knock-downs before the taya comes in.
+  static const tayaAfter = 2;
   static const _canShadowScale = 1.8;
   static const _canKickUp = 2.4;
   static const _canKickForward = 2.0;
+
+  @override
+  String get title => 'TUMBANG PRESO';
+  @override
+  double get fullDistance => 5.0;
+  @override
+  String get placeHint =>
+      'Stand where you will throw, face open ground, then tap STAND HERE. The lata appears ${standDistance.toStringAsFixed(1)} m ahead.';
+  @override
+  String get endText => '$hits knock-downs, $score points.';
+  @override
+  int get targetHits => passHits;
+  @override
+  int hits = 0;
+  int score = 0;
+  int streak = 0;
+  int left = slippers;
+  @override
+  bool placed = false;
+  @override
+  bool over = false;
+  @override
+  bool get passed => hits >= passHits;
+  @override
+  ArButtonMode get buttonMode => ArButtonMode.hold;
+
+  bool _charging = false;
+  double _chargeStart = 0;
+  TumbangThrow? current;
+  double _releasedAt = 0;
+  bool _resolved = false;
+  double _settleUntil = 0;
+  final Swing _taya = Swing(tayaPeriod, 0);
+
+  int get _level => math.min(streak, 4);
+  double get chargeCycle => TumbangPresoGame.chargeCycleS * math.pow(0.88, _level);
+  double get margin => TumbangPresoGame.hitMargin - 0.03 * _level;
+  bool get tayaOn => hits >= tayaAfter;
+
+  /// Middle of the taya at [now] (on the ground).
+  V3 taya(double now) => downrange * (-tayaFront * rangeScale) + across * (tayaSway * _taya.sinAt(now));
+
+  double power(double now) {
+    if (!_charging) return 0;
+    final c = ((now - _chargeStart) / (chargeCycle / 2)) % 2;
+    return c <= 1 ? c : 2 - c;
+  }
+
+  @override
+  bool canPress(double now) => placed && !over && current == null;
+
+  @override
+  String buttonLabel(double now) => _charging ? 'RELEASE TO THROW!' : 'HOLD TO THROW';
+
+  @override
+  ArMeter? meter(double now, ArPose? pose) {
+    final z = pose == null ? null : TumbangPresoGame.sweetSpot(pose.camera, margin: margin);
+    return (value: power(now), from: z?.from, to: z?.to);
+  }
+
+  @override
+  String? meterCaption(double now, ArPose? pose) =>
+      tayaOn ? 'Release in the GREEN when the taya is out of the way.' : 'Release in the GREEN to hit the lata.';
+
+  @override
+  bool? reticle(double now, ArPose? pose) => null;
+
+  @override
+  String? status(ArPose? pose) => 'TSINELAS $left · $score PTS';
+
+  @override
+  String? hint(double now, ArPose? pose) {
+    if (!placed || over || pose == null) return null;
+    final off = TumbangPresoGame.offAimDegrees(pose.camera, pose.forward);
+    if (off.abs() <= 6) return null;
+    return off < 0 ? '◀ AIM LEFT' : 'AIM RIGHT ▶';
+  }
+
+  @override
+  void place(double now, ArPose? pose) {
+    placed = true;
+    current = null;
+    _charging = false;
+    _taya.epoch = now;
+    show(scene(now));
+  }
+
+  @override
+  void unplace() {
+    placed = false;
+    current = null;
+    _charging = false;
+    show(const []);
+  }
+
+  @override
+  void restart(double now, ArPose? pose) {
+    hits = 0;
+    score = 0;
+    streak = 0;
+    left = slippers;
+    over = false;
+    place(now, pose);
+  }
+
+  @override
+  void press(double now, ArPose? pose) {
+    if (!canPress(now)) return;
+    if (pose != null && !onLine(pose)) {
+      say('BALIK SA LINYA!');
+      return;
+    }
+    _charging = true;
+    _chargeStart = now;
+  }
+
+  @override
+  void release(double now, ArPose? pose) {
+    if (!_charging) return;
+    final p = power(now);
+    _charging = false;
+    if (pose == null || current != null) return;
+    final t = throwAt(now, pose, p);
+    current = t;
+    left--;
+    _releasedAt = now;
+    _resolved = false;
+    buzz(ArHaptic.light);
+    show(scene(now, t));
+  }
+
+  /// The throw from [pose] at [power], checked against the walking taya.
+  TumbangThrow throwAt(double now, ArPose pose, double power) {
+    final s = TumbangPresoGame.throwFrom(camera: pose.camera, forward: pose.forward, power: power, margin: margin);
+    if (!tayaOn) return TumbangThrow(s, null);
+    final end = s.hitS ?? s.flightS;
+    final d = downrange;
+    for (var t = 0.0; t <= end; t += 1 / 120) {
+      final p = s.at(t);
+      final k = taya(now + t);
+      if ((p - k).dot(d) >= 0) {
+        // The slipper reaches the taya's line now: blocked if the taya is in the way.
+        if ((p - k).dot(across).abs() <= tayaHalfWidth && p.y <= tayaHeight) return TumbangThrow(s, t);
+        break;
+      }
+    }
+    return TumbangThrow(s, null);
+  }
+
+  @override
+  void update(double now, ArPose? pose) {
+    final t = current;
+    if (t == null) return;
+    if (!_resolved && now >= _releasedAt + t.endS) {
+      _resolved = true;
+      if (t.knocks) {
+        hits++;
+        streak++;
+        score += 10 + 5 * (streak - 1);
+        say(streak > 1 ? 'BAGSAK! x$streak' : 'BAGSAK!');
+        buzz(ArHaptic.heavy);
+        _settleUntil = now + canFlightS + 1.2;
+      } else {
+        streak = 0;
+        final blocked = t.blockS != null;
+        say(blocked ? 'HARANG!' : 'MINTIS!');
+        if (blocked) buzz(ArHaptic.heavy);
+        _settleUntil = now + 0.9;
+      }
+    }
+    if (_resolved && now >= _settleUntil) {
+      current = null;
+      if (left <= 0) {
+        over = true;
+        buzz(ArHaptic.heavy);
+      }
+      show(scene(now));
+    }
+  }
 
   /// Time a knocked can flies before it lies on the ground.
   static double get canFlightS {
@@ -247,33 +373,60 @@ class TumbangPresoScene {
     return (_canKickUp + math.sqrt(_canKickUp * _canKickUp + 2 * g * (y0 - y1))) / g;
   }
 
-  static List<ArSprite> _ground({double canLife = 0}) => [
-        const ArSprite('chalk_circle', x: 0, y: 0, z: 0, scale: circleScale, floor: true),
-        ArSprite('shadow', x: 0, y: 0, z: 0, scale: _canShadowScale, floor: true, life: canLife),
-        ArSprite('lata_stand', x: 0, y: 0, z: 0, scale: TumbangPresoGame.canScale, life: canLife),
-      ];
-
-  /// The can standing in the chalk circle.
-  static List<ArSprite> ready() => _ground();
-
-  /// One throw from release; everything after is timed natively.
-  static List<ArSprite> throwing(ThrowShot s) {
-    final v = s.velocity;
+  /// The can in its circle, the line, the taya (when on), plus one throw.
+  List<ArSprite> scene(double now, [TumbangThrow? t]) {
+    final shot = t?.shot;
+    final canLife = t != null && t.knocks ? shot!.hitS! : 0.0;
     const g = ThrowShot.gravity;
     final out = <ArSprite>[
-      ..._ground(canLife: s.hitS ?? 0),
-      ArSprite('tsinelas_spin',
-          x: s.start.x, y: s.start.y, z: s.start.z, vx: v.x, vy: v.y, vz: v.z, gravity: g,
-          scale: TumbangPresoGame.slipperScale, fps: 16, loop: true, life: s.flightS),
-      ArSprite('shadow', x: s.start.x, y: 0, z: s.start.z, vx: v.x, vz: v.z, scale: 1.4, floor: true, life: s.flightS),
-      ArSprite('tsinelas_ground',
-          x: s.land.x, y: 0, z: s.land.z, scale: TumbangPresoGame.slipperScale, delay: s.flightS),
-      ArSprite('fx_dust', x: s.land.x, y: 0, z: s.land.z, scale: 2, fps: 12, delay: s.flightS, life: 0.5),
+      lineSprite,
+      const ArSprite('chalk_circle', x: 0, y: 0, z: 0, scale: 2.0, floor: true),
+      ArSprite('shadow', x: 0, y: 0, z: 0, scale: _canShadowScale, floor: true, life: canLife),
+      ArSprite('lata_stand', x: 0, y: 0, z: 0, scale: TumbangPresoGame.canScale, life: canLife),
     ];
-    final hitS = s.hitS;
-    if (hitS != null) {
-      final p = s.at(hitS);
-      final d = s.direction;
+    if (tayaOn && !over) {
+      final base = downrange * (-tayaFront * rangeScale);
+      final sway = across * tayaSway;
+      out.addAll([
+        ArSprite('shadow', x: base.x, y: 0, z: base.z, scale: 3, floor: true,
+            oscPeriod: tayaPeriod, oscPhase: _taya.phaseAt(now), ox: sway.x, oz: sway.z),
+        ArSprite('taya_walk', x: base.x, y: 0, z: base.z, fps: 10, loop: true, oscFlip: true,
+            oscPeriod: tayaPeriod, oscPhase: _taya.phaseAt(now), ox: sway.x, oz: sway.z),
+      ]);
+    }
+    if (t == null || shot == null) return out;
+    final v = shot.velocity;
+    final flyS = t.endS;
+    out.addAll([
+      ArSprite('tsinelas_spin',
+          x: shot.start.x, y: shot.start.y, z: shot.start.z, vx: v.x, vy: v.y, vz: v.z, gravity: g,
+          scale: TumbangPresoGame.slipperScale, fps: 16, loop: true, life: flyS),
+      ArSprite('shadow', x: shot.start.x, y: 0, z: shot.start.z, vx: v.x, vz: v.z, scale: 1.4, floor: true, life: flyS),
+    ]);
+    final blockS = t.blockS;
+    if (blockS != null) {
+      // Bounces off the taya and drops in front of them.
+      final p = shot.at(blockS);
+      final d = shot.direction;
+      final fall = timeToFallTo(p.y, 0.8, g, 0)!;
+      final land = V3(p.x - d.x * 0.6 * fall, 0, p.z - d.z * 0.6 * fall);
+      out.addAll([
+        ArSprite('fx_sparkle', x: p.x, y: p.y, z: p.z, scale: 3, fps: 15, delay: blockS, life: 0.4),
+        ArSprite('tsinelas_spin', x: p.x, y: p.y, z: p.z, vx: -d.x * 0.6, vy: 0.8, vz: -d.z * 0.6, gravity: g,
+            scale: TumbangPresoGame.slipperScale, fps: 16, loop: true, delay: blockS, life: fall),
+        ArSprite('tsinelas_ground', x: land.x, y: 0, z: land.z, scale: TumbangPresoGame.slipperScale, delay: blockS + fall),
+      ]);
+      return out;
+    }
+    out.addAll([
+      ArSprite('tsinelas_ground',
+          x: shot.land.x, y: 0, z: shot.land.z, scale: TumbangPresoGame.slipperScale, delay: shot.flightS),
+      ArSprite('fx_dust', x: shot.land.x, y: 0, z: shot.land.z, scale: 2, fps: 12, delay: shot.flightS, life: 0.5),
+    ]);
+    if (t.knocks) {
+      final hitS = shot.hitS!;
+      final p = shot.at(hitS);
+      final d = shot.direction;
       const y0 = TumbangPresoGame.canHeight / 2;
       final tl = canFlightS;
       final landX = d.x * _canKickForward * tl, landZ = d.z * _canKickForward * tl;

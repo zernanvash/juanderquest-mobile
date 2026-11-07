@@ -85,6 +85,10 @@ class ArSprite {
     this.oy = 0,
     this.oz = 0,
     this.align = false,
+    this.flipX = false,
+    this.oscFlip = false,
+    this.ax = 0,
+    this.az = 0,
   });
 
   final String sheet;
@@ -102,6 +106,13 @@ class ArSprite {
 
   /// Point the sprite's +x along its on-screen motion (a flying arrow).
   final bool align;
+
+  /// Mirror the picture; [oscFlip] also mirrors it while the sway moves
+  /// backwards (a walking kid turning round).
+  final bool flipX, oscFlip;
+
+  /// Sideways push (wind), m/s²: adds ½·a·t² to x and z.
+  final double ax, az;
 
   Map<String, Object> toMap() => {
         'sheet': sheet,
@@ -127,5 +138,9 @@ class ArSprite {
         'oy': oy,
         'oz': oz,
         'align': align,
+        'flipX': flipX,
+        'oscFlip': oscFlip,
+        'ax': ax,
+        'az': az,
       };
 }

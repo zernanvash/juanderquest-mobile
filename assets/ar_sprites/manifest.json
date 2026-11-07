@@ -229,5 +229,60 @@
    41.6
   ],
   "fps": 10
+ },
+ "windsock": {
+  "file": "windsock.png",
+  "frames": 4,
+  "frameW": 230,
+  "frameH": 563,
+  "pivot": [
+   19.2,
+   556.8
+  ],
+  "fps": 0
+ },
+ "taya_walk": {
+  "file": "taya_walk.png",
+  "frames": 6,
+  "frameW": 256,
+  "frameH": 435,
+  "pivot": [
+   121.6,
+   425.6
+  ],
+  "fps": 10
+ },
+ "chalk_line": {
+  "file": "chalk_line.png",
+  "frames": 1,
+  "frameW": 384,
+  "frameH": 32,
+  "pivot": [
+   192.0,
+   16.0
+  ],
+  "fps": 12
+ },
+ "bangus_target": {
+  "file": "bangus_target.png",
+  "frames": 1,
+  "frameW": 192,
+  "frameH": 96,
+  "pivot": [
+   99.2,
+   48.0
+  ],
+  "fps": 12
+ },
+ "bangus_wiggle": {
+  "file": "bangus_wiggle.png",
+  "frames": 4,
+  "frameW": 192,
+  "frameH": 96,
+  "pivot": [
+   99.2,
+   48.0
+  ],
+  "fps": 10
  }
 }

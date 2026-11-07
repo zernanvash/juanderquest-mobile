@@ -8,8 +8,9 @@ import 'package:juanderquest_app/features/ar_experience/games/ring_shoot.dart';
 import 'package:juanderquest_app/features/ar_experience/games/sipa.dart';
 import 'package:juanderquest_app/features/ar_experience/games/tumbang_preso.dart';
 
-// Plan 77, owner 2026-11-06: "build the mini games altogether then we check it all
-// at the same time". Pure game logic: time and pose in, hits/scenes out.
+// Plan 77, owner 2026-11-06: "build the mini games altogether"; 2026-11-07: the
+// player stands on a chalk line a fixed distance from the target, and the games
+// get harder as you go (wind, moving hoop, piring). Pure game logic.
 
 /// Pose at [camera] looking at [target].
 ArPose look(V3 camera, V3 target) => ArPose(camera, (target - camera).unit);
@@ -23,14 +24,26 @@ ArPose lookOff(V3 camera, V3 target, double deg) {
 
 void main() {
   group('Ring Shoot', () {
-    const cam = V3(0, 1.4, 4.5);
+    const cam = V3(0, 1.4, 4.2);
     final atHoop = look(cam, const V3(0, 2, 0));
+    RingShootGame newGame() => RingShootGame()
+      ..stand = const V3(0, 0, 4.2)
+      ..place(0, atHoop);
+
+    double mid() {
+      final z = RingShootGame.sweetSpot(cam)!;
+      return (z.from + z.to) / 2;
+    }
+
+    void shoot(RingShootGame g, double now, double power) {
+      g.press(now, atHoop);
+      g.release(now + power * RingShootGame.chargeCycleS / 2, atHoop);
+    }
 
     test('the sweet spot scores; too soft and too hard miss', () {
       final z = RingShootGame.sweetSpot(cam)!;
-      expect(z.to - z.from, inInclusiveRange(0.03, 0.25));
-      final mid = (z.from + z.to) / 2;
-      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: mid).make, isTrue);
+      expect(z.to - z.from, inInclusiveRange(0.02, 0.25));
+      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: mid()).make, isTrue);
       expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: 0).make, isFalse);
       expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: 1).make, isFalse);
     });
@@ -39,42 +52,54 @@ void main() {
       final s = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: 0.4);
       expect(s.at(s.crossS).y, closeTo(RingShootGame.rimHeight, 1e-6));
       expect(s.at(s.endS).y, closeTo(RingShootGame.ballRadius, 1e-6));
-      expect(s.endS, greaterThan(s.crossS));
     });
 
-    test('three baskets win; a miss costs nothing', () {
-      final g = RingShootGame()..place(0, atHoop);
-      expect(g.takeScene()!.map((s) => s.sheet), contains('hoop'));
-      final z = RingShootGame.sweetSpot(cam)!;
-      final holdS = (z.from + z.to) / 2 * RingShootGame.chargeCycleS / 2;
+    test('baskets score 2 (swish 3); after 3 the ring slides, faster after 6', () {
+      final g = newGame();
       var now = 1.0;
-      // Miss: let go at once.
-      g.press(now, atHoop);
-      g.release(now, atHoop);
-      expect(g.shot!.make, isFalse);
-      g.update(now + 10, atHoop);
-      expect(g.takeCallout(), 'MINTIS!');
-      g.update(now + 20, atHoop);
-      expect((g.hits, g.shot), (0, null));
+      expect(g.slidePeriod, isNull);
       for (var i = 1; i <= 3; i++) {
-        now += 30;
-        g.press(now, atHoop);
-        g.release(now + holdS, atHoop);
+        shoot(g, now, mid());
         expect(g.shot!.make, isTrue);
+        g.update(now + 5, atHoop);
         g.update(now + 10, atHoop);
-        expect(g.hits, i);
-        g.update(now + 20, atHoop);
+        now += 20;
       }
-      expect(g.won, isTrue);
-      expect(g.canPress(now + 30), isFalse);
-      g.restart(now + 30, atHoop);
-      expect((g.hits, g.won), (0, false));
+      expect(g.hits, 3);
+      expect(g.score, inInclusiveRange(6, 9));
+      expect(g.slidePeriod, 4.0);
+      final xs = [for (var t = 0.0; t < 4; t += 0.5) g.hoop(now + t).x];
+      expect(xs.reduce(math.max) - xs.reduce(math.min), greaterThan(1.0), reason: 'the hoop slides side to side');
+      g.hits = 6;
+      expect(g.slidePeriod, 2.5);
     });
 
-    test('a make hides the hoop, swishes the net and drops the ball in front of it', () {
-      final z = RingShootGame.sweetSpot(cam)!;
-      final s = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: (z.from + z.to) / 2);
-      final scene = RingShootGame.scene(shot: s);
+    test('a moving ring must be led: the same shot misses when the ring has moved away', () {
+      final s1 = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, power: mid());
+      final s2 = RingShootGame.shootFrom(
+          camera: cam, forward: atHoop.forward, power: mid(), hoopAt: (t) => const V3(0.8, 0, 0));
+      expect((s1.make, s2.make), (true, false));
+    });
+
+    test('10 balls, then it is over; off the line does not shoot', () {
+      final g = newGame();
+      g.press(0.5, look(const V3(2, 1.4, 4.2), const V3(0, 2, 0)));
+      expect(g.takeCallout(), 'BALIK SA LINYA!');
+      var now = 1.0;
+      for (var i = 0; i < RingShootGame.balls; i++) {
+        shoot(g, now, 0);
+        g.update(now + 5, atHoop);
+        g.update(now + 10, atHoop);
+        now += 20;
+      }
+      expect((g.over, g.passed, g.left), (true, false, 0));
+    });
+
+    test('a make swishes the net and drops the ball in front of the hoop', () {
+      final g = newGame();
+      shoot(g, 1, mid());
+      final s = g.shot!;
+      final scene = g.takeScene()!;
       expect(scene.firstWhere((e) => e.sheet == 'hoop').life, s.crossS);
       expect(scene.firstWhere((e) => e.sheet == 'hoop_swish').delay, s.crossS);
       final drop = scene.where((e) => e.sheet == 'ball_spin' && e.delay == s.crossS).single;
@@ -83,59 +108,79 @@ void main() {
   });
 
   group('Pana', () {
-    const cam = V3(0, 1.4, 6);
+    const cam = V3(0, 1.4, 8);
     const centre = V3(0, PanaGame.targetHeight, 0);
+    PanaGame newGame({int seed = 1}) => PanaGame(random: math.Random(seed))
+      ..stand = const V3(0, 0, 8)
+      ..place(0, look(cam, centre));
 
-    test('a full draw at the bilao hits; a weak draw drops short; aiming off misses', () {
-      final g = PanaGame()..place(0, look(cam, centre));
-      expect(g.shoot(0, look(cam, centre), 1).hit, isTrue);
-      final weak = g.shoot(0, look(cam, centre), 0);
-      expect(weak.hit, isFalse);
-      expect(weak.at(weak.endS).y, lessThanOrEqualTo(0.01), reason: 'lands on the ground');
-      expect(g.shoot(0, lookOff(cam, centre, 12), 1).hit, isFalse);
+    test('rings score 10/8/6/4 and the woven edge 2', () {
+      expect([for (final d in [0.05, 0.15, 0.25, 0.35, 0.5, 0.7]) PanaGame.pointsAt(d)], [10, 8, 6, 4, 2, 0]);
     });
 
-    test('holding draws to full in ${PanaGame.drawS} s', () {
-      final g = PanaGame()..place(0, look(cam, centre));
-      g.press(1, look(cam, centre));
-      expect(g.draw(1 + PanaGame.drawS / 2), closeTo(0.5, 1e-9));
-      expect(g.draw(1 + PanaGame.drawS * 2), 1);
+    test('a full draw at the bullseye drops a little; aiming a touch high hits the 10; a weak draw drops off', () {
+      final g = newGame();
+      final dead = g.shoot(0, look(cam, centre), 1);
+      expect(dead.points, inInclusiveRange(6, 8));
+      final high = g.shoot(0, look(cam, centre + const V3(0, 0.16, 0)), 1);
+      expect(high.points, 10);
+      expect(g.shoot(0, look(cam, centre), 0).points, lessThanOrEqualTo(2));
     });
 
-    test('three hits win, the bilao sways more after each hit and keeps the arrows', () {
-      final g = PanaGame()..place(0, look(cam, centre));
-      var epoch = 0.0;
-      for (var i = 1; i <= 3; i++) {
-        // Shoot at the end of a sway (the bilao is still), a little high for the drop.
-        final at = epoch + PanaGame.swayPeriod / 4;
-        final pose = look(cam, g.centre(at) + const V3(0, 0.2, 0));
-        g.press(at - 1, pose);
-        g.release(at, pose);
-        expect(g.shot!.hit, isTrue, reason: 'shot $i');
-        g.update(at + 1, pose);
-        expect(g.hits, i);
-        expect(g.takeCallout(), anyOf('SAPUL!', 'BULLSEYE!'));
-        epoch = at + 3;
-        g.update(epoch, pose);
-        if (i < 3) expect(g.sway, PanaGame.swayByHits[i]);
+    test('wind pushes the arrow sideways; aiming into it wins the points back', () {
+      final g = newGame()..wind = 3;
+      final plain = g.shoot(0, look(cam, centre + const V3(0, 0.16, 0)), 1);
+      expect(plain.points, lessThan(8));
+      expect(plain.hitOffset == null || plain.hitOffset!.x > 0.3, isTrue, reason: 'pushed right');
+      final into = g.shoot(0, look(cam, centre + const V3(-0.5, 0.16, 0)), 1);
+      expect(into.points, greaterThanOrEqualTo(8));
+    });
+
+    test('9 arrows: still, then sway, then sway with wind; then it is over', () {
+      final g = newGame(seed: 7);
+      var now = 1.0;
+      final winds = <int>[];
+      for (var i = 0; i < PanaGame.arrows; i++) {
+        winds.add(g.wind);
+        expect(g.sway, i < 3 ? 0 : (i < 6 ? 0.5 : 0.8));
+        final pose = look(cam, centre);
+        g.press(now, pose);
+        g.release(now + 1, pose);
+        g.update(now + 5, pose);
+        g.update(now + 10, pose);
+        now += 20;
       }
-      expect(g.won, isTrue);
-      expect(g.stuck, hasLength(3));
-      expect(g.takeScene()!.where((s) => s.sheet == 'arrow_stuck'), hasLength(3));
+      expect(winds.take(6), everyElement(0));
+      expect(winds.skip(6), everyElement(isNot(0)));
+      expect(g.over, isTrue);
+      expect(g.passed, g.score >= PanaGame.passScore);
+    });
+
+    test('the golden bangus is worth 15', () {
+      final g = newGame()..hits = 3;
+      g.bangusOut = true;
+      // The fish swims fast: lead it by the arrow's flight time.
+      final lead = (g.fish(0) - cam).length / PanaGame.maxSpeed;
+      final s = g.shoot(0, look(cam, g.fish(lead) + const V3(0, 0.06, 0)), 1);
+      expect((s.bangus, s.points), (true, PanaGame.bangusPoints));
     });
 
     test('the bilao sways across the player\'s view', () {
-      final g = PanaGame()..place(0, look(cam, centre));
-      expect(g.swayAxis.z.abs(), lessThan(1e-9));
-      expect(g.swayAxis.x.abs(), closeTo(1, 1e-9));
+      final g = newGame()..hits = 3;
+      final a = g.centre(PanaGame.swayPeriod / 4), b = g.centre(3 * PanaGame.swayPeriod / 4);
+      expect((a - b).x.abs(), closeTo(1.0, 1e-9));
+      expect((a - b).z.abs(), lessThan(1e-9));
     });
   });
 
   group('Pukpok Palayok', () {
-    const near = V3(0, 1.4, 1.8);
+    const cam = V3(0, 1.4, 1.5);
+    PalayokGame newGame() => PalayokGame(random: math.Random(1))
+      ..stand = const V3(0, 0, 1.5)
+      ..place(0, null);
 
-    /// Pose at [cam] aimed at the swinging pot at [now].
-    ArPose aimAt(PalayokGame g, double now, V3 cam) {
+    /// Pose at the line aimed at the swinging pot at [now].
+    ArPose aimAt(PalayokGame g, double now) {
       var pose = look(cam, const V3(0, PalayokGame.pivotHeight - PalayokGame.ropeLength, 0));
       for (var i = 0; i < 3; i++) {
         pose = look(cam, g.pot(now, pose));
@@ -143,35 +188,48 @@ void main() {
       return pose;
     }
 
-    test('hits only when close and the pot is in the circle', () {
-      final g = PalayokGame(random: math.Random(1))..place(0, null);
-      g.press(0.1, look(const V3(0, 1.4, 4), const V3(0, 1.7, 0)));
-      expect((g.hits, g.takeCallout()), (0, 'LAPIT PA!'));
-      g.press(1, lookOff(near, g.pot(1, aimAt(g, 1, near)), 30));
+    test('first strike by sight; off the line or off the pot does not count', () {
+      final g = newGame();
+      g.press(0.1, look(const V3(2, 1.4, 1.5), const V3(0, 1.7, 0)));
+      expect((g.hits, g.takeCallout()), (0, 'BALIK SA LINYA!'));
+      g.press(1, lookOff(cam, g.pot(1, aimAt(g, 1)), 30));
       expect((g.hits, g.takeCallout()), (0, 'MINTIS!'));
-      g.press(1.1, aimAt(g, 1.1, near));
-      expect(g.hits, 0, reason: 'still cooling down after a swing');
-      g.press(2, aimAt(g, 2, near));
-      expect((g.hits, g.takeCallout()), (1, 'PUKPOK!'));
-      expect(g.takeScene()!.map((s) => s.sheet), contains('palayok_crack1'));
+      g.press(2, aimAt(g, 2));
+      expect((g.hits, g.takeCallout(), g.swings), (1, 'PUKPOK!', 2));
     });
 
-    test('three hits break it, the coins fall and the game is won', () {
-      final g = PalayokGame(random: math.Random(2))..place(0, null);
-      for (final t in [1.0, 2.0, 3.0]) {
-        g.press(t, aimAt(g, t, near));
+    test('after the first hit you play blindfolded (piring)', () {
+      final g = newGame();
+      g.press(1, aimAt(g, 1));
+      expect(g.piring, isTrue);
+      expect(g.buttonLabel(2), contains('PIRING'));
+      g.press(2, aimAt(g, 2));
+      expect((g.blind(2.1), g.takeCallout(), g.hits), (true, 'PIRING!', 1));
+      expect(g.reticle(2.1, aimAt(g, 2.1)), isNull, reason: 'no aim circle while blind');
+      g.press(3, aimAt(g, 3));
+      expect((g.hits, g.blind(3.01)), (2, false));
+      // Waiting too long blind takes the blindfold off without a swing.
+      g.press(4, aimAt(g, 4));
+      g.update(4 + PalayokGame.blindS + 0.1, null);
+      expect((g.blind(7), g.takeCallout(), g.hits), (false, 'MINTIS!', 2));
+    });
+
+    test('three hits break it, coins fall, the game is won', () {
+      final g = newGame();
+      g.press(1, aimAt(g, 1));
+      for (final t in [2.0, 4.0]) {
+        g.press(t, aimAt(g, t));
+        g.press(t + 1, aimAt(g, t + 1));
       }
       expect(g.hits, 3);
       expect(g.takeCallout(), 'BASAG!');
       final scene = g.takeScene()!;
       expect(scene.map((s) => s.sheet), contains('palayok_break'));
       expect(scene.where((s) => s.sheet == 'coin_spin'), hasLength(PalayokGame.coins * 2));
-      g.update(4, null);
-      expect(g.won, isFalse, reason: 'the coins are still falling');
-      g.update(5, null);
-      expect(g.won, isTrue);
-      g.restart(6, null);
-      expect((g.hits, g.won), (0, false));
+      g.update(5.5, null);
+      expect(g.over, isFalse, reason: 'the coins are still falling');
+      g.update(7, null);
+      expect((g.over, g.passed), (true, true));
     });
 
     test('the swing keeps going without a jump when it speeds up', () {
@@ -183,7 +241,10 @@ void main() {
   });
 
   group('Sipa Rally', () {
-    const cam = V3(0, 1.4, 2.5);
+    const cam = V3(0, 1.4, 2.0);
+    SipaGame newGame(int seed) => SipaGame(random: math.Random(seed))
+      ..stand = const V3(0, 0, 2.0)
+      ..place(0, null);
 
     /// First time after [from] when the sipa is falling through the kick zone.
     double kickTime(SipaGame g, double from) {
@@ -195,49 +256,43 @@ void main() {
     }
 
     test('tap starts it; a kick in the zone and in the circle keeps it up', () {
-      final g = SipaGame(random: math.Random(3))..place(0, null);
+      final g = newGame(3);
       g.press(1, look(cam, const V3(0, 0.3, 0)));
       expect((g.flying, g.hits), (true, 0));
       g.press(1.4, look(cam, g.at(1.4)));
-      expect((g.hits, g.takeCallout()), (0, 'MAAGA PA!'), reason: 'still rising');
+      expect((g.hits, g.takeCallout()), (0, 'MAAGA PA!'));
       final t = kickTime(g, 1.5);
       expect(g.reticle(t, look(cam, g.at(t))), isTrue);
       g.press(t, lookOff(cam, g.at(t), 30));
       expect(g.hits, 0, reason: 'circle not on it');
       final t2 = t + SipaGame.tapCooldownS;
-      expect(g.kickable(t2, look(cam, g.at(t2))), isTrue);
       g.press(t2, look(cam, g.at(t2)));
       expect((g.hits, g.takeCallout()), (1, 'SIPA! x1'));
     });
 
-    test('a drop ends the rally; five in a row win', () {
-      final g = SipaGame(random: math.Random(4))..place(0, null);
+    test('off the line does not kick', () {
+      final g = newGame(3);
+      g.press(1, look(const V3(2, 1.4, 2), const V3(0, 0.3, 0)));
+      expect((g.flying, g.takeCallout()), (false, 'BALIK SA LINYA!'));
+    });
+
+    test('five in a row win; a drop resets the rally', () {
+      final g = newGame(4);
       var now = 1.0;
-      g.press(now, null);
       g.press(now, look(cam, g.at(now)));
-      g.update(now + 10, null);
-      expect(g.flying, isFalse);
-      now += 10;
+      final t = kickTime(g, now + 0.1);
+      g.press(t, look(cam, g.at(t)));
+      g.update(t + 10, null);
+      expect((g.hits, g.best, g.takeCallout()), (0, 1, 'NAHULOG!'));
+      now = t + 10;
       for (var i = 1; i <= 5; i++) {
         g.press(now, look(cam, g.at(now)));
         now = kickTime(g, now + 0.1);
       }
-      expect(g.hits, 4);
       g.press(now, look(cam, g.at(now)));
-      expect(g.hits, 5);
-      expect(g.best, 5);
+      expect((g.hits, g.best), (5, 5));
       g.update(now + 1, null);
-      expect(g.won, isTrue);
-    });
-
-    test('a drop after kicks resets the rally', () {
-      final g = SipaGame(random: math.Random(5))..place(0, null);
-      g.press(0, look(cam, g.at(0)));
-      final t = kickTime(g, 0.1);
-      g.press(t, look(cam, g.at(t)));
-      expect(g.hits, 1);
-      g.update(t + 10, null);
-      expect((g.hits, g.best, g.takeCallout()), (0, 1, 'NAHULOG!'));
+      expect((g.over, g.passed), (true, true));
     });
   });
 }

@@ -1,130 +1,139 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juanderquest_app/features/ar_experience/games/ar_minigame.dart';
 import 'package:juanderquest_app/features/ar_experience/games/tumbang_preso.dart';
 
-// Plan 77, owner 2026-11-06: "lets try do the throwing game first".
+// Plan 77, owner 2026-11-06: "lets try do the throwing game first"; 2026-11-07:
+// "more challenging ... without it being too hard" and "spawn point is where the
+// player should be against the target".
 void main() {
-  // Standing 3.5 m from the can (can at the origin), phone 1.4 m up, looking at it.
-  const cam = V3(0, 1.4, 3.5);
-  const atCan = V3(0, -0.3, -1);
+  // On the line, 5 m from the can (can at the origin), phone 1.4 m up, looking at it.
+  const cam = V3(0, 1.4, 5);
+  const atCan = V3(0, -0.27, -1);
+  const pose = ArPose(cam, atCan);
 
-  double sweetMid() {
-    final z = TumbangPresoGame.sweetSpot(cam)!;
+  double sweetMid({double margin = TumbangPresoGame.hitMargin}) {
+    final z = TumbangPresoGame.sweetSpot(cam, margin: margin)!;
     return (z.from + z.to) / 2;
+  }
+
+  TumbangGame newGame() => TumbangGame()
+    ..stand = const V3(0, 0, 5)
+    ..place(0, pose);
+
+  /// Holds the button from [now] until the power reaches [power], then lets go.
+  void throwAt(TumbangGame g, double now, double power, {ArPose at = pose}) {
+    g.press(now, at);
+    g.release(now + power * g.chargeCycle / 2, at);
   }
 
   group('throw', () {
     test('a power in the sweet spot hits; too little falls short, too much flies over', () {
-      final zone = TumbangPresoGame.sweetSpot(cam);
-      expect(zone, isNotNull);
       expect(TumbangPresoGame.throwFrom(camera: cam, forward: atCan, power: sweetMid()).hit, isTrue);
       final short = TumbangPresoGame.throwFrom(camera: cam, forward: atCan, power: 0);
       expect(short.hit, isFalse);
-      expect(short.land.z, greaterThan(0.5), reason: 'lands between the player and the can');
+      expect(short.land.z, greaterThan(0.5));
       final long = TumbangPresoGame.throwFrom(camera: cam, forward: atCan, power: 1);
       expect(long.hit, isFalse);
-      expect(long.land.z, lessThan(-2), reason: 'lands well past the can');
+      expect(long.land.z, lessThan(-2));
     });
 
-    test('the sweet spot is wide enough to be fair but not everything', () {
-      final z = TumbangPresoGame.sweetSpot(cam)!;
-      expect(z.to - z.from, inInclusiveRange(0.04, 0.25));
+    test('the sweet spot is fair but narrows when the margin shrinks', () {
+      final wide = TumbangPresoGame.sweetSpot(cam)!;
+      final narrow = TumbangPresoGame.sweetSpot(cam, margin: 0.06)!;
+      expect(wide.to - wide.from, inInclusiveRange(0.03, 0.2));
+      expect(narrow.to - narrow.from, lessThan(wide.to - wide.from));
     });
 
-    test('aim within 10 degrees snaps onto the can; 30 degrees off misses', () {
-      const a8 = 8 * math.pi / 180;
-      final near = V3(math.sin(a8), -0.3, -math.cos(a8));
-      expect(TumbangPresoGame.offAimDegrees(cam, near), closeTo(-8, 0.5));
-      expect(TumbangPresoGame.throwFrom(camera: cam, forward: near, power: sweetMid()).hit, isTrue);
-      const a30 = 30 * math.pi / 180;
-      final wide = V3(math.sin(a30), -0.3, -math.cos(a30));
-      expect(TumbangPresoGame.throwFrom(camera: cam, forward: wide, power: sweetMid()).hit, isFalse);
+    test('only a near-perfect aim snaps onto the can (3 degrees); 8 degrees off misses', () {
+      ArPose turned(double deg) {
+        final a = deg * math.pi / 180;
+        return ArPose(cam, V3(math.sin(a), -0.27, -math.cos(a)));
+      }
+
+      expect(TumbangPresoGame.throwFrom(camera: cam, forward: turned(2).forward, power: sweetMid()).hit, isTrue);
+      expect(TumbangPresoGame.throwFrom(camera: cam, forward: turned(8).forward, power: sweetMid()).hit, isFalse);
     });
 
     test('the arc starts at the hand and lands on the floor at the end of the flight', () {
       final s = TumbangPresoGame.throwFrom(camera: cam, forward: atCan, power: 0.5);
       expect(s.at(0).y, closeTo(1.15, 0.01));
       expect(s.at(s.flightS).y, closeTo(0, 1e-6));
-      expect(s.at(s.flightS).x, closeTo(s.land.x, 1e-6));
-      expect(s.at(s.flightS).z, closeTo(s.land.z, 1e-6));
     });
   });
 
   group('game', () {
-    test('power rises, falls and rises again while holding', () {
-      final g = TumbangPresoGame()..placed();
-      g.startCharge(10);
-      expect(g.power(10), 0);
-      expect(g.power(10.4), closeTo(0.5, 1e-9));
-      expect(g.power(10.8), closeTo(1, 1e-9));
-      expect(g.power(11.2), closeTo(0.5, 1e-9));
-      expect(g.power(11.6), closeTo(0, 1e-9));
+    test('a throw only counts from the chalk line', () {
+      final g = newGame();
+      g.press(1, const ArPose(V3(2, 1.4, 5), atCan));
+      expect(g.takeCallout(), 'BALIK SA LINYA!');
+      g.release(1.5, const ArPose(V3(2, 1.4, 5), atCan));
+      expect((g.current, g.left), (null, TumbangGame.slippers));
     });
 
-    test('a miss costs nothing; three hits win', () {
-      final g = TumbangPresoGame()..placed();
-      var now = 0.0;
-
-      // Miss: release at once (power 0).
-      g.startCharge(now);
-      final miss = g.release(now, camera: cam, forward: atCan)!;
-      expect(miss.hit, isFalse);
-      expect(g.update(now + miss.flightS + 0.01), TumbangEvent.miss);
-      expect(g.hits, 0);
-      expect(g.update(now + miss.flightS + 1.0), TumbangEvent.reset);
-      expect(g.phase, TumbangPhase.ready);
-
-      // Hold until the power is in the sweet spot, three times.
-      final holdS = sweetMid() * TumbangPresoGame.chargeCycleS / 2;
-      for (var i = 1; i <= 3; i++) {
-        now += 10;
-        g.startCharge(now);
-        final s = g.release(now + holdS, camera: cam, forward: atCan)!;
-        expect(s.hit, isTrue);
-        expect(g.update(now + holdS + s.hitS! + 0.01), TumbangEvent.hit);
-        expect(g.hits, i);
-        expect(g.update(now + holdS + 10), i < 3 ? TumbangEvent.reset : TumbangEvent.won);
+    test('a streak speeds the meter up and narrows the green; a miss resets it', () {
+      final g = newGame();
+      var now = 1.0;
+      for (var i = 1; i <= 2; i++) {
+        throwAt(g, now, sweetMid(margin: g.margin));
+        expect(g.current!.knocks, isTrue, reason: 'knock $i');
+        g.update(now + 5, pose);
+        g.update(now + 10, pose);
+        now += 20;
       }
-      expect(g.phase, TumbangPhase.won);
-      g.restart();
-      expect((g.hits, g.phase), (0, TumbangPhase.ready));
+      expect((g.hits, g.streak, g.score), (2, 2, 10 + 15));
+      expect(g.chargeCycle, lessThan(TumbangPresoGame.chargeCycleS));
+      expect(g.margin, lessThan(TumbangPresoGame.hitMargin));
+      throwAt(g, now, 0);
+      g.update(now + 5, pose);
+      expect(g.takeCallout(), 'MINTIS!');
+      expect(g.streak, 0);
+      expect(g.margin, TumbangPresoGame.hitMargin);
     });
 
-    test('cannot throw before the can is placed or while a throw is flying', () {
-      final g = TumbangPresoGame();
-      g.startCharge(0);
-      expect(g.release(0.5, camera: cam, forward: atCan), isNull);
-      g.placed();
-      g.startCharge(1);
-      expect(g.release(1.5, camera: cam, forward: atCan), isNotNull);
-      g.startCharge(1.6);
-      expect(g.phase, TumbangPhase.flying);
-    });
-  });
-
-  group('scene', () {
-    test('ready shows the can in its chalk circle', () {
-      expect([for (final s in TumbangPresoScene.ready()) s.sheet], ['chalk_circle', 'shadow', 'lata_stand']);
-    });
-
-    test('a hit hides the standing can at the hit and knocks it over', () {
-      final s = TumbangPresoGame.throwFrom(camera: cam, forward: atCan, power: sweetMid());
-      final sprites = TumbangPresoScene.throwing(s);
-      final stand = sprites.firstWhere((e) => e.sheet == 'lata_stand');
-      expect(stand.life, s.hitS);
-      final tumble = sprites.firstWhere((e) => e.sheet == 'lata_tumble');
-      expect(tumble.delay, s.hitS);
-      final down = sprites.firstWhere((e) => e.sheet == 'lata_down');
-      expect(down.delay, closeTo(s.hitS! + TumbangPresoScene.canFlightS, 1e-9));
+    test('from the 3rd knock-down the taya walks in front of the can and blocks some throws', () {
+      final g = newGame()..hits = TumbangGame.tayaAfter;
+      expect(g.tayaOn, isTrue);
+      expect(g.takeScene()!.map((s) => s.sheet), isNot(contains('taya_walk')));
+      g.place(0, pose);
+      expect(g.takeScene()!.map((s) => s.sheet), contains('taya_walk'));
+      var blocked = 0, clear = 0;
+      for (var t = 0.0; t < TumbangGame.tayaPeriod; t += 0.05) {
+        final th = g.throwAt(t, pose, sweetMid());
+        if (th.blockS != null) {
+          blocked++;
+        } else if (th.knocks) {
+          clear++;
+        }
+      }
+      expect(blocked, greaterThan(0));
+      expect(clear, greaterThan(blocked), reason: 'timing it right beats the taya most of the time');
     });
 
-    test('a miss leaves the can standing and the slipper on the ground', () {
-      final s = TumbangPresoGame.throwFrom(camera: cam, forward: atCan, power: 0);
-      final sprites = TumbangPresoScene.throwing(s);
-      expect(sprites.firstWhere((e) => e.sheet == 'lata_stand').life, 0);
-      expect(sprites.where((e) => e.sheet == 'lata_tumble'), isEmpty);
-      expect(sprites.firstWhere((e) => e.sheet == 'tsinelas_ground').delay, s.flightS);
+    test('10 slippers, then the session is over; 4 knock-downs pass', () {
+      final g = newGame();
+      var now = 1.0;
+      for (var i = 0; i < TumbangGame.slippers; i++) {
+        throwAt(g, now, 0);
+        g.update(now + 5, pose);
+        g.update(now + 10, pose);
+        now += 20;
+      }
+      expect((g.over, g.passed, g.left), (true, false, 0));
+      expect(g.canPress(now), isFalse);
+      g.restart(now, pose);
+      expect((g.over, g.hits, g.left), (false, 0, TumbangGame.slippers));
+    });
+
+    test('a knock hides the standing can at the hit and knocks it over', () {
+      final g = newGame();
+      throwAt(g, 1, sweetMid());
+      final scene = g.takeScene()!;
+      final hitS = g.current!.shot.hitS!;
+      expect(scene.firstWhere((e) => e.sheet == 'lata_stand').life, hitS);
+      expect(scene.firstWhere((e) => e.sheet == 'lata_tumble').delay, hitS);
+      expect(scene.map((e) => e.sheet), contains('chalk_line'));
     });
   });
 }

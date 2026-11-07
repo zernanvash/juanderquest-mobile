@@ -38,7 +38,7 @@ class ArMiniGameHud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final playing = game.placed && !game.won;
+    final playing = game.placed && !game.over;
     final reticle = playing ? game.reticle(now, pose) : null;
     // The aim circle sits in the true middle of the screen (where the camera looks).
     return Stack(children: [
@@ -54,12 +54,16 @@ class ArMiniGameHud extends StatelessWidget {
             ),
           ),
         ),
+      if (game.placed && game.blind(now))
+        const Positioned.fill(
+          child: IgnorePointer(child: ColoredBox(key: ValueKey('blindfold'), color: Color(0xF5000000))),
+        ),
       Positioned.fill(child: _bars(context)),
     ]);
   }
 
   Widget _bars(BuildContext context) {
-    final playing = game.placed && !game.won;
+    final playing = game.placed && !game.over;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -85,7 +89,7 @@ class ArMiniGameHud extends StatelessWidget {
           ),
           Positioned.fill(
             child: IgnorePointer(
-              ignoring: !game.won,
+              ignoring: !game.over,
               child: Align(alignment: const Alignment(0, -0.35), child: _middle(context)),
             ),
           ),
@@ -127,14 +131,17 @@ class ArMiniGameHud extends StatelessWidget {
   }
 
   Widget _middle(BuildContext context) {
-    if (game.won) {
+    if (game.over) {
       return SingleChildScrollView(
         child: PixelPanel(
           style: PixelBoxStyle.parchment,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            FittedBox(child: Text('PANALO!', style: PixelType.display(context, color: PixelPalette.greenDeep))),
+            FittedBox(
+              child: Text(game.passed ? 'PANALO!' : 'TAPOS NA!',
+                  style: PixelType.display(context, color: game.passed ? PixelPalette.greenDeep : PixelPalette.ink)),
+            ),
             const SizedBox(height: 6),
-            Text(game.wonText, textAlign: TextAlign.center, style: PixelType.body(context)),
+            Text(game.endText, textAlign: TextAlign.center, style: PixelType.body(context)),
             const SizedBox(height: 10),
             Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
               PixelButton(key: const ValueKey('play_again'), label: 'PLAY AGAIN', onPressed: onRestart),
@@ -158,6 +165,8 @@ class ArMiniGameHud extends StatelessWidget {
           ),
         ),
       if (game.placed && pose == null) _pill(context, 'FIND IT: point your phone back at it'),
+      if (game.placed && pose != null && !game.onLine(pose!))
+        _pill(context, 'BALIK SA LINYA: stand on the chalk line', key: const ValueKey('line_hint')),
       if (hint != null) _pill(context, hint, key: const ValueKey('aim_hint')),
     ];
     return FittedBox(
@@ -186,7 +195,7 @@ class ArMiniGameHud extends StatelessWidget {
         const SizedBox(height: 8),
         PixelButton(
           key: const ValueKey('place_game'),
-          label: placing ? 'LOOKING FOR FLOOR…' : game.placeLabel,
+          label: placing ? 'LOOKING FOR FLOOR…' : 'STAND HERE',
           expand: true,
           onPressed: placing ? null : onPlace,
         ),

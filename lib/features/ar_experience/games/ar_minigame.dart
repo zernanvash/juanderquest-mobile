@@ -104,16 +104,56 @@ class Swing {
 
 /// One game in the AR Lab. Subclasses set state and use [show], [say] and
 /// [buzz]; the screen drains them with [takeScene], [takeCallout], [takeHaptic].
+///
+/// Fair play (owner 2026-11-07): the player marks where they stand and the target
+/// appears [standDistance] metres straight ahead, so everyone plays from the same
+/// distance. [stand] is that spot (on the floor, relative to the target); a throw
+/// only counts from within [lineReach] of it.
 abstract class ArMiniGame {
+  ArMiniGame({this.rangeScale = 1});
+
+  /// 1 = real distances; less for testing indoors.
+  final double rangeScale;
+
+  /// Where the player stands, relative to the target (y = 0). Set before [place].
+  V3 stand = const V3(0, 0, 5);
+
+  static const lineReach = 0.75;
+
   String get title;
-  String get placeLabel;
+
+  /// Metres from the line to the target at full range.
+  double get fullDistance;
+  double get standDistance => fullDistance * rangeScale;
   String get placeHint;
-  String get wonText;
+
+  /// Short summary on the end panel.
+  String get endText;
   int get targetHits;
   int get hits;
   bool get placed;
-  bool get won;
+
+  /// The session is over (won, or out of throws).
+  bool get over;
+
+  /// Reached the goal (the quest task would pass).
+  bool get passed;
   ArButtonMode get buttonMode;
+
+  /// Screen goes dark (Palayok piring).
+  bool blind(double now) => false;
+
+  /// Close enough to the chalk line to throw.
+  bool onLine(ArPose pose) => (V3(pose.camera.x, 0, pose.camera.z) - stand).horizontalLength <= lineReach;
+
+  /// Unit horizontal direction from the line to the target.
+  V3 get downrange => V3(-stand.x, 0, -stand.z).unit;
+
+  /// Unit horizontal direction to the player's right as they face the target.
+  V3 get across => rightOf(downrange);
+
+  /// The chalk line at the player's feet.
+  ArSprite get lineSprite => ArSprite('chalk_line', x: stand.x, y: 0, z: stand.z, floor: true);
 
   /// Whether the big button works right now.
   bool canPress(double now);

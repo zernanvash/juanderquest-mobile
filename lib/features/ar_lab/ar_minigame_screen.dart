@@ -126,16 +126,36 @@ class _ArMiniGameScreenState extends State<ArMiniGameScreen> with SingleTickerPr
     setState(() {});
   }
 
+  /// Owner 2026-11-07: "spawn point is where the player should be against the
+  /// target". The player stands where they will play; the target is anchored
+  /// [ArMiniGame.standDistance] metres straight ahead on the floor, and the chalk
+  /// line goes at their feet.
   Future<void> _place() async {
+    final f = _world?.frame.value;
+    if (f == null || !f.tracking || f.view == null) {
+      _game.say('MOVE YOUR PHONE A LITTLE');
+      _flush();
+      return;
+    }
+    final c = GeoAnchor.cameraPosition(f.view!);
+    final fw = GeoAnchor.cameraForward(f.view!);
+    final flat = V3(fw.x, 0, fw.z);
+    if (flat.horizontalLength < 0.2) {
+      _game.say('FACE AHEAD, NOT DOWN');
+      _flush();
+      return;
+    }
+    final ahead = flat.unit * _game.standDistance;
     setState(() => _placing = true);
-    final ok = await _world?.placeAnchor() ?? false;
+    final at = await _world?.placeAnchorAt(c.x + ahead.x, c.z + ahead.z);
     if (!mounted) return;
-    if (!ok) {
+    if (at == null) {
       setState(() => _placing = false);
       _game.say('NO FLOOR YET');
       _flush();
       return;
     }
+    _game.stand = V3(c.x - at.x, 0, c.z - at.z);
     _placePending = true;
   }
 
