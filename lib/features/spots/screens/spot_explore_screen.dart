@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/pixel/generated/designer_art.g.dart';
@@ -15,8 +14,6 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/dev/test_content.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
-import '../../cultural_quizzes/widgets/nearby_quiz_card.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../explore/juanchoice_placement.dart';
 import '../explore/spot_filter_state.dart';
@@ -38,7 +35,6 @@ class SpotExploreScreen extends ConsumerStatefulWidget {
 class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   final Map<String, int> _likes = {};
   final Set<String> _likedSpots = {};
-  Position? _currentPosition;
   SpotFilterState _filterState = const SpotFilterState();
   int _visibleCount = 10;
 
@@ -47,28 +43,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(spotDiscoveryProvider.notifier).initialize();
-      _fetchLocation();
     });
-  }
-
-  Future<void> _fetchLocation() async {
-    try {
-      final enabled = await Geolocator.isLocationServiceEnabled();
-      if (!enabled) return;
-      final perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
-        return;
-      }
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
-      );
-      if (mounted) {
-        setState(() {
-          _currentPosition = pos;
-        });
-      }
-    } catch (_) {}
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -77,7 +52,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       if (refresh) ref.refresh(choiceSpotlightProvider.future),
       if (refresh)
         ref.refresh(hiddenGemProvider.future).then((_) {}, onError: (_) {}),
-      _fetchLocation(),
     ]);
   }
 
@@ -187,85 +161,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                       SizedBox(height: grid.px(2)),
                     ],
 
-                    // "The Trail" card (Coming soon)
-                    PixelPanel(
-                      style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
-                      padding: 2,
-                      child: Semantics(
-                        button: true,
-                        label: 'The Trail: Route-based destination ideas, coming soon',
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            pixelTick(context);
-                            context.push('/trail');
-                          },
-                          child: Row(
-                            children: [
-                              PixelPanel(
-                                style: PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0),
-                                padding: 1,
-                                child: Text(
-                                  'Trail',
-                                  style: PixelType.small(context, color: PixelPalette.ink),
-                                ),
-                              ),
-                              SizedBox(width: grid.px(2)),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'The Trail',
-                                      style: PixelType.body(context, color: PixelPalette.wood),
-                                    ),
-                                    Text(
-                                      'Route-based destination ideas · Coming soon',
-                                      style: PixelType.small(context, color: PixelPalette.stone),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                '›',
-                                style: PixelType.title(context, color: PixelPalette.green),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: grid.px(2)),
-
-                    // Nearby Cultural Quizzes (if location available)
-                    if (_currentPosition != null)
-                      Consumer(
-                        builder: (context, ref, _) {
-                          final nearbyAsync = ref.watch(nearbyQuizzesProvider((
-                            lat: _currentPosition!.latitude,
-                            lng: _currentPosition!.longitude,
-                          )));
-                          return nearbyAsync.when(
-                            data: (quizzes) {
-                              if (quizzes.isEmpty) return const SizedBox.shrink();
-                              return Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  for (final q in quizzes) ...[
-                                    NearbyQuizCard(invitation: q),
-                                    SizedBox(height: grid.px(2)),
-                                  ],
-                                ],
-                              );
-                            },
-                            loading: () => const SizedBox.shrink(),
-                            error: (_, __) => const SizedBox.shrink(),
-                          );
-                        },
-                      ),
-
-                    // Personalized Hidden Gem (ad-style feed unit)
+                    // Personalized Hidden Gem (hero #1 at the top of feed)
                     const HiddenGemCard(),
                     SizedBox(height: grid.px(2)),
 
