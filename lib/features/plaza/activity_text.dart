@@ -1,11 +1,13 @@
 import 'plaza_models.dart';
 
+final _snakeSlugPattern = RegExp(r'^[A-Za-z0-9]+(_[A-Za-z0-9]+)+$');
+final _asciiSlugPattern = RegExp(r'^[A-Za-z0-9_-]+$');
+
 String humanizeSlug(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return trimmed;
-  final withSpaces = trimmed.replaceAll(RegExp(r'[_]+'), ' ').trim();
-  if (withSpaces.isEmpty) return '';
-  return withSpaces.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).map((word) {
+  if (!_snakeSlugPattern.hasMatch(raw)) {
+    return raw;
+  }
+  return raw.split('_').map((word) {
     return word[0].toUpperCase() + word.substring(1).toLowerCase();
   }).join(' ');
 }
@@ -40,11 +42,18 @@ FormattedActivity formatActivityText(ActivityItemModel activity) {
     case 'town_completed':
       return FormattedActivity(sentence: '$actor completed every Eco-Quest in $subject 🎉');
     case 'badge_earned':
-      final rawIcon = payload['icon']?.toString() ?? '🏅';
-      final icon = humanizeSlug(rawIcon);
+      final rawIcon = payload['icon']?.toString().trim() ?? '🏅';
+      final isSlug = rawIcon.isEmpty ||
+          _snakeSlugPattern.hasMatch(rawIcon) ||
+          _asciiSlugPattern.hasMatch(rawIcon);
+      if (isSlug) {
+        return FormattedActivity(
+          sentence: '$actor earned the $subject badge',
+        );
+      }
       return FormattedActivity(
-        sentence: '$actor earned the $subject badge $icon',
-        badgeIcon: icon,
+        sentence: '$actor earned the $subject badge $rawIcon',
+        badgeIcon: rawIcon,
       );
     case 'level_up':
       final level = payload['level'] ?? 1;
