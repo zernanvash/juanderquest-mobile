@@ -10,6 +10,7 @@ import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/cosmetics/screens/appearance_screen.dart';
 import 'package:juanderquest_app/features/profile/providers/profile_stats_provider.dart';
+import 'package:juanderquest_app/features/profile/providers/user_spots_provider.dart';
 import 'package:juanderquest_app/features/profile/screens/affiliate_application_screen.dart';
 import 'package:juanderquest_app/features/profile/screens/profile_screen.dart';
 import 'package:juanderquest_app/features/shop/models/cosmetic_item.dart';
@@ -178,11 +179,17 @@ GoRouter _router(Widget home, {String initial = '/'}) => GoRouter(
         GoRoute(path: '/shop', builder: (_, __) => const _Probe('/shop')),
         GoRoute(path: '/plaza', builder: (_, __) => const _Probe('/plaza')),
         GoRoute(path: '/settings', builder: (_, __) => const _Probe('/settings')),
+        GoRoute(
+            path: '/settings/appearance',
+            builder: (_, __) => const _Probe('/settings/appearance')),
         GoRoute(path: '/trail', builder: (_, __) => const _Probe('/trail')),
         GoRoute(
             path: '/notifications',
             builder: (_, __) => const _Probe('/notifications')),
         GoRoute(path: '/profile', builder: (_, __) => const _Probe('/profile')),
+        GoRoute(
+            path: '/profile/badges',
+            builder: (_, __) => const _Probe('/profile/badges')),
       ],
     );
 
@@ -316,6 +323,7 @@ Future<void> _pump(
   VoucherNotifier Function(Ref ref)? voucherNotifier,
   SubmissionNotifier Function(ApiClient client)? submissionNotifier,
   SpotDiscoveryNotifier Function(Ref ref)? spotsNotifier,
+  List<Override> extraOverrides = const [],
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -339,6 +347,8 @@ Future<void> _pump(
                 ref.read(apiClientProvider), submissions ?? SubmissionState())),
         spotDiscoveryProvider.overrideWith((ref) =>
             spotsNotifier?.call(ref) ?? _SpotsFixture(ref, spots)),
+        userSpotsProvider.overrideWith((ref, handle) => Future.value(const [])),
+        ...extraOverrides,
       ],
       child: MaterialApp.router(routerConfig: _router(home, initial: initial)),
     ),
@@ -359,16 +369,15 @@ void _useTallView(WidgetTester tester) {
 
 void main() {
   group('ProfileScreen', () {
-    testWidgets('renders identity, stats and linked wallet', (tester) async {
+    testWidgets('renders identity, badges button, saved places and posted spots', (tester) async {
       _useTallView(tester);
       await _pump(tester, const ProfileScreen(), user: _user);
       expect(find.text('Juan Dela Cruz'), findsOneWidget);
       expect(find.text('@scale-01'), findsOneWidget);
-      expect(find.text('Web3 Passport Linked'), findsOneWidget);
-      expect(find.text('0x71C8...0E40'), findsOneWidget);
-      expect(find.text('1250 PTS'), findsOneWidget);
-      expect(find.text('7'), findsOneWidget);
-      expect(find.text('9'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_badges')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_saved')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_customize')), findsOneWidget);
+      expect(find.textContaining('Posted Destinations'), findsOneWidget);
     });
 
     testWidgets('empty profile shows the fallback identity', (tester) async {
@@ -387,8 +396,7 @@ void main() {
         ),
       );
       expect(find.text('Juan Dela Cruz'), findsOneWidget);
-      expect(find.text('Web3 Passport Linked'), findsNothing);
-      expect(find.text('0 PTS'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_badges')), findsOneWidget);
     });
 
     testWidgets('opens notifications and settings', (tester) async {
@@ -423,20 +431,19 @@ void main() {
       expect(find.byKey(const ValueKey('profile_settings')), findsNothing);
     });
 
-    testWidgets('copies the wallet and confirms unlinking', (tester) async {
+    testWidgets('opens badges case and customize appearance', (tester) async {
       _useTallView(tester);
       await _pump(tester, const ProfileScreen(), user: _user);
-      await tester.tap(find.byKey(const ValueKey('profile_copy_wallet')));
+      await tester.tap(find.byKey(const ValueKey('profile_badges')));
       await tester.pump();
-      expect(find.text('Wallet address copied to clipboard.'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('route:/profile/badges'), findsOneWidget);
 
       await _pump(tester, const ProfileScreen(), user: _user);
-      await tester.tap(find.byKey(const ValueKey('profile_unlink_wallet')));
+      await tester.tap(find.byKey(const ValueKey('profile_customize')));
       await tester.pump();
-      expect(find.text('Unlink Web3 wallet?'), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
-      await tester.pump();
-      expect(find.text('Unlink Web3 wallet?'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('route:/settings/appearance'), findsOneWidget);
     });
 
     testWidgets('guest profile shows follow', (tester) async {
@@ -447,6 +454,108 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('profile_follow')));
       await tester.pump();
       expect(find.text('Following'), findsOneWidget);
+    });
+
+    testWidgets('own profile loads posted destinations and tap opens /explore/:slug', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('scale-01').overrideWith((ref) => Future.value([_spot])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Posted Destinations (1)'), findsOneWidget);
+      expect(find.text('Hundred Islands National Park'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot')), findsOneWidget);
+
+      await tester.tap(find.text('Hundred Islands National Park'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('route:/explore'), findsOneWidget);
+    });
+
+    testWidgets('own profile empty state shows + Post a Destination CTA', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('scale-01').overrideWith((ref) => Future.value([])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Posted Destinations (0)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_no_spots')), findsOneWidget);
+      expect(find.text('No destinations posted yet. Share a hidden spot in Pangasinan!'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot_empty')), findsOneWidget);
+    });
+
+    testWidgets('own profile error state shows retry button', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('scale-01').overrideWith((ref) => Future.error(Exception('network error'))),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byKey(const ValueKey('profile_spots_error')), findsOneWidget);
+      expect(find.text('Unable to load destinations.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_spots_retry')), findsOneWidget);
+    });
+
+    testWidgets('other profile loads posted destinations and tap opens /explore/:slug', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(username: 'maya'),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('maya').overrideWith((ref) => Future.value([_spot])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Posted Destinations (1)'), findsOneWidget);
+      expect(find.text('Hundred Islands National Park'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot')), findsNothing);
+
+      await tester.tap(find.text('Hundred Islands National Park'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('route:/explore'), findsOneWidget);
+    });
+
+    testWidgets('other profile empty state shows no destinations by this explorer and no CTA', (tester) async {
+      _useTallView(tester);
+      await _pump(
+        tester,
+        const ProfileScreen(username: 'maya'),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('maya').overrideWith((ref) => Future.value([])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Posted Destinations (0)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_no_spots')), findsOneWidget);
+      expect(find.text('No destinations posted yet by this explorer.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot_empty')), findsNothing);
     });
   });
   group('ShopScreen', () {

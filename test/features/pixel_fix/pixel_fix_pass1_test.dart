@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +12,7 @@ import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
 import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
 import 'package:juanderquest_app/features/map/screens/map_view_screen.dart';
 import 'package:juanderquest_app/features/profile/providers/profile_stats_provider.dart';
+import 'package:juanderquest_app/features/profile/providers/user_spots_provider.dart';
 import 'package:juanderquest_app/features/profile/screens/profile_screen.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
 import 'package:juanderquest_app/features/quests/pixel/saved_quests.dart';
@@ -274,6 +275,7 @@ void main() {
               foodExplorerState: BadgeState.locked,
             ),
           ),
+          userSpotsProvider.overrideWith((ref, handle) => Future.value(const [])),
         ],
         child: const MaterialApp(home: ProfileScreen()),
       ),

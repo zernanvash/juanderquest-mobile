@@ -19,6 +19,7 @@ import '../features/spots/screens/interests_screen.dart';
 import '../features/ar_experience/screens/ar_quest_screen.dart';
 import '../features/submissions/screens/submission_history_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/profile/screens/badges_screen.dart';
 import '../features/profile/screens/affiliate_application_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
@@ -308,6 +309,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/profile',
                 builder: (context, state) => const ProfileScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'badges',
+                    pageBuilder: (context, state) => buildDirectionalSlidePage(
+                      context: context,
+                      state: state,
+                      child: const BadgesScreen(),
+                    ),
+                  ),
                   GoRoute(
                     path: ':username',
                     builder: (context, state) => ProfileScreen(
