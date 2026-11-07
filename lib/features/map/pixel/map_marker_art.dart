@@ -163,6 +163,26 @@ abstract final class MapMarkerArt {
     '................',
   ]);
 
+  /// Info "i" in a frame (16x16): opens help.
+  static const iconInfo = PixelArt('mapIconInfo', [
+    '0000000000000000',
+    '0..............0',
+    '0......00......0',
+    '0......00......0',
+    '0..............0',
+    '0.....0000.....0',
+    '0......000.....0',
+    '0......000.....0',
+    '0......000.....0',
+    '0......000.....0',
+    '0......000.....0',
+    '0......000.....0',
+    '0.....00000....0',
+    '0..............0',
+    '0..............0',
+    '0000000000000000',
+  ]);
+
   /// Close X icon (16x16).
   static const iconClose = PixelArt('mapIconClose', [
     '00............00',
@@ -293,9 +313,7 @@ class PixelClusterChip extends StatelessWidget {
             minHeight: grid.px(16),
           ),
           child: PixelPanel(
-            style: hasQuest
-                ? PixelBoxStyle.gold
-                : PixelBoxStyle.parchment,
+            style: hasQuest ? PixelBoxStyle.gold : PixelBoxStyle.parchment,
             padding: 1,
             child: Center(
               widthFactor: 1,
