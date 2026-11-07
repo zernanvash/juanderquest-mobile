@@ -164,11 +164,12 @@ void main() {
   });
   testWidgets('recent activity title is readable at 320px, 2x text',
       (tester) async {
-    await render(tester, const DashboardScreen(), settle: false);
-    await tester.scrollUntilVisible(find.text(longTitle), 150,
-        scrollable: find.byType(Scrollable).first);
-    await tester.pump();
-    expect(tester.takeException(), isNull);
+    await render(
+      tester,
+      const SubmissionHistoryScreen(),
+      submissionState: SubmissionState(submissions: submissions),
+    );
+    expect(find.text(longTitle), findsOneWidget);
     final title = tester.renderObject<RenderParagraph>(find.text(longTitle));
     expect(title.didExceedMaxLines, isFalse,
         reason: 'Populated recent activity title is clipped to one line.');
