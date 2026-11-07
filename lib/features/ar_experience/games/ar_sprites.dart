@@ -52,8 +52,7 @@ class ArSpriteSheet {
     };
   }
 
-  Future<Uint8List> loadPng(AssetBundle bundle) async =>
-      (await bundle.load('$_dir/$file')).buffer.asUint8List();
+  Future<Uint8List> loadPng(AssetBundle bundle) async => (await bundle.load('$_dir/$file')).buffer.asUint8List();
 }
 
 /// One sprite in a native scene. Positions are metres relative to the anchor

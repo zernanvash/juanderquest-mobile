@@ -201,8 +201,18 @@ class SipaGame extends ArMiniGame {
     return [
       lineSprite,
       ArSprite('shadow', x: p.x, y: 0, z: p.z, vx: v.x, vz: v.z, scale: 1.6, floor: true, life: _landS),
-      ArSprite('sipa', x: p.x, y: p.y, z: p.z, vx: v.x, vy: v.y, vz: v.z, gravity: gravity,
-          scale: scale, fps: 10, loop: true, life: _landS),
+      ArSprite('sipa',
+          x: p.x,
+          y: p.y,
+          z: p.z,
+          vx: v.x,
+          vy: v.y,
+          vz: v.z,
+          gravity: gravity,
+          scale: scale,
+          fps: 10,
+          loop: true,
+          life: _landS),
       ArSprite('fx_sparkle', x: p.x, y: p.y, z: p.z, scale: 3, fps: 15, life: 0.4),
     ];
   }

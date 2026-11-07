@@ -153,15 +153,15 @@ void main() {
   });
 
   group('Pana', () {
-    const cam = V3(0, 1.4, 8);
+    const cam = V3(0, 1.4, 5.5);
     const centre = V3(0, PanaGame.targetHeight, 0);
     PanaGame newGame({int seed = 1}) => PanaGame(random: math.Random(seed))
-      ..stand = const V3(0, 0, 8)
+      ..stand = const V3(0, 0, 5.5)
       ..place(0, look(cam, centre));
 
-    test('pulling the bow string sets the draw; letting go shoots with it', () {
+    test('pulling the string sets the draw; a full draw at the bullseye scores 10', () {
       final g = newGame();
-      final pose = look(cam, centre + const V3(0, 0.16, 0));
+      final pose = look(cam, centre);
       g.press(1, pose);
       g.pull(1.2, 0.5);
       expect(g.draw(1.2), 0.5);
@@ -170,6 +170,29 @@ void main() {
       g.release(1.4, pose);
       expect(g.shot!.points, 10);
       expect(g.draw(1.5), 0);
+    });
+
+    test('a tap or a short pull relaxes the bow and keeps the arrow', () {
+      final g = newGame();
+      final pose = look(cam, centre);
+      g.press(1, pose);
+      g.pull(1.1, 0.2);
+      g.release(1.2, pose);
+      expect((g.shot, g.hits, g.takeCallout()), (null, 0, 'PULL FURTHER DOWN!'));
+      // Pulling down and back up again also cancels.
+      g.press(2, pose);
+      g.pull(2.1, 0.8);
+      g.pull(2.2, 0.1);
+      g.release(2.3, pose);
+      expect((g.shot, g.hits), (null, 0));
+    });
+
+    test('the arrow leaves the bow hand (low right) and flies to where the sight looks', () {
+      final g = newGame();
+      final s = g.shoot(0, look(cam, centre), 1);
+      expect(s.start.x, greaterThan(cam.x + 0.1), reason: 'right of the eye');
+      expect(s.start.y, lessThan(cam.y - 0.1), reason: 'below the eye');
+      expect(s.velocity.x, lessThan(0), reason: 'converges towards the middle');
     });
 
     test('rings score 10/8/6/4 and the woven edge 2', () {
@@ -185,58 +208,76 @@ void main() {
       ]);
     });
 
-    test('a full draw at the bullseye drops a little; aiming a touch high hits the 10; a weak draw drops off', () {
+    test('a weak draw drops; the sight pin shows how far, so aiming by it wins it back', () {
       final g = newGame();
-      final dead = g.shoot(0, look(cam, centre), 1);
-      expect(dead.points, inInclusiveRange(6, 8));
-      final high = g.shoot(0, look(cam, centre + const V3(0, 0.16, 0)), 1);
-      expect(high.points, 10);
-      expect(g.shoot(0, look(cam, centre), 0).points, lessThanOrEqualTo(2));
+      expect(g.shoot(0, look(cam, centre), 0.3).points, lessThan(10));
+      final full = g.pin(1), weak = g.pin(0.3);
+      expect(weak.down, greaterThan(full.down * 3));
+      final s = g.shoot(0, look(cam, centre + V3(0, weak.down, 0)), 0.3);
+      expect(s.points, greaterThanOrEqualTo(8));
     });
 
-    test('wind pushes the arrow sideways; aiming into it wins the points back', () {
-      final g = newGame()..wind = 3;
-      final plain = g.shoot(0, look(cam, centre + const V3(0, 0.16, 0)), 1);
-      expect(plain.points, lessThan(8));
-      expect(plain.hitOffset == null || plain.hitOffset!.x > 0.3, isTrue, reason: 'pushed right');
-      final into = g.shoot(0, look(cam, centre + const V3(-0.5, 0.16, 0)), 1);
-      expect(into.points, greaterThanOrEqualTo(8));
+    test('wind pushes the arrow sideways; aiming by the pin wins the points back', () {
+      final g = newGame()..wind = 2;
+      final plain = g.shoot(0, look(cam, centre), 1);
+      expect(plain.points, lessThan(10));
+      final p = g.pin(1);
+      expect(p.right, greaterThan(0.15), reason: 'about one ring per windsock step');
+      final into = g.shoot(0, look(cam, centre + V3(-p.right, p.down, 0)), 1);
+      expect(into.points, 10);
     });
 
-    test('9 arrows: still, then sway, then sway with wind; then it is over', () {
+    test('6 arrows: 1-2 still, 3-4 sway (bangus may swim), 5-6 sway more in wind; then it is over', () {
       final g = newGame(seed: 7);
       var now = 1.0;
-      final winds = <int>[];
+      final winds = <int>[], sways = <double>[];
       for (var i = 0; i < PanaGame.arrows; i++) {
         winds.add(g.wind);
-        expect(g.sway, i < 3 ? 0 : (i < 6 ? 0.5 : 0.8));
+        sways.add(g.sway);
+        if (i < 2 || i >= 4) expect(g.bangusOut, isFalse, reason: 'arrow ${i + 1}');
         final pose = look(cam, centre);
         g.press(now, pose);
+        g.pull(now + 0.5, 1);
         g.release(now + 1, pose);
         g.update(now + 5, pose);
         g.update(now + 10, pose);
         now += 20;
       }
-      expect(winds.take(6), everyElement(0));
-      expect(winds.skip(6), everyElement(isNot(0)));
+      expect(sways, [0, 0, 0.45, 0.45, 0.70, 0.70]);
+      expect(winds.take(4), everyElement(0));
+      expect(winds.skip(4), everyElement(isNot(0)));
+      expect(winds.every((w) => w.abs() <= 2), isTrue);
       expect(g.over, isTrue);
       expect(g.passed, g.score >= PanaGame.passScore);
     });
 
     test('the golden bangus is worth 15', () {
-      final g = newGame()..hits = 3;
+      final g = newGame()..hits = 2;
       g.bangusOut = true;
       // The fish swims fast: lead it by the arrow's flight time.
       final lead = (g.fish(0) - cam).length / PanaGame.maxSpeed;
-      final s = g.shoot(0, look(cam, g.fish(lead) + const V3(0, 0.06, 0)), 1);
+      final s = g.shoot(0, look(cam, g.fish(lead) + const V3(0, 0.03, 0)), 1);
       expect((s.bangus, s.points), (true, PanaGame.bangusPoints));
     });
 
     test('the bilao sways across the player\'s view', () {
-      final g = newGame()..hits = 3;
+      final g = newGame()..hits = 2;
       final a = g.centre(PanaGame.swayPeriod / 4), b = g.centre(3 * PanaGame.swayPeriod / 4);
-      expect((a - b).x.abs(), closeTo(1.0, 1e-9));
+      expect((a - b).x.abs(), closeTo(0.9, 1e-9));
       expect((a - b).z.abs(), lessThan(1e-9));
+    });
+
+    test('the sight: draw, nocked arrow, landing pin', () {
+      final g = newGame();
+      final pose = look(cam, centre);
+      expect(g.sight(1, pose)!.draw, 0);
+      g.press(1, pose);
+      g.pull(1.1, 0.95);
+      final s = g.sight(1.1, pose)!;
+      expect((s.draw, s.loaded, s.onTarget), (0.95, true, true));
+      expect(s.pinDownDeg, greaterThan(0));
+      g.release(1.2, pose);
+      expect(g.sight(1.25, pose)!.loaded, isFalse, reason: 'empty bow while the arrow flies');
     });
   });
 

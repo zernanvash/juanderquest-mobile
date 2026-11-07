@@ -132,7 +132,8 @@ class RingShootGame extends ArMiniGame {
   String? status(ArPose? pose) => 'BALLS $left · $score PTS';
 
   @override
-  String? hint(double now, ArPose? pose) => placed && !over ? turnHint(pose, hoop(now) + const V3(0, rimHeight, 0)) : null;
+  String? hint(double now, ArPose? pose) =>
+      placed && !over ? turnHint(pose, hoop(now) + const V3(0, rimHeight, 0)) : null;
 
   @override
   void place(double now, ArPose? pose) {
@@ -253,10 +254,21 @@ class RingShootGame extends ArMiniGame {
   List<ArSprite> scene(double now, {RingShot? shot}) {
     final p = slidePeriod;
     final amp = p == null ? const V3(0, 0, 0) : across * slide;
-    ArSprite sliding(String sheet, {double scale = 1, bool floor = false, double fps = 0, double delay = 0, double life = 0}) =>
+    ArSprite sliding(String sheet,
+            {double scale = 1, bool floor = false, double fps = 0, double delay = 0, double life = 0}) =>
         ArSprite(sheet,
-            x: 0, y: 0, z: 0, scale: scale, floor: floor, fps: fps, delay: delay, life: life,
-            oscPeriod: p ?? 0, oscPhase: _swing.phaseAt(now + delay), ox: amp.x, oz: amp.z);
+            x: 0,
+            y: 0,
+            z: 0,
+            scale: scale,
+            floor: floor,
+            fps: fps,
+            delay: delay,
+            life: life,
+            oscPeriod: p ?? 0,
+            oscPhase: _swing.phaseAt(now + delay),
+            ox: amp.x,
+            oz: amp.z);
     final s = shot;
     final out = <ArSprite>[
       lineSprite,
@@ -268,8 +280,17 @@ class RingShootGame extends ArMiniGame {
     final flightS = s.make ? s.crossS : s.endS;
     out.addAll([
       ArSprite('ball_spin',
-          x: s.start.x, y: s.start.y, z: s.start.z, vx: v.x, vy: v.y, vz: v.z, gravity: gravity,
-          scale: ballScale, fps: 12, loop: true, life: flightS),
+          x: s.start.x,
+          y: s.start.y,
+          z: s.start.z,
+          vx: v.x,
+          vy: v.y,
+          vz: v.z,
+          gravity: gravity,
+          scale: ballScale,
+          fps: 12,
+          loop: true,
+          life: flightS),
       ArSprite('shadow', x: s.start.x, y: 0, z: s.start.z, vx: v.x, vz: v.z, scale: 1.2, floor: true, life: flightS),
     ]);
     if (s.make) {
@@ -286,8 +307,20 @@ class RingShootGame extends ArMiniGame {
         // The ball drops through the net (moving with the hoop), a little in
         // front of the flat hoop picture so it never hides the ball.
         ArSprite('ball_spin',
-            x: bx, y: rimHeight, z: bz, vy: -1.5, gravity: gravity, scale: ballScale, fps: 12, loop: true,
-            delay: at, life: drop, oscPeriod: p ?? 0, oscPhase: _swing.phaseAt(now + at), ox: amp.x, oz: amp.z),
+            x: bx,
+            y: rimHeight,
+            z: bz,
+            vy: -1.5,
+            gravity: gravity,
+            scale: ballScale,
+            fps: 12,
+            loop: true,
+            delay: at,
+            life: drop,
+            oscPeriod: p ?? 0,
+            oscPhase: _swing.phaseAt(now + at),
+            ox: amp.x,
+            oz: amp.z),
         ArSprite('fx_sparkle', x: r.x + bx, y: rimHeight, z: r.z + bz, scale: 4, fps: 15, delay: at, life: 0.4),
         ArSprite('ball_spin', x: rest.x + bx, y: ballRadius, z: rest.z + bz, scale: ballScale, delay: at + drop),
         ArSprite('fx_dust', x: rest.x + bx, y: 0, z: rest.z + bz, scale: 2, fps: 12, delay: at + drop, life: 0.5),

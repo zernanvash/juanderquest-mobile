@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -41,6 +42,10 @@ class ArMiniGameHud extends StatelessWidget {
   final VoidCallback onPress;
   final VoidCallback onRelease;
 
+  /// Where the `bow_fps` arrow aims, in sprite pixels (its manifest pivot; a
+  /// test keeps them equal). The HUD puts this point on the sight.
+  static const bowAimX = -34.6, bowAimY = 99.1;
+
   /// Swipe-up throw: how far the swipe leaned from straight up, in degrees.
   final ValueChanged<double>? onSwipe;
 
@@ -50,9 +55,36 @@ class ArMiniGameHud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final playing = game.placed && !game.over;
-    final reticle = playing ? game.reticle(now, pose) : null;
+    final sight = playing ? game.sight(now, pose) : null;
+    final reticle = playing && sight == null ? game.reticle(now, pose) : null;
     // The aim circle sits in the true middle of the screen (where the camera looks).
     return Stack(children: [
+      if (sight != null) ...[
+        // Pana: a first-person bow whose arrow points at the sight (Plan 77b).
+        Positioned.fill(child: IgnorePointer(child: _FpsBow(sight: sight, now: now))),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(key: const ValueKey('bow_sight'), painter: _SightPainter(sight)),
+          ),
+        ),
+        if (sight.wind != 0)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Align(
+                alignment: Alignment.center,
+                child: Transform.translate(
+                  offset: const Offset(0, -64),
+                  child: Text(
+                    _windText(sight.wind),
+                    key: const ValueKey('wind_badge'),
+                    style: PixelType.small(context, color: PixelPalette.sun)
+                        .copyWith(shadows: const [Shadow(color: PixelPalette.ink, offset: Offset(1, 1))]),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
       if (reticle != null)
         Positioned.fill(
           child: IgnorePointer(
@@ -69,33 +101,33 @@ class ArMiniGameHud extends StatelessWidget {
       if (playing && game.buttonMode == ArButtonMode.swipe)
         const Positioned.fill(
             child: IgnorePointer(child: CustomPaint(key: ValueKey('aim_line'), painter: _AimLinePainter()))),
-      // Pana: a first-person bow held at the right, bending with the pull.
-      if (playing && game.buttonMode == ArButtonMode.pull)
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: IgnorePointer(
-            child: LayoutBuilder(builder: (context, _) {
-              final w = math.min(MediaQuery.sizeOf(context).width * 0.62, 300.0);
-              return SizedBox(
-                key: const ValueKey('fps_bow'),
-                width: w,
-                height: w * 1.5,
-                child: _StripFrame(
-                    asset: 'assets/ar_sprites/bow_fps.png',
-                    frames: 6,
-                    frame: ((game.meter(now, pose)?.value ?? 0) * 5).round()),
-              );
-            }),
-          ),
-        ),
       if (game.placed && game.blind(now))
         const Positioned.fill(
           child: IgnorePointer(child: ColoredBox(key: ValueKey('blindfold'), color: Color(0xF5000000))),
         ),
       Positioned.fill(child: _bars(context)),
+      // Pana: pull anywhere in the play area, not just a strip at the bottom
+      // (the top bar and MOVE IT stay tappable).
+      if (playing && game.buttonMode == ArButtonMode.pull)
+        Positioned.fill(
+          top: MediaQuery.sizeOf(context).height * 0.18,
+          bottom: 96 + MediaQuery.paddingOf(context).bottom,
+          child: _GestureZone(
+            key: const ValueKey('pull_area'),
+            pull: true,
+            fullArea: true,
+            enabled: game.canPress(now) || pressed,
+            label: game.buttonLabel(now),
+            onSwipe: (_) {},
+            onPress: onPress,
+            onPull: (v) => onPull?.call(v),
+            onRelease: onRelease,
+          ),
+        ),
     ]);
   }
+
+  static String _windText(int w) => w > 0 ? 'WIND $w ${'▶' * w}' : '${'◀' * -w} WIND ${-w}';
 
   Widget _bars(BuildContext context) {
     final playing = game.placed && !game.over;
@@ -259,10 +291,23 @@ class ArMiniGameHud extends StatelessWidget {
         ),
       ],
       const SizedBox(height: 6),
-      if (game.buttonMode == ArButtonMode.swipe || game.buttonMode == ArButtonMode.pull)
+      if (game.buttonMode == ArButtonMode.pull)
+        IgnorePointer(
+          key: const ValueKey('game_button'),
+          child: _GestureZone(
+            pull: true,
+            enabled: can,
+            label: game.buttonLabel(now),
+            onSwipe: (_) {},
+            onPress: () {},
+            onPull: (_) {},
+            onRelease: () {},
+          ),
+        )
+      else if (game.buttonMode == ArButtonMode.swipe)
         _GestureZone(
           key: const ValueKey('game_button'),
-          pull: game.buttonMode == ArButtonMode.pull,
+          pull: false,
           enabled: can,
           label: game.buttonLabel(now),
           onSwipe: (deg) => onSwipe?.call(deg),
@@ -367,8 +412,12 @@ class _GestureZone extends StatefulWidget {
     required this.onPress,
     required this.onPull,
     required this.onRelease,
+    this.fullArea = false,
   });
   final bool pull;
+
+  /// Covers the play area: only catches gestures, draws nothing.
+  final bool fullArea;
   final bool enabled;
   final String label;
   final ValueChanged<double> onSwipe;
@@ -376,8 +425,11 @@ class _GestureZone extends StatefulWidget {
   final ValueChanged<double> onPull;
   final VoidCallback onRelease;
 
-  /// Drag this far down for a full draw.
-  static const fullPullPx = 160.0;
+  /// Drag this far down for a full draw (Plan 77b: comfortable for one thumb).
+  static const fullPullPx = 95.0;
+
+  /// Draw levels that click as you pass them, like a ratcheting string.
+  static const notches = [0.25, 0.5, 0.75, 0.9];
 
   @override
   State<_GestureZone> createState() => _GestureZoneState();
@@ -413,13 +465,22 @@ class _GestureZoneState extends State<_GestureZone> with SingleTickerProviderSta
     _hand.stop();
     if (widget.pull) {
       _down = true;
+      _lastDraw = 0;
       widget.onPress();
     }
   }
 
+  double _lastDraw = 0;
+
   void _update(DragUpdateDetails e) {
     _d += e.delta;
-    if (widget.pull && _down) widget.onPull((math.max(0.0, _d.dy) / _GestureZone.fullPullPx).clamp(0.0, 1.0));
+    if (!widget.pull || !_down) return;
+    final v = (math.max(0.0, _d.dy) / _GestureZone.fullPullPx).clamp(0.0, 1.0);
+    for (final n in _GestureZone.notches) {
+      if (_lastDraw < n && v >= n) HapticFeedback.selectionClick();
+    }
+    _lastDraw = v;
+    widget.onPull(v);
   }
 
   void _end() {
@@ -436,6 +497,15 @@ class _GestureZoneState extends State<_GestureZone> with SingleTickerProviderSta
   @override
   Widget build(BuildContext context) {
     final up = !widget.pull;
+    if (widget.fullArea) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanStart: (_) => _start(),
+        onPanUpdate: _update,
+        onPanEnd: (_) => _end(),
+        onPanCancel: _end,
+      );
+    }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanStart: (_) => _start(),
@@ -554,4 +624,83 @@ class _StripPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_StripPainter old) => old.frame != frame || old.image != image;
+}
+
+/// The first-person bow (Plan 77b): placed so the arrow's line points at the
+/// sight in the middle of the screen; pulls closer and bends with the draw,
+/// trembles at full draw, kicks up on release and shows an empty bow until the
+/// next arrow is nocked.
+class _FpsBow extends StatelessWidget {
+  const _FpsBow({required this.sight, required this.now});
+  final ArSight sight;
+  final double now;
+
+  static const frameW = 240.0, frameH = 360.0;
+  static const aimX = ArMiniGameHud.bowAimX, aimY = ArMiniGameHud.bowAimY;
+  static const frames = 7, emptyFrame = 6;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final d = sight.draw;
+    final k = math.min(size.width * 0.55, 260.0) / frameW * (1 + 0.06 * d);
+    var dy = 18 * d;
+    var dx = 0.0;
+    if (d >= 0.9) dx = (now * 16).floor().isEven ? 1 : -1; // string tension
+    if (!sight.loaded && sight.sinceRelease < 0.12) dy -= 8 * (1 - sight.sinceRelease / 0.12); // recoil
+    final frame = sight.loaded ? (d * 5).round() : emptyFrame;
+    return Stack(children: [
+      Positioned(
+        key: const ValueKey('fps_bow'),
+        left: size.width / 2 - aimX * k + dx,
+        top: size.height / 2 - aimY * k + dy,
+        width: frameW * k,
+        height: frameH * k,
+        child: _StripFrame(asset: 'assets/ar_sprites/bow_fps.png', frames: frames, frame: frame),
+      ),
+    ]);
+  }
+}
+
+/// Bow sight: four corner brackets that close in as you draw (64 to 32 px),
+/// gold at full draw, green on the target; a centre dot and a pin where the
+/// arrow will land (drop and wind).
+class _SightPainter extends CustomPainter {
+  _SightPainter(this.sight);
+  final ArSight sight;
+
+  /// Rough degrees-to-pixels for a phone camera (about 62 degrees across the
+  /// screen height in portrait).
+  static const _fovDeg = 62.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const px = 4.0;
+    final c = size.center(Offset.zero);
+    final colour = sight.onTarget ? PixelPalette.greenMid : (sight.draw >= 0.9 ? PixelPalette.sun : PixelPalette.paper);
+    final half = ((64 - 32 * sight.draw) / 2 / px).round() * px;
+    final ink = Paint()..color = PixelPalette.ink;
+    final fill = Paint()..color = colour;
+    void block(double x, double y, Paint p) => canvas.drawRect(Rect.fromLTWH(x, y, px, px), p);
+    for (final sx in [-1.0, 1.0]) {
+      for (final sy in [-1.0, 1.0]) {
+        final x = c.dx + sx * half - (sx > 0 ? px : 0);
+        final y = c.dy + sy * half - (sy > 0 ? px : 0);
+        for (var i = 0; i < 3; i++) {
+          block(x - sx * i * px, y, i == 2 ? ink : fill);
+          block(x, y - sy * i * px, i == 2 ? ink : fill);
+        }
+      }
+    }
+    block(c.dx - px / 2, c.dy - px / 2, fill);
+    // Landing pin.
+    final perDeg = size.height / _fovDeg;
+    final pin = c + Offset(sight.pinRightDeg * perDeg, sight.pinDownDeg * perDeg);
+    canvas.drawRect(Rect.fromCenter(center: pin, width: px * 2 + 2, height: px * 2 + 2), ink);
+    canvas.drawRect(
+        Rect.fromCenter(center: pin, width: px * 2 - 2, height: px * 2 - 2), Paint()..color = PixelPalette.sun);
+  }
+
+  @override
+  bool shouldRepaint(_SightPainter old) => old.sight != sight;
 }

@@ -192,8 +192,13 @@ class PalayokGame extends ArMiniGame {
         lineSprite,
         const ArSprite('shadow', x: 0, y: 0, z: 0, scale: 4, floor: true),
         ArSprite(_sheets[hits.clamp(0, 2)],
-            x: 0, y: pivotHeight, z: 0, scale: potScale,
-            oscPeriod: _swing.period, oscPhase: _swing.phaseAt(now), rollAmp: swingRad),
+            x: 0,
+            y: pivotHeight,
+            z: 0,
+            scale: potScale,
+            oscPeriod: _swing.period,
+            oscPhase: _swing.phaseAt(now),
+            rollAmp: swingRad),
       ];
 
   /// The pot bursting where it was hit, and the coins falling from [at].
@@ -213,8 +218,18 @@ class PalayokGame extends ArMiniGame {
       final t = timeToFallTo(at.y, vy, gravity, restY)!;
       out.addAll([
         ArSprite('coin_spin',
-            x: at.x, y: at.y, z: at.z, vx: vx, vy: vy, vz: vz, gravity: gravity,
-            scale: 2, fps: 14, loop: true, delay: 0.15, life: t),
+            x: at.x,
+            y: at.y,
+            z: at.z,
+            vx: vx,
+            vy: vy,
+            vz: vz,
+            gravity: gravity,
+            scale: 2,
+            fps: 14,
+            loop: true,
+            delay: 0.15,
+            life: t),
         ArSprite('coin_spin', x: at.x + vx * t, y: restY, z: at.z + vz * t, scale: 2, frame: i % 8, delay: 0.15 + t),
       ]);
     }

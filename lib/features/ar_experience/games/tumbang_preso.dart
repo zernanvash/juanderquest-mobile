@@ -503,8 +503,17 @@ class TumbangGame extends ArMiniGame {
           if (l.smack)
             ArSprite('taya_smack', x: p.x, y: 0, z: p.z, fps: 12, delay: delay, life: dur)
           else
-            ArSprite('taya_guard', x: p.x, y: 0, z: p.z, vx: v.x, vz: v.z, scale: 1.0,
-                fps: moving ? 8 : 0, loop: moving, delay: delay, life: dur),
+            ArSprite('taya_guard',
+                x: p.x,
+                y: 0,
+                z: p.z,
+                vx: v.x,
+                vz: v.z,
+                scale: 1.0,
+                fps: moving ? 8 : 0,
+                loop: moving,
+                delay: delay,
+                life: dur),
         ]);
       }
     }
@@ -513,8 +522,17 @@ class TumbangGame extends ArMiniGame {
     final flyS = t.endS;
     out.addAll([
       ArSprite('tsinelas_spin',
-          x: shot.start.x, y: shot.start.y, z: shot.start.z, vx: v.x, vy: v.y, vz: v.z, gravity: g,
-          scale: TumbangPresoGame.slipperScale, fps: 16, loop: true, life: flyS),
+          x: shot.start.x,
+          y: shot.start.y,
+          z: shot.start.z,
+          vx: v.x,
+          vy: v.y,
+          vz: v.z,
+          gravity: g,
+          scale: TumbangPresoGame.slipperScale,
+          fps: 16,
+          loop: true,
+          life: flyS),
       ArSprite('shadow', x: shot.start.x, y: 0, z: shot.start.z, vx: v.x, vz: v.z, scale: 1.4, floor: true, life: flyS),
     ]);
     final blockS = t.blockS;
@@ -527,10 +545,23 @@ class TumbangGame extends ArMiniGame {
       final land = V3(p.x - d.x * back * fall, 0, p.z - d.z * back * fall);
       out.addAll([
         ArSprite('fx_sparkle', x: p.x, y: p.y, z: p.z, scale: 4, fps: 15, delay: blockS, life: 0.4),
-        ArSprite('tsinelas_spin', x: p.x, y: p.y, z: p.z, vx: -d.x * back, vy: 2.2, vz: -d.z * back, gravity: g,
-            scale: TumbangPresoGame.slipperScale, fps: 20, loop: true, delay: blockS, life: fall),
-        ArSprite('shadow', x: p.x, y: 0, z: p.z, vx: -d.x * back, vz: -d.z * back, scale: 1.4, floor: true, delay: blockS, life: fall),
-        ArSprite('tsinelas_ground', x: land.x, y: 0, z: land.z, scale: TumbangPresoGame.slipperScale, delay: blockS + fall),
+        ArSprite('tsinelas_spin',
+            x: p.x,
+            y: p.y,
+            z: p.z,
+            vx: -d.x * back,
+            vy: 2.2,
+            vz: -d.z * back,
+            gravity: g,
+            scale: TumbangPresoGame.slipperScale,
+            fps: 20,
+            loop: true,
+            delay: blockS,
+            life: fall),
+        ArSprite('shadow',
+            x: p.x, y: 0, z: p.z, vx: -d.x * back, vz: -d.z * back, scale: 1.4, floor: true, delay: blockS, life: fall),
+        ArSprite('tsinelas_ground',
+            x: land.x, y: 0, z: land.z, scale: TumbangPresoGame.slipperScale, delay: blockS + fall),
       ]);
       return out;
     }
@@ -549,8 +580,18 @@ class TumbangGame extends ArMiniGame {
       out.addAll([
         ArSprite('fx_sparkle', x: p.x, y: p.y, z: p.z, scale: 3, fps: 15, delay: hitS, life: 0.4),
         ArSprite('lata_tumble',
-            x: 0, y: y0, z: 0, vx: d.x * _canKickForward, vy: _canKickUp, vz: d.z * _canKickForward, gravity: g,
-            scale: TumbangPresoGame.canScale, fps: 14, loop: true, delay: hitS, life: tl),
+            x: 0,
+            y: y0,
+            z: 0,
+            vx: d.x * _canKickForward,
+            vy: _canKickUp,
+            vz: d.z * _canKickForward,
+            gravity: g,
+            scale: TumbangPresoGame.canScale,
+            fps: 14,
+            loop: true,
+            delay: hitS,
+            life: tl),
         ArSprite('lata_down', x: landX, y: 0, z: landZ, scale: TumbangPresoGame.canScale, delay: hitS + tl),
         ArSprite('fx_dust', x: landX, y: 0, z: landZ, scale: 2.5, fps: 12, delay: hitS + tl, life: 0.5),
       ]);

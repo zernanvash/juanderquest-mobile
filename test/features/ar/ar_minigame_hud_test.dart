@@ -156,8 +156,11 @@ void main() {
         ),
       ),
     ));
-    final gesture = await tester.startGesture(tester.getCenter(find.byKey(const ValueKey('game_button'))));
-    for (var i = 0; i < 10; i++) {
+    // Anywhere in the play area, not only at the bottom; 95 px is a full draw.
+    expect(find.byKey(const ValueKey('fps_bow')), findsOneWidget);
+    expect(find.byKey(const ValueKey('bow_sight')), findsOneWidget);
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(const ValueKey('pull_area'))));
+    for (var i = 0; i < 5; i++) {
       await gesture.moveBy(const Offset(0, 20));
     }
     await gesture.up();
@@ -212,16 +215,16 @@ void main() {
     }
     // Pana: a hit, a miss into the ground, and the golden bangus.
     final pana = PanaGame(random: math.Random(1))
-      ..stand = const V3(0, 0, 8)
+      ..stand = const V3(0, 0, 5.5)
       ..place(0, null)
       ..bangusOut = true;
-    final fish = pana.fish((pana.fish(0) - const V3(0, 1.4, 8)).length / PanaGame.maxSpeed);
+    final fish = pana.fish((pana.fish(0) - const V3(0, 1.4, 5.5)).length / PanaGame.maxSpeed);
     for (final (aim, draw) in [
-      (const V3(0, 1.56, 0), 1.0),
-      (const V3(0, 0, 4), 0.5),
-      (fish + const V3(0, 0.06, 0), 1.0)
+      (const V3(0, 1.4, 0), 1.0),
+      (const V3(0, 0, 2.5), 0.5),
+      (fish + const V3(0, 0.03, 0), 1.0)
     ]) {
-      final s = pana.shoot(0, ArPose(const V3(0, 1.4, 8), (aim - const V3(0, 1.4, 8)).unit), draw);
+      final s = pana.shoot(0, ArPose(const V3(0, 1.4, 5.5), (aim - const V3(0, 1.4, 5.5)).unit), draw);
       used.addAll(pana.scene(0, shot: s).map((e) => e.sheet));
     }
     // Palayok: whole, cracked and broken.
@@ -284,6 +287,9 @@ void main() {
           'sipa'
         ]));
     expect(sheets.keys, containsAll(used));
+    // The HUD bow is placed by where its arrow aims: keep it equal to the art.
+    expect([sheets['bow_fps']!.pivotX, sheets['bow_fps']!.pivotY], [ArMiniGameHud.bowAimX, ArMiniGameHud.bowAimY]);
+    expect(sheets['bow_fps']!.frames, 7);
     for (final s in sheets.values) {
       final png = await s.loadPng(rootBundle);
       expect(png.length, greaterThan(50), reason: s.file);

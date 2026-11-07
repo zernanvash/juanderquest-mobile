@@ -27,6 +27,20 @@ enum ArHaptic { none, light, heavy }
 /// A bar under the HUD: [value] 0..1 and an optional green zone.
 typedef ArMeter = ({double value, double? from, double? to});
 
+/// A bow sight (Pana): how far the string is drawn, whether an arrow is nocked,
+/// seconds since the last release (recoil), where the arrow will land relative
+/// to the sight ([pinRightDeg], [pinDownDeg]), the wind (-2..2) and whether the
+/// sight is on the target.
+typedef ArSight = ({
+  double draw,
+  bool loaded,
+  double sinceRelease,
+  double pinRightDeg,
+  double pinDownDeg,
+  int wind,
+  bool onTarget,
+});
+
 extension V3Math on V3 {
   double dot(V3 o) => x * o.x + y * o.y + z * o.z;
   double get length => math.sqrt(x * x + y * y + z * z);
@@ -147,6 +161,9 @@ abstract class ArMiniGame {
 
   /// Screen goes dark (Palayok piring).
   bool blind(double now) => false;
+
+  /// A bow sight instead of the aim circle (Pana); null for other games.
+  ArSight? sight(double now, ArPose? pose) => null;
 
   /// Close enough to the chalk line to throw (and not stepped over it).
   bool onLine(ArPose pose) {

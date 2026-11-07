@@ -287,12 +287,12 @@
  },
  "bow_fps": {
   "file": "bow_fps.png",
-  "frames": 6,
+  "frames": 7,
   "frameW": 240,
   "frameH": 360,
   "pivot": [
-   120,
-   160
+   -34.6,
+   99.1
   ],
   "fps": 0
  },

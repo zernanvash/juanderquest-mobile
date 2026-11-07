@@ -154,9 +154,16 @@ class CollectGame extends ArMiniGame {
 
   /// The current item spinning and bobbing over its shadow.
   List<ArSprite> scene(double now) => [
-          ArSprite('shadow', x: spot.x, y: 0, z: spot.z, scale: 3, floor: true),
+        ArSprite('shadow', x: spot.x, y: 0, z: spot.z, scale: 3, floor: true),
         ArSprite('item_$item',
-            x: spot.x, y: spot.y, z: spot.z, scale: scale, fps: 10, loop: true,
-            oscPeriod: bobPeriod, oscPhase: _bob.phaseAt(now), oy: bob),
+            x: spot.x,
+            y: spot.y,
+            z: spot.z,
+            scale: scale,
+            fps: 10,
+            loop: true,
+            oscPeriod: bobPeriod,
+            oscPhase: _bob.phaseAt(now),
+            oy: bob),
       ];
 }

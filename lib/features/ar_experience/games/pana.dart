@@ -41,15 +41,15 @@ class PanaShot {
       );
 }
 
-/// "Pana" (Plan 77 `pana`): from the line, 8 m from a woven bilao bullseye.
-/// Pull the bow string down (back) on screen to draw, aim with the phone, let go
-/// (owner 2026-11-07: "sling back pulling the bow action"); the HUD bow bends with
-/// the pull. The arrow drops a little (full draw flies
-/// flattest) and the wind pushes it sideways; the windsock shows how hard.
-/// 9 arrows: 1–3 still, 4–6 the bilao sways, 7–9 it sways in wind (inspired by
-/// Archery King: wind changes every shot, aim about one ring into it per point).
-/// Rings score 10/8/6/4, the woven edge 2; a golden bangus sometimes swims past
-/// for 15. 40 points pass.
+/// "Pana" (Plan 77 `pana`, tuned by Plan 77b): from the line, 5.5 m from a woven
+/// bilao bullseye. Drag down anywhere to pull the string, aim with the phone, let
+/// go (owner 2026-11-07: "sling back pulling the bow action"); a pull under
+/// [minDraw] relaxes the bow without using an arrow. The arrow leaves the bow
+/// hand (low right) towards the point the sight looks at, drops a little (a
+/// full draw flies flattest) and drifts with the wind; the sight pin shows where
+/// it will land. 6 arrows: 1–2 still, 3–4 the bilao sways and a golden bangus
+/// may swim past (15), 5–6 it sways more in wind (Archery King: about one ring
+/// into the wind per step). Rings score 10/8/6/4, the woven edge 2. 28 points pass.
 class PanaGame extends ArMiniGame {
   PanaGame({super.rangeScale, math.Random? random}) : _random = random ?? math.Random();
 
@@ -64,13 +64,19 @@ class PanaGame extends ArMiniGame {
   static const minSpeed = 8.0;
   static const maxSpeed = 22.0;
   static const swayPeriod = 3.2;
-  static const arrows = 9;
-  static const passScore = 40;
-  static const arrowScale = 1.5;
+  static const arrows = 6;
+  static const passScore = 28;
+  static const arrowScale = 0.85;
 
-  /// Wind push per windsock step, m/s² (about one ring at 8 m).
-  static const windPerStep = 2.5;
-  static const bangusChance = 0.35;
+  /// A pull shorter than this relaxes the bow without shooting.
+  static const minDraw = 0.25;
+
+  /// The bow hand, from the eye: right, down and ahead (metres).
+  static const handRight = 0.16, handDown = 0.18, handAhead = 0.35;
+
+  /// Wind push per windsock step, m/s² (about one ring at 5.5 m).
+  static const windPerStep = 3.5;
+  static const bangusChance = 0.5;
   static const bangusHeight = 2.3;
   static const bangusFront = 0.4;
   static const bangusSway = 1.6;
@@ -83,7 +89,7 @@ class PanaGame extends ArMiniGame {
   @override
   String get title => 'PANA';
   @override
-  double get fullDistance => 8.0;
+  double get fullDistance => 5.5;
   @override
   String get placeHint =>
       'Stand where you will shoot, face open ground, then tap STAND HERE. The bilao appears ${standDistance.toStringAsFixed(1)} m ahead.';
@@ -121,7 +127,7 @@ class PanaGame extends ArMiniGame {
   /// Arrows already in the bilao, relative to its centre.
   final List<V3> stuck = [];
 
-  double get sway => hits >= 6 ? 0.8 : (hits >= 3 ? 0.5 : 0.0);
+  double get sway => hits >= 4 ? 0.70 : (hits >= 2 ? 0.45 : 0.0);
 
   /// Bilao centre at [now].
   V3 centre(double now) => const V3(0, targetHeight, 0) + across * (sway * _swing.sinAt(now));
@@ -156,18 +162,36 @@ class PanaGame extends ArMiniGame {
       pose != null && placed && !over && inReticle(pose, centre(now), radius: targetRadius, coneDeg: 0);
 
   @override
+  ArSight? sight(double now, ArPose? pose) {
+    if (!placed || over) return null;
+    final d = draw(now);
+    // At rest the pin shows a full draw; while pulling, the draw so far.
+    final p = pin(d > 0 ? math.max(d, minDraw) : 1.0);
+    double deg(double m) => math.atan(m / standDistance) * 180 / math.pi;
+    return (
+      draw: d,
+      loaded: shot == null,
+      sinceRelease: sinceRelease(now),
+      pinRightDeg: deg(p.right),
+      pinDownDeg: deg(p.down),
+      wind: wind,
+      onTarget: reticle(now, pose) ?? false,
+    );
+  }
+
+  @override
   String? status(ArPose? pose) => 'ARROWS ${arrows - hits} · $score PTS';
 
   @override
   String? hint(double now, ArPose? pose) => placed && !over ? turnHint(pose, centre(now)) : null;
 
   void _nextArrow(double now) {
-    if (hits >= 6) {
-      wind = (1 + _random.nextInt(3)) * (_random.nextBool() ? 1 : -1);
+    if (hits >= 4) {
+      wind = (1 + _random.nextInt(2)) * (_random.nextBool() ? 1 : -1);
     } else {
       wind = 0;
     }
-    bangusOut = hits >= 3 && _random.nextDouble() < bangusChance;
+    bangusOut = (hits == 2 || hits == 3) && _random.nextDouble() < bangusChance;
     if (bangusOut) _fish.epoch = now;
   }
 
@@ -220,6 +244,11 @@ class PanaGame extends ArMiniGame {
     final d = draw(now);
     _drawing = false;
     if (pose == null || shot != null) return;
+    if (d < minDraw) {
+      // A tap or a short pull: relax the string, keep the arrow.
+      say('PULL FURTHER DOWN!');
+      return;
+    }
     final s = shoot(now, pose, d);
     shot = s;
     hits++;
@@ -227,6 +256,20 @@ class PanaGame extends ArMiniGame {
     _resolved = false;
     buzz(ArHaptic.light);
     show(scene(now, shot: s));
+  }
+
+  /// Seconds since the last arrow left the bow (for the HUD's recoil).
+  double sinceRelease(double now) => now - _releasedAt;
+
+  /// Arrow speed for a draw.
+  static double speedFor(double draw) => minSpeed + draw.clamp(0.0, 1.0) * (maxSpeed - minSpeed);
+
+  /// Where an arrow drawn to [draw] lands relative to where the sight looks, at
+  /// the target's distance: metres to the right (wind) and down (drop). Shown as
+  /// the sight pin.
+  ({double right, double down}) pin(double draw) {
+    final t = standDistance / speedFor(draw);
+    return (right: 0.5 * windPerStep * wind * t * t, down: 0.5 * gravity * t * t);
   }
 
   @override
@@ -274,8 +317,11 @@ class PanaGame extends ArMiniGame {
   /// second, against the golden bangus and then the moving bilao.
   PanaShot shoot(double now, ArPose pose, double draw) {
     final f = pose.forward.unit;
-    final start = pose.camera + f * 0.3;
-    final v = f * (minSpeed + draw.clamp(0.0, 1.0) * (maxSpeed - minSpeed));
+    // From the bow hand (low right) towards the point the sight looks at, at the
+    // target's distance: the arrow is seen flying from the bow into the scene.
+    final start = pose.camera + rightOf(f) * handRight + f * handAhead - const V3(0, handDown, 0);
+    final aim = pose.camera + f * standDistance;
+    final v = (aim - start).unit * speedFor(draw);
     final w = windPush;
     final n = downrange;
     final probe = PanaShot(start: start, velocity: v, wind: w, endS: 3);
@@ -312,16 +358,31 @@ class PanaGame extends ArMiniGame {
     final amp = across * (over ? 0.0 : sway);
     final period = amp.horizontalLength > 0 ? swayPeriod : 0.0;
     ArSprite swaying(String sheet, V3 at, {double scale = 1, double delay = 0}) => ArSprite(sheet,
-        x: at.x, y: at.y, z: at.z, scale: scale, delay: delay,
-        oscPeriod: period, oscPhase: _swing.phaseAt(now + delay), ox: amp.x, oz: amp.z);
+        x: at.x,
+        y: at.y,
+        z: at.z,
+        scale: scale,
+        delay: delay,
+        oscPeriod: period,
+        oscPhase: _swing.phaseAt(now + delay),
+        ox: amp.x,
+        oz: amp.z);
     // Arrows sit a little towards the player so the flat bilao never hides them.
     V3 inFront(V3 off) => const V3(0, targetHeight, 0) + off - downrange * 0.03;
     final sock = across * 1.3;
     final out = <ArSprite>[
       lineSprite,
       ArSprite('windsock', x: sock.x, y: 0, z: sock.z, frame: wind.abs(), flipX: wind < 0),
-      ArSprite('shadow', x: 0, y: 0, z: 0, scale: 6, floor: true,
-          oscPeriod: period, oscPhase: _swing.phaseAt(now), ox: amp.x, oz: amp.z),
+      ArSprite('shadow',
+          x: 0,
+          y: 0,
+          z: 0,
+          scale: 6,
+          floor: true,
+          oscPeriod: period,
+          oscPhase: _swing.phaseAt(now),
+          ox: amp.x,
+          oz: amp.z),
       swaying('bilao_target', const V3(0, targetHeight, 0), scale: targetScale),
       for (final off in stuck) swaying('arrow_stuck', inFront(off), scale: arrowScale),
     ];
@@ -330,14 +391,33 @@ class PanaGame extends ArMiniGame {
     if (bangusOut && !over) {
       final base = downrange * (-bangusFront) + const V3(0, bangusHeight, 0);
       final fa = across * bangusSway;
-      out.add(ArSprite('bangus_target', x: base.x, y: base.y, z: base.z, scale: bangusScale, life: fishLife,
-          oscPeriod: bangusPeriod, oscPhase: _fish.phaseAt(now), ox: fa.x, oz: fa.z, oscFlip: true));
+      out.add(ArSprite('bangus_target',
+          x: base.x,
+          y: base.y,
+          z: base.z,
+          scale: bangusScale,
+          life: fishLife,
+          oscPeriod: bangusPeriod,
+          oscPhase: _fish.phaseAt(now),
+          ox: fa.x,
+          oz: fa.z,
+          oscFlip: true));
     }
     if (s == null) return out;
     final v = s.velocity;
     out.add(ArSprite('arrow_flight',
-        x: s.start.x, y: s.start.y, z: s.start.z, vx: v.x, vy: v.y, vz: v.z, gravity: gravity,
-        ax: s.wind.x, az: s.wind.z, scale: arrowScale, align: true, life: s.endS));
+        x: s.start.x,
+        y: s.start.y,
+        z: s.start.z,
+        vx: v.x,
+        vy: v.y,
+        vz: v.z,
+        gravity: gravity,
+        ax: s.wind.x,
+        az: s.wind.z,
+        scale: arrowScale,
+        align: true,
+        life: s.endS));
     final end = s.at(s.endS);
     final off = s.hitOffset;
     if (s.bangus) {
