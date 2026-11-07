@@ -355,7 +355,7 @@ class _HeroTitleBlock extends StatelessWidget {
 
         SizedBox(height: grid.px(3)),
 
-        // Action buttons row (GET DIRECTIONS, PLAY QUEST)
+        // Action buttons row (GET DIRECTIONS)
         Row(
           children: [
             Expanded(
@@ -367,19 +367,6 @@ class _HeroTitleBlock extends StatelessWidget {
                 onPressed: onDirections,
               ),
             ),
-            if (spot.questId != null) ...[
-              SizedBox(width: grid.px(2)),
-              Expanded(
-                child: PixelButton(
-                  key: const Key('theater_play_quest_btn'),
-                  label: 'PLAY QUEST',
-                  style: PixelBoxStyle.gold,
-                  textColor: PixelPalette.ink,
-                  expand: true,
-                  onPressed: onPlayQuest,
-                ),
-              ),
-            ],
           ],
         ),
 

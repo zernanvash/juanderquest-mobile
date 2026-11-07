@@ -32,8 +32,10 @@ import 'package:juanderquest_app/features/quests/providers/campaign_provider.dar
 import 'package:juanderquest_app/features/shop/screens/shop_screen.dart';
 import 'package:juanderquest_app/features/wallet/screens/wallet_connect_screen.dart';
 import 'package:juanderquest_app/features/profile/screens/profile_screen.dart';
+import 'package:juanderquest_app/features/profile/screens/badges_screen.dart';
 import 'package:juanderquest_app/features/vote/screens/vote_screen.dart';
 import 'package:juanderquest_app/features/map/screens/map_view_screen.dart';
+import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_explore_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_search_screen.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
@@ -497,11 +499,36 @@ void main() {
     WidgetTester tester,
     Widget child,
     Size size,
-    double textScale,
-  ) async {
+    double textScale, {
+    bool clampScale = true,
+  }) async {
     final affiliateApi = ApiClient();
     affiliateApi.dio.interceptors.insert(0, InterceptorsWrapper(
       onRequest: (options, handler) {
+        if (options.path.contains('/comments')) {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'data': []},
+          ));
+          return;
+        }
+        if (options.path.contains('/alternatives')) {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'data': []},
+          ));
+          return;
+        }
+        if (options.path.contains('/interactions')) {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'data': {}},
+          ));
+          return;
+        }
         if (options.path == '/affiliate/applications/me') {
           handler.resolve(Response(
             requestOptions: options,
@@ -618,7 +645,7 @@ void main() {
     ));
     tester.view.physicalSize = Size(size.width * 2, size.height * 2);
     tester.view.devicePixelRatio = 2.0;
-    final effectiveScale = textScale.clamp(0.85, 1.4);
+    final effectiveScale = clampScale ? textScale.clamp(0.85, 1.4) : textScale;
     tester.platformDispatcher.textScaleFactorTestValue = effectiveScale;
 
     final List<FlutterErrorDetails> overflowErrors = [];
@@ -646,7 +673,9 @@ void main() {
               child is QuestDetailScreen ||
               child is QuestListScreen ||
               child is InterestsScreen ||
-              child is MapViewScreen)
+              child is MapViewScreen ||
+              child is BadgesScreen ||
+              child is SpotDetailScreen)
             apiClientProvider.overrideWithValue(affiliateApi),
           dailyMissionFetcherProvider.overrideWithValue(() async => false),
           homeDailyProvider.overrideWith(
@@ -1871,5 +1900,103 @@ void main() {
         );
       });
     }
+
+    group('Plan 79a: 2.0x Text Scale Overflow Gates', () {
+      testWidgets(
+          'BadgesScreen does not overflow in small portrait at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const BadgesScreen(),
+          const Size(320, 568),
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'BadgesScreen does not overflow in small landscape at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const BadgesScreen(),
+          const Size(568, 320),
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'PlazaScreen does not overflow in small portrait at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const PlazaScreen(),
+          const Size(320, 568),
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'PlazaScreen does not overflow in small landscape at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const PlazaScreen(),
+          const Size(568, 320),
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'MapViewScreen does not overflow in small portrait at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const MapViewScreen(),
+          const Size(320, 568),
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'MapViewScreen does not overflow in small landscape at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const MapViewScreen(),
+          const Size(568, 320),
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'SpotDetailScreen does not overflow in small portrait at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const SpotDetailScreen(spot: dummySpot),
+          const Size(320, 568),
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'SpotDetailScreen does not overflow in small landscape at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const SpotDetailScreen(spot: dummySpot),
+          const Size(568, 320),
+          2.0,
+          clampScale: false,
+        );
+      });
+    });
   });
 }

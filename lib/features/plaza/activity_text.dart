@@ -1,5 +1,15 @@
 import 'plaza_models.dart';
 
+String humanizeSlug(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return trimmed;
+  final withSpaces = trimmed.replaceAll(RegExp(r'[_]+'), ' ').trim();
+  if (withSpaces.isEmpty) return '';
+  return withSpaces.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).map((word) {
+    return word[0].toUpperCase() + word.substring(1).toLowerCase();
+  }).join(' ');
+}
+
 class FormattedActivity {
   final String sentence;
   final String? pointsBadge;
@@ -14,7 +24,8 @@ class FormattedActivity {
 
 FormattedActivity formatActivityText(ActivityItemModel activity) {
   final actor = activity.actorName;
-  final subject = activity.subjectTitle.isNotEmpty ? activity.subjectTitle : 'a destination';
+  final rawSubject = activity.subjectTitle.isNotEmpty ? activity.subjectTitle : 'a destination';
+  final subject = humanizeSlug(rawSubject);
   final payload = activity.payload;
 
   switch (activity.verb) {
@@ -29,14 +40,16 @@ FormattedActivity formatActivityText(ActivityItemModel activity) {
     case 'town_completed':
       return FormattedActivity(sentence: '$actor completed every Eco-Quest in $subject 🎉');
     case 'badge_earned':
-      final icon = payload['icon']?.toString() ?? '🏅';
+      final rawIcon = payload['icon']?.toString() ?? '🏅';
+      final icon = humanizeSlug(rawIcon);
       return FormattedActivity(
         sentence: '$actor earned the $subject badge $icon',
         badgeIcon: icon,
       );
     case 'level_up':
       final level = payload['level'] ?? 1;
-      final title = payload['title'] != null ? ' · ${payload['title']}' : '';
+      final rawTitle = payload['title']?.toString();
+      final title = rawTitle != null ? ' · ${humanizeSlug(rawTitle)}' : '';
       return FormattedActivity(sentence: '$actor reached Level $level$title');
     case 'streak_milestone':
       final rounds = payload['rounds'] ?? 4;
@@ -46,7 +59,8 @@ FormattedActivity formatActivityText(ActivityItemModel activity) {
       return FormattedActivity(sentence: '$actor entered this week\'s top 10 $rank');
     case 'weekly_champion':
       final place = payload['place'] ?? 1;
-      final week = payload['week_id'] ?? 'this week';
+      final rawWeek = payload['week_id']?.toString() ?? 'this week';
+      final week = humanizeSlug(rawWeek);
       if (place == 1) {
         return FormattedActivity(sentence: '$actor is the Weekly Champion of $week 🏆');
       }

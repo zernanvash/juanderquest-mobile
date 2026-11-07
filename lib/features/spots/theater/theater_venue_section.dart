@@ -93,18 +93,8 @@ class TheaterVenueSection extends StatelessWidget {
                                 point: spotCoord,
                                 width: 36,
                                 height: 36,
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    color: PixelPalette.red,
-                                    border: Border.fromBorderSide(
-                                      BorderSide(
-                                        color: PixelPalette.white,
-                                        width: 2,
-                                      ),
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: const PixelSprite(
+                                child: const Center(
+                                  child: PixelSprite(
                                     MapMarkerArt.spotPin,
                                     scale: 2,
                                   ),

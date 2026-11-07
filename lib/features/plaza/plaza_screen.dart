@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/pixel/generated/designer_art.g.dart';
 import '../../core/pixel/generated/pixel_palette.g.dart';
 import '../../core/pixel/pixel_background.dart';
 import '../../core/pixel/pixel_box.dart';
@@ -13,6 +14,7 @@ import '../../core/services/push_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/providers/auth_provider.dart';
 import '../cosmetics/widgets/cosmetic_avatar.dart';
+import '../spots/studio/pixel/studio_icons.dart';
 import '../vote/pixel/wave3_art.dart';
 import 'activity_text.dart';
 import 'plaza_models.dart';
@@ -254,26 +256,76 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
   }
 
   Widget _controls(BuildContext context, PixelGrid grid) {
-    return Column(
-      children: [
-        PixelSegmented(
-          items: const ['Everyone', 'Following', 'My Town'],
-          selectedIndex:
-              _board == 'everyone' ? 0 : (_board == 'following' ? 1 : 2),
-          onChanged: (index) => setState(() => _board = switch (index) {
-                0 => 'everyone',
-                1 => 'following',
-                _ => 'town',
-              }),
-        ),
-        SizedBox(height: grid.px(2)),
-        PixelSegmented(
-          items: const ['This Week', 'All Time'],
-          selectedIndex: _period == 'weekly' ? 0 : 1,
-          onChanged: (index) => setState(
-              () => _period = index == 0 ? 'weekly' : 'all_time'),
-        ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _toolbarChip(
+            context,
+            grid,
+            label: 'Everyone',
+            selected: _board == 'everyone',
+            onTap: () => setState(() => _board = 'everyone'),
+          ),
+          SizedBox(width: grid.px(1)),
+          _toolbarChip(
+            context,
+            grid,
+            label: 'Following',
+            selected: _board == 'following',
+            onTap: () => setState(() => _board = 'following'),
+          ),
+          SizedBox(width: grid.px(1)),
+          _toolbarChip(
+            context,
+            grid,
+            label: 'My Town',
+            selected: _board == 'town',
+            onTap: () => setState(() => _board = 'town'),
+          ),
+          SizedBox(width: grid.px(2)),
+          Container(
+            width: 2,
+            height: grid.px(5),
+            color: PixelPalette.paperDim,
+          ),
+          SizedBox(width: grid.px(2)),
+          _toolbarChip(
+            context,
+            grid,
+            label: 'This Week',
+            selected: _period == 'weekly',
+            onTap: () => setState(() => _period = 'weekly'),
+          ),
+          SizedBox(width: grid.px(1)),
+          _toolbarChip(
+            context,
+            grid,
+            label: 'All Time',
+            selected: _period == 'all_time',
+            onTap: () => setState(() => _period = 'all_time'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toolbarChip(
+    BuildContext context,
+    PixelGrid grid, {
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return PixelChip(
+      label,
+      style: selected ? PixelBoxStyle.gold : PixelBoxStyle.parchment,
+      textColor: selected ? PixelPalette.ink : PixelPalette.slate,
+      onTap: () {
+        pixelTick(context);
+        onTap();
+      },
     );
   }
 
@@ -516,12 +568,15 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
           Wrap(
             spacing: grid.px(2),
             runSpacing: grid.px(1),
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               PixelButton(
                 key: ValueKey('plaza_cheer_${activity.id}'),
                 label: activity.cheeredByMe
                     ? 'Cheered ${activity.cheerCount}'
                     : 'Cheer ${activity.cheerCount}',
+                icon: DesignerArt.heartLiked,
+                iconScale: 1,
                 variant: activity.cheeredByMe
                     ? PixelButtonVariant.primary
                     : PixelButtonVariant.secondary,
@@ -531,8 +586,12 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                       .toggleCheer(activity.id);
                 },
               ),
-              PixelChip('${activity.commentCount} comments',
-                  style: PixelBoxStyle.slot),
+              PixelChip(
+                '${activity.commentCount} comments',
+                icon: StudioIcons.edit,
+                iconScale: 2,
+                style: PixelBoxStyle.slot,
+              ),
             ],
           ),
         ],

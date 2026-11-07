@@ -355,9 +355,16 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
               ],
             )
           else if (_comments.isEmpty)
-            Text(
-              'No notes yet. Be the first to share a tip.',
-              style: PixelType.small(context, color: PixelPalette.stone),
+            PixelPanel(
+              style: PixelBoxStyle.slot,
+              padding: 2,
+              child: Center(
+                child: Text(
+                  'No notes yet. Be the first to share a tip.',
+                  textAlign: TextAlign.center,
+                  style: PixelType.body(context, color: PixelPalette.cream),
+                ),
+              ),
             )
           else
             for (final c in _comments) ...[
