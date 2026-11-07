@@ -484,21 +484,24 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     }
     final frame = _world?.frame.value;
     final waitingForGround = world && unlocked && frame?.anchor == null;
-    String? searchingHint;
-    if (phase == ArHuntPhase.seeking) {
-      // Warmer/colder: how close you are, never which way.
-      final heat = hunt.heat ?? 'COLD';
-      final trend = hunt.trend.isEmpty ? '' : ' · ${hunt.trend}';
-      final d = hunt.relicDistance;
-      final away = d == null ? '' : ' · ${ArHuntRules.distanceHint(d)} from the ${task.objectLabel}';
-      searchingHint = '$heat$away$trend. It appears when you are a few steps away.';
-    }
+    // Owner 2026-11-08: "too much text ... simplify the AR UI": while finding,
+    // one small banner keeps the camera clear; the (i) button has the details,
+    // and the card shows only when there is something to do.
+    String bannerText = switch (phase) {
+      ArHuntPhase.locating => 'Finding your location…',
+      ArHuntPhase.outside => 'Follow the arrow to the area',
+      ArHuntPhase.unlocking => 'Unlocking…',
+      _ => 'Look around for the ${task.objectLabel}',
+    };
     if (waitingForGround) {
       final tracking = frame?.tracking ?? false;
-      searchingHint = !tracking
-          ? frame?.trackingHint ?? 'Move your phone slowly to scan the ground.'
-          : 'Sweep the floor around you slowly so the gem has room to land.';
+      bannerText =
+          tracking ? 'Scan the ground slowly' : 'Move your phone slowly';
     }
+    final showCard = phase == ArHuntPhase.aligned ||
+        phase == ArHuntPhase.submitting ||
+        phase == ArHuntPhase.verified ||
+        phase == ArHuntPhase.failed;
     return [
       if (unlocked) ...[
         ArReticle(
@@ -526,22 +529,38 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
           ),
         ),
       if (!world) _CompassHint(pose: _device.pose, phase: phase),
-      Align(
-        alignment: Alignment.bottomCenter,
-        child: SafeArea(
-          minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: ArStatusCard(
-            phase: phase,
-            error: hunt.error,
-            searchingHint: searchingHint,
-            objectLabel: task.objectLabel,
-            onCollect: hunt.collect,
-            onDone: () => _close(completed: true),
-            onRetry: () =>
-                hunt.retry(cameraBearing: _device.pose.value.camera.bearing),
+      if (!showCard)
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 64, left: 16, right: 16),
+              child: phase == ArHuntPhase.seeking
+                  ? HuntHeatBanner(
+                      heat: hunt.heat ?? 'COLD',
+                      trend: hunt.trend,
+                      distance: hunt.relicDistance,
+                    )
+                  : _HuntBanner(text: bannerText),
+            ),
           ),
         ),
-      ),
+      if (showCard)
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: SafeArea(
+            minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: ArStatusCard(
+              phase: phase,
+              error: hunt.error,
+              objectLabel: task.objectLabel,
+              onCollect: hunt.collect,
+              onDone: () => _close(completed: true),
+              onRetry: () =>
+                  hunt.retry(cameraBearing: _device.pose.value.camera.bearing),
+            ),
+          ),
+        ),
     ];
   }
 
@@ -584,58 +603,41 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            task.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800),
-                          ),
-                          Text(
-                            'Step ${task.stepOrder} · Find the ${task.objectLabel}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 11),
-                          ),
-                        ],
+                      child: Text(
+                        task.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w800),
                       ),
                     ),
-                    if (mode != null) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        key: const ValueKey('ar_mode_chip'),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color:
-                              const Color(0xFFFFB703).withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                              color: const Color(0xFFFFB703)
-                                  .withValues(alpha: 0.6)),
-                        ),
-                        child: Text(
-                          mode,
-                          style: const TextStyle(
-                              color: Color(0xFFFFB703),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
             ),
+          if (task != null) ...[
+            const SizedBox(width: 10),
+            PixelIconButton(
+              key: const ValueKey('ar_info'),
+              onPressed: () => _showHelp(task, mode),
+              icon: MapMarkerArt.iconInfo,
+              semanticLabel: 'How AR finding works',
+              style: PixelBoxStyle.parchment,
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  /// The (i) sheet: how finding works, the safety notes and the AR mode.
+  void _showHelp(ArTaskSpec task, String? mode) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) =>
+          ArHelpSheet(objectLabel: task.objectLabel, mode: mode),
     );
   }
 }
@@ -697,7 +699,8 @@ class ArStatusCard extends StatelessWidget {
         break;
       case ArHuntPhase.outside:
         title = 'Walk to the AR area';
-        detail = 'Follow the arrow. Watch your step: stay off roads and away from crowds.';
+        detail =
+            'Follow the arrow. Watch your step: stay off roads and away from crowds.';
         icon = Icons.directions_walk_rounded;
         break;
       case ArHuntPhase.unlocking:
@@ -707,7 +710,8 @@ class ArStatusCard extends StatelessWidget {
         break;
       case ArHuntPhase.seeking:
         title = 'Search for the $objectLabel';
-        detail = '${searchingHint ?? 'Walk around the area.'}\nLook up while you walk: mind traffic, people, steps and trees.';
+        detail =
+            '${searchingHint ?? 'Walk around the area.'}\nLook up while you walk: mind traffic, people, steps and trees.';
         icon = Icons.explore_rounded;
         break;
       case ArHuntPhase.searching:
@@ -992,6 +996,164 @@ class _MessagePanel extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One short line under the top bar while there is nothing to tap.
+class _HuntBanner extends StatelessWidget {
+  const _HuntBanner({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Container(
+        key: const ValueKey('ar_banner'),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.62),
+          border:
+              Border.all(color: Colors.white.withValues(alpha: 0.25), width: 2),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+        ),
+      ));
+}
+
+/// While seeking the hidden relic: the heat (HOT/WARM/COOL/COLD), about how
+/// far, and whether you are getting WARMER or COLDER. Nothing else.
+class HuntHeatBanner extends StatelessWidget {
+  const HuntHeatBanner(
+      {super.key, required this.heat, required this.trend, this.distance});
+  final String heat;
+  final String trend;
+  final double? distance;
+
+  static Color colourFor(String heat) => switch (heat) {
+        'HOT' => const Color(0xFFE5452B),
+        'WARM' => const Color(0xFFFFB703),
+        'COOL' => const Color(0xFF7CC4F2),
+        _ => const Color(0xFF3B82F6),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colourFor(heat);
+    final d = distance;
+    // Shrinks to fit on narrow screens with big text; never wraps or overflows.
+    return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Container(
+          key: const ValueKey('ar_heat_banner'),
+          padding: const EdgeInsets.fromLTRB(6, 5, 12, 5),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.62),
+            border: Border.all(color: c, width: 2),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              color: c,
+              child: Text(heat,
+                  style: const TextStyle(
+                      color: Color(0xFF0D1B2A),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13)),
+            ),
+            if (d != null) ...[
+              const SizedBox(width: 10),
+              Text(ArHuntRules.distanceHint(d).replaceFirst('about ', '~'),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13)),
+            ],
+            if (trend.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              Text(trend == 'WARMER' ? '▲ WARMER' : '▼ COLDER',
+                  style: TextStyle(
+                      color: trend == 'WARMER'
+                          ? const Color(0xFFFFB703)
+                          : const Color(0xFF7CC4F2),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13)),
+            ],
+          ]),
+        ));
+  }
+}
+
+/// Help behind the (i) button.
+class ArHelpSheet extends StatelessWidget {
+  const ArHelpSheet({super.key, required this.objectLabel, this.mode});
+  final String objectLabel;
+  final String? mode;
+
+  @override
+  Widget build(BuildContext context) {
+    const body = TextStyle(color: Colors.white, fontSize: 14, height: 1.35);
+    Widget line(String n, String t) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(
+                width: 22,
+                child: Text(n,
+                    style: body.copyWith(
+                        color: const Color(0xFFFFB703),
+                        fontWeight: FontWeight.w800))),
+            Expanded(child: Text(t, style: body)),
+          ]),
+        );
+    return SafeArea(
+      child: Container(
+        key: const ValueKey('ar_help'),
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D1B2A),
+          border: Border.all(color: const Color(0xFFFFB703), width: 2),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('How to find the $objectLabel',
+                    style: body.copyWith(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        color: const Color(0xFFFFB703))),
+                const SizedBox(height: 10),
+                line('1', 'Walk to the area. The arrow points the way.'),
+                line('2',
+                    'The $objectLabel hides somewhere in the area. HOT, WARM, COOL or COLD and the metres say how close you are; WARMER or COLDER says if you are getting closer.'),
+                line('3',
+                    'A few steps away it appears. Hold it inside the circle, then tap Collect.'),
+                const SizedBox(height: 4),
+                Text('Stay safe',
+                    style: body.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFFE5452B))),
+                const SizedBox(height: 4),
+                const Text(
+                    'Look up while you walk. Stay off roads and away from crowds, and mind steps, water and trees.',
+                    style: body),
+                if (mode != null) ...[
+                  const SizedBox(height: 10),
+                  Text('Mode: $mode',
+                      style:
+                          body.copyWith(color: Colors.white70, fontSize: 12)),
+                ],
+                const SizedBox(height: 8),
+              ]),
         ),
       ),
     );
