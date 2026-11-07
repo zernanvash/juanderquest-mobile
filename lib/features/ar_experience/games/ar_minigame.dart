@@ -118,7 +118,10 @@ abstract class ArMiniGame {
   /// Where the player stands, relative to the target (y = 0). Set before [place].
   V3 stand = const V3(0, 0, 5);
 
-  static const lineReach = 0.75;
+  /// How far you may drift from the line: a little towards the target (so the
+  /// distance stays the same for everyone), more sideways and backwards.
+  static const lineForward = 0.25;
+  static const lineReach = 1.0;
 
   String get title;
 
@@ -143,8 +146,11 @@ abstract class ArMiniGame {
   /// Screen goes dark (Palayok piring).
   bool blind(double now) => false;
 
-  /// Close enough to the chalk line to throw.
-  bool onLine(ArPose pose) => (V3(pose.camera.x, 0, pose.camera.z) - stand).horizontalLength <= lineReach;
+  /// Close enough to the chalk line to throw (and not stepped over it).
+  bool onLine(ArPose pose) {
+    final off = V3(pose.camera.x, 0, pose.camera.z) - stand;
+    return off.dot(downrange) <= lineForward && off.horizontalLength <= lineReach;
+  }
 
   /// Unit horizontal direction from the line to the target.
   V3 get downrange => V3(-stand.x, 0, -stand.z).unit;

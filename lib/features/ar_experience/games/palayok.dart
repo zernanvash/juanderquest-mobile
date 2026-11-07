@@ -109,7 +109,7 @@ class PalayokGame extends ArMiniGame {
 
   @override
   String? hint(double now, ArPose? pose) {
-    if (!placed || broken || pose == null) return null;
+    if (!placed || broken || pose == null || blind(now)) return null;
     return turnHint(pose, const V3(0, pivotHeight - ropeLength, 0));
   }
 

@@ -202,7 +202,13 @@ class RingShootGame extends ArMiniGame {
         score += s.swish ? 3 : 2;
         say(s.swish ? 'SWISH!' : 'SHOOT!');
         buzz(ArHaptic.heavy);
-        if (hits == 3 || hits == 6) _swing.retime(now, slidePeriod!);
+        // Start sliding from the middle; later just speed up without a jump.
+        if (hits == 3) {
+          _swing
+            ..period = slidePeriod!
+            ..epoch = now;
+        }
+        if (hits == 6) _swing.retime(now, slidePeriod!);
         _settleUntil = now + _dropS + 1.0;
       } else {
         say('MINTIS!');

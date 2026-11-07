@@ -23,6 +23,21 @@ ArPose lookOff(V3 camera, V3 target, double deg) {
 }
 
 void main() {
+  test('every game: stepping towards the target leaves the line; sideways or back is fine', () {
+    final games = <ArMiniGame>[
+      TumbangGame(), RingShootGame(), PanaGame(), PalayokGame(random: math.Random(1)), SipaGame(random: math.Random(1)),
+    ];
+    for (final g in games) {
+      final d = g.standDistance;
+      g.stand = V3(0, 0, d);
+      ArPose at(double x, double z) => ArPose(V3(x, 1.4, z), const V3(0, 0, -1));
+      expect(g.onLine(at(0, d)), isTrue, reason: g.title);
+      expect(g.onLine(at(0, d - 0.5)), isFalse, reason: '${g.title}: 0.5 m closer');
+      expect(g.onLine(at(0.5, d)), isTrue, reason: '${g.title}: sideways');
+      expect(g.onLine(at(0, d + 0.5)), isTrue, reason: '${g.title}: back');
+    }
+  });
+
   group('Ring Shoot', () {
     const cam = V3(0, 1.4, 4.2);
     final atHoop = look(cam, const V3(0, 2, 0));
@@ -68,6 +83,7 @@ void main() {
       expect(g.hits, 3);
       expect(g.score, inInclusiveRange(6, 9));
       expect(g.slidePeriod, 4.0);
+      expect(g.hoop(now - 20 + 5).x.abs(), lessThan(0.05), reason: 'starts sliding from the middle');
       final xs = [for (var t = 0.0; t < 4; t += 0.5) g.hoop(now + t).x];
       expect(xs.reduce(math.max) - xs.reduce(math.min), greaterThan(1.0), reason: 'the hoop slides side to side');
       g.hits = 6;

@@ -240,9 +240,20 @@ class TumbangGame extends ArMiniGame {
   @override
   String buttonLabel(double now) => _charging ? 'RELEASE TO THROW!' : 'HOLD TO THROW';
 
+  ({double from, double to})? _sweet;
+  double _sweetAt = -1;
+  double _sweetMargin = -1;
+
+  /// The green zone costs ~100 simulated throws, so it is refreshed 4 times a
+  /// second (or when a streak changes it), not every frame.
   @override
   ArMeter? meter(double now, ArPose? pose) {
-    final z = pose == null ? null : TumbangPresoGame.sweetSpot(pose.camera, margin: margin);
+    if (pose != null && (now - _sweetAt >= 0.25 || now < _sweetAt || _sweetMargin != margin)) {
+      _sweet = TumbangPresoGame.sweetSpot(pose.camera, margin: margin);
+      _sweetAt = now;
+      _sweetMargin = margin;
+    }
+    final z = pose == null ? null : _sweet;
     return (value: power(now), from: z?.from, to: z?.to);
   }
 
