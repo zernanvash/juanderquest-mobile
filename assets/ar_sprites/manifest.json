@@ -278,22 +278,99 @@
   "file": "taya_guard.png",
   "frames": 4,
   "frameW": 435,
-  "frameH": 409,
+  "frameH": 448,
   "pivot": [
    217.6,
-   401.2
+   439.5
   ],
   "fps": 8
  },
- "bow_draw": {
-  "file": "bow_draw.png",
+ "bow_fps": {
+  "file": "bow_fps.png",
   "frames": 6,
-  "frameW": 422,
-  "frameH": 499,
+  "frameW": 240,
+  "frameH": 360,
   "pivot": [
-   211.2,
-   230.4
+   120,
+   160
   ],
   "fps": 0
+ },
+ "taya_smack": {
+  "file": "taya_smack.png",
+  "frames": 4,
+  "frameW": 435,
+  "frameH": 448,
+  "pivot": [
+   217.6,
+   439.5
+  ],
+  "fps": 12
+ },
+ "item_token": {
+  "file": "item_token.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_gem": {
+  "file": "item_gem.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_crate": {
+  "file": "item_crate.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_beacon": {
+  "file": "item_beacon.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_orb": {
+  "file": "item_orb.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_pyramid": {
+  "file": "item_pyramid.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
  }
 }

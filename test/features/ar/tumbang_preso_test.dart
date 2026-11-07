@@ -123,6 +123,28 @@ void main() {
       expect(legs.toSet().length, greaterThan(3));
     });
 
+    test('a tsinelas that hits the taya gets smacked back towards you', () {
+      final g = newGame()..hits = TumbangGame.tayaAfter;
+      g.place(0, pose);
+      g.takeScene();
+      // Find a moment when the taya is in the way, then throw then.
+      var t0 = 0.0;
+      while (g.throwAt(t0, pose, sweetMid(margin: g.margin)).blockS == null) {
+        t0 += 0.05;
+        expect(t0, lessThan(30));
+      }
+      throwAt(g, t0 - sweetMid(margin: g.margin) * g.chargeCycle / 2, sweetMid(margin: g.margin));
+      final th = g.current!;
+      expect(th.blockS, isNotNull);
+      final scene = g.takeScene()!;
+      final smack = scene.where((s) => s.sheet == 'taya_smack').single;
+      expect(smack.delay, closeTo(th.blockS! - TumbangGame.smackLeadS, 0.02));
+      final back = scene.where((s) => s.sheet == 'tsinelas_spin' && s.delay == th.blockS).single;
+      expect(back.vz, greaterThan(3), reason: 'flies back towards the player (at +z)');
+      g.update(t0 + 5, pose);
+      expect((g.takeCallout(), g.streak), ('PALO! HARANG!', 0));
+    });
+
     test('the taya route keeps being drawn while you wait', () {
       final g = newGame()..hits = TumbangGame.tayaAfter;
       g.place(0, pose);

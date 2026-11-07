@@ -65,6 +65,30 @@ class ArMiniGameHud extends StatelessWidget {
             ),
           ),
         ),
+      // Ring Shoot: the ball flies along this centre line (where the phone points).
+      if (playing && game.buttonMode == ArButtonMode.swipe)
+        const Positioned.fill(
+            child: IgnorePointer(child: CustomPaint(key: ValueKey('aim_line'), painter: _AimLinePainter()))),
+      // Pana: a first-person bow held at the right, bending with the pull.
+      if (playing && game.buttonMode == ArButtonMode.pull)
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: IgnorePointer(
+            child: LayoutBuilder(builder: (context, _) {
+              final w = math.min(MediaQuery.sizeOf(context).width * 0.62, 300.0);
+              return SizedBox(
+                key: const ValueKey('fps_bow'),
+                width: w,
+                height: w * 1.5,
+                child: _StripFrame(
+                    asset: 'assets/ar_sprites/bow_fps.png',
+                    frames: 6,
+                    frame: ((game.meter(now, pose)?.value ?? 0) * 5).round()),
+              );
+            }),
+          ),
+        ),
       if (game.placed && game.blind(now))
         const Positioned.fill(
           child: IgnorePointer(child: ColoredBox(key: ValueKey('blindfold'), color: Color(0xF5000000))),
@@ -220,7 +244,7 @@ class ArMiniGameHud extends StatelessWidget {
     final caption = game.meterCaption(now, pose);
     final hold = game.buttonMode == ArButtonMode.hold;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (meter != null)
+      if (meter != null && game.buttonMode != ArButtonMode.pull)
         SizedBox(
           height: 26,
           child: CustomPaint(key: const ValueKey('meter'), painter: _MeterPainter(meter)),
@@ -235,19 +259,13 @@ class ArMiniGameHud extends StatelessWidget {
         ),
       ],
       const SizedBox(height: 6),
-      if (game.buttonMode == ArButtonMode.swipe)
-        _SwipePad(
+      if (game.buttonMode == ArButtonMode.swipe || game.buttonMode == ArButtonMode.pull)
+        _GestureZone(
           key: const ValueKey('game_button'),
+          pull: game.buttonMode == ArButtonMode.pull,
           enabled: can,
           label: game.buttonLabel(now),
           onSwipe: (deg) => onSwipe?.call(deg),
-        )
-      else if (game.buttonMode == ArButtonMode.pull)
-        _BowPad(
-          key: const ValueKey('game_button'),
-          enabled: can,
-          draw: meter?.value ?? 0,
-          label: game.buttonLabel(now),
           onPress: onPress,
           onPull: (v) => onPull?.call(v),
           onRelease: onRelease,
@@ -335,63 +353,25 @@ class _ReticlePainter extends CustomPainter {
   bool shouldRepaint(_ReticlePainter old) => old.on != on;
 }
 
-/// Swipe up anywhere on the pad to throw (Ring Shoot).
-class _SwipePad extends StatefulWidget {
-  const _SwipePad({super.key, required this.enabled, required this.label, required this.onSwipe});
-  final bool enabled;
-  final String label;
-  final ValueChanged<double> onSwipe;
-
-  @override
-  State<_SwipePad> createState() => _SwipePadState();
-}
-
-class _SwipePadState extends State<_SwipePad> {
-  Offset _d = Offset.zero;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onPanStart: (_) => _d = Offset.zero,
-      onPanUpdate: (e) => _d += e.delta,
-      onPanEnd: (_) {
-        // An upward flick of at least 40 px throws; the lean is its angle from straight up.
-        if (widget.enabled && _d.dy < -40) widget.onSwipe(math.atan2(_d.dx, -_d.dy) * 180 / math.pi);
-      },
-      child: PixelPanel(
-        style: widget.enabled ? PixelBoxStyle.green : PixelBoxStyle.stone,
-        child: SizedBox(
-          height: 72,
-          child: Center(
-            child: FittedBox(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text('▲ ▲ ▲', style: PixelType.title(context, color: PixelPalette.sun)),
-                Text(widget.label, style: PixelType.title(context, color: PixelPalette.white)),
-              ]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The bow at the bottom of the screen: drag down to pull the string back,
-/// let go to shoot (Pana). The picture bends with the pull.
-class _BowPad extends StatefulWidget {
-  const _BowPad({
+/// Where you swipe: no button, just a subtle hint and a finger showing the
+/// gesture (owner 2026-11-07: "remove the button ... just put a subtle swipe to
+/// shoot text with gesture swiping cursor"). Swipe up throws (Ring Shoot); with
+/// [pull], drag down to pull the bow string and let go to shoot (Pana).
+class _GestureZone extends StatefulWidget {
+  const _GestureZone({
     super.key,
+    required this.pull,
     required this.enabled,
-    required this.draw,
     required this.label,
+    required this.onSwipe,
     required this.onPress,
     required this.onPull,
     required this.onRelease,
   });
+  final bool pull;
   final bool enabled;
-  final double draw;
   final String label;
+  final ValueChanged<double> onSwipe;
   final VoidCallback onPress;
   final ValueChanged<double> onPull;
   final VoidCallback onRelease;
@@ -400,47 +380,118 @@ class _BowPad extends StatefulWidget {
   static const fullPullPx = 160.0;
 
   @override
-  State<_BowPad> createState() => _BowPadState();
+  State<_GestureZone> createState() => _GestureZoneState();
 }
 
-class _BowPadState extends State<_BowPad> {
-  double _dy = 0;
+class _GestureZoneState extends State<_GestureZone> with SingleTickerProviderStateMixin {
+  late final AnimationController _hand = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+  Offset _d = Offset.zero;
   bool _down = false;
+  bool _used = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (still || _used) {
+      _hand.stop();
+    } else if (!_hand.isAnimating) {
+      _hand.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _hand.dispose();
+    super.dispose();
+  }
+
+  void _start() {
+    _d = Offset.zero;
+    if (!widget.enabled) return;
+    if (!_used) setState(() => _used = true);
+    _hand.stop();
+    if (widget.pull) {
+      _down = true;
+      widget.onPress();
+    }
+  }
+
+  void _update(DragUpdateDetails e) {
+    _d += e.delta;
+    if (widget.pull && _down) widget.onPull((math.max(0.0, _d.dy) / _GestureZone.fullPullPx).clamp(0.0, 1.0));
+  }
 
   void _end() {
-    if (!_down) return;
-    _down = false;
-    widget.onRelease();
+    if (widget.pull) {
+      if (!_down) return;
+      _down = false;
+      widget.onRelease();
+      return;
+    }
+    // An upward flick of at least 40 px throws.
+    if (widget.enabled && _d.dy < -40) widget.onSwipe(math.atan2(_d.dx, -_d.dy) * 180 / math.pi);
   }
 
   @override
   Widget build(BuildContext context) {
+    final up = !widget.pull;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onPanStart: (_) {
-        if (!widget.enabled) return;
-        _dy = 0;
-        _down = true;
-        widget.onPress();
-      },
-      onPanUpdate: (e) {
-        if (!_down) return;
-        _dy = math.max(0, _dy + e.delta.dy);
-        widget.onPull((_dy / _BowPad.fullPullPx).clamp(0.0, 1.0));
-      },
+      onPanStart: (_) => _start(),
+      onPanUpdate: _update,
       onPanEnd: (_) => _end(),
       onPanCancel: _end,
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        SizedBox(
-            height: 110,
-            child: _StripFrame(asset: 'assets/ar_sprites/bow_draw.png', frames: 6, frame: (widget.draw * 5).round())),
-        Text(widget.label,
-            textAlign: TextAlign.center,
-            style: PixelType.title(context, color: widget.enabled ? PixelPalette.sun : PixelPalette.mist)
-                .copyWith(shadows: const [Shadow(color: PixelPalette.ink, offset: Offset(2, 2))])),
-      ]),
+      child: SizedBox(
+        height: 120,
+        child: Stack(alignment: Alignment.center, children: [
+          if (!_used && widget.enabled)
+            AnimatedBuilder(
+              animation: _hand,
+              builder: (context, child) {
+                final t = Curves.easeInOut.transform((_hand.value * 1.25).clamp(0.0, 1.0));
+                final dy = (up ? 30 - 60 * t : -30 + 60 * t);
+                final fade = _hand.value > 0.85 ? (1 - _hand.value) / 0.15 : 1.0;
+                return Transform.translate(
+                  offset: Offset(0, dy),
+                  child: Opacity(opacity: (0.75 * fade).clamp(0.0, 1.0), child: child),
+                );
+              },
+              child: const Icon(Icons.touch_app, size: 44, color: PixelPalette.paper, shadows: [
+                Shadow(color: PixelPalette.ink, offset: Offset(2, 2)),
+              ]),
+            ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Text(
+              '${up ? '▲ ' : '▼ '}${widget.label}',
+              textAlign: TextAlign.center,
+              style: PixelType.small(context, color: widget.enabled ? PixelPalette.paper : PixelPalette.mist)
+                  .copyWith(shadows: const [Shadow(color: PixelPalette.ink, offset: Offset(1, 1))]),
+            ),
+          ),
+        ]),
+      ),
     );
   }
+}
+
+/// A faint aiming lane down the middle of the screen with a centre line.
+class _AimLinePainter extends CustomPainter {
+  const _AimLinePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = (size.width / 2).floorToDouble();
+    canvas.drawRect(Rect.fromLTWH(cx - 16, 0, 32, size.height), Paint()..color = const Color(0x14FFFFFF));
+    final dash = Paint()..color = const Color(0x8CFFFFFF);
+    for (var y = 0.0; y < size.height; y += 16) {
+      canvas.drawRect(Rect.fromLTWH(cx - 1, y, 2, 8), dash);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_AimLinePainter old) => false;
 }
 
 /// One frame of a horizontal pixel-art strip, drawn crisp (nearest pixel).

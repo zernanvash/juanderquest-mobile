@@ -47,8 +47,10 @@ class RingShot {
 /// "Barangay Ring Shoot" (Plan 77 `shooting_hoop`): from the line, point at the
 /// ring and SWIPE UP to shoot (owner 2026-11-07: "make the basketball more
 /// forgiving, so the user has to just throw the ball no need to think about ball
-/// throw power"). The power is always right for the ring as it is now; a swipe
-/// that leans far sideways pulls the ball off line. 10 balls; after 3 baskets the
+/// throw power"; then "the ball should go based on where the phone is looking at,
+/// thats the challenge ... a forgiving line in the middle of the screen"). The
+/// ball flies where the phone points (the centre guide line); the swipe only
+/// throws it, and the power is always right for the ring. 10 balls; after 3 baskets the
 /// hoop slides side to side, faster after 6 (like Messenger's basketball), so you
 /// time the swipe. A basket is 2 points, a swish 3; 4 baskets pass.
 class RingShootGame extends ArMiniGame {
@@ -58,17 +60,15 @@ class RingShootGame extends ArMiniGame {
   static const rimHeight = 2.0;
   static const rimRadius = 0.21;
 
-  /// How far off the rim centre still drops in.
-  static const makeMargin = 0.12;
+  /// How far off the rim centre still drops in (forgiving).
+  static const makeMargin = 0.25;
   static const swishRadius = 0.10;
   static const ballScale = 1.2;
   static const ballRadius = 0.12 * ballScale;
 
-  /// Pointing within this many degrees of the ring snaps the shot onto it.
-  static const assistDeg = 15.0;
-
-  /// A swipe may lean this far from straight up and still fly straight.
-  static const swipeDeadDeg = 15.0;
+  /// Pointing within this many degrees of the ring snaps the shot onto it; with
+  /// [makeMargin] that forgives about 6.5 degrees either side at 4.2 m.
+  static const assistDeg = 3.0;
   static const balls = 10;
   static const passHits = 4;
   static const slide = 0.8;
@@ -123,7 +123,7 @@ class RingShootGame extends ArMiniGame {
 
   @override
   String? meterCaption(double now, ArPose? pose) =>
-      slidePeriod == null ? 'Point at the ring and swipe up.' : 'The ring moves: swipe as it comes to the middle.';
+      slidePeriod == null ? 'Line up the ring on the centre line.' : 'The ring moves: swipe when it crosses the line.';
 
   @override
   bool? reticle(double now, ArPose? pose) => null;
@@ -168,7 +168,7 @@ class RingShootGame extends ArMiniGame {
       say('BALIK SA LINYA!');
       return;
     }
-    final s = shootFrom(camera: pose.camera, forward: pose.forward, sideDeg: sideDeg, hoopAt: (t) => hoop(now + t));
+    final s = shootFrom(camera: pose.camera, forward: pose.forward, hoopAt: (t) => hoop(now + t));
     shot = s;
     left--;
     _releasedAt = now;
@@ -214,26 +214,19 @@ class RingShootGame extends ArMiniGame {
   /// Time a made ball takes to drop from the rim to the ground.
   static double get _dropS => timeToFallTo(rimHeight, -1.5, gravity, ballRadius)!;
 
-  /// A swipe shot from [camera] along [forward]; [hoopAt] is where the rim centre
-  /// is [t] seconds after release (still hoop by default). Pointing within
-  /// [assistDeg] of the ring snaps onto it, and the power is always right for the
-  /// ring as it is at release. A swipe leaning more than [swipeDeadDeg] turns the
-  /// shot by half the extra angle.
+  /// A shot from [camera] along where the phone points ([forward]); [hoopAt] is
+  /// where the rim centre is [t] seconds after release (still hoop by default).
+  /// Pointing within [assistDeg] of the ring snaps onto it, and the power is
+  /// always right for the ring's distance as it is at release.
   static RingShot shootFrom({
     required V3 camera,
     required V3 forward,
-    double sideDeg = 0,
     V3 Function(double t)? hoopAt,
   }) {
     final at = hoopAt ?? (_) => const V3(0, 0, 0);
     final h0 = at(0);
     final rel = camera - h0;
-    var dir = TumbangPresoGame.aimDirection(rel, forward, assist: assistDeg);
-    final extra = sideDeg.abs() > swipeDeadDeg ? (sideDeg.abs() - swipeDeadDeg) * sideDeg.sign / 2 : 0.0;
-    if (extra != 0) {
-      final a = extra * math.pi / 180;
-      dir = V3(dir.x * math.cos(a) - dir.z * math.sin(a), 0, dir.x * math.sin(a) + dir.z * math.cos(a));
-    }
+    final dir = TumbangPresoGame.aimDirection(rel, forward, assist: assistDeg);
     final start = TumbangPresoGame.handOf(camera, dir);
     // Always enough power to reach the ring as it is now.
     final range = V3(h0.x - start.x, 0, h0.z - start.z).dot(dir);

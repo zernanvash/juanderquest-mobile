@@ -154,8 +154,9 @@ class TumbangPresoGame {
   }
 }
 
-/// One leg of the taya's route: from [a] at [t0] to [b] at [t1] (a == b: standing guard).
-typedef TayaLeg = ({double t0, double t1, V3 a, V3 b});
+/// One leg of the taya's route: from [a] at [t0] to [b] at [t1] (a == b: standing
+/// guard; [smack]: swatting a tsinelas back).
+typedef TayaLeg = ({double t0, double t1, V3 a, V3 b, bool smack});
 
 /// The taya's random guarding route (owner 2026-11-07: "make the taya move not
 /// just left and right create a random pattern"): quick dashes between random
@@ -177,7 +178,7 @@ class TayaPath {
   void start(double now) {
     legs.clear();
     final p = _spot();
-    legs.add((t0: now, t1: now + 0.5, a: p, b: p));
+    legs.add((t0: now, t1: now + 0.5, a: p, b: p, smack: false));
   }
 
   /// Makes sure the route reaches [until].
@@ -188,9 +189,21 @@ class TayaPath {
       final speed = 0.9 + random.nextDouble() * 0.9;
       final t0 = legs.last.t1;
       final t1 = t0 + math.max(0.25, (to - from).horizontalLength / speed);
-      legs.add((t0: t0, t1: t1, a: from, b: to));
-      if (random.nextBool()) legs.add((t0: t1, t1: t1 + 0.15 + random.nextDouble() * 0.65, a: to, b: to));
+      legs.add((t0: t0, t1: t1, a: from, b: to, smack: false));
+      if (random.nextBool()) legs.add((t0: t1, t1: t1 + 0.15 + random.nextDouble() * 0.65, a: to, b: to, smack: false));
     }
+  }
+
+  /// The taya stops at [time] for [seconds] to swat a tsinelas back; the route
+  /// carries on from there afterwards.
+  void smackAt(double time, double seconds) {
+    final p = at(time);
+    legs.removeWhere((l) => l.t0 >= time);
+    if (legs.isNotEmpty && legs.last.t1 > time) {
+      final l = legs.removeLast();
+      legs.add((t0: l.t0, t1: time, a: l.a, b: p, smack: l.smack));
+    }
+    legs.add((t0: time, t1: time + seconds, a: p, b: p, smack: true));
   }
 
   V3 at(double now) {
@@ -227,9 +240,17 @@ class TumbangGame extends ArMiniGame {
   static const slippers = 10;
   static const passHits = 4;
 
-  /// The taya guards with arms spread: this wide either side, this tall.
-  static const tayaHalfWidth = 0.45;
-  static const tayaHeight = 1.2;
+  /// The taya guards with arms spread; forgiving: this wide either side, this tall.
+  static const tayaHalfWidth = 0.55;
+  static const tayaHeight = 1.45;
+
+  /// The swat (taya_smack, 4 frames at 12 fps) starts this long before the
+  /// tsinelas arrives so the swing meets it, and lasts [smackS].
+  static const smackLeadS = 1 / 12;
+  static const smackS = 0.5;
+
+  /// A swatted tsinelas flies back towards the player this fast.
+  static const smackBackSpeed = 4.5;
 
   /// How far ahead the native scene draws the route; resent before it runs out.
   static const _horizonS = 30.0;
@@ -383,6 +404,8 @@ class TumbangGame extends ArMiniGame {
     _charging = false;
     if (pose == null || current != null) return;
     final t = throwAt(now, pose, p);
+    final blockS = t.blockS;
+    if (blockS != null) path.smackAt(now + math.max(0, blockS - smackLeadS), smackS);
     current = t;
     left--;
     _releasedAt = now;
@@ -429,9 +452,10 @@ class TumbangGame extends ArMiniGame {
       } else {
         streak = 0;
         final blocked = t.blockS != null;
-        say(blocked ? 'HARANG!' : 'MINTIS!');
+        say(blocked ? 'PALO! HARANG!' : 'MINTIS!');
         if (blocked) buzz(ArHaptic.heavy);
-        _settleUntil = now + 0.9;
+        // A swatted tsinelas is still flying back towards the player.
+        _settleUntil = now + (blocked ? 1.4 : 0.9);
       }
     }
     if (_resolved && now >= _settleUntil) {
@@ -476,8 +500,11 @@ class TumbangGame extends ArMiniGame {
         final delay = from - now;
         out.addAll([
           ArSprite('shadow', x: p.x, y: 0, z: p.z, vx: v.x, vz: v.z, scale: 4, floor: true, delay: delay, life: dur),
-          ArSprite('taya_guard', x: p.x, y: 0, z: p.z, vx: v.x, vz: v.z, scale: 1.0,
-              fps: moving ? 8 : 0, loop: moving, delay: delay, life: dur),
+          if (l.smack)
+            ArSprite('taya_smack', x: p.x, y: 0, z: p.z, fps: 12, delay: delay, life: dur)
+          else
+            ArSprite('taya_guard', x: p.x, y: 0, z: p.z, vx: v.x, vz: v.z, scale: 1.0,
+                fps: moving ? 8 : 0, loop: moving, delay: delay, life: dur),
         ]);
       }
     }
@@ -492,15 +519,17 @@ class TumbangGame extends ArMiniGame {
     ]);
     final blockS = t.blockS;
     if (blockS != null) {
-      // Bounces off the taya and drops in front of them.
+      // The taya swats it: it flies back towards the player and lands near the line.
       final p = shot.at(blockS);
       final d = shot.direction;
-      final fall = timeToFallTo(p.y, 0.8, g, 0)!;
-      final land = V3(p.x - d.x * 0.6 * fall, 0, p.z - d.z * 0.6 * fall);
+      const back = smackBackSpeed;
+      final fall = timeToFallTo(p.y, 2.2, g, 0)!;
+      final land = V3(p.x - d.x * back * fall, 0, p.z - d.z * back * fall);
       out.addAll([
-        ArSprite('fx_sparkle', x: p.x, y: p.y, z: p.z, scale: 3, fps: 15, delay: blockS, life: 0.4),
-        ArSprite('tsinelas_spin', x: p.x, y: p.y, z: p.z, vx: -d.x * 0.6, vy: 0.8, vz: -d.z * 0.6, gravity: g,
-            scale: TumbangPresoGame.slipperScale, fps: 16, loop: true, delay: blockS, life: fall),
+        ArSprite('fx_sparkle', x: p.x, y: p.y, z: p.z, scale: 4, fps: 15, delay: blockS, life: 0.4),
+        ArSprite('tsinelas_spin', x: p.x, y: p.y, z: p.z, vx: -d.x * back, vy: 2.2, vz: -d.z * back, gravity: g,
+            scale: TumbangPresoGame.slipperScale, fps: 20, loop: true, delay: blockS, life: fall),
+        ArSprite('shadow', x: p.x, y: 0, z: p.z, vx: -d.x * back, vz: -d.z * back, scale: 1.4, floor: true, delay: blockS, life: fall),
         ArSprite('tsinelas_ground', x: land.x, y: 0, z: land.z, scale: TumbangPresoGame.slipperScale, delay: blockS + fall),
       ]);
       return out;

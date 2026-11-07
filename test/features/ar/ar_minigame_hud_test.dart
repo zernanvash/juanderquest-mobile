@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/ar_experience/games/ar_minigame.dart';
 import 'package:juanderquest_app/features/ar_experience/games/ar_minigame_hud.dart';
+import 'package:juanderquest_app/features/ar_experience/games/collect.dart';
 import 'package:juanderquest_app/features/ar_experience/games/ar_sprites.dart';
 import 'package:juanderquest_app/features/ar_experience/games/palayok.dart';
 import 'package:juanderquest_app/features/ar_experience/games/pana.dart';
@@ -27,6 +28,7 @@ void main() {
     'pana': () => PanaGame(random: math.Random(1)),
     'palayok': () => PalayokGame(random: math.Random(1)),
     'sipa': () => SipaGame(random: math.Random(1)),
+    'collect': () => CollectGame(random: math.Random(1)),
   };
 
   /// Ends the session as if it was played out.
@@ -42,6 +44,8 @@ void main() {
         g.won = true;
       case SipaGame g:
         g.won = true;
+      case CollectGame g:
+        g.over = true;
     }
   }
 
@@ -237,12 +241,36 @@ void main() {
     take(sipa);
     sipa.update(10, null);
     take(sipa);
+    // Tumbang: the taya swats a throw back.
+    for (var t = 0.0; t < 30; t += 0.05) {
+      final th = tum.throwAt(t, tCam, (tz.from + tz.to) / 2);
+      if (th.blockS == null) continue;
+      tum.path.smackAt(t + th.blockS! - TumbangGame.smackLeadS, TumbangGame.smackS);
+      used.addAll(tum.scene(t, th).map((s) => s.sheet));
+      break;
+    }
+    // Collect: every item.
+    final col = CollectGame(random: math.Random(1))
+      ..stand = const V3(0, 0, 2.5)
+      ..place(0, null);
+    take(col);
+    for (var i = 1; i < CollectGame.items.length; i++) {
+      col.hits = i;
+      used.addAll(col.scene(0).map((s) => s.sheet));
+    }
 
     expect(
         used,
         containsAll([
           'chalk_line',
           'taya_guard',
+          'taya_smack',
+          'item_token',
+          'item_gem',
+          'item_crate',
+          'item_beacon',
+          'item_orb',
+          'item_pyramid',
           'lata_tumble',
           'hoop_swish',
           'windsock',

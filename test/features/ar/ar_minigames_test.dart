@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/features/ar_experience/games/ar_minigame.dart';
+import 'package:juanderquest_app/features/ar_experience/games/collect.dart';
 import 'package:juanderquest_app/features/ar_experience/games/palayok.dart';
 import 'package:juanderquest_app/features/ar_experience/games/pana.dart';
 import 'package:juanderquest_app/features/ar_experience/games/ring_shoot.dart';
@@ -23,9 +24,45 @@ ArPose lookOff(V3 camera, V3 target, double deg) {
 }
 
 void main() {
+  group('Collect (pixel items)', () {
+    const cam = V3(0, 1.4, 2.5);
+    CollectGame newGame() => CollectGame(random: math.Random(2))
+      ..stand = const V3(0, 0, 2.5)
+      ..place(0, null);
+
+    test('aim at the floating item and collect; the next one appears elsewhere', () {
+      final g = newGame();
+      expect(g.takeScene()!.map((s) => s.sheet), contains('item_token'));
+      g.press(1, lookOff(cam, g.at(1), 25));
+      expect((g.hits, g.takeCallout()), (0, 'AIM AT IT'));
+      g.press(1.2, look(cam, g.at(1.2)));
+      expect((g.hits, g.takeCallout()), (1, 'QUEST TOKEN!'));
+      expect(g.canPress(1.5), isFalse, reason: 'waiting for the next item');
+      g.update(2.5, null);
+      expect(g.takeScene()!.map((s) => s.sheet), contains('item_gem'));
+      expect(g.spot.x.abs(), greaterThan(0.8), reason: 'somewhere else');
+    });
+
+    test('collecting all six ends it; the line rule does not apply', () {
+      final g = newGame();
+      expect(g.onLine(const ArPose(V3(0, 1.4, 0.5), V3(0, 0, -1))), isTrue);
+      var now = 1.0;
+      for (var i = 0; i < CollectGame.items.length; i++) {
+        g.press(now, look(cam, g.at(now)));
+        now += 2;
+        g.update(now, null);
+      }
+      expect((g.hits, g.over, g.passed), (6, true, true));
+    });
+  });
+
   test('every game: stepping towards the target leaves the line; sideways or back is fine', () {
     final games = <ArMiniGame>[
-      TumbangGame(), RingShootGame(), PanaGame(), PalayokGame(random: math.Random(1)), SipaGame(random: math.Random(1)),
+      TumbangGame(),
+      RingShootGame(),
+      PanaGame(),
+      PalayokGame(random: math.Random(1)),
+      SipaGame(random: math.Random(1)),
     ];
     for (final g in games) {
       final d = g.standDistance;
@@ -45,15 +82,14 @@ void main() {
       ..stand = const V3(0, 0, 4.2)
       ..place(0, atHoop);
 
-    test('just swipe: pointing roughly at the ring scores (no power to judge)', () {
+    test('the ball goes where the phone points; a forgiving lane, no power to judge', () {
       expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward).make, isTrue);
-      expect(RingShootGame.shootFrom(camera: cam, forward: lookOff(cam, const V3(0, 2, 0), 12).forward).make, isTrue,
-          reason: 'aim help snaps 12 degrees');
-      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, sideDeg: 12).make, isTrue,
-          reason: 'a slightly crooked swipe still flies straight');
-      expect(RingShootGame.shootFrom(camera: cam, forward: lookOff(cam, const V3(0, 2, 0), 40).forward).make, isFalse);
-      expect(RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, sideDeg: 45).make, isFalse,
-          reason: 'a swipe leaning far sideways goes wide');
+      expect(RingShootGame.shootFrom(camera: cam, forward: lookOff(cam, const V3(0, 2, 0), 6).forward).make, isTrue,
+          reason: 'about 6.5 degrees either side still drops in');
+      final wide = RingShootGame.shootFrom(camera: cam, forward: lookOff(cam, const V3(0, 2, 0), 12).forward);
+      expect(wide.make, isFalse, reason: 'pointing well off the ring misses: aiming is the challenge');
+      expect(wide.offset, greaterThan(0.6));
+      expect(RingShootGame.shootFrom(camera: cam, forward: lookOff(cam, const V3(0, 2, 0), -12).forward).make, isFalse);
     });
 
     test('the ball comes down through rim height at the cross time', () {
@@ -137,7 +173,16 @@ void main() {
     });
 
     test('rings score 10/8/6/4 and the woven edge 2', () {
-      expect([for (final d in [0.05, 0.15, 0.25, 0.35, 0.5, 0.7]) PanaGame.pointsAt(d)], [10, 8, 6, 4, 2, 0]);
+      expect([
+        for (final d in [0.05, 0.15, 0.25, 0.35, 0.5, 0.7]) PanaGame.pointsAt(d)
+      ], [
+        10,
+        8,
+        6,
+        4,
+        2,
+        0
+      ]);
     });
 
     test('a full draw at the bullseye drops a little; aiming a touch high hits the 10; a weak draw drops off', () {

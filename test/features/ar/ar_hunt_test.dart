@@ -16,14 +16,13 @@ ArFix fixAt(double lat, double lng, DateTime at, {double accuracy = 5}) =>
 
 /// Upright phone facing [bearing].
 CameraPose facing(double bearing) => CameraPose(
-      Quat.aboutUp(-bearing * math.pi / 180) *
-          Quat.axisAngle(const Vec3(1, 0, 0), math.pi / 2),
+      Quat.aboutUp(-bearing * math.pi / 180) * Quat.axisAngle(const Vec3(1, 0, 0), math.pi / 2),
     );
 
 class FakeServer {
   final List<String> calls = [];
-  ArServerResult<ArChallenge> challenge = ArServerResult.ok(ArChallenge(
-      token: 'tok-1', expiresAt: DateTime(2026, 10, 21, 12, 10)));
+  ArServerResult<ArChallenge> challenge =
+      ArServerResult.ok(ArChallenge(token: 'tok-1', expiresAt: DateTime(2026, 10, 21, 12, 10)));
   List<ArServerResult<void>> submits = [const ArServerResult.ok(null)];
   String? lastToken;
 
@@ -44,16 +43,9 @@ void main() {
     test('mirrors the server radius rule (accuracy allowance capped at 25 m)', () {
       final now = DateTime(2026);
       // ~67 m north of the centre.
-      expect(ArHuntRules.insideFence(fixAt(16.0436, 120.3333, now), fence),
-          isFalse);
-      expect(
-          ArHuntRules.insideFence(
-              fixAt(16.0436, 120.3333, now, accuracy: 20), fence),
-          isTrue);
-      expect(
-          ArHuntRules.insideFence(
-              fixAt(16.0437, 120.3333, now, accuracy: 200), fence),
-          isFalse);
+      expect(ArHuntRules.insideFence(fixAt(16.0436, 120.3333, now), fence), isFalse);
+      expect(ArHuntRules.insideFence(fixAt(16.0436, 120.3333, now, accuracy: 20), fence), isTrue);
+      expect(ArHuntRules.insideFence(fixAt(16.0437, 120.3333, now, accuracy: 200), fence), isFalse);
     });
 
     test('far from the centre the object lies towards the landmark', () {
@@ -113,16 +105,14 @@ void main() {
       hunt.onCamera(facing(target));
     }
 
-    test('outside the fence shows the finder and does not call the server',
-        () async {
+    test('outside the fence shows the finder and does not call the server', () async {
       await hunt.onFix(fixAt(16.0500, 120.3333, now), cameraBearing: 0);
       expect(hunt.phase, ArHuntPhase.outside);
       expect(hunt.distanceToCentre, greaterThan(700));
       expect(server.calls, isEmpty);
     });
 
-    test('full happy path: unlock, search, centre, collect, verified',
-        () async {
+    test('full happy path: unlock, search, centre, collect, verified', () async {
       await findAndCentre();
       expect(hunt.phase, ArHuntPhase.aligned);
       await hunt.collect();
@@ -144,14 +134,12 @@ void main() {
       expect(server.calls, ['challenge']);
     });
 
-    test('expired token: gets a new one and lets the traveler collect again',
-        () async {
+    test('expired token: gets a new one and lets the traveler collect again', () async {
       server.submits = [
         const ArServerResult.error('CHALLENGE_TOKEN_EXPIRED', 'expired'),
       ];
       await findAndCentre();
-      server.challenge = ArServerResult.ok(ArChallenge(
-          token: 'tok-2', expiresAt: DateTime(2026, 10, 21, 12, 20)));
+      server.challenge = ArServerResult.ok(ArChallenge(token: 'tok-2', expiresAt: DateTime(2026, 10, 21, 12, 20)));
       await hunt.collect();
       expect(hunt.phase, ArHuntPhase.aligned);
       await hunt.collect();
@@ -169,13 +157,11 @@ void main() {
     });
 
     test('server says too far: recovers when back inside', () async {
-      server.challenge = const ArServerResult.error(
-          'GPS_RADIUS_EXCEEDED', "Get closer — you're 80 m away.");
+      server.challenge = const ArServerResult.error('GPS_RADIUS_EXCEEDED', "Get closer — you're 80 m away.");
       await hunt.onFix(fixAt(16.0430, 120.3333, now), cameraBearing: 0);
       expect(hunt.phase, ArHuntPhase.failed);
       expect(hunt.error, contains('80 m'));
-      server.challenge = ArServerResult.ok(ArChallenge(
-          token: 'tok-3', expiresAt: DateTime(2026, 10, 21, 12, 30)));
+      server.challenge = ArServerResult.ok(ArChallenge(token: 'tok-3', expiresAt: DateTime(2026, 10, 21, 12, 30)));
       await hunt.onFix(fixAt(16.0430, 120.3333, now), cameraBearing: 0);
       expect(hunt.phase, ArHuntPhase.searching);
     });
@@ -246,18 +232,15 @@ void main() {
     });
 
     test('friendly copy for server error codes', () {
-      expect(ArQuestApi.messageFor('NO_ACTIVE_ATTEMPT', null),
-          contains('Start this quest'));
-      expect(ArQuestApi.messageFor('GPS_RADIUS_EXCEEDED', 'Get closer'),
-          'Get closer');
+      expect(ArQuestApi.messageFor('NO_ACTIVE_ATTEMPT', null), contains('Start this quest'));
+      expect(ArQuestApi.messageFor('GPS_RADIUS_EXCEEDED', 'Get closer'), 'Get closer');
     });
   });
 
   group('QR and in-app tasks', () {
     test('extracts the marker code from a scan', () {
       expect(extractMarkerCode('  JDQ-QR-7f3a  '), 'JDQ-QR-7f3a');
-      expect(
-          extractMarkerCode('https://juanderquest.app/q?code=ABC123'), 'ABC123');
+      expect(extractMarkerCode('https://juanderquest.app/q?code=ABC123'), 'ABC123');
       expect(extractMarkerCode('https://example.com/promo'), isNull);
       expect(extractMarkerCode(''), isNull);
       expect(extractMarkerCode('x' * 201), isNull);
@@ -274,8 +257,7 @@ void main() {
         );
 
     test('in-app task shortcuts', () {
-      expect(inAppTaskRoute(action({'kind': 'complete_quiz', 'quiz_id': 'z9'})),
-          '/cultural-quizzes/z9');
+      expect(inAppTaskRoute(action({'kind': 'complete_quiz', 'quiz_id': 'z9'})), '/cultural-quizzes/z9');
       expect(inAppTaskRoute(action({'kind': 'vote_juanchoice'})), '/choice');
       expect(inAppTaskRoute(action({'kind': 'like_spot'})), isNull);
     });

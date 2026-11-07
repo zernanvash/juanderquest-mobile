@@ -139,7 +139,7 @@ class PanaGame extends ArMiniGame {
   bool canPress(double now) => placed && !over && shot == null;
 
   @override
-  String buttonLabel(double now) => !_drawing ? 'PULL BACK TO DRAW' : (draw(now) >= 0.9 ? 'LET GO!' : 'PULL MORE…');
+  String buttonLabel(double now) => !_drawing ? 'PULL DOWN TO DRAW' : (draw(now) >= 0.9 ? 'LET GO!' : 'PULL MORE…');
 
   @override
   ArMeter? meter(double now, ArPose? pose) => (value: draw(now), from: 0.9, to: 1.0);

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../ar_experience/games/ar_minigame.dart';
+import '../ar_experience/games/collect.dart';
 import '../ar_experience/games/palayok.dart';
 import '../ar_experience/games/pana.dart';
 import '../ar_experience/games/ring_shoot.dart';
 import '../ar_experience/games/sipa.dart';
 import '../ar_experience/games/tumbang_preso.dart';
-import 'ar_collect_lab_screen.dart';
 import 'ar_lab_screen.dart';
 import 'ar_minigame_screen.dart';
 
@@ -62,9 +62,9 @@ class _ArLabHomeState extends State<ArLabHome> {
           child: ListTile(
             key: const ValueKey('lab_collect'),
             title: const Text('Collect objects (AR task)'),
-            subtitle: const Text('The quest AR models: token, gem, crate, beacon, orb, pyramid. Tap to collect.'),
+            subtitle: const Text('Pixel items: token, gem, relic box, beacon, orb, pyramid. Aim and collect all 6.'),
             trailing: const Icon(Icons.diamond_outlined),
-            onTap: () => open(const ArCollectLabScreen()),
+            onTap: () => open(ArMiniGameScreen(create: () => CollectGame(rangeScale: _short ? 0.5 : 1.0))),
           ),
         ),
         Card(
