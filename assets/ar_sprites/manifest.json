@@ -372,5 +372,16 @@
    70.4
   ],
   "fps": 10
+ },
+ "pamalo": {
+  "file": "pamalo.png",
+  "frames": 1,
+  "frameW": 77,
+  "frameH": 345,
+  "pivot": [
+   38.4,
+   307.1
+  ],
+  "fps": 0
  }
 }

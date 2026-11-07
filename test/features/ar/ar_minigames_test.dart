@@ -40,7 +40,30 @@ void main() {
       expect(g.canPress(1.5), isFalse, reason: 'waiting for the next item');
       g.update(2.5, null);
       expect(g.takeScene()!.map((s) => s.sheet), contains('item_gem'));
-      expect(g.spot.x.abs(), greaterThan(0.8), reason: 'somewhere else');
+      expect(g.spot.x.abs(), greaterThan(0.6), reason: 'somewhere else');
+    });
+
+    test('a quest task collects its one item', () {
+      final g = CollectGame(onlyItem: 'beacon', random: math.Random(2))
+        ..stand = const V3(0, 0, 2.5)
+        ..place(0, null);
+      expect(g.takeScene()!.map((s) => s.sheet), contains('item_beacon'));
+      expect(g.targetHits, 1);
+      g.press(1, look(cam, g.at(1)));
+      expect((g.hits, g.over, g.passed), (1, true, true));
+    });
+
+    test('indoors (short range) the next items stay close', () {
+      final g = CollectGame(rangeScale: 0.5, random: math.Random(3))
+        ..stand = const V3(0, 0, 1.25)
+        ..place(0, null);
+      var now = 1.0;
+      for (var i = 0; i < 5; i++) {
+        g.press(now, look(const V3(0, 1.4, 1.25), g.at(now)));
+        now += 2;
+        g.update(now, null);
+        expect(g.spot.x.abs(), lessThanOrEqualTo(0.91), reason: 'item ${i + 2}');
+      }
     });
 
     test('collecting all six ends it; the line rule does not apply', () {
@@ -119,10 +142,23 @@ void main() {
       expect(g.slidePeriod, 2.5);
     });
 
-    test('a moving ring must be timed: the same swipe misses when the ring has moved away', () {
-      final s1 = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward);
-      final s2 = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, hoopAt: (t) => V3(0.8 * t, 0, 0));
-      expect((s1.make, s2.make), (true, false));
+    test('a moving ring: swiping as it crosses the line scores; swiping when it is off the line misses', () {
+      // Crosses the middle now and slides on 0.8 m during the flight: still in.
+      final crossing = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, hoopAt: (t) => V3(0.8 * t, 0, 0));
+      expect(crossing.make, isTrue);
+      expect(crossing.rim.x, greaterThan(0.5), reason: 'the ball follows the ring in');
+      // Off to the side now (and sliding away): the ball goes where you point.
+      final off = RingShootGame.shootFrom(camera: cam, forward: atHoop.forward, hoopAt: (t) => V3(0.8 + 0.8 * t, 0, 0));
+      expect(off.make, isFalse);
+    });
+
+    test('the centre lane lights up when lined up; the ball is held until thrown', () {
+      final g = newGame();
+      expect(g.tone(1, atHoop), ArTone.on);
+      expect(g.tone(1, lookOff(cam, const V3(0, 2, 0), 15)), ArTone.idle);
+      expect(g.prop(1)!.sheet, 'ball_spin');
+      g.swipe(1, atHoop, 0);
+      expect(g.prop(1.1), isNull);
     });
 
     test('10 balls, then it is over; off the line does not shoot', () {
@@ -282,9 +318,9 @@ void main() {
   });
 
   group('Pukpok Palayok', () {
-    const cam = V3(0, 1.4, 1.5);
+    const cam = V3(0, 1.4, 2.2);
     PalayokGame newGame() => PalayokGame(random: math.Random(1))
-      ..stand = const V3(0, 0, 1.5)
+      ..stand = const V3(0, 0, 2.2)
       ..place(0, null);
 
     /// Pose at the line aimed at the swinging pot at [now].
@@ -296,47 +332,58 @@ void main() {
       return pose;
     }
 
-    test('first strike by sight; off the line or off the pot does not count', () {
+    test('the pot hangs at chest height, 2.2 m out', () {
+      expect(PalayokGame.pivotHeight - PalayokGame.ropeLength, closeTo(1.38, 0.02));
+      expect(newGame().standDistance, 2.2);
+    });
+
+    test('one tap, one swing: off the line or off the pot does not count', () {
       final g = newGame();
-      g.press(0.1, look(const V3(2, 1.4, 1.5), const V3(0, 1.7, 0)));
+      g.press(0.1, look(const V3(0, 1.4, 1.5), const V3(0, 1.4, 0)));
       expect((g.hits, g.takeCallout()), (0, 'BALIK SA LINYA!'));
       g.press(1, lookOff(cam, g.pot(1, aimAt(g, 1)), 30));
       expect((g.hits, g.takeCallout()), (0, 'MINTIS!'));
+      g.press(1.1, aimAt(g, 1.1));
+      expect(g.hits, 0, reason: 'still cooling down after a swing');
       g.press(2, aimAt(g, 2));
       expect((g.hits, g.takeCallout(), g.swings), (1, 'PUKPOK!', 2));
     });
 
-    test('after the first hit you play blindfolded (piring)', () {
+    test('piring after the first hit: a see-through vignette, still one tap per swing, circle still works', () {
       final g = newGame();
+      expect(g.blind(0.5), isFalse);
       g.press(1, aimAt(g, 1));
-      expect(g.piring, isTrue);
-      expect(g.buttonLabel(2), contains('PIRING'));
+      expect((g.hits, g.blind(1.5), g.buttonLabel(1.5)), (1, true, 'HAMPAS!'));
+      expect(g.reticle(2, aimAt(g, 2)), isTrue, reason: 'the circle still turns green');
       g.press(2, aimAt(g, 2));
-      expect((g.blind(2.1), g.takeCallout(), g.hits), (true, 'PIRING!', 1));
-      expect(g.reticle(2.1, aimAt(g, 2.1)), isNull, reason: 'no aim circle while blind');
+      expect(g.hits, 2, reason: 'no separate blindfold tap');
       g.press(3, aimAt(g, 3));
-      expect((g.hits, g.blind(3.01)), (2, false));
-      // Waiting too long blind takes the blindfold off without a swing.
-      g.press(4, aimAt(g, 4));
-      g.update(4 + PalayokGame.blindS + 0.1, null);
-      expect((g.blind(7), g.takeCallout(), g.hits), (false, 'MINTIS!', 2));
+      expect(g.hits, 3);
+    });
+
+    test('the stick swings on the HUD after each strike', () {
+      final g = newGame();
+      final rest = g.prop(0.5)!;
+      g.press(1, aimAt(g, 1));
+      final mid = g.prop(1 + PalayokGame.swingS / 2)!;
+      expect(mid.sheet, 'pamalo');
+      expect(mid.turn, lessThan(rest.turn - 0.8), reason: 'swung across');
+      expect(g.prop(1 + PalayokGame.swingS + 0.05)!.turn, rest.turn);
     });
 
     test('three hits break it, coins fall, the game is won', () {
       final g = newGame();
-      g.press(1, aimAt(g, 1));
-      for (final t in [2.0, 4.0]) {
+      for (final t in [1.0, 2.0, 3.0]) {
         g.press(t, aimAt(g, t));
-        g.press(t + 1, aimAt(g, t + 1));
       }
       expect(g.hits, 3);
       expect(g.takeCallout(), 'BASAG!');
       final scene = g.takeScene()!;
       expect(scene.map((s) => s.sheet), contains('palayok_break'));
       expect(scene.where((s) => s.sheet == 'coin_spin'), hasLength(PalayokGame.coins * 2));
-      g.update(5.5, null);
+      g.update(4, null);
       expect(g.over, isFalse, reason: 'the coins are still falling');
-      g.update(7, null);
+      g.update(5, null);
       expect((g.over, g.passed), (true, true));
     });
 
@@ -358,47 +405,77 @@ void main() {
     double kickTime(SipaGame g, double from) {
       for (var t = from; t < from + 5; t += 1 / 120) {
         final p = g.at(t);
-        if (g.falling(t) && p.y <= 1.6 && p.y >= SipaGame.kickLow) return t;
+        if (g.falling(t) && p.y <= SipaGame.kickHigh && p.y >= SipaGame.kickLow) return t;
       }
       fail('never falls into the kick zone');
     }
 
-    test('tap starts it; a kick in the zone and in the circle keeps it up', () {
+    /// Highest point of the current flight after [from].
+    double apex(SipaGame g, double from) {
+      var top = 0.0;
+      for (var t = from; t < from + 3; t += 1 / 120) {
+        top = math.max(top, g.at(t).y);
+      }
+      return top;
+    }
+
+    test('green on the resting sipa; tap starts it; gold while it rises, green when you can kick', () {
       final g = newGame(3);
+      expect(g.tone(0.5, look(cam, g.at(0.5))), ArTone.on);
       g.press(1, look(cam, const V3(0, 0.3, 0)));
       expect((g.flying, g.hits), (true, 0));
+      expect(g.tone(1.2, look(cam, g.at(1.2))), ArTone.wait);
+      final t = kickTime(g, 1.3);
+      expect(g.tone(t, look(cam, g.at(t))), ArTone.on);
+    });
+
+    test('an early tap costs nothing: the real kick right after still counts', () {
+      final g = newGame(3);
+      g.press(1, look(cam, g.at(1)));
       g.press(1.4, look(cam, g.at(1.4)));
       expect((g.hits, g.takeCallout()), (0, 'MAAGA PA!'));
-      final t = kickTime(g, 1.5);
-      expect(g.reticle(t, look(cam, g.at(t))), isTrue);
-      g.press(t, lookOff(cam, g.at(t), 30));
-      expect(g.hits, 0, reason: 'circle not on it');
-      final t2 = t + SipaGame.tapCooldownS;
-      g.press(t2, look(cam, g.at(t2)));
+      final t = kickTime(g, 1.4);
+      g.press(t, look(cam, g.at(t)));
       expect((g.hits, g.takeCallout()), (1, 'SIPA! x1'));
+    });
+
+    test('every kick peaks at the same height (no climbing off the screen)', () {
+      final g = newGame(4);
+      var now = 1.0;
+      g.press(now, look(cam, g.at(now)));
+      for (var i = 0; i < 4; i++) {
+        expect(apex(g, now), lessThanOrEqualTo(1.9), reason: 'kick ${i + 1}');
+        // Kick high in the zone, the worst case for a climbing apex.
+        now = kickTime(g, now + 0.1);
+        g.press(now, look(cam, g.at(now)));
+      }
+      expect(apex(g, now), lessThanOrEqualTo(1.9));
     });
 
     test('off the line does not kick', () {
       final g = newGame(3);
-      g.press(1, look(const V3(2, 1.4, 2), const V3(0, 0.3, 0)));
+      g.press(1, look(const V3(0, 1.4, 1), const V3(0, 0.3, 0)));
       expect((g.flying, g.takeCallout()), (false, 'BALIK SA LINYA!'));
     });
 
-    test('five in a row win; a drop resets the rally', () {
-      final g = newGame(4);
+    test('a drop costs one kick, not the rally; five win', () {
+      final g = newGame(5);
       var now = 1.0;
       g.press(now, look(cam, g.at(now)));
-      final t = kickTime(g, now + 0.1);
-      g.press(t, look(cam, g.at(t)));
-      g.update(t + 10, null);
-      expect((g.hits, g.best, g.takeCallout()), (0, 1, 'NAHULOG!'));
-      now = t + 10;
-      for (var i = 1; i <= 5; i++) {
-        g.press(now, look(cam, g.at(now)));
+      for (var i = 0; i < 2; i++) {
         now = kickTime(g, now + 0.1);
+        g.press(now, look(cam, g.at(now)));
       }
+      expect(g.hits, 2);
+      g.update(now + 10, null);
+      expect((g.hits, g.best, g.takeCallout()), (1, 2, 'NAHULOG! -1'));
+      now += 10;
       g.press(now, look(cam, g.at(now)));
-      expect((g.hits, g.best), (5, 5));
+      for (var i = 0; i < 4; i++) {
+        now = kickTime(g, now + 0.1);
+        g.press(now, look(cam, g.at(now)));
+      }
+      expect(g.hits, 5);
       g.update(now + 1, null);
       expect((g.over, g.passed), (true, true));
     });

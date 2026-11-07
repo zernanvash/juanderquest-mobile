@@ -14,14 +14,19 @@ class SipaGame extends ArMiniGame {
 
   /// Floaty gravity: plastic plumes slow the real sipa down.
   static const gravity = 3.0;
-  static const kickSpeed = 3.3;
+
+  /// Every kick peaks here (metres), inside the camera view at 2 m.
+  static const apexY = 1.85;
+
+  /// Even a kick high in the zone lifts it this much (top of the zone + this = [apexY]).
+  static const minRise = 0.35;
   static const scale = 2.5;
   static const radius = 0.08 * scale;
 
   /// Height of the sipa's middle when it lies on the ground.
   static const restY = 0.3;
   static const kickLow = 0.45;
-  static const kickHigh = 1.7;
+  static const kickHigh = 1.5;
   static const aimDeg = 9.0;
   static const tapCooldownS = 0.3;
   static const maxDrift = 0.45;
@@ -97,7 +102,22 @@ class SipaGame extends ArMiniGame {
       flying ? 'Tap SIPA when the circle turns green.' : 'Tap SIPA to kick it up.';
 
   @override
-  bool? reticle(double now, ArPose? pose) => placed && !won ? (pose != null && flying && kickable(now, pose)) : null;
+  bool? reticle(double now, ArPose? pose) {
+    if (!placed || won) return null;
+    if (pose == null) return false;
+    // On the ground: green when the circle is on it, ready for the first kick.
+    if (!flying) return inReticle(pose, at(now), radius: radius, coneDeg: aimDeg);
+    return kickable(now, pose);
+  }
+
+  /// Gold while the sipa is still rising (wait), green when you can kick it.
+  @override
+  ArTone? tone(double now, ArPose? pose) {
+    final r = reticle(now, pose);
+    if (r == null) return null;
+    if (r) return ArTone.on;
+    return flying && !falling(now) ? ArTone.wait : ArTone.idle;
+  }
 
   @override
   String? status(ArPose? pose) => 'BEST $best';
@@ -135,12 +155,13 @@ class SipaGame extends ArMiniGame {
       say('BALIK SA LINYA!');
       return;
     }
-    _nextTap = now + tapCooldownS;
     if (!kickable(now, pose)) {
+      // No cooldown for a tap that does nothing: the real kick can come at once.
       final p = at(now);
       say(!falling(now) || p.y > kickHigh ? 'MAAGA PA!' : 'MINTIS!');
       return;
     }
+    _nextTap = now + tapCooldownS;
     final wasFlying = flying;
     kick(now);
     if (wasFlying) {
@@ -161,11 +182,14 @@ class SipaGame extends ArMiniGame {
     final drift = math.min(maxDrift, 0.15 + 0.05 * hits);
     var dir = _random.nextDouble() * 2 * math.pi;
     if (p.horizontalLength > leash) dir = math.atan2(-p.z, -p.x);
+    // Plan 77c: every kick peaks at the same comfortable height (no climbing
+    // off the top of the screen kick after kick).
+    final vy = math.sqrt(2 * gravity * math.max(minRise, apexY - p.y));
     _start = p;
-    _velocity = V3(math.cos(dir) * drift, kickSpeed, math.sin(dir) * drift);
+    _velocity = V3(math.cos(dir) * drift, vy, math.sin(dir) * drift);
     _kickedAt = now;
     flying = true;
-    _landS = timeToFallTo(p.y, kickSpeed, gravity, restY)!;
+    _landS = timeToFallTo(p.y, vy, gravity, restY)!;
     show(scene(now));
   }
 
@@ -180,8 +204,9 @@ class SipaGame extends ArMiniGame {
       flying = false;
       _start = V3(p.x, restY, p.z);
       if (!won && _wonAt == double.infinity) {
-        if (hits > 0) say('NAHULOG!');
-        hits = 0;
+        // A drop costs one kick, not the whole rally.
+        if (hits > 0) say('NAHULOG! -1');
+        hits = math.max(0, hits - 1);
       }
       show([...scene(now), ArSprite('fx_dust', x: p.x, y: 0, z: p.z, scale: 2, fps: 12, life: 0.5)]);
     }

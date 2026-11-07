@@ -27,6 +27,16 @@ enum ArHaptic { none, light, heavy }
 /// A bar under the HUD: [value] 0..1 and an optional green zone.
 typedef ArMeter = ({double value, double? from, double? to});
 
+/// What the aim circle says: nothing to do yet, on target (green), wait (gold:
+/// e.g. the sipa is still rising) or blocked (amber: the taya is in the lane).
+enum ArTone { idle, on, wait, blocked }
+
+/// A first-person prop held at the bottom of the screen (Plan 77c): sprite
+/// [sheet] (a strip of [frames]) showing [frame], placed at alignment ([x], [y])
+/// in -1..1, [size] dp tall, nudged [dy] dp down and turned [turn] radians about
+/// its bottom (where the hand holds it).
+typedef ArProp = ({String sheet, int frames, int frame, double x, double y, double size, double dy, double turn});
+
 /// A bow sight (Pana): how far the string is drawn, whether an arrow is nocked,
 /// seconds since the last release (recoil), where the arrow will land relative
 /// to the sight ([pinRightDeg], [pinDownDeg]), the wind (-2..2) and whether the
@@ -164,6 +174,22 @@ abstract class ArMiniGame {
 
   /// A bow sight instead of the aim circle (Pana); null for other games.
   ArSight? sight(double now, ArPose? pose) => null;
+
+  /// The aim circle's colour; by default green when [reticle] is on target.
+  ArTone? tone(double now, ArPose? pose) {
+    final r = reticle(now, pose);
+    return r == null ? null : (r ? ArTone.on : ArTone.idle);
+  }
+
+  /// A short word by the aim circle (e.g. 'HARANG! WAIT').
+  String? toneBadge(double now, ArPose? pose) => null;
+
+  /// The prop held at the bottom of the screen, or null.
+  ArProp? prop(double now) => null;
+
+  /// How far (dp) the finger has dragged up during a swipe; the HUD lifts the
+  /// held ball with it.
+  double dragUp = 0;
 
   /// Close enough to the chalk line to throw (and not stepped over it).
   bool onLine(ArPose pose) {

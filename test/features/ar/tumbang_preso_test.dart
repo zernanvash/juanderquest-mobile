@@ -46,7 +46,7 @@ void main() {
       expect(narrow.to - narrow.from, lessThan(wide.to - wide.from));
     });
 
-    test('only a near-perfect aim snaps onto the can (3 degrees); 8 degrees off misses', () {
+    test('aim help snaps within 4.5 degrees; 8 degrees off misses', () {
       ArPose turned(double deg) {
         final a = deg * math.pi / 180;
         return ArPose(cam, V3(math.sin(a), -0.27, -math.cos(a)));
@@ -143,6 +143,40 @@ void main() {
       expect(back.vz, greaterThan(3), reason: 'flies back towards the player (at +z)');
       g.update(t0 + 5, pose);
       expect((g.takeCallout(), g.streak), ('PALO! HARANG!', 0));
+    });
+
+    test('the sight: green within 5 degrees, amber with HARANG! WAIT when the taya is in the lane', () {
+      final g = newGame();
+      ArPose turned(double deg) {
+        final a = deg * math.pi / 180;
+        return ArPose(cam, V3(math.sin(a), -0.27, -math.cos(a)));
+      }
+
+      expect(g.tone(1, turned(4)), ArTone.on);
+      expect(g.tone(1, turned(8)), ArTone.idle);
+      expect(TumbangPresoGame.throwFrom(camera: cam, forward: turned(4).forward, power: sweetMid()).hit, isTrue,
+          reason: 'green sight + green power = a hit');
+      g.hits = TumbangGame.tayaAfter;
+      var blockedAt = -1.0, clearAt = -1.0;
+      for (var t = 0.0; t < 30 && (blockedAt < 0 || clearAt < 0); t += 0.05) {
+        if (g.laneBlocked(t)) {
+          blockedAt = t;
+        } else {
+          clearAt = t;
+        }
+      }
+      expect(blockedAt, greaterThanOrEqualTo(0));
+      expect((g.tone(blockedAt, pose), g.toneBadge(blockedAt, pose)), (ArTone.blocked, 'HARANG! WAIT'));
+      expect(g.toneBadge(clearAt, pose), isNull);
+    });
+
+    test('the tsinelas is held at the bottom right, pulled back as you charge, gone while it flies', () {
+      final g = newGame();
+      expect(g.prop(1)!.dy, 0);
+      g.press(1, pose);
+      expect(g.prop(1.4)!.dy, greaterThan(5));
+      g.release(1.4, pose);
+      expect(g.prop(1.5), isNull);
     });
 
     test('the taya route keeps being drawn while you wait', () {

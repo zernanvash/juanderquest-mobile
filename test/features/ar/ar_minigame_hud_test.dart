@@ -128,7 +128,7 @@ void main() {
         ),
       ),
     ));
-    final pad = find.byKey(const ValueKey('game_button'));
+    final pad = find.byKey(const ValueKey('swipe_area'));
     await tester.drag(pad, const Offset(0, 120));
     expect(swipes, isEmpty);
     await tester.drag(pad, const Offset(30, -150));
@@ -169,16 +169,16 @@ void main() {
     expect(events.last, 'release');
   });
 
-  testWidgets('piring darkens the screen; the end panel says whether you passed', (tester) async {
-    const onLine = V3(0, 1.4, 1.5);
+  testWidgets('piring dims the view with a vignette; the end panel says whether you passed', (tester) async {
+    const onLine = V3(0, 1.4, 2.2);
     final g = PalayokGame(random: math.Random(1))
-      ..stand = const V3(0, 0, 1.5)
+      ..stand = const V3(0, 0, 2.2)
       ..place(0, null)
       ..hits = 1;
-    g.press(1, const ArPose(onLine, V3(0, 0, -1)));
     expect(g.blind(1.5), isTrue);
     await tester.pumpWidget(hud(g, at: const ArPose(onLine, V3(0, 0, -1)), now: 1.5));
     expect(find.byKey(const ValueKey('blindfold')), findsOneWidget);
+    expect(find.byKey(const ValueKey('prop_pamalo')), findsOneWidget);
 
     final t = TumbangGame()..over = true;
     await tester.pumpWidget(hud(t, at: pose));

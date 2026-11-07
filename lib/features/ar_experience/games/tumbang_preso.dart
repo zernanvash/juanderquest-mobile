@@ -72,8 +72,9 @@ class TumbangPresoGame {
   /// How forgiving a hit is around the can, in metres (shrinks with a streak).
   static const hitMargin = 0.18;
 
-  /// Aim help: throws within this many degrees of the can snap onto it.
-  static const assistDeg = 3.0;
+  /// Aim help: throws within this many degrees of the can snap onto it
+  /// (Plan 77c: a green sight plus a green power = a hit).
+  static const assistDeg = 4.5;
   static const minRange = 0.5;
   static const maxRange = 8.0;
 
@@ -240,8 +241,9 @@ class TumbangGame extends ArMiniGame {
   static const slippers = 10;
   static const passHits = 4;
 
-  /// The taya guards with arms spread; forgiving: this wide either side, this tall.
-  static const tayaHalfWidth = 0.55;
+  /// The taya guards with arms spread: this wide either side (Plan 77c: leaves
+  /// fair gaps as they dash), this tall.
+  static const tayaHalfWidth = 0.40;
   static const tayaHeight = 1.45;
 
   /// The swat (taya_smack, 4 frames at 12 fps) starts this long before the
@@ -345,8 +347,36 @@ class TumbangGame extends ArMiniGame {
   String? meterCaption(double now, ArPose? pose) =>
       tayaOn ? 'Release in the GREEN when the taya is out of the way.' : 'Release in the GREEN to hit the lata.';
 
+  /// The sight goes green within this many degrees of the can.
+  static const sightDeg = 5.0;
+
   @override
-  bool? reticle(double now, ArPose? pose) => null;
+  bool? reticle(double now, ArPose? pose) => placed && !over
+      ? (pose != null && TumbangPresoGame.offAimDegrees(pose.camera, pose.forward).abs() <= sightDeg)
+      : null;
+
+  /// The taya is standing in the line from you to the can right now.
+  bool laneBlocked(double now) => tayaOn && !over && taya(now).dot(across).abs() <= tayaHalfWidth;
+
+  @override
+  ArTone? tone(double now, ArPose? pose) {
+    final r = reticle(now, pose);
+    if (r == null) return null;
+    if (laneBlocked(now)) return ArTone.blocked;
+    return r ? ArTone.on : ArTone.idle;
+  }
+
+  @override
+  String? toneBadge(double now, ArPose? pose) => placed && laneBlocked(now) ? 'HARANG! WAIT' : null;
+
+  /// The tsinelas in your hand: pulled back and tilted as you charge, gone
+  /// while it flies.
+  @override
+  ArProp? prop(double now) {
+    if (!placed || over || current != null) return null;
+    final p = power(now);
+    return (sheet: 'tsinelas_spin', frames: 8, frame: 0, x: 0.45, y: 0.72, size: 120.0, dy: 20 * p, turn: 0.35 * p);
+  }
 
   @override
   String? status(ArPose? pose) => 'TSINELAS $left · $score PTS';
@@ -355,7 +385,7 @@ class TumbangGame extends ArMiniGame {
   String? hint(double now, ArPose? pose) {
     if (!placed || over || pose == null) return null;
     final off = TumbangPresoGame.offAimDegrees(pose.camera, pose.forward);
-    if (off.abs() <= 6) return null;
+    if (off.abs() <= sightDeg) return null;
     return off < 0 ? '◀ AIM LEFT' : 'AIM RIGHT ▶';
   }
 

@@ -56,7 +56,10 @@ class ArMiniGameHud extends StatelessWidget {
   Widget build(BuildContext context) {
     final playing = game.placed && !game.over;
     final sight = playing ? game.sight(now, pose) : null;
-    final reticle = playing && sight == null ? game.reticle(now, pose) : null;
+    final tone = playing && sight == null ? game.tone(now, pose) : null;
+    final swipe = game.buttonMode == ArButtonMode.swipe;
+    final badge = playing ? game.toneBadge(now, pose) : null;
+    final prop = playing ? game.prop(now) : null;
     // The aim circle sits in the true middle of the screen (where the camera looks).
     return Stack(children: [
       if (sight != null) ...[
@@ -85,43 +88,101 @@ class ArMiniGameHud extends StatelessWidget {
             ),
           ),
       ],
-      if (reticle != null)
+      if (tone != null && !swipe)
         Positioned.fill(
           child: IgnorePointer(
             child: Center(
               child: SizedBox.square(
-                key: ValueKey('reticle_$reticle'),
+                key: ValueKey('reticle_${tone == ArTone.on}'),
                 dimension: 64,
-                child: CustomPaint(painter: _ReticlePainter(on: reticle)),
+                child: CustomPaint(painter: _ReticlePainter(tone: tone)),
               ),
             ),
           ),
         ),
-      // Ring Shoot: the ball flies along this centre line (where the phone points).
-      if (playing && game.buttonMode == ArButtonMode.swipe)
-        const Positioned.fill(
-            child: IgnorePointer(child: CustomPaint(key: ValueKey('aim_line'), painter: _AimLinePainter()))),
+      // Ring Shoot: the ball flies along this centre line (where the phone
+      // points); it lights up green with a rim tick when you are lined up.
+      if (playing && swipe)
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(
+              key: ValueKey('aim_line_${tone == ArTone.on}'),
+              painter: _AimLinePainter(on: tone == ArTone.on),
+            ),
+          ),
+        ),
+      if (badge != null)
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Align(
+              child: Transform.translate(
+                offset: const Offset(0, -56),
+                child: Text(
+                  badge,
+                  key: const ValueKey('tone_badge'),
+                  style: PixelType.small(context, color: PixelPalette.orange)
+                      .copyWith(shadows: const [Shadow(color: PixelPalette.ink, offset: Offset(1, 1))]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      // Piring (Palayok): a woven-cloth vignette; the middle still peeks through.
       if (game.placed && game.blind(now))
         const Positioned.fill(
-          child: IgnorePointer(child: ColoredBox(key: ValueKey('blindfold'), color: Color(0xF5000000))),
+          child: IgnorePointer(
+            child: DecoratedBox(
+              key: ValueKey('blindfold'),
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  radius: 0.75,
+                  colors: [Color(0x4014100C), Color(0xB814100C), Color(0xEB14100C)],
+                  stops: [0.0, 0.55, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ),
+      // The held prop (ball, tsinelas, stick) at the bottom of the screen.
+      if (prop != null)
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Align(
+              alignment: Alignment(prop.x, prop.y),
+              child: Transform.translate(
+                offset: Offset(0, prop.dy - (swipe ? game.dragUp : 0)),
+                child: Transform.rotate(
+                  angle: prop.turn,
+                  alignment: Alignment.bottomCenter,
+                  child: SizedBox.square(
+                    key: ValueKey('prop_${prop.sheet}'),
+                    dimension: prop.size,
+                    child: _StripFrame(
+                        asset: 'assets/ar_sprites/${prop.sheet}.png', frames: prop.frames, frame: prop.frame),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       Positioned.fill(child: _bars(context)),
-      // Pana: pull anywhere in the play area, not just a strip at the bottom
-      // (the top bar and MOVE IT stay tappable).
-      if (playing && game.buttonMode == ArButtonMode.pull)
+      // Pana and Ring Shoot: pull or swipe anywhere in the play area, not just a
+      // strip at the bottom (the top bar and MOVE IT stay tappable).
+      if (playing && (game.buttonMode == ArButtonMode.pull || swipe))
         Positioned.fill(
           top: MediaQuery.sizeOf(context).height * 0.18,
           bottom: 96 + MediaQuery.paddingOf(context).bottom,
           child: _GestureZone(
-            key: const ValueKey('pull_area'),
-            pull: true,
+            key: ValueKey(swipe ? 'swipe_area' : 'pull_area'),
+            pull: !swipe,
             fullArea: true,
             enabled: game.canPress(now) || pressed,
             label: game.buttonLabel(now),
-            onSwipe: (_) {},
+            onSwipe: (deg) => onSwipe?.call(deg),
             onPress: onPress,
             onPull: (v) => onPull?.call(v),
             onRelease: onRelease,
+            onDrag: (up) => game.dragUp = up,
           ),
         ),
     ]);
@@ -291,11 +352,11 @@ class ArMiniGameHud extends StatelessWidget {
         ),
       ],
       const SizedBox(height: 6),
-      if (game.buttonMode == ArButtonMode.pull)
+      if (game.buttonMode == ArButtonMode.pull || game.buttonMode == ArButtonMode.swipe)
         IgnorePointer(
           key: const ValueKey('game_button'),
           child: _GestureZone(
-            pull: true,
+            pull: game.buttonMode == ArButtonMode.pull,
             enabled: can,
             label: game.buttonLabel(now),
             onSwipe: (_) {},
@@ -303,17 +364,6 @@ class ArMiniGameHud extends StatelessWidget {
             onPull: (_) {},
             onRelease: () {},
           ),
-        )
-      else if (game.buttonMode == ArButtonMode.swipe)
-        _GestureZone(
-          key: const ValueKey('game_button'),
-          pull: false,
-          enabled: can,
-          label: game.buttonLabel(now),
-          onSwipe: (deg) => onSwipe?.call(deg),
-          onPress: onPress,
-          onPull: (v) => onPull?.call(v),
-          onRelease: onRelease,
         )
       else
         Listener(
@@ -370,12 +420,17 @@ class _MeterPainter extends CustomPainter {
 
 /// Pixel aim circle: white, green when the target is in it.
 class _ReticlePainter extends CustomPainter {
-  _ReticlePainter({required this.on});
-  final bool on;
+  _ReticlePainter({required this.tone});
+  final ArTone tone;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = on ? PixelPalette.greenMid : PixelPalette.paper;
+    final c = switch (tone) {
+      ArTone.on => PixelPalette.greenMid,
+      ArTone.wait => PixelPalette.sun,
+      ArTone.blocked => PixelPalette.orange,
+      ArTone.idle => PixelPalette.paper,
+    };
     const px = 4.0;
     final n = (size.width / px).floor();
     final mid = (n - 1) / 2, r = n / 2 - 1.5;
@@ -395,7 +450,7 @@ class _ReticlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ReticlePainter old) => old.on != on;
+  bool shouldRepaint(_ReticlePainter old) => old.tone != tone;
 }
 
 /// Where you swipe: no button, just a subtle hint and a finger showing the
@@ -413,7 +468,11 @@ class _GestureZone extends StatefulWidget {
     required this.onPull,
     required this.onRelease,
     this.fullArea = false,
+    this.onDrag,
   });
+
+  /// Swipe: how far (dp) the finger is up from where it started (0 at the end).
+  final ValueChanged<double>? onDrag;
   final bool pull;
 
   /// Covers the play area: only catches gestures, draws nothing.
@@ -474,6 +533,7 @@ class _GestureZoneState extends State<_GestureZone> with SingleTickerProviderSta
 
   void _update(DragUpdateDetails e) {
     _d += e.delta;
+    if (!widget.pull) widget.onDrag?.call(math.max(0.0, -_d.dy).clamp(0.0, 80.0));
     if (!widget.pull || !_down) return;
     final v = (math.max(0.0, _d.dy) / _GestureZone.fullPullPx).clamp(0.0, 1.0);
     for (final n in _GestureZone.notches) {
@@ -490,6 +550,7 @@ class _GestureZoneState extends State<_GestureZone> with SingleTickerProviderSta
       widget.onRelease();
       return;
     }
+    widget.onDrag?.call(0);
     // An upward flick of at least 40 px throws.
     if (widget.enabled && _d.dy < -40) widget.onSwipe(math.atan2(_d.dx, -_d.dy) * 180 / math.pi);
   }
@@ -548,20 +609,26 @@ class _GestureZoneState extends State<_GestureZone> with SingleTickerProviderSta
 
 /// A faint aiming lane down the middle of the screen with a centre line.
 class _AimLinePainter extends CustomPainter {
-  const _AimLinePainter();
+  const _AimLinePainter({required this.on});
+
+  /// Lined up with the ring: green, with a rim tick across the middle.
+  final bool on;
 
   @override
   void paint(Canvas canvas, Size size) {
     final cx = (size.width / 2).floorToDouble();
-    canvas.drawRect(Rect.fromLTWH(cx - 16, 0, 32, size.height), Paint()..color = const Color(0x14FFFFFF));
-    final dash = Paint()..color = const Color(0x8CFFFFFF);
+    final cy = (size.height / 2).floorToDouble();
+    canvas.drawRect(Rect.fromLTWH(cx - 16, 0, 32, size.height),
+        Paint()..color = on ? const Color(0x2246B05A) : const Color(0x14FFFFFF));
+    final dash = Paint()..color = on ? PixelPalette.greenMid : const Color(0x8CFFFFFF);
     for (var y = 0.0; y < size.height; y += 16) {
       canvas.drawRect(Rect.fromLTWH(cx - 1, y, 2, 8), dash);
     }
+    if (on) canvas.drawRect(Rect.fromLTWH(cx - 20, cy - 2, 40, 4), Paint()..color = PixelPalette.greenMid);
   }
 
   @override
-  bool shouldRepaint(_AimLinePainter old) => false;
+  bool shouldRepaint(_AimLinePainter old) => old.on != on;
 }
 
 /// One frame of a horizontal pixel-art strip, drawn crisp (nearest pixel).

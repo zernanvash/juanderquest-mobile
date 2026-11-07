@@ -10,7 +10,14 @@ import 'tumbang_preso.dart';
 /// In the AR Lab the six items come one after another at random spots so you can
 /// see them all.
 class CollectGame extends ArMiniGame {
-  CollectGame({super.rangeScale, math.Random? random}) : _random = random ?? math.Random();
+  /// [onlyItem]: a quest task's one item (collect it once); null = the AR Lab
+  /// showcase of all six (Plan 77c).
+  CollectGame({this.onlyItem, super.rangeScale, math.Random? random}) : _random = random ?? math.Random();
+
+  final String? onlyItem;
+
+  /// The items this session shows, in order.
+  List<String> get queue => onlyItem == null ? items : [onlyItem!];
 
   /// Quest AR objects (`verification.object`) and their sprites.
   static const items = ['token', 'gem', 'crate', 'beacon', 'orb', 'pyramid'];
@@ -38,9 +45,10 @@ class CollectGame extends ArMiniGame {
   @override
   String get placeHint => 'Stand anywhere, face open ground, then tap STAND HERE. The first item appears ahead.';
   @override
-  String get endText => 'You collected all ${items.length} items.';
+  String get endText =>
+      onlyItem == null ? 'You collected all ${items.length} items.' : 'You collected the ${names[onlyItem]}.';
   @override
-  int get targetHits => items.length;
+  int get targetHits => queue.length;
   @override
   int hits = 0;
   @override
@@ -58,7 +66,7 @@ class CollectGame extends ArMiniGame {
   double _nextAt = double.infinity;
   bool _waiting = false;
 
-  String get item => items[hits.clamp(0, items.length - 1)];
+  String get item => queue[hits.clamp(0, queue.length - 1)];
 
   /// The item's middle at [now] (it bobs).
   V3 at(double now) => spot + V3(0, bob * _bob.sinAt(now), 0);
@@ -86,7 +94,7 @@ class CollectGame extends ArMiniGame {
   bool? reticle(double now, ArPose? pose) => canPress(now) ? (pose != null && onTarget(now, pose)) : null;
 
   @override
-  String? status(ArPose? pose) => 'ITEMS $hits/${items.length}';
+  String? status(ArPose? pose) => 'ITEMS $hits/${queue.length}';
 
   @override
   String? hint(double now, ArPose? pose) => canPress(now) ? turnHint(pose, at(now)) : null;
@@ -130,7 +138,7 @@ class CollectGame extends ArMiniGame {
       ArSprite('item_$got', x: p.x, y: p.y, z: p.z, vy: 2.5, scale: scale, fps: 30, loop: true, life: 0.45),
       ArSprite('fx_sparkle', x: p.x, y: p.y, z: p.z, scale: 5, fps: 15, life: 0.4),
     ]);
-    if (hits >= items.length) {
+    if (hits >= queue.length) {
       over = true;
       return;
     }
@@ -144,7 +152,7 @@ class CollectGame extends ArMiniGame {
     _waiting = false;
     _nextAt = double.infinity;
     // Next item somewhere else ahead: 1–2.2 m to either side, 0–1.5 m further.
-    final side = (0.9 + _random.nextDouble() * 1.3) * (_random.nextBool() ? 1 : -1);
+    final side = (0.7 + _random.nextDouble() * 1.1) * rangeScale * (_random.nextBool() ? 1 : -1);
     final further = _random.nextDouble() * 1.5 * rangeScale;
     final g = across * side + downrange * further;
     spot = V3(g.x, height, g.z);

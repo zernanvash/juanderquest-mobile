@@ -122,11 +122,28 @@ class RingShootGame extends ArMiniGame {
   ArMeter? meter(double now, ArPose? pose) => null;
 
   @override
-  String? meterCaption(double now, ArPose? pose) =>
-      slidePeriod == null ? 'Line up the ring on the centre line.' : 'The ring moves: swipe when it crosses the line.';
+  String? meterCaption(double now, ArPose? pose) => slidePeriod == null
+      ? 'Line up the ring on the centre line, then swipe up.'
+      : 'The ring moves: swipe when it crosses the line.';
 
   @override
   bool? reticle(double now, ArPose? pose) => null;
+
+  /// Lined up with the ring right now: the centre lane turns green.
+  bool lined(double now, ArPose? pose) {
+    if (pose == null || shot != null) return false;
+    final h = hoop(now);
+    return shootFrom(camera: pose.camera, forward: pose.forward, hoopAt: (_) => h).make;
+  }
+
+  @override
+  ArTone? tone(double now, ArPose? pose) => placed && !over ? (lined(now, pose) ? ArTone.on : ArTone.idle) : null;
+
+  /// The ball held at the bottom of the screen until it is thrown.
+  @override
+  ArProp? prop(double now) => shot == null && placed && !over
+      ? (sheet: 'ball_spin', frames: 8, frame: 0, x: 0.0, y: 0.80, size: 96.0, dy: 0.0, turn: 0.0)
+      : null;
 
   @override
   String? status(ArPose? pose) => 'BALLS $left · $score PTS';
@@ -229,17 +246,23 @@ class RingShootGame extends ArMiniGame {
     final rel = camera - h0;
     final dir = TumbangPresoGame.aimDirection(rel, forward, assist: assistDeg);
     final start = TumbangPresoGame.handOf(camera, dir);
-    // Always enough power to reach the ring as it is now.
-    final range = V3(h0.x - start.x, 0, h0.z - start.z).dot(dir);
+    // The flight time depends only on heights, so it is known before aiming.
     final apex = math.max(rimHeight + 0.9, start.y + 0.5);
     final vy = math.sqrt(2 * gravity * (apex - start.y));
     final cross = timeToFallTo(start.y, vy, gravity, rimHeight)!;
-    final v = V3(dir.x * range / cross, vy, dir.z * range / cross);
-    final down = V3(start.x + dir.x * range, 0, start.z + dir.z * range);
+    // Where the phone points, at the ring's distance as it is now.
+    final range = V3(h0.x - start.x, 0, h0.z - start.z).dot(dir);
+    final aimed = V3(start.x + dir.x * range, 0, start.z + dir.z * range);
     final rim = at(cross);
+    // Plan 77c: lined up with the ring as you swipe = a basket, even when the
+    // ring slides on during the flight (the ball follows it in, keeping its
+    // small offset). Not lined up: the ball goes where you pointed.
+    final lined = (aimed - h0).horizontalLength <= rimRadius + makeMargin;
+    final down = lined ? rim + (aimed - h0) : aimed;
+    final v = V3((down.x - start.x) / cross, vy, (down.z - start.z) / cross);
     return RingShot(
       start: start,
-      direction: dir,
+      direction: V3(down.x - start.x, 0, down.z - start.z).unit,
       velocity: v,
       crossS: cross,
       endS: timeToFallTo(start.y, vy, gravity, ballRadius)!,
