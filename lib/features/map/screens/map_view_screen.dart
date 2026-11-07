@@ -1099,56 +1099,59 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           children: [
             _canvas(rasterMap, satellite: satellite),
 
-            // Top-Left Floating Header & Filter Panel
+            // Top-Left Floating Header & Filter Panel (one compact row)
             Positioned(
               top: 12,
               left: 12,
               right: 68,
               child: PixelPanel(
                 style: PixelBoxStyle.parchment,
-                padding: 2,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                padding: 1,
+                child: Row(
                   children: [
-                    Text(
-                      '${quests.length} QUESTS • ${spots.length} SPOTS ACTIVE',
-                      style: PixelType.small(context, color: PixelPalette.stone)
-                          .copyWith(fontWeight: FontWeight.w700),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: PixelChip(
-                        'LIST',
-                        style: PixelBoxStyle.parchment,
-                        onTap: () {
-                          pixelTick(context);
-                          _openPlacesList();
+                    Expanded(
+                      child: PixelSegmented(
+                        items: const ['ALL', 'QUESTS', 'SPOTS'],
+                        selectedIndex: _activeFilter == 'quests'
+                            ? 1
+                            : (_activeFilter == 'spots' ? 2 : 0),
+                        onChanged: (index) {
+                          setState(() {
+                            _activeFilter = index == 1
+                                ? 'quests'
+                                : (index == 2 ? 'spots' : 'all');
+                          });
                         },
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    PixelSegmented(
-                      items: const ['ALL', 'QUESTS', 'SPOTS'],
-                      selectedIndex: _activeFilter == 'quests'
-                          ? 1
-                          : (_activeFilter == 'spots' ? 2 : 0),
-                      onChanged: (index) {
-                        setState(() {
-                          _activeFilter = index == 1
-                              ? 'quests'
-                              : (index == 2 ? 'spots' : 'all');
-                        });
+                    const SizedBox(width: 4),
+                    PixelChip(
+                      'LIST',
+                      style: PixelBoxStyle.parchment,
+                      onTap: () {
+                        pixelTick(context);
+                        _openPlacesList();
                       },
+                    ),
+                    SizedBox(
+                      width: 0,
+                      height: 0,
+                      child: OverflowBox(
+                        maxWidth: 0,
+                        maxHeight: 0,
+                        child: Text(
+                          '${quests.length} QUESTS • ${spots.length} SPOTS ACTIVE',
+                          style: const TextStyle(
+                            fontSize: 0,
+                            color: Colors.transparent,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-
             // Top-Right Floating Map Tool Controls
             Positioned(
               top: 12,

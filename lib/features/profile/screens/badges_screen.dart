@@ -141,8 +141,11 @@ class BadgesScreen extends ConsumerWidget {
                           ),
                         ),
                         SizedBox(height: grid.px(4)),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: grid.px(2),
+                          runSpacing: grid.px(1),
                           children: [
                             Text(
                               'Pangasinan Badge Case',
@@ -213,7 +216,7 @@ class BadgesScreen extends ConsumerWidget {
                         style: PixelType.numbers(context, color: PixelPalette.ink),
                       ),
                       Text(
-                        'Stamps',
+                        stamps == 1 ? 'Stamp' : 'Stamps',
                         style: PixelType.small(context, color: PixelPalette.woodNight),
                       ),
                     ],
@@ -228,7 +231,7 @@ class BadgesScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       Text(
-                        '$streak Days',
+                        '$streak ${streak == 1 ? 'Day' : 'Days'}',
                         style: PixelType.numbers(context, color: PixelPalette.greenDark),
                       ),
                       Text(
@@ -251,7 +254,7 @@ class BadgesScreen extends ConsumerWidget {
                         style: PixelType.numbers(context, color: PixelPalette.ink),
                       ),
                       Text(
-                        'Badges',
+                        totalBadges == 1 ? 'Badge' : 'Badges',
                         style: PixelType.small(context, color: PixelPalette.slate),
                       ),
                     ],

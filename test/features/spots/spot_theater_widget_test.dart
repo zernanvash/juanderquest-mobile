@@ -205,7 +205,12 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: _fullSpot, user: authorUser));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('theater_play_quest_btn')), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('theater_overview_play_quest_btn')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.byKey(const Key('theater_overview_play_quest_btn')), findsOneWidget);
 
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('spot_create_quest_btn')),
@@ -217,7 +222,23 @@ void main() {
           find.byKey(const ValueKey('spot_create_quest_btn')), findsOneWidget);
 
       // 2. Spot without questId, viewed by non-author
-      final nonAuthorSpot = _fullSpot.copyWith(questId: null);
+      const nonAuthorSpot = SpotModel(
+        id: 'spot-theater-non-author',
+        slug: 'hundred-islands-national-park',
+        name: 'Hundred Islands National Park',
+        description: 'A protected archipelago of 124 islands in Alaminos.',
+        category: 'nature',
+        subcategory: 'islands',
+        municipality: 'Alaminos',
+        address: 'Lucap Wharf, Alaminos City',
+        sourceName: 'LGU Alaminos',
+        trustLevel: 'lgu_verified',
+        gpsLat: 16.20,
+        gpsLng: 120.04,
+        tags: [],
+        reasons: [],
+        questId: null,
+      );
       final nonAuthorUser = UserModel(
         id: 'different-user',
         seedId: 'different-user',
@@ -232,7 +253,7 @@ void main() {
           .pumpWidget(_wrapScreen(spot: nonAuthorSpot, user: nonAuthorUser));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('theater_play_quest_btn')), findsNothing);
+      expect(find.byKey(const Key('theater_overview_play_quest_btn')), findsNothing);
       expect(find.byKey(const ValueKey('spot_create_quest_btn')), findsNothing);
     });
 
