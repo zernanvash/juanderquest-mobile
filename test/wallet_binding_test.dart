@@ -5,6 +5,7 @@ import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/profile/providers/profile_stats_provider.dart';
 import 'package:juanderquest_app/features/profile/screens/profile_screen.dart';
+import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
 
 void main() {
   group('UserModel Web3 Extension Tests', () {
@@ -74,8 +75,8 @@ void main() {
     foodExplorerState: BadgeState.inProgress,
   );
 
-  group('ProfileScreen Web3 Section Widget Tests', () {
-    testWidgets('renders Link MetaMask button when traveler has no bound wallet', (tester) async {
+  group('SettingsScreen Web3 Section Widget Tests', () {
+    testWidgets('renders Link Web3 wallet tile when traveler has no bound wallet', (tester) async {
       final unboundUser = UserModel(
         id: 'user-unbound',
         seedId: 'unbound-scout',
@@ -95,16 +96,15 @@ void main() {
             profileStatsProvider.overrideWithValue(dummyStats),
           ],
           child: const MaterialApp(
-            home: ProfileScreen(),
+            home: SettingsScreen(),
           ),
         ),
       );
 
       await tester.pump();
 
-      expect(find.text('Web3 & Blockchain Identity'), findsOneWidget);
-      expect(find.text('Off-Chain Demo Account'), findsOneWidget);
-      expect(find.text('Link Web3 / EVM Wallet'), findsOneWidget);
+      expect(find.text('Web3 Wallet'), findsOneWidget);
+      expect(find.text('Off-chain demo account · Tap to link'), findsOneWidget);
     });
 
     testWidgets('renders verified wallet badge and address when traveler has bound wallet', (tester) async {
@@ -128,17 +128,15 @@ void main() {
             profileStatsProvider.overrideWithValue(dummyStats),
           ],
           child: const MaterialApp(
-            home: ProfileScreen(),
+            home: SettingsScreen(),
           ),
         ),
       );
 
       await tester.pump();
 
-      expect(find.text('Web3 & Blockchain Identity'), findsOneWidget);
-      expect(find.text('Web3 Passport Linked'), findsOneWidget);
-      expect(find.text('0x71C8...0E40'), findsOneWidget);
-      expect(find.text('Unlink Wallet'), findsOneWidget);
+      expect(find.text('Web3 Wallet'), findsOneWidget);
+      expect(find.text('Linked 0x71C8...0E40'), findsOneWidget);
     });
   });
 }

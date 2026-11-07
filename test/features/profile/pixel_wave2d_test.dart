@@ -178,11 +178,17 @@ GoRouter _router(Widget home, {String initial = '/'}) => GoRouter(
         GoRoute(path: '/shop', builder: (_, __) => const _Probe('/shop')),
         GoRoute(path: '/plaza', builder: (_, __) => const _Probe('/plaza')),
         GoRoute(path: '/settings', builder: (_, __) => const _Probe('/settings')),
+        GoRoute(
+            path: '/settings/appearance',
+            builder: (_, __) => const _Probe('/settings/appearance')),
         GoRoute(path: '/trail', builder: (_, __) => const _Probe('/trail')),
         GoRoute(
             path: '/notifications',
             builder: (_, __) => const _Probe('/notifications')),
         GoRoute(path: '/profile', builder: (_, __) => const _Probe('/profile')),
+        GoRoute(
+            path: '/profile/badges',
+            builder: (_, __) => const _Probe('/profile/badges')),
       ],
     );
 
@@ -359,16 +365,15 @@ void _useTallView(WidgetTester tester) {
 
 void main() {
   group('ProfileScreen', () {
-    testWidgets('renders identity, stats and linked wallet', (tester) async {
+    testWidgets('renders identity, badges button, saved places and posted spots', (tester) async {
       _useTallView(tester);
       await _pump(tester, const ProfileScreen(), user: _user);
       expect(find.text('Juan Dela Cruz'), findsOneWidget);
       expect(find.text('@scale-01'), findsOneWidget);
-      expect(find.text('Web3 Passport Linked'), findsOneWidget);
-      expect(find.text('0x71C8...0E40'), findsOneWidget);
-      expect(find.text('1250 PTS'), findsOneWidget);
-      expect(find.text('7'), findsOneWidget);
-      expect(find.text('9'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_badges')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_saved')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_customize')), findsOneWidget);
+      expect(find.textContaining('Posted Destinations'), findsOneWidget);
     });
 
     testWidgets('empty profile shows the fallback identity', (tester) async {
@@ -387,8 +392,7 @@ void main() {
         ),
       );
       expect(find.text('Juan Dela Cruz'), findsOneWidget);
-      expect(find.text('Web3 Passport Linked'), findsNothing);
-      expect(find.text('0 PTS'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_badges')), findsOneWidget);
     });
 
     testWidgets('opens notifications and settings', (tester) async {
@@ -423,20 +427,19 @@ void main() {
       expect(find.byKey(const ValueKey('profile_settings')), findsNothing);
     });
 
-    testWidgets('copies the wallet and confirms unlinking', (tester) async {
+    testWidgets('opens badges case and customize appearance', (tester) async {
       _useTallView(tester);
       await _pump(tester, const ProfileScreen(), user: _user);
-      await tester.tap(find.byKey(const ValueKey('profile_copy_wallet')));
+      await tester.tap(find.byKey(const ValueKey('profile_badges')));
       await tester.pump();
-      expect(find.text('Wallet address copied to clipboard.'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('route:/profile/badges'), findsOneWidget);
 
       await _pump(tester, const ProfileScreen(), user: _user);
-      await tester.tap(find.byKey(const ValueKey('profile_unlink_wallet')));
+      await tester.tap(find.byKey(const ValueKey('profile_customize')));
       await tester.pump();
-      expect(find.text('Unlink Web3 wallet?'), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
-      await tester.pump();
-      expect(find.text('Unlink Web3 wallet?'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('route:/settings/appearance'), findsOneWidget);
     });
 
     testWidgets('guest profile shows follow', (tester) async {

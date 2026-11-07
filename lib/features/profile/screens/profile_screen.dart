@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:reown_appkit/reown_appkit.dart'
-    hide PrimaryButton, SecondaryButton;
 
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
@@ -13,11 +10,13 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../auth/services/wallet_signature_service.dart';
+import '../../spots/models/spot_model.dart';
+import '../../spots/providers/spot_discovery_provider.dart';
 import '../providers/profile_stats_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -89,6 +88,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authProvider).user;
     final stats = ref.watch(profileStatsProvider);
+    final spotsState = ref.watch(spotDiscoveryProvider);
 
     final isMine = widget.username == null ||
         widget.username == currentUser?.id ||
@@ -115,6 +115,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final pointsBalance = currentUser?.points ?? stats.pointsBalance;
     final level = (pointsBalance / 50).floor() + 1;
+
+    final earnedBadges = [
+      stats.ecoPioneerState,
+      stats.heritageKeeperState,
+      stats.foodExplorerState,
+    ].where((s) => s == BadgeState.earned).length;
+
+    final savedSpots = spotsState.spots.where((s) => s.saved).length;
+
+    final userSpots = spotsState.spots.where((s) {
+      if (isMine) {
+        return s.createdBy != null &&
+            (s.createdBy == currentUser?.id || s.createdBy == currentUser?.seedId);
+      } else {
+        final target = widget.username?.toLowerCase() ?? '';
+        return (s.createdBy != null && s.createdBy!.toLowerCase() == target) ||
+            s.sourceName.toLowerCase() == target;
+      }
+    }).toList();
 
     return Theme(
       data: AppTheme.pixel,
@@ -160,34 +179,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       children: [
                         _identity(
-                            context,
-                            grid,
-                            isMine,
-                            displayName,
-                            displayHandle,
-                            currentUser,
-                            cosmetics,
-                            titleAsset,
-                            nameColorAsset,
-                            level,
-                            pointsBalance),
+                          context,
+                          grid,
+                          isMine,
+                          displayName,
+                          displayHandle,
+                          currentUser,
+                          cosmetics,
+                          titleAsset,
+                          nameColorAsset,
+                          level,
+                          pointsBalance,
+                        ),
+                        SizedBox(height: grid.px(3)),
+                        _actionButtons(context, grid, isMine, earnedBadges, savedSpots),
                         SizedBox(height: grid.px(4)),
-                        if (isMine) ...[
-                          _sectionTitle(context, 'Web3 & Blockchain Identity',
-                              'Link any EVM or Web3 wallet to preserve your passport across devices.'),
-                          SizedBox(height: grid.px(2)),
-                          _walletCard(context, grid, currentUser),
-                          SizedBox(height: grid.px(4)),
-                          _sectionTitle(context, 'Traveler Statistics',
-                              'Your quest completions, submissions, and reward points balance.'),
-                          SizedBox(height: grid.px(2)),
-                          _stats(context, grid, stats, pointsBalance),
-                          SizedBox(height: grid.px(4)),
-                        ],
-                        _sectionTitle(context, 'Community & Ecosystem',
-                            'Compete in regional sprints and explore research pillars.'),
-                        SizedBox(height: grid.px(2)),
-                        _links(context, grid, isMine),
+                        _postedDestinations(context, grid, isMine, userSpots),
                       ],
                     ),
                   ),
@@ -289,12 +296,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             spacing: grid.px(2),
             runSpacing: grid.px(1),
             children: [
-              PixelChip('Level $level Explorer',
-                  style: PixelBoxStyle.green, textColor: PixelPalette.white),
+              PixelChip(
+                'Level $level Explorer',
+                style: PixelBoxStyle.green,
+                textColor: PixelPalette.white,
+              ),
               PixelChip('$pointsBalance mJDQ'),
             ],
           ),
-          if (!isMine) ...[
+          if (isMine) ...[
+            SizedBox(height: grid.px(3)),
+            PixelButton(
+              key: const ValueKey('profile_customize'),
+              label: 'Customize Look ›',
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => context.push('/settings/appearance'),
+            ),
+          ] else ...[
             SizedBox(height: grid.px(3)),
             PixelButton(
               key: const ValueKey('profile_follow'),
@@ -315,424 +333,211 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String title, String subtitle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: PixelType.title(context)),
-        SizedBox(height: PixelGrid.of(context).px(1)),
-        Text(
-          subtitle,
-          style: PixelType.body(context, color: PixelPalette.slate),
-        ),
-      ],
-    );
-  }
-
-  Widget _stats(
+  Widget _actionButtons(
     BuildContext context,
     PixelGrid grid,
-    ProfileStatsModel stats,
-    int pointsBalance,
+    bool isMine,
+    int earnedBadges,
+    int savedSpots,
   ) {
-    return Column(
+    return Row(
       children: [
-        _metric(context, grid, 'Reward points balance', '$pointsBalance PTS',
-            PixelBoxStyle.gold),
-        SizedBox(height: grid.px(2)),
-        Row(
-          children: [
-            Expanded(
-              child: _metric(context, grid, 'Completed',
-                  '${stats.completedQuests}', PixelBoxStyle.green),
-            ),
-            SizedBox(width: grid.px(2)),
-            Expanded(
-              child: _metric(context, grid, 'Submissions',
-                  '${stats.totalSubmissions}', PixelBoxStyle.wood),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _metric(
-    BuildContext context,
-    PixelGrid grid,
-    String label,
-    String value,
-    PixelBoxStyle style,
-  ) {
-    final dark = style == PixelBoxStyle.wood || style == PixelBoxStyle.green;
-    final textColor = dark ? PixelPalette.white : PixelPalette.ink;
-    return PixelPanel(
-      style: style,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: PixelType.small(context, color: textColor),
-          ),
-          SizedBox(height: grid.px(1)),
-          Text(
-            value,
-            style: PixelType.title(context, color: textColor),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _walletCard(BuildContext context, PixelGrid grid, UserModel? user) {
-    if (user == null) return const SizedBox.shrink();
-    final hasWallet = user.hasBoundWallet;
-
-    return PixelPanel(
-      style: PixelBoxStyle.parchment,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hasWallet
-                          ? 'Web3 Passport Linked'
-                          : 'Off-Chain Demo Account',
-                      style: PixelType.title(context),
-                    ),
-                    SizedBox(height: grid.px(1)),
-                    Text(
-                      hasWallet
-                          ? 'Wallet address linked to account'
-                          : 'No Web3 Wallet Linked Yet',
-                      style: PixelType.body(
-                        context,
-                        color: hasWallet
-                            ? PixelPalette.greenDark
-                            : PixelPalette.slate,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: grid.px(2)),
-              PixelChip(
-                hasWallet ? 'Verified' : 'Off-chain',
-                style: hasWallet ? PixelBoxStyle.green : PixelBoxStyle.gold,
-                textColor: hasWallet ? PixelPalette.white : PixelPalette.ink,
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          if (hasWallet) ...[
-            PixelPanel(
-              style: PixelBoxStyle.slot,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      user.formattedWalletAddress ?? user.walletAddress ?? '',
-                      style: PixelType.numbers(context),
-                    ),
-                  ),
-                  GestureDetector(
-                    key: const ValueKey('profile_copy_wallet'),
-                    onTap: () {
-                      Clipboard.setData(
-                          ClipboardData(text: user.walletAddress ?? ''));
-                      showPixelToast(
-                          context, 'Wallet address copied to clipboard.');
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.all(grid.px(2)),
-                      child: Text(
-                        'Copy',
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.greenDeep,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: grid.px(2)),
-            Text(
-              'This address can sign in to your traveler account. Demo points remain off-chain and are not wallet tokens.',
-              style: PixelType.body(context, color: PixelPalette.slate),
-            ),
-            SizedBox(height: grid.px(2)),
-            Align(
-              alignment: Alignment.centerRight,
-              child: PixelButton(
-                key: const ValueKey('profile_unlink_wallet'),
-                label: 'Unlink Wallet',
-                variant: PixelButtonVariant.danger,
-                onPressed: () => _confirmUnbindWallet(context),
-              ),
-            ),
-          ] else ...[
-            Text(
-              'You are playing with off-chain demo points (\$mJDQ). Link an EVM wallet for signature-based account sign-in; this does not unlock on-chain rewards or voting.',
-              style: PixelType.body(context, color: PixelPalette.slate),
-            ),
-            SizedBox(height: grid.px(3)),
-            PixelButton(
-              key: const ValueKey('profile_link_wallet'),
-              label: 'Link Web3 / EVM Wallet',
-              expand: true,
-              onPressed: () => _showWalletBindingModal(context),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _links(BuildContext context, PixelGrid grid, bool isMine) {
-    Widget row(String title, String subtitle, String route,
-        {ValueKey<String>? key}) {
-      return GestureDetector(
-        key: key,
-        onTap: () => context.push(route),
-        child: PixelPanel(
-          style: PixelBoxStyle.parchment,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: PixelType.title(context)),
-                    SizedBox(height: grid.px(1)),
-                    Text(
-                      subtitle,
-                      style: PixelType.body(context, color: PixelPalette.slate),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: grid.px(2)),
-              Text(
-                '>',
-                style: PixelType.title(context, color: PixelPalette.woodMid),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        row('Saved Destinations', 'Places you bookmarked for later', '/saved',
-            key: const ValueKey('profile_saved')),
-        SizedBox(height: grid.px(2)),
-        row('The Trail', 'Personalized route suggestions · Coming soon',
-            '/trail',
-            key: const ValueKey('profile_trail')),
-        SizedBox(height: grid.px(2)),
-        row('Leaderboard',
-            'View top explorers, rankings, and sprint leaderboards.', '/plaza',
-            key: const ValueKey('profile_leaderboard')),
-        // Owner 2026-11-05: Shop is a tab now and Settings is the gear in the
-        // header, so their rows here were removed.
-      ],
-    );
-  }
-
-  Future<void> _showWalletBindingModal(BuildContext context) async {
-    ReownAppKitModal modal;
-    try {
-      modal = await WalletSignatureService.initialize(context);
-    } catch (e) {
-      if (context.mounted) {
-        showPixelToast(
-          context,
-          e is StateError
-              ? e.message
-              : 'Wallet connection is unavailable. Please try again.',
-        );
-      }
-      return;
-    }
-    if (!context.mounted) {
-      await modal.dispose();
-      return;
-    }
-    bool isSubmitting = false;
-    String? modalError;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          final grid = PixelGrid.of(context);
-          final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-              grid.px(3),
-              grid.px(3),
-              grid.px(3),
-              grid.px(3) + bottomInset,
-            ),
-            child: SingleChildScrollView(
+        Expanded(
+          child: Semantics(
+            button: true,
+            label: 'Badges and stamps case',
+            child: GestureDetector(
+              key: const ValueKey('profile_badges'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => context.push('/profile/badges'),
               child: PixelPanel(
                 style: PixelBoxStyle.parchment,
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Link Web3 Wallet', style: PixelType.title(context)),
+                    Row(
+                      children: [
+                        const PixelMicro(PixelMicroArt.sparkle, scale: 2),
+                        SizedBox(width: grid.px(1)),
+                        Text('Badges', style: PixelType.title(context)),
+                      ],
+                    ),
                     SizedBox(height: grid.px(1)),
                     Text(
-                      'Progressive Web3 Passport Binding',
-                      style: PixelType.body(
-                        context,
-                        color: PixelPalette.slate,
-                      ),
-                    ),
-                    SizedBox(height: grid.px(2)),
-                    Text(
-                      'A wallet signature links this address for account recovery. Your demo points remain off-chain; no tokens are minted or transferred.',
-                      style: PixelType.body(
-                        context,
-                        color: PixelPalette.slate,
-                      ),
-                    ),
-                    SizedBox(height: grid.px(2)),
-                    AppKitModalConnectButton(appKit: modal, context: context),
-                    SizedBox(height: grid.px(2)),
-                    Text(
-                      'Connect any Web3 wallet (MetaMask, Coinbase, Trust, Rainbow, etc.), approve the connection, then sign the one-time authentication message to link your wallet.',
-                      style: PixelType.body(
-                        context,
-                        color: PixelPalette.slate,
-                      ),
-                    ),
-                    if (modalError != null) ...[
-                      SizedBox(height: grid.px(2)),
-                      Text(
-                        modalError!,
-                        style: PixelType.body(context, color: PixelPalette.red),
-                      ),
-                    ],
-                    SizedBox(height: grid.px(3)),
-                    PixelButton(
-                      key: const ValueKey('profile_bind_wallet'),
-                      label: 'Bind Wallet to Passport',
-                      expand: true,
-                      loading: isSubmitting,
-                      onPressed: isSubmitting
-                          ? null
-                          : () async {
-                              final addr =
-                                  WalletSignatureService.connectedAddress(
-                                      modal);
-                              if (addr == null) {
-                                setSheetState(() => modalError =
-                                    'Connect an EVM wallet first.');
-                                return;
-                              }
-
-                              setSheetState(() {
-                                isSubmitting = true;
-                                modalError = null;
-                              });
-
-                              bool ok = false;
-                              try {
-                                final challenge = await ref
-                                    .read(authProvider.notifier)
-                                    .requestWalletChallenge(addr);
-                                if (challenge == null) {
-                                  throw StateError(
-                                      'Could not get a wallet challenge from the API.');
-                                }
-                                final signature =
-                                    await WalletSignatureService.signChallenge(
-                                        modal, challenge);
-                                ok = await ref
-                                    .read(authProvider.notifier)
-                                    .bindWallet(
-                                      address: addr,
-                                      signature: signature,
-                                    );
-                              } catch (e) {
-                                if (sheetCtx.mounted) {
-                                  setSheetState(() => modalError =
-                                      e is StateError
-                                          ? e.message
-                                          : 'Signature was not completed.');
-                                }
-                              }
-
-                              if (sheetCtx.mounted) {
-                                if (ok) {
-                                  Navigator.of(sheetCtx).pop();
-                                  showPixelToast(context,
-                                      'Wallet successfully linked to your passport!');
-                                } else {
-                                  setSheetState(() {
-                                    isSubmitting = false;
-                                    modalError ??=
-                                        ref.read(authProvider).error ??
-                                            'Failed to bind wallet.';
-                                  });
-                                }
-                              }
-                            },
+                      '$earnedBadges of 3 Earned ›',
+                      style: PixelType.small(context, color: PixelPalette.greenDark),
                     ),
                   ],
                 ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+        ),
+        if (isMine) ...[
+          SizedBox(width: grid.px(2)),
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: 'Saved places',
+              child: GestureDetector(
+                key: const ValueKey('profile_saved'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => context.push('/saved'),
+                child: PixelPanel(
+                  style: PixelBoxStyle.parchment,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const PixelMicro(PixelMicroArt.coin, scale: 2),
+                          SizedBox(width: grid.px(1)),
+                          Text('Saved', style: PixelType.title(context)),
+                        ],
+                      ),
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        '$savedSpots Places ›',
+                        style: PixelType.small(context, color: PixelPalette.slate),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
-    await modal.dispose();
   }
 
-  void _confirmUnbindWallet(BuildContext context) {
-    showPixelDialog<void>(
-      context: context,
-      title: 'Unlink Web3 wallet?',
-      message:
-          'Your account will revert to off-chain mode. You can link this or another wallet at any time.',
-      actions: [
-        PixelButton(
-          label: 'Cancel',
-          variant: PixelButtonVariant.secondary,
-          onPressed: () => Navigator.of(context).pop(),
+  Widget _postedDestinations(
+    BuildContext context,
+    PixelGrid grid,
+    bool isMine,
+    List<SpotModel> userSpots,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'Posted Destinations (${userSpots.length})',
+                style: PixelType.title(context),
+              ),
+            ),
+            if (isMine)
+              PixelButton(
+                key: const ValueKey('profile_post_spot'),
+                label: '+ Post Spot',
+                onPressed: () => context.push('/map/add-spot'),
+              ),
+          ],
         ),
-        PixelButton(
-          key: const ValueKey('profile_confirm_unlink'),
-          label: 'Unlink',
-          variant: PixelButtonVariant.danger,
-          onPressed: () async {
-            Navigator.of(context).pop();
-            final ok = await ref.read(authProvider.notifier).unbindWallet();
-            if (context.mounted) {
-              showPixelToast(
-                context,
-                ok
-                    ? 'Wallet unlinked successfully.'
-                    : 'Failed to unlink wallet.',
-              );
-            }
-          },
-        ),
+        SizedBox(height: grid.px(2)),
+        if (userSpots.isEmpty)
+          PixelPanel(
+            key: const ValueKey('profile_no_spots'),
+            style: PixelBoxStyle.parchment,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  isMine
+                      ? 'No destinations posted yet. Share a hidden spot in Pangasinan!'
+                      : 'No destinations posted yet by this explorer.',
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                ),
+                if (isMine) ...[
+                  SizedBox(height: grid.px(2)),
+                  PixelButton(
+                    key: const ValueKey('profile_post_spot_empty'),
+                    label: '+ Post a Destination',
+                    onPressed: () => context.push('/map/add-spot'),
+                  ),
+                ],
+              ],
+            ),
+          )
+        else
+          for (final spot in userSpots) ...[
+            _spotCard(context, grid, spot),
+            SizedBox(height: grid.px(2)),
+          ],
       ],
+    );
+  }
+
+  Widget _spotCard(BuildContext context, PixelGrid grid, SpotModel spot) {
+    final photo = spot.imageUrl;
+    final hasPhoto = photo != null && photo.trim().isNotEmpty;
+
+    return Semantics(
+      button: true,
+      label: '${spot.name}, ${spot.municipality}',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => context.push('/explore/${spot.slug}', extra: spot),
+        child: PixelPanel(
+          style: PixelBoxStyle.parchment,
+          padding: 2,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: grid.px(16),
+                height: grid.px(16),
+                child: ClipRect(
+                  child: hasPhoto
+                      ? Image.network(
+                          photo,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _spotFallback(context),
+                        )
+                      : _spotFallback(context),
+                ),
+              ),
+              SizedBox(width: grid.px(2)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      spot.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.title(context),
+                    ),
+                    SizedBox(height: grid.px(0.5)),
+                    Text(
+                      '${spot.municipality} · ${spot.category.toUpperCase()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.small(context, color: PixelPalette.greenDark),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              PixelButton(
+                label: 'View ›',
+                variant: PixelButtonVariant.secondary,
+                onPressed: () => context.push('/explore/${spot.slug}', extra: spot),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _spotFallback(BuildContext context) {
+    return const DitherBackground(
+      top: PixelPalette.greenMid,
+      bottom: PixelPalette.greenDeep,
     );
   }
 }

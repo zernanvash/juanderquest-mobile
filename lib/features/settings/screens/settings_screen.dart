@@ -78,6 +78,15 @@ class SettingsScreen extends ConsumerWidget {
                               onTap: () =>
                                   context.push('/onboarding/interests'),
                             ),
+                            _SettingsTile(
+                              key: const ValueKey('settings_wallet'),
+                              icon: 'W',
+                              title: 'Web3 Wallet',
+                              subtitle: user?.hasBoundWallet == true
+                                  ? 'Linked ${user!.formattedWalletAddress}'
+                                  : 'Off-chain demo account · Tap to link',
+                              onTap: () => context.push('/wallet/connect'),
+                            ),
                           ]),
                           _SettingsGroup(title: 'ACTIVITY', tiles: [
                             _SettingsTile(
