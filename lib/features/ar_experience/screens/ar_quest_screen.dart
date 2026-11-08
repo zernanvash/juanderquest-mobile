@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -738,10 +739,18 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
             child: Padding(
               padding: const EdgeInsets.only(top: 64, left: 16, right: 16),
               child: phase == ArHuntPhase.seeking
-                  ? HuntHeatBanner(
-                      heat: hunt.heat ?? 'COLD',
-                      trend: hunt.trend,
-                      distance: hunt.relicDistance,
+                  ? ValueListenableBuilder(
+                      valueListenable: _device.pose,
+                      builder: (context, pose, _) {
+                        final to = hunt.relicBearing;
+                        return HuntRadar(
+                          distance: hunt.relicDistance,
+                          relativeBearing: to == null || !pose.hasData
+                              ? null
+                              : HuntRadar.relative(
+                                  phone: pose.camera.bearing, target: to),
+                        );
+                      },
                     )
                   : _HuntBanner(text: bannerText),
             ),
@@ -1239,67 +1248,109 @@ class _HuntBanner extends StatelessWidget {
       ));
 }
 
-/// While seeking the hidden relic: the heat (HOT/WARM/COOL/COLD), about how
-/// far, and whether you are getting WARMER or COLDER. Nothing else.
-class HuntHeatBanner extends StatelessWidget {
-  const HuntHeatBanner(
-      {super.key, required this.heat, required this.trend, this.distance});
-  final String heat;
-  final String trend;
+/// While seeking the hidden object (owner 2026-11-08: "i hate the colder and
+/// warmer ... a compass or something? or a radar"): you are the dot in the
+/// middle, up is where the phone faces, and the blip is the object, closer to
+/// the middle as you get closer. The metres show under it.
+class HuntRadar extends StatelessWidget {
+  const HuntRadar({super.key, required this.distance, this.relativeBearing});
+
+  /// Metres to the object, or null before the first GPS reading.
   final double? distance;
 
-  static Color colourFor(String heat) => switch (heat) {
-        'HOT' => const Color(0xFFE5452B),
-        'WARM' => const Color(0xFFFFB703),
-        'COOL' => const Color(0xFF7CC4F2),
-        _ => const Color(0xFF3B82F6),
-      };
+  /// Degrees from where the phone faces to the object (clockwise), or null.
+  final double? relativeBearing;
+
+  /// The outer ring is this far away; anything further sits on the ring.
+  static const rangeM = 40.0;
+
+  /// Degrees clockwise from where the phone faces to [target] (both compass
+  /// bearings): positive = to your right.
+  static double relative({required double phone, required double target}) =>
+      ArGeo.deltaDegrees(target, phone);
+
+  /// Where the blip goes, as a fraction of the radius (0 middle, 1 ring).
+  static double blipRadius(double distance) =>
+      (distance / rangeM).clamp(0.0, 1.0);
 
   @override
   Widget build(BuildContext context) {
-    final c = colourFor(heat);
     final d = distance;
-    // Shrinks to fit on narrow screens with big text; never wraps or overflows.
     return FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Container(
-          key: const ValueKey('ar_heat_banner'),
-          padding: const EdgeInsets.fromLTRB(6, 5, 12, 5),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.62),
-            border: Border.all(color: c, width: 2),
+      fit: BoxFit.scaleDown,
+      child: Container(
+        key: const ValueKey('ar_radar'),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.62),
+          border: Border.all(color: const Color(0xFFFFB703), width: 2),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            width: 96,
+            height: 96,
+            child: CustomPaint(
+                painter: _RadarPainter(
+                    blip: d == null ? null : blipRadius(d),
+                    bearing: relativeBearing)),
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              color: c,
-              child: Text(heat,
-                  style: const TextStyle(
-                      color: Color(0xFF0D1B2A),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13)),
-            ),
-            if (d != null) ...[
-              const SizedBox(width: 10),
-              Text(ArHuntRules.distanceHint(d).replaceFirst('about ', '~'),
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13)),
-            ],
-            if (trend.isNotEmpty) ...[
-              const SizedBox(width: 10),
-              Text(trend == 'WARMER' ? '▲ WARMER' : '▼ COLDER',
-                  style: TextStyle(
-                      color: trend == 'WARMER'
-                          ? const Color(0xFFFFB703)
-                          : const Color(0xFF7CC4F2),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13)),
-            ],
-          ]),
-        ));
+          const SizedBox(height: 4),
+          Text(
+            d == null
+                ? 'Finding you...'
+                : ArHuntRules.distanceHint(d).replaceFirst('about ', '~'),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+          ),
+        ]),
+      ),
+    );
   }
+}
+
+class _RadarPainter extends CustomPainter {
+  _RadarPainter({required this.blip, required this.bearing});
+  final double? blip;
+  final double? bearing;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.shortestSide / 2 - 2;
+    final ring = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = const Color(0xFF7CC4F2).withValues(alpha: 0.7);
+    canvas.drawCircle(c, r, ring);
+    canvas.drawCircle(c, r * 0.5,
+        ring..color = const Color(0xFF7CC4F2).withValues(alpha: 0.35));
+    // "Ahead" tick at the top.
+    canvas.drawLine(
+        c.translate(0, -r),
+        c.translate(0, -r + 8),
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 2);
+    // You.
+    canvas.drawRect(Rect.fromCenter(center: c, width: 6, height: 6),
+        Paint()..color = Colors.white);
+    final b = bearing, f = blip;
+    if (b == null || f == null) return;
+    final a = b * math.pi / 180;
+    final p = c + Offset(math.sin(a), -math.cos(a)) * (r * math.max(0.12, f));
+    canvas.drawRect(Rect.fromCenter(center: p, width: 12, height: 12),
+        Paint()..color = const Color(0xFFFFB703));
+    canvas.drawRect(
+        Rect.fromCenter(center: p, width: 12, height: 12),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = const Color(0xFF0D1B2A));
+  }
+
+  @override
+  bool shouldRepaint(_RadarPainter old) =>
+      old.blip != blip || old.bearing != bearing;
 }
 
 /// Help behind the (i) button.
@@ -1345,7 +1396,7 @@ class ArHelpSheet extends StatelessWidget {
                 const SizedBox(height: 10),
                 line('1', 'Walk to the area. The arrow points the way.'),
                 line('2',
-                    'The $objectLabel hides somewhere in the area. HOT, WARM, COOL or COLD and the metres say how close you are; WARMER or COLDER says if you are getting closer.'),
+                    'The $objectLabel hides somewhere in the area. On the radar you are the middle and the gold square is the $objectLabel: walk towards it. The metres say how far.'),
                 line('3',
                     'A few steps away it appears. Hold it inside the circle, then tap Collect.'),
                 const SizedBox(height: 4),

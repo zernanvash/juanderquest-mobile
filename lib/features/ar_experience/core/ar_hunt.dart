@@ -79,11 +79,14 @@ class ArHuntRules {
   /// close to its spot. Phone GPS is only good to about ±5–10 m, so it is 3 m
   /// plus the reading's accuracy, capped at 8 m; it then shows 2.5 m ahead in
   /// the spot's direction.
-  static double revealDistance(double accuracy) => math.min(8.0, 3 + accuracy.clamp(0, 5));
+  static double revealDistance(double accuracy) =>
+      math.min(8.0, 3 + accuracy.clamp(0, 5));
 
-  static double distanceTo(ArFix fix, ArFence point) => ArGeo.distanceMeters(fix.lat, fix.lng, point.lat, point.lng);
+  static double distanceTo(ArFix fix, ArFence point) =>
+      ArGeo.distanceMeters(fix.lat, fix.lng, point.lat, point.lng);
 
-  static double bearingTo(ArFix fix, ArFence point) => ArGeo.bearingDegrees(fix.lat, fix.lng, point.lat, point.lng);
+  static double bearingTo(ArFix fix, ArFence point) =>
+      ArGeo.bearingDegrees(fix.lat, fix.lng, point.lat, point.lng);
 
   /// Warmer/colder: how close you are, never which way.
   static String heat(double distanceM) {
@@ -97,7 +100,9 @@ class ArHuntRules {
   /// 5m away from [item]"): whole metres up close, steps of 5 m further out, so
   /// GPS jitter doesn't make the number jump about.
   static String distanceHint(double distanceM) {
-    final m = distanceM < 10 ? math.max(1, distanceM.round()) : (distanceM / 5).round() * 5;
+    final m = distanceM < 10
+        ? math.max(1, distanceM.round())
+        : (distanceM / 5).round() * 5;
     return 'about $m m';
   }
 
@@ -217,7 +222,18 @@ class ArHuntController extends ChangeNotifier {
   double? get relicDistance {
     final relic = _challenge?.relic;
     final fix = _fix;
-    return relic == null || fix == null ? null : ArHuntRules.distanceTo(fix, relic);
+    return relic == null || fix == null
+        ? null
+        : ArHuntRules.distanceTo(fix, relic);
+  }
+
+  /// Compass bearing from you to the hidden relic spot, while seeking (the radar).
+  double? get relicBearing {
+    final relic = _challenge?.relic;
+    final fix = _fix;
+    return relic == null || fix == null
+        ? null
+        : ArHuntRules.bearingTo(fix, relic);
   }
 
   /// 'HOT', 'WARM', 'COOL' or 'COLD' while seeking.
@@ -397,7 +413,8 @@ class ArHuntController extends ChangeNotifier {
       _lastRelicDistance ??= d;
     }
     if (d <= ArHuntRules.revealDistance(fix.accuracy)) {
-      _objectPosition = ArHuntRules.spawnPosition(ArHuntRules.bearingTo(fix, relic));
+      _objectPosition =
+          ArHuntRules.spawnPosition(ArHuntRules.bearingTo(fix, relic));
       _alignedSince = null;
       _set(ArHuntPhase.searching);
       return;
