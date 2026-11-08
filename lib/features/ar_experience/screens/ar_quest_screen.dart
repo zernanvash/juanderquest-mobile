@@ -59,6 +59,18 @@ class ArQuestScreen extends ConsumerStatefulWidget {
     this.quest,
   });
 
+  /// Give up on World AR after tracking has been lost this long with nothing
+  /// placed. Never for a game task (Plan 77): tracking drops on the walk there
+  /// (phone lowered or in a pocket), and the relic hunt would replace the game.
+  @visibleForTesting
+  static bool fallBackOnTrackingLoss({
+    required Duration lost,
+    required Duration grace,
+    required bool hasAnchor,
+    required bool isGame,
+  }) =>
+      !isGame && !hasAnchor && lost > grace;
+
   @override
   ConsumerState<ArQuestScreen> createState() => _ArQuestScreenState();
 }
@@ -271,7 +283,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     final hunt = _hunt;
     if (frame == null || hunt == null || !mounted) return;
     // A game runs its own anchor and tracking (ArMiniGameHost).
-    if (_game != null || _gameBusy) return;
+    if (_game != null || _gameBusy || _gameError != null) return;
     if (frame.error != null) {
       _fallBackToCompass();
       return;
@@ -283,8 +295,11 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       if (_showTutorial != false) _worldNotTrackingSince = null;
       _worldNotTrackingSince ??= now;
       final grace = _calibration.done ? worldTrackingGrace : setupTrackingGrace;
-      if (now.difference(_worldNotTrackingSince!) > grace &&
-          frame.anchor == null) {
+      if (ArQuestScreen.fallBackOnTrackingLoss(
+          lost: now.difference(_worldNotTrackingSince!),
+          grace: grace,
+          hasAnchor: frame.anchor != null,
+          isGame: _task?.isGame == true)) {
         _fallBackToCompass();
         return;
       }

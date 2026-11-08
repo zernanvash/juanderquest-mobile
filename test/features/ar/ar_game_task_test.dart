@@ -125,6 +125,17 @@ void main() {
       expect((hunted['relic_mode'], hunted['fallback']), ('hidden_spot', 'no_arcore'));
     });
 
+    test('a game task keeps World AR when tracking drops on the walk there', () {
+      const lost = Duration(seconds: 40), grace = Duration(seconds: 8);
+      expect(ArQuestScreen.fallBackOnTrackingLoss(lost: lost, grace: grace, hasAnchor: false, isGame: false), isTrue);
+      expect(ArQuestScreen.fallBackOnTrackingLoss(lost: lost, grace: grace, hasAnchor: false, isGame: true), isFalse);
+      expect(ArQuestScreen.fallBackOnTrackingLoss(lost: lost, grace: grace, hasAnchor: true, isGame: false), isFalse);
+      expect(
+          ArQuestScreen.fallBackOnTrackingLoss(
+              lost: const Duration(seconds: 3), grace: grace, hasAnchor: false, isGame: false),
+          isFalse);
+    });
+
     test('games are seeded by the session', () {
       final a = createArGame('pana', 7) as PanaGame;
       expect(a, isA<PanaGame>());
