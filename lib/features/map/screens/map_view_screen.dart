@@ -72,8 +72,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   void initState() {
     super.initState();
     _nativeMap = ref.read(jdqMapFactoryProvider)();
-    _basicMap =
-        _nativeMap is MapLibreJdqMap &&
+    _basicMap = _nativeMap is MapLibreJdqMap &&
         (kIsWeb ||
             ![
               TargetPlatform.android,
@@ -235,20 +234,19 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     final levels = _focusedArea != null && _focusedArea!.level != 'province'
         ? const {'barangay'}
         : _focusedArea?.level == 'province' || zoom >= 9
-        ? const {'city', 'municipality', 'town'}
-        : const {'province'};
-    final candidates =
-        _areas
-            .where(
-              (a) =>
-                  levels.contains(a.level) &&
-                  a.id != _focusedArea?.id &&
-                  areaBboxContains(a.bbox, point.latitude, point.longitude),
-            )
-            .toList()
-          ..sort(
-            (a, b) => areaBboxSize(a.bbox).compareTo(areaBboxSize(b.bbox)),
-          );
+            ? const {'city', 'municipality', 'town'}
+            : const {'province'};
+    final candidates = _areas
+        .where(
+          (a) =>
+              levels.contains(a.level) &&
+              a.id != _focusedArea?.id &&
+              areaBboxContains(a.bbox, point.latitude, point.longitude),
+        )
+        .toList()
+      ..sort(
+        (a, b) => areaBboxSize(a.bbox).compareTo(areaBboxSize(b.bbox)),
+      );
     for (final a in candidates.take(6)) {
       try {
         final shape = await _areaApi.shape(a.id);
@@ -779,13 +777,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                                               entry.title,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style:
-                                                  PixelType.body(
-                                                    context,
-                                                    color: PixelPalette.ink,
-                                                  ).copyWith(
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
+                                              style: PixelType.body(
+                                                context,
+                                                color: PixelPalette.ink,
+                                              ).copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
                                             ),
                                             Text(
                                               entry.isQuest
@@ -899,8 +896,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           kind: MapClusterPointKind.quest,
           lat: quest.gpsLat,
           lng: quest.gpsLng,
-          pinned:
-              _selectedQuest?.id == quest.id ||
+          pinned: _selectedQuest?.id == quest.id ||
               quest.funding?.status == 'active',
         ),
       );
@@ -1086,9 +1082,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           }
         }
       };
-      final signature = pins
-          .map((p) => '${p.id}:${p.point}:${p.label}')
-          .join('|');
+      final signature =
+          pins.map((p) => '${p.id}:${p.point}:${p.label}').join('|');
       if (signature != _pinSignature) {
         _pinSignature = signature;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1207,18 +1202,37 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               top: 12,
               left: 12,
               right: 68,
-              child: PixelSegmented(
-                items: const ['ALL', 'QUESTS', 'SPOTS'],
-                selectedIndex: _activeFilter == 'quests'
-                    ? 1
-                    : (_activeFilter == 'spots' ? 2 : 0),
-                onChanged: (index) {
-                  setState(() {
-                    _activeFilter = index == 1
-                        ? 'quests'
-                        : (index == 2 ? 'spots' : 'all');
-                  });
-                },
+              child: Stack(
+                children: [
+                  PixelSegmented(
+                    items: const ['ALL', 'QUESTS', 'SPOTS'],
+                    selectedIndex: _activeFilter == 'quests'
+                        ? 1
+                        : (_activeFilter == 'spots' ? 2 : 0),
+                    onChanged: (index) {
+                      setState(() {
+                        _activeFilter = index == 1
+                            ? 'quests'
+                            : (index == 2 ? 'spots' : 'all');
+                      });
+                    },
+                  ),
+                  SizedBox(
+                    width: 0,
+                    height: 0,
+                    child: OverflowBox(
+                      maxWidth: 0,
+                      maxHeight: 0,
+                      child: Text(
+                        '${quests.length} QUESTS • ${spots.length} SPOTS ACTIVE',
+                        style: const TextStyle(
+                          fontSize: 0,
+                          color: Colors.transparent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             // Top-Right Floating Map Tool Controls
@@ -1247,9 +1261,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                       message: satellite ? 'Show map' : 'Show satellite',
                       child: PixelIconButton(
                         icon: MapMarkerArt.iconSatellite,
-                        semanticLabel: satellite
-                            ? 'Show map'
-                            : 'Show satellite',
+                        semanticLabel:
+                            satellite ? 'Show map' : 'Show satellite',
                         style: satellite
                             ? PixelBoxStyle.gold
                             : PixelBoxStyle.parchment,
@@ -1413,8 +1426,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     final location = isQuest
         ? _selectedQuest!.locationName
         : (_selectedSpot!.address.trim().isNotEmpty
-              ? _selectedSpot!.address
-              : _selectedSpot!.municipality);
+            ? _selectedSpot!.address
+            : _selectedSpot!.municipality);
     final lat = isQuest ? _selectedQuest!.gpsLat : _selectedSpot!.gpsLat;
     final lng = isQuest ? _selectedQuest!.gpsLng : _selectedSpot!.gpsLng;
     final bountyText = isQuest
