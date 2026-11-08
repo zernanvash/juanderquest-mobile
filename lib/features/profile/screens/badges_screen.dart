@@ -14,8 +14,8 @@ import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../dashboard/providers/home_daily_provider.dart';
-import '../../spots/providers/spot_discovery_provider.dart';
 import '../providers/profile_stats_provider.dart';
+import '../showcase.dart';
 
 const _medalEarned = PixelArt('medalEarned', [
   '....yy....yy....',
@@ -60,44 +60,19 @@ class BadgesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(profileStatsProvider);
     final dailyAsync = ref.watch(homeDailyProvider);
-    final spots = ref.watch(spotDiscoveryProvider);
-    final hasPostedSpots = spots.spots.any((s) => s.createdBy != null);
+    // Owner 2026-11-08: the real server badges (the same ones you can equip on
+    // your profile), not a list worked out on the phone.
+    final achievements = ref.watch(achievementsProvider).valueOrNull ?? const AchievementsData();
 
     final badges = [
-      (
-        title: 'Eco Pioneer',
-        desc: 'Complete an Eco-Tourism quest verification in Pangasinan.',
-        state: stats.ecoPioneerState,
-      ),
-      (
-        title: 'Heritage Keeper',
-        desc: 'Complete a Cultural Heritage or Historical quest step.',
-        state: stats.heritageKeeperState,
-      ),
-      (
-        title: 'Food Explorer',
-        desc: 'Verify a Culinary or Local Trade merchant quest.',
-        state: stats.foodExplorerState,
-      ),
-      (
-        title: 'Town Scout',
-        desc: 'Discover and share a verified hidden gem in Pangasinan.',
-        state: hasPostedSpots ? BadgeState.earned : BadgeState.locked,
-      ),
-      (
-        title: 'Coastal Navigator',
-        desc: 'Complete quests across 3 coastal municipalities.',
-        state: BadgeState.locked,
-      ),
-      (
-        title: 'Laro ng Lahi Champion',
-        desc: 'Score high in traditional Pangasinan AR mini-games.',
-        state: BadgeState.locked,
-      ),
+      for (final b in achievements.catalog)
+        (
+          title: b.title,
+          desc: b.description,
+          state: achievements.has(b.id) ? BadgeState.earned : BadgeState.locked,
+        ),
     ];
-
     final earnedCount = badges.where((b) => b.state == BadgeState.earned).length;
 
     return Theme(

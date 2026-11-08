@@ -23,6 +23,7 @@ import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
 import 'package:juanderquest_app/features/spots/screens/saved_spots_screen.dart';
 import 'package:juanderquest_app/features/submissions/models/submission_model.dart';
+import 'package:juanderquest_app/features/profile/showcase.dart';
 import 'package:juanderquest_app/features/submissions/providers/submission_provider.dart';
 import 'package:juanderquest_app/features/submissions/screens/submission_history_screen.dart';
 import 'package:juanderquest_app/features/wallet/screens/wallet_connect_screen.dart';
@@ -335,6 +336,7 @@ Future<void> _pump(
               user,
             )),
         profileStatsProvider.overrideWithValue(stats ?? _stats),
+        showcaseProvider.overrideWith((ref, key) async => _showcase),
         cosmeticsProvider.overrideWith((ref) =>
             cosmeticsNotifier?.call(ref) ??
             _CosmeticsFixture(ref, cosmetics)),
@@ -974,3 +976,13 @@ void main() {
     });
   });
 }
+
+const _showcase = ProfileShowcase(
+  bio: 'Bangus lover from Dagupan.',
+  homeTown: 'Dagupan City',
+  badges: [ShowcaseBadge(id: 'first_footstep', title: 'First Footstep')],
+  quests: 4,
+  spotsPosted: 1,
+  badgesEarned: 2,
+  townsVisited: ['Bolinao', 'Dagupan City'],
+);

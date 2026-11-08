@@ -19,6 +19,7 @@ import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../providers/profile_stats_provider.dart';
 import '../providers/user_spots_provider.dart';
+import '../showcase.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   final String? username;
@@ -117,11 +118,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final pointsBalance = currentUser?.points ?? stats.pointsBalance;
     final level = (pointsBalance / 50).floor() + 1;
 
-    final earnedBadges = [
-      stats.ecoPioneerState,
-      stats.heritageKeeperState,
-      stats.foodExplorerState,
-    ].where((s) => s == BadgeState.earned).length;
+    // Owner 2026-11-08: bio, 3 equipped badges, home town, Pasaporte, stats,
+    // favourite spot and latest journey, from the server.
+    final showcaseKey = isMine ? '' : (widget.username ?? '').replaceFirst('@', '');
+    final showcase = ref.watch(showcaseProvider(showcaseKey)).valueOrNull;
+    final earnedBadges = showcase?.badgesEarned ?? 0;
 
     final savedSpots = spotsState.spots.where((s) => s.saved).length;
 
@@ -188,6 +189,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           level,
                           pointsBalance,
                         ),
+                        if (showcase != null) ...[
+                          SizedBox(height: grid.px(3)),
+                          ProfileShowcaseSection(showcase: showcase, isMine: isMine),
+                        ],
                         SizedBox(height: grid.px(3)),
                         _actionButtons(context, grid, isMine, earnedBadges, savedSpots),
                         SizedBox(height: grid.px(4)),
@@ -367,7 +372,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     SizedBox(height: grid.px(1)),
                     Text(
-                      '$earnedBadges of 3 Earned ›',
+                      '$earnedBadges Earned ›',
                       style: PixelType.small(context, color: PixelPalette.greenDark),
                     ),
                   ],
