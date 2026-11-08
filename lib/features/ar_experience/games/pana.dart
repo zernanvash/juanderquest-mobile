@@ -109,6 +109,8 @@ class PanaGame extends ArMiniGame {
   @override
   bool get passed => score >= passScore;
   @override
+  int get boardScore => score;
+  @override
   ArButtonMode get buttonMode => ArButtonMode.pull;
 
   final Swing _swing = Swing(swayPeriod, 0);
@@ -148,21 +150,21 @@ class PanaGame extends ArMiniGame {
   String buttonLabel(double now) => !_drawing ? 'PULL DOWN TO DRAW' : (draw(now) >= 0.9 ? 'LET GO!' : 'PULL MORE…');
 
   @override
-  ArMeter? meter(double now, ArPose? pose) => (value: draw(now), from: 0.9, to: 1.0);
+  ArMeter? meter(double now, GamePose? pose) => (value: draw(now), from: 0.9, to: 1.0);
 
   @override
-  String? meterCaption(double now, ArPose? pose) {
+  String? meterCaption(double now, GamePose? pose) {
     if (wind == 0) return 'Pull the bow down to FULL, aim at the bullseye, let go.';
     final arrows = (wind > 0 ? '▶' : '◀') * wind.abs();
     return 'WIND $arrows  Aim into the wind.';
   }
 
   @override
-  bool? reticle(double now, ArPose? pose) =>
+  bool? reticle(double now, GamePose? pose) =>
       pose != null && placed && !over && inReticle(pose, centre(now), radius: targetRadius, coneDeg: 0);
 
   @override
-  ArSight? sight(double now, ArPose? pose) {
+  ArSight? sight(double now, GamePose? pose) {
     if (!placed || over) return null;
     final d = draw(now);
     // At rest the pin shows a full draw; while pulling, the draw so far.
@@ -180,10 +182,10 @@ class PanaGame extends ArMiniGame {
   }
 
   @override
-  String? status(ArPose? pose) => 'ARROWS ${arrows - hits} · $score PTS';
+  String? status(GamePose? pose) => 'ARROWS ${arrows - hits} · $score PTS';
 
   @override
-  String? hint(double now, ArPose? pose) => placed && !over ? turnHint(pose, centre(now)) : null;
+  String? hint(double now, GamePose? pose) => placed && !over ? turnHint(pose, centre(now)) : null;
 
   void _nextArrow(double now) {
     if (hits >= 4) {
@@ -196,7 +198,7 @@ class PanaGame extends ArMiniGame {
   }
 
   @override
-  void place(double now, ArPose? pose) {
+  void place(double now, GamePose? pose) {
     placed = true;
     shot = null;
     _drawing = false;
@@ -214,7 +216,7 @@ class PanaGame extends ArMiniGame {
   }
 
   @override
-  void restart(double now, ArPose? pose) {
+  void restart(double now, GamePose? pose) {
     hits = 0;
     score = 0;
     over = false;
@@ -223,7 +225,7 @@ class PanaGame extends ArMiniGame {
   }
 
   @override
-  void press(double now, ArPose? pose) {
+  void press(double now, GamePose? pose) {
     if (!canPress(now)) return;
     if (pose != null && !onLine(pose)) {
       say('BALIK SA LINYA!');
@@ -239,7 +241,7 @@ class PanaGame extends ArMiniGame {
   }
 
   @override
-  void release(double now, ArPose? pose) {
+  void release(double now, GamePose? pose) {
     if (!_drawing) return;
     final d = draw(now);
     _drawing = false;
@@ -273,7 +275,7 @@ class PanaGame extends ArMiniGame {
   }
 
   @override
-  void update(double now, ArPose? pose) {
+  void update(double now, GamePose? pose) {
     final s = shot;
     if (s == null) return;
     if (!_resolved && now >= _releasedAt + s.endS) {
@@ -315,7 +317,7 @@ class PanaGame extends ArMiniGame {
 
   /// Flies the arrow from the bow along the aim (drop + wind), 240 steps a
   /// second, against the golden bangus and then the moving bilao.
-  PanaShot shoot(double now, ArPose pose, double draw) {
+  PanaShot shoot(double now, GamePose pose, double draw) {
     final f = pose.forward.unit;
     // From the bow hand (low right) towards the point the sight looks at, at the
     // target's distance: the arrow is seen flying from the bow into the scene.

@@ -32,7 +32,7 @@ class ArMiniGameHud extends StatelessWidget {
 
   final ArMiniGame game;
   final double now;
-  final ArPose? pose;
+  final GamePose? pose;
   final String? callout;
   final bool placing;
   final bool pressed;

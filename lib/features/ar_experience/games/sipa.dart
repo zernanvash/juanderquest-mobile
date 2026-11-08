@@ -7,8 +7,10 @@ import 'tumbang_preso.dart';
 /// "Sipa Rally" (Plan 77 `sipa`): keep the sipa up. It floats up and falls
 /// slowly over the anchor, drifting a little each time; follow it with the
 /// circle and tap SIPA when it turns green (falling, low enough, in the circle).
-/// A drop resets the rally; [targetHits] kicks in a row win. You kick from the
-/// line, 2 m from where the sipa starts.
+/// A drop costs one kick of the rally and one of [lives]; the game ends after the
+/// last drop (Plan 77: so the board has a best rally to rank). A rally of
+/// [targetHits] passes the task. You kick from the line, 2 m from where the
+/// sipa starts.
 class SipaGame extends ArMiniGame {
   SipaGame({this.targetHits = 5, super.rangeScale, math.Random? random}) : _random = random ?? math.Random();
 
@@ -32,6 +34,9 @@ class SipaGame extends ArMiniGame {
   static const maxDrift = 0.45;
   static const leash = 0.6;
 
+  /// Drops before the game ends.
+  static const lives = 3;
+
   final math.Random _random;
 
   @override
@@ -43,11 +48,15 @@ class SipaGame extends ArMiniGame {
   int best = 0;
   @override
   bool placed = false;
-  bool won = false;
+  int drops = 0;
   @override
-  bool get over => won;
+  bool get over => drops >= lives;
   @override
-  bool get passed => won;
+  bool get passed => best >= targetHits;
+  @override
+  int get boardScore => best;
+  @override
+  Map<String, Object> get stats => {'best_rally': best, 'drops': drops};
 
   V3 _start = const V3(0, restY, 0);
   V3 _velocity = const V3(0, 0, 0);
@@ -55,7 +64,6 @@ class SipaGame extends ArMiniGame {
   bool flying = false;
   double _nextTap = 0;
   double _landS = 0;
-  double _wonAt = double.infinity;
 
   @override
   String get title => 'SIPA RALLY';
@@ -65,7 +73,7 @@ class SipaGame extends ArMiniGame {
   String get placeHint =>
       'Stand where you will play, face open ground, then tap STAND HERE. The sipa appears ${standDistance.toStringAsFixed(1)} m ahead.';
   @override
-  String get endText => '$targetHits kicks in a row!';
+  String get endText => passed ? 'Best rally: $best kicks!' : 'Best rally: $best. Reach $targetHits to pass.';
   @override
   ArButtonMode get buttonMode => ArButtonMode.tap;
 
@@ -82,28 +90,28 @@ class SipaGame extends ArMiniGame {
   bool falling(double now) => flying && _velocity.y - gravity * (now - _kickedAt) < 0;
 
   /// Kickable now: on the ground (to start), or falling through the kick zone in the circle.
-  bool kickable(double now, ArPose pose) {
+  bool kickable(double now, GamePose pose) {
     if (!flying) return true;
     final p = at(now);
     return falling(now) && p.y >= kickLow && p.y <= kickHigh && inReticle(pose, p, radius: radius, coneDeg: aimDeg);
   }
 
   @override
-  bool canPress(double now) => placed && !won && now >= _nextTap;
+  bool canPress(double now) => placed && !over && now >= _nextTap;
 
   @override
   String buttonLabel(double now) => flying ? 'SIPA!' : 'SIPA! (START)';
 
   @override
-  ArMeter? meter(double now, ArPose? pose) => null;
+  ArMeter? meter(double now, GamePose? pose) => null;
 
   @override
-  String? meterCaption(double now, ArPose? pose) =>
+  String? meterCaption(double now, GamePose? pose) =>
       flying ? 'Tap SIPA when the circle turns green.' : 'Tap SIPA to kick it up.';
 
   @override
-  bool? reticle(double now, ArPose? pose) {
-    if (!placed || won) return null;
+  bool? reticle(double now, GamePose? pose) {
+    if (!placed || over) return null;
     if (pose == null) return false;
     // On the ground: green when the circle is on it, ready for the first kick.
     if (!flying) return inReticle(pose, at(now), radius: radius, coneDeg: aimDeg);
@@ -112,7 +120,7 @@ class SipaGame extends ArMiniGame {
 
   /// Gold while the sipa is still rising (wait), green when you can kick it.
   @override
-  ArTone? tone(double now, ArPose? pose) {
+  ArTone? tone(double now, GamePose? pose) {
     final r = reticle(now, pose);
     if (r == null) return null;
     if (r) return ArTone.on;
@@ -120,13 +128,13 @@ class SipaGame extends ArMiniGame {
   }
 
   @override
-  String? status(ArPose? pose) => 'BEST $best';
+  String? status(GamePose? pose) => 'BEST $best · LIVES ${lives - drops}';
 
   @override
-  String? hint(double now, ArPose? pose) => placed && !won ? turnHint(pose, at(now)) : null;
+  String? hint(double now, GamePose? pose) => placed && !over ? turnHint(pose, at(now)) : null;
 
   @override
-  void place(double now, ArPose? pose) {
+  void place(double now, GamePose? pose) {
     placed = true;
     flying = false;
     _start = const V3(0, restY, 0);
@@ -141,15 +149,15 @@ class SipaGame extends ArMiniGame {
   }
 
   @override
-  void restart(double now, ArPose? pose) {
+  void restart(double now, GamePose? pose) {
     hits = 0;
-    won = false;
-    _wonAt = double.infinity;
+    best = 0;
+    drops = 0;
     place(now, pose);
   }
 
   @override
-  void press(double now, ArPose? pose) {
+  void press(double now, GamePose? pose) {
     if (!canPress(now) || pose == null) return;
     if (!onLine(pose)) {
       say('BALIK SA LINYA!');
@@ -166,10 +174,10 @@ class SipaGame extends ArMiniGame {
     kick(now);
     if (wasFlying) {
       hits++;
+      final firstPass = hits == targetHits && best < targetHits;
       best = math.max(best, hits);
-      say('SIPA! x$hits');
+      say(firstPass ? 'PASADO! KEEP GOING' : 'SIPA! x$hits');
       buzz(ArHaptic.heavy);
-      if (hits >= targetHits) _wonAt = now + 0.8;
     } else {
       buzz(ArHaptic.light);
     }
@@ -194,20 +202,16 @@ class SipaGame extends ArMiniGame {
   }
 
   @override
-  void update(double now, ArPose? pose) {
-    if (!won && now >= _wonAt) {
-      won = true;
-      buzz(ArHaptic.heavy);
-    }
+  void update(double now, GamePose? pose) {
     if (flying && now >= _kickedAt + _landS) {
       final p = at(_kickedAt + _landS);
       flying = false;
       _start = V3(p.x, restY, p.z);
-      if (!won && _wonAt == double.infinity) {
-        // A drop costs one kick, not the whole rally.
-        if (hits > 0) say('NAHULOG! -1');
-        hits = math.max(0, hits - 1);
-      }
+      // A drop costs one kick, not the whole rally, and one life.
+      drops++;
+      hits = math.max(0, hits - 1);
+      say(over ? 'TAPOS!' : 'NAHULOG! ${lives - drops} LEFT');
+      if (over) buzz(ArHaptic.heavy);
       show([...scene(now), ArSprite('fx_dust', x: p.x, y: 0, z: p.z, scale: 2, fps: 12, life: 0.5)]);
     }
   }

@@ -11,7 +11,7 @@ void main() {
   // On the line, 5 m from the can (can at the origin), phone 1.4 m up, looking at it.
   const cam = V3(0, 1.4, 5);
   const atCan = V3(0, -0.27, -1);
-  const pose = ArPose(cam, atCan);
+  const pose = GamePose(cam, atCan);
 
   double sweetMid({double margin = TumbangPresoGame.hitMargin}) {
     final z = TumbangPresoGame.sweetSpot(cam, margin: margin)!;
@@ -23,7 +23,7 @@ void main() {
     ..place(0, pose);
 
   /// Holds the button from [now] until the power reaches [power], then lets go.
-  void throwAt(TumbangGame g, double now, double power, {ArPose at = pose}) {
+  void throwAt(TumbangGame g, double now, double power, {GamePose at = pose}) {
     g.press(now, at);
     g.release(now + power * g.chargeCycle / 2, at);
   }
@@ -47,9 +47,9 @@ void main() {
     });
 
     test('aim help snaps within 4.5 degrees; 8 degrees off misses', () {
-      ArPose turned(double deg) {
+      GamePose turned(double deg) {
         final a = deg * math.pi / 180;
-        return ArPose(cam, V3(math.sin(a), -0.27, -math.cos(a)));
+        return GamePose(cam, V3(math.sin(a), -0.27, -math.cos(a)));
       }
 
       expect(TumbangPresoGame.throwFrom(camera: cam, forward: turned(2).forward, power: sweetMid()).hit, isTrue);
@@ -66,9 +66,9 @@ void main() {
   group('game', () {
     test('a throw only counts from the chalk line', () {
       final g = newGame();
-      g.press(1, const ArPose(V3(2, 1.4, 5), atCan));
+      g.press(1, const GamePose(V3(2, 1.4, 5), atCan));
       expect(g.takeCallout(), 'BALIK SA LINYA!');
-      g.release(1.5, const ArPose(V3(2, 1.4, 5), atCan));
+      g.release(1.5, const GamePose(V3(2, 1.4, 5), atCan));
       expect((g.current, g.left), (null, TumbangGame.slippers));
     });
 
@@ -147,9 +147,9 @@ void main() {
 
     test('the sight: green within 5 degrees, amber with HARANG! WAIT when the taya is in the lane', () {
       final g = newGame();
-      ArPose turned(double deg) {
+      GamePose turned(double deg) {
         final a = deg * math.pi / 180;
-        return ArPose(cam, V3(math.sin(a), -0.27, -math.cos(a)));
+        return GamePose(cam, V3(math.sin(a), -0.27, -math.cos(a)));
       }
 
       expect(g.tone(1, turned(4)), ArTone.on);

@@ -95,6 +95,10 @@ class RingShootGame extends ArMiniGame {
   @override
   bool get passed => hits >= passHits;
   @override
+  int get boardScore => score;
+  @override
+  Map<String, Object> get stats => {'baskets': hits};
+  @override
   ArButtonMode get buttonMode => ArButtonMode.swipe;
 
   RingShot? shot;
@@ -119,25 +123,25 @@ class RingShootGame extends ArMiniGame {
   String buttonLabel(double now) => 'SWIPE UP TO SHOOT';
 
   @override
-  ArMeter? meter(double now, ArPose? pose) => null;
+  ArMeter? meter(double now, GamePose? pose) => null;
 
   @override
-  String? meterCaption(double now, ArPose? pose) => slidePeriod == null
+  String? meterCaption(double now, GamePose? pose) => slidePeriod == null
       ? 'Line up the ring on the centre line, then swipe up.'
       : 'The ring moves: swipe when it crosses the line.';
 
   @override
-  bool? reticle(double now, ArPose? pose) => null;
+  bool? reticle(double now, GamePose? pose) => null;
 
   /// Lined up with the ring right now: the centre lane turns green.
-  bool lined(double now, ArPose? pose) {
+  bool lined(double now, GamePose? pose) {
     if (pose == null || shot != null) return false;
     final h = hoop(now);
     return shootFrom(camera: pose.camera, forward: pose.forward, hoopAt: (_) => h).make;
   }
 
   @override
-  ArTone? tone(double now, ArPose? pose) => placed && !over ? (lined(now, pose) ? ArTone.on : ArTone.idle) : null;
+  ArTone? tone(double now, GamePose? pose) => placed && !over ? (lined(now, pose) ? ArTone.on : ArTone.idle) : null;
 
   /// The ball held at the bottom of the screen until it is thrown.
   @override
@@ -146,14 +150,14 @@ class RingShootGame extends ArMiniGame {
       : null;
 
   @override
-  String? status(ArPose? pose) => 'BALLS $left · $score PTS';
+  String? status(GamePose? pose) => 'BALLS $left · $score PTS';
 
   @override
-  String? hint(double now, ArPose? pose) =>
+  String? hint(double now, GamePose? pose) =>
       placed && !over ? turnHint(pose, hoop(now) + const V3(0, rimHeight, 0)) : null;
 
   @override
-  void place(double now, ArPose? pose) {
+  void place(double now, GamePose? pose) {
     placed = true;
     shot = null;
     _swing.epoch = now;
@@ -168,7 +172,7 @@ class RingShootGame extends ArMiniGame {
   }
 
   @override
-  void restart(double now, ArPose? pose) {
+  void restart(double now, GamePose? pose) {
     hits = 0;
     score = 0;
     left = balls;
@@ -177,10 +181,10 @@ class RingShootGame extends ArMiniGame {
   }
 
   @override
-  void press(double now, ArPose? pose) {}
+  void press(double now, GamePose? pose) {}
 
   @override
-  void swipe(double now, ArPose? pose, double sideDeg) {
+  void swipe(double now, GamePose? pose, double sideDeg) {
     if (!canPress(now) || pose == null) return;
     if (!onLine(pose)) {
       say('BALIK SA LINYA!');
@@ -196,7 +200,7 @@ class RingShootGame extends ArMiniGame {
   }
 
   @override
-  void update(double now, ArPose? pose) {
+  void update(double now, GamePose? pose) {
     final s = shot;
     if (s == null) return;
     if (!_resolved && now >= _releasedAt + (s.make ? s.crossS : s.endS)) {

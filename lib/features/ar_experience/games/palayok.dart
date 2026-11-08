@@ -45,6 +45,10 @@ class PalayokGame extends ArMiniGame {
   bool get over => won;
   @override
   bool get passed => won;
+  @override
+  int get boardScore => won ? ((_brokeAt - _startedAt) * 1000).round() : 0;
+  @override
+  Map<String, Object> get stats => {'swings': swings};
 
   final Swing _swing = Swing(periodByHits[0], 0);
   double _nextStrike = 0;
@@ -78,13 +82,13 @@ class PalayokGame extends ArMiniGame {
   double angle(double now) => broken ? 0 : swingRad * _swing.sinAt(now);
 
   /// Middle of the pot at [now], seen from [pose] (the pot swings across the view).
-  V3 pot(double now, ArPose pose) {
+  V3 pot(double now, GamePose pose) {
     final a = angle(now);
     final r = rightOf(pose.forward);
     return const V3(0, pivotHeight, 0) + r * (ropeLength * math.sin(a)) + V3(0, -ropeLength * math.cos(a), 0);
   }
 
-  bool onTarget(double now, ArPose pose) => inReticle(pose, pot(now, pose), radius: potRadius, coneDeg: aimDeg);
+  bool onTarget(double now, GamePose pose) => inReticle(pose, pot(now, pose), radius: potRadius, coneDeg: aimDeg);
 
   @override
   bool canPress(double now) => placed && !broken && now >= _nextStrike;
@@ -93,17 +97,17 @@ class PalayokGame extends ArMiniGame {
   String buttonLabel(double now) => 'HAMPAS!';
 
   @override
-  ArMeter? meter(double now, ArPose? pose) => null;
+  ArMeter? meter(double now, GamePose? pose) => null;
 
   @override
-  String? meterCaption(double now, ArPose? pose) {
+  String? meterCaption(double now, GamePose? pose) {
     if (piring) return 'PIRING! Feel the rhythm: tap HAMPAS as it swings into the middle.';
     return 'Tap HAMPAS when the palayok is in the circle.';
   }
 
   /// The aim circle, green as the pot crosses it (on every hit).
   @override
-  bool? reticle(double now, ArPose? pose) => placed && !broken ? (pose != null && onTarget(now, pose)) : null;
+  bool? reticle(double now, GamePose? pose) => placed && !broken ? (pose != null && onTarget(now, pose)) : null;
 
   /// The bamboo stick at the bottom right; it swings across the circle for
   /// [swingS] after each strike.
@@ -116,16 +120,16 @@ class PalayokGame extends ArMiniGame {
   }
 
   @override
-  String? status(ArPose? pose) => 'SWINGS $swings';
+  String? status(GamePose? pose) => 'SWINGS $swings';
 
   @override
-  String? hint(double now, ArPose? pose) {
+  String? hint(double now, GamePose? pose) {
     if (!placed || broken || pose == null) return null;
     return turnHint(pose, const V3(0, pivotHeight - ropeLength, 0));
   }
 
   @override
-  void place(double now, ArPose? pose) {
+  void place(double now, GamePose? pose) {
     placed = true;
     _startedAt = now;
     _struckAt = -1;
@@ -142,7 +146,7 @@ class PalayokGame extends ArMiniGame {
   }
 
   @override
-  void restart(double now, ArPose? pose) {
+  void restart(double now, GamePose? pose) {
     hits = 0;
     swings = 0;
     won = false;
@@ -151,7 +155,7 @@ class PalayokGame extends ArMiniGame {
   }
 
   @override
-  void press(double now, ArPose? pose) {
+  void press(double now, GamePose? pose) {
     if (!canPress(now) || pose == null) return;
     if (!onLine(pose)) {
       say('BALIK SA LINYA!');
@@ -181,7 +185,7 @@ class PalayokGame extends ArMiniGame {
   }
 
   @override
-  void update(double now, ArPose? pose) {
+  void update(double now, GamePose? pose) {
     if (!won && now >= _wonAt) {
       won = true;
       buzz(ArHaptic.heavy);

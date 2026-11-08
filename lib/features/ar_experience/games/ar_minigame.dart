@@ -12,8 +12,8 @@ import 'tumbang_preso.dart';
 /// anchor's floor point), as in [TumbangPresoGame].
 
 /// Camera position and unit view direction, relative to the anchor.
-class ArPose {
-  const ArPose(this.camera, this.forward);
+class GamePose {
+  const GamePose(this.camera, this.forward);
   final V3 camera;
   final V3 forward;
 }
@@ -84,7 +84,7 @@ double? timeToFallTo(double y0, double vy, double g, double y1) {
 
 /// True when [point] is inside the aim circle: within [coneDeg] of the view
 /// direction, widened by the angular size of a [radius]-metre target.
-bool inReticle(ArPose pose, V3 point, {required double radius, required double coneDeg}) {
+bool inReticle(GamePose pose, V3 point, {required double radius, required double coneDeg}) {
   final to = point - pose.camera;
   final d = to.length;
   if (d < 1e-6) return true;
@@ -93,7 +93,7 @@ bool inReticle(ArPose pose, V3 point, {required double radius, required double c
 }
 
 /// Turn hint toward [point] when it is far off to the side, else null.
-String? turnHint(ArPose? pose, V3 point, {double beyondDeg = 30}) {
+String? turnHint(GamePose? pose, V3 point, {double beyondDeg = 30}) {
   if (pose == null) return null;
   final to = point - pose.camera;
   final a = math.atan2(pose.forward.x, -pose.forward.z);
@@ -167,22 +167,29 @@ abstract class ArMiniGame {
 
   /// Reached the goal (the quest task would pass).
   bool get passed;
+
+  /// The score the leaderboards rank (Plan 77 §3): points, or for Palayok the
+  /// milliseconds to break it (lower is better), or Sipa's best rally.
+  int get boardScore;
+
+  /// What the server checks the score against (Plan 77 §4.3).
+  Map<String, Object> get stats => {};
   ArButtonMode get buttonMode;
 
   /// Screen goes dark (Palayok piring).
   bool blind(double now) => false;
 
   /// A bow sight instead of the aim circle (Pana); null for other games.
-  ArSight? sight(double now, ArPose? pose) => null;
+  ArSight? sight(double now, GamePose? pose) => null;
 
   /// The aim circle's colour; by default green when [reticle] is on target.
-  ArTone? tone(double now, ArPose? pose) {
+  ArTone? tone(double now, GamePose? pose) {
     final r = reticle(now, pose);
     return r == null ? null : (r ? ArTone.on : ArTone.idle);
   }
 
   /// A short word by the aim circle (e.g. 'HARANG! WAIT').
-  String? toneBadge(double now, ArPose? pose) => null;
+  String? toneBadge(double now, GamePose? pose) => null;
 
   /// The prop held at the bottom of the screen, or null.
   ArProp? prop(double now) => null;
@@ -192,7 +199,7 @@ abstract class ArMiniGame {
   double dragUp = 0;
 
   /// Close enough to the chalk line to throw (and not stepped over it).
-  bool onLine(ArPose pose) {
+  bool onLine(GamePose pose) {
     final off = V3(pose.camera.x, 0, pose.camera.z) - stand;
     return off.dot(downrange) <= lineForward && off.horizontalLength <= lineReach;
   }
@@ -209,26 +216,26 @@ abstract class ArMiniGame {
   /// Whether the big button works right now.
   bool canPress(double now);
   String buttonLabel(double now);
-  ArMeter? meter(double now, ArPose? pose);
-  String? meterCaption(double now, ArPose? pose);
+  ArMeter? meter(double now, GamePose? pose);
+  String? meterCaption(double now, GamePose? pose);
 
   /// null = no aim circle; true = on target.
-  bool? reticle(double now, ArPose? pose);
-  String? status(ArPose? pose);
-  String? hint(double now, ArPose? pose);
+  bool? reticle(double now, GamePose? pose);
+  String? status(GamePose? pose);
+  String? hint(double now, GamePose? pose);
 
-  void place(double now, ArPose? pose);
+  void place(double now, GamePose? pose);
   void unplace();
-  void restart(double now, ArPose? pose);
-  void press(double now, ArPose? pose);
-  void release(double now, ArPose? pose) {}
+  void restart(double now, GamePose? pose);
+  void press(double now, GamePose? pose);
+  void release(double now, GamePose? pose) {}
 
   /// Swipe up to throw; [sideDeg] is how far the swipe leaned from straight up.
-  void swipe(double now, ArPose? pose, double sideDeg) {}
+  void swipe(double now, GamePose? pose, double sideDeg) {}
 
   /// Bow string pulled back by [amount] (0..1) while held.
   void pull(double now, double amount) {}
-  void update(double now, ArPose? pose);
+  void update(double now, GamePose? pose);
 
   List<ArSprite>? _scene;
   String? _callout;
@@ -259,5 +266,5 @@ abstract class ArMiniGame {
   }
 
   /// Horizontal distance from the camera to the anchor.
-  static double? distance(ArPose? pose) => pose?.camera.horizontalLength;
+  static double? distance(GamePose? pose) => pose?.camera.horizontalLength;
 }

@@ -58,6 +58,8 @@ class CollectGame extends ArMiniGame {
   @override
   bool get passed => over;
   @override
+  int get boardScore => hits;
+  @override
   ArButtonMode get buttonMode => ArButtonMode.tap;
 
   /// Where the current item floats (its middle), relative to the anchor.
@@ -73,9 +75,9 @@ class CollectGame extends ArMiniGame {
 
   /// No throwing line: you may walk up to the item.
   @override
-  bool onLine(ArPose pose) => true;
+  bool onLine(GamePose pose) => true;
 
-  bool onTarget(double now, ArPose pose) => inReticle(pose, at(now), radius: radius, coneDeg: aimDeg);
+  bool onTarget(double now, GamePose pose) => inReticle(pose, at(now), radius: radius, coneDeg: aimDeg);
 
   @override
   bool canPress(double now) => placed && !over && !_waiting;
@@ -84,23 +86,23 @@ class CollectGame extends ArMiniGame {
   String buttonLabel(double now) => 'COLLECT';
 
   @override
-  ArMeter? meter(double now, ArPose? pose) => null;
+  ArMeter? meter(double now, GamePose? pose) => null;
 
   @override
-  String? meterCaption(double now, ArPose? pose) =>
+  String? meterCaption(double now, GamePose? pose) =>
       _waiting ? 'Look around for the next one…' : 'Put the ${names[item]} in the circle, then tap COLLECT.';
 
   @override
-  bool? reticle(double now, ArPose? pose) => canPress(now) ? (pose != null && onTarget(now, pose)) : null;
+  bool? reticle(double now, GamePose? pose) => canPress(now) ? (pose != null && onTarget(now, pose)) : null;
 
   @override
-  String? status(ArPose? pose) => 'ITEMS $hits/${queue.length}';
+  String? status(GamePose? pose) => 'ITEMS $hits/${queue.length}';
 
   @override
-  String? hint(double now, ArPose? pose) => canPress(now) ? turnHint(pose, at(now)) : null;
+  String? hint(double now, GamePose? pose) => canPress(now) ? turnHint(pose, at(now)) : null;
 
   @override
-  void place(double now, ArPose? pose) {
+  void place(double now, GamePose? pose) {
     placed = true;
     _waiting = false;
     _nextAt = double.infinity;
@@ -116,14 +118,14 @@ class CollectGame extends ArMiniGame {
   }
 
   @override
-  void restart(double now, ArPose? pose) {
+  void restart(double now, GamePose? pose) {
     hits = 0;
     over = false;
     place(now, pose);
   }
 
   @override
-  void press(double now, ArPose? pose) {
+  void press(double now, GamePose? pose) {
     if (!canPress(now) || pose == null) return;
     if (!onTarget(now, pose)) {
       say('AIM AT IT');
@@ -147,7 +149,7 @@ class CollectGame extends ArMiniGame {
   }
 
   @override
-  void update(double now, ArPose? pose) {
+  void update(double now, GamePose? pose) {
     if (!_waiting || now < _nextAt) return;
     _waiting = false;
     _nextAt = double.infinity;

@@ -286,6 +286,10 @@ class TumbangGame extends ArMiniGame {
   @override
   bool get passed => hits >= passHits;
   @override
+  int get boardScore => score;
+  @override
+  Map<String, Object> get stats => {'knocks': hits};
+  @override
   ArButtonMode get buttonMode => ArButtonMode.hold;
 
   bool _charging = false;
@@ -333,7 +337,7 @@ class TumbangGame extends ArMiniGame {
   /// The green zone costs ~100 simulated throws, so it is refreshed 4 times a
   /// second (or when a streak changes it), not every frame.
   @override
-  ArMeter? meter(double now, ArPose? pose) {
+  ArMeter? meter(double now, GamePose? pose) {
     if (pose != null && (now - _sweetAt >= 0.25 || now < _sweetAt || _sweetMargin != margin)) {
       _sweet = TumbangPresoGame.sweetSpot(pose.camera, margin: margin);
       _sweetAt = now;
@@ -344,14 +348,14 @@ class TumbangGame extends ArMiniGame {
   }
 
   @override
-  String? meterCaption(double now, ArPose? pose) =>
+  String? meterCaption(double now, GamePose? pose) =>
       tayaOn ? 'Release in the GREEN when the taya is out of the way.' : 'Release in the GREEN to hit the lata.';
 
   /// The sight goes green within this many degrees of the can.
   static const sightDeg = 5.0;
 
   @override
-  bool? reticle(double now, ArPose? pose) => placed && !over
+  bool? reticle(double now, GamePose? pose) => placed && !over
       ? (pose != null && TumbangPresoGame.offAimDegrees(pose.camera, pose.forward).abs() <= sightDeg)
       : null;
 
@@ -359,7 +363,7 @@ class TumbangGame extends ArMiniGame {
   bool laneBlocked(double now) => tayaOn && !over && taya(now).dot(across).abs() <= tayaHalfWidth;
 
   @override
-  ArTone? tone(double now, ArPose? pose) {
+  ArTone? tone(double now, GamePose? pose) {
     final r = reticle(now, pose);
     if (r == null) return null;
     if (laneBlocked(now)) return ArTone.blocked;
@@ -367,7 +371,7 @@ class TumbangGame extends ArMiniGame {
   }
 
   @override
-  String? toneBadge(double now, ArPose? pose) => placed && laneBlocked(now) ? 'HARANG! WAIT' : null;
+  String? toneBadge(double now, GamePose? pose) => placed && laneBlocked(now) ? 'HARANG! WAIT' : null;
 
   /// The tsinelas in your hand: pulled back and tilted as you charge, gone
   /// while it flies.
@@ -379,10 +383,10 @@ class TumbangGame extends ArMiniGame {
   }
 
   @override
-  String? status(ArPose? pose) => 'TSINELAS $left · $score PTS';
+  String? status(GamePose? pose) => 'TSINELAS $left · $score PTS';
 
   @override
-  String? hint(double now, ArPose? pose) {
+  String? hint(double now, GamePose? pose) {
     if (!placed || over || pose == null) return null;
     final off = TumbangPresoGame.offAimDegrees(pose.camera, pose.forward);
     if (off.abs() <= sightDeg) return null;
@@ -390,7 +394,7 @@ class TumbangGame extends ArMiniGame {
   }
 
   @override
-  void place(double now, ArPose? pose) {
+  void place(double now, GamePose? pose) {
     placed = true;
     current = null;
     _charging = false;
@@ -407,7 +411,7 @@ class TumbangGame extends ArMiniGame {
   }
 
   @override
-  void restart(double now, ArPose? pose) {
+  void restart(double now, GamePose? pose) {
     hits = 0;
     score = 0;
     streak = 0;
@@ -417,7 +421,7 @@ class TumbangGame extends ArMiniGame {
   }
 
   @override
-  void press(double now, ArPose? pose) {
+  void press(double now, GamePose? pose) {
     if (!canPress(now)) return;
     if (pose != null && !onLine(pose)) {
       say('BALIK SA LINYA!');
@@ -428,7 +432,7 @@ class TumbangGame extends ArMiniGame {
   }
 
   @override
-  void release(double now, ArPose? pose) {
+  void release(double now, GamePose? pose) {
     if (!_charging) return;
     final p = power(now);
     _charging = false;
@@ -445,7 +449,7 @@ class TumbangGame extends ArMiniGame {
   }
 
   /// The throw from [pose] at [power], checked against the walking taya.
-  TumbangThrow throwAt(double now, ArPose pose, double power) {
+  TumbangThrow throwAt(double now, GamePose pose, double power) {
     final s = TumbangPresoGame.throwFrom(camera: pose.camera, forward: pose.forward, power: power, margin: margin);
     if (!tayaOn) return TumbangThrow(s, null);
     final end = s.hitS ?? s.flightS;
@@ -463,7 +467,7 @@ class TumbangGame extends ArMiniGame {
   }
 
   @override
-  void update(double now, ArPose? pose) {
+  void update(double now, GamePose? pose) {
     final t = current;
     if (t == null) {
       // Keep the taya's route drawn ahead while waiting for a throw.

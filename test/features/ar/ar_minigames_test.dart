@@ -14,13 +14,13 @@ import 'package:juanderquest_app/features/ar_experience/games/tumbang_preso.dart
 // get harder as you go (wind, moving hoop, piring). Pure game logic.
 
 /// Pose at [camera] looking at [target].
-ArPose look(V3 camera, V3 target) => ArPose(camera, (target - camera).unit);
+GamePose look(V3 camera, V3 target) => GamePose(camera, (target - camera).unit);
 
 /// Pose at [camera] turned [deg] degrees right of [target].
-ArPose lookOff(V3 camera, V3 target, double deg) {
+GamePose lookOff(V3 camera, V3 target, double deg) {
   final f = (target - camera).unit;
   final a = deg * math.pi / 180;
-  return ArPose(camera, V3(f.x * math.cos(a) - f.z * math.sin(a), f.y, f.x * math.sin(a) + f.z * math.cos(a)));
+  return GamePose(camera, V3(f.x * math.cos(a) - f.z * math.sin(a), f.y, f.x * math.sin(a) + f.z * math.cos(a)));
 }
 
 void main() {
@@ -68,7 +68,7 @@ void main() {
 
     test('collecting all six ends it; the line rule does not apply', () {
       final g = newGame();
-      expect(g.onLine(const ArPose(V3(0, 1.4, 0.5), V3(0, 0, -1))), isTrue);
+      expect(g.onLine(const GamePose(V3(0, 1.4, 0.5), V3(0, 0, -1))), isTrue);
       var now = 1.0;
       for (var i = 0; i < CollectGame.items.length; i++) {
         g.press(now, look(cam, g.at(now)));
@@ -90,7 +90,7 @@ void main() {
     for (final g in games) {
       final d = g.standDistance;
       g.stand = V3(0, 0, d);
-      ArPose at(double x, double z) => ArPose(V3(x, 1.4, z), const V3(0, 0, -1));
+      GamePose at(double x, double z) => GamePose(V3(x, 1.4, z), const V3(0, 0, -1));
       expect(g.onLine(at(0, d)), isTrue, reason: g.title);
       expect(g.onLine(at(0, d - 0.5)), isFalse, reason: '${g.title}: 0.5 m closer');
       expect(g.onLine(at(0.5, d)), isTrue, reason: '${g.title}: sideways');
@@ -324,7 +324,7 @@ void main() {
       ..place(0, null);
 
     /// Pose at the line aimed at the swinging pot at [now].
-    ArPose aimAt(PalayokGame g, double now) {
+    GamePose aimAt(PalayokGame g, double now) {
       var pose = look(cam, const V3(0, PalayokGame.pivotHeight - PalayokGame.ropeLength, 0));
       for (var i = 0; i < 3; i++) {
         pose = look(cam, g.pot(now, pose));
@@ -458,7 +458,7 @@ void main() {
       expect((g.flying, g.takeCallout()), (false, 'BALIK SA LINYA!'));
     });
 
-    test('a drop costs one kick, not the rally; five win', () {
+    test('a drop costs one kick and a life; five passes; the third drop ends it (Plan 77)', () {
       final g = newGame(5);
       var now = 1.0;
       g.press(now, look(cam, g.at(now)));
@@ -468,16 +468,26 @@ void main() {
       }
       expect(g.hits, 2);
       g.update(now + 10, null);
-      expect((g.hits, g.best, g.takeCallout()), (1, 2, 'NAHULOG! -1'));
+      expect((g.hits, g.best, g.drops, g.takeCallout()), (1, 2, 1, 'NAHULOG! 2 LEFT'));
       now += 10;
       g.press(now, look(cam, g.at(now)));
       for (var i = 0; i < 4; i++) {
         now = kickTime(g, now + 0.1);
         g.press(now, look(cam, g.at(now)));
       }
-      expect(g.hits, 5);
-      g.update(now + 1, null);
-      expect((g.over, g.passed), (true, true));
+      expect((g.hits, g.passed, g.over), (5, true, false));
+      // Playing on after passing: the best rally keeps counting for the board.
+      now = kickTime(g, now + 0.1);
+      g.press(now, look(cam, g.at(now)));
+      expect(g.best, 6);
+      g.update(now + 10, null);
+      now += 10;
+      g.press(now, look(cam, g.at(now)));
+      g.update(now + 10, null);
+      expect((g.drops, g.over, g.passed, g.takeCallout()), (3, true, true, 'TAPOS!'));
+      expect(g.canPress(now + 11), isFalse);
+      g.restart(now + 12, null);
+      expect((g.drops, g.best, g.over), (0, 0, false));
     });
   });
 }

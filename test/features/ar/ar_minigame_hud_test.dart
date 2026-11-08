@@ -20,7 +20,7 @@ import 'package:juanderquest_app/features/ar_experience/games/tumbang_preso.dart
 void main() {
   const cam = V3(0.8, 1.4, 2.4);
   // Off the chalk line and turned far to the left: shows the line and turn hints.
-  final pose = ArPose(cam, (const V3(-3, 1.5, 0) - cam).unit);
+  final pose = GamePose(cam, (const V3(-3, 1.5, 0) - cam).unit);
 
   final makers = <String, ArMiniGame Function()>{
     'tumbang': TumbangGame.new,
@@ -43,13 +43,14 @@ void main() {
       case PalayokGame g:
         g.won = true;
       case SipaGame g:
-        g.won = true;
+        g.drops = SipaGame.lives;
+        g.best = g.targetHits;
       case CollectGame g:
         g.over = true;
     }
   }
 
-  Widget hud(ArMiniGame g, {String? callout, ArPose? at, double now = 1, VoidCallback? onPress}) => MaterialApp(
+  Widget hud(ArMiniGame g, {String? callout, GamePose? at, double now = 1, VoidCallback? onPress}) => MaterialApp(
         theme: AppTheme.pixel,
         home: Scaffold(
           backgroundColor: Colors.black,
@@ -68,7 +69,7 @@ void main() {
       );
 
   /// Placing, mid-play with a callout and hints, lost tracking, and finished.
-  List<(ArMiniGame, String?, ArPose?)> states(ArMiniGame Function() make) {
+  List<(ArMiniGame, String?, GamePose?)> states(ArMiniGame Function() make) {
     final placing = make();
     final playing = make()..place(0, pose);
     final done = make()..place(0, pose);
@@ -176,7 +177,7 @@ void main() {
       ..place(0, null)
       ..hits = 1;
     expect(g.blind(1.5), isTrue);
-    await tester.pumpWidget(hud(g, at: const ArPose(onLine, V3(0, 0, -1)), now: 1.5));
+    await tester.pumpWidget(hud(g, at: const GamePose(onLine, V3(0, 0, -1)), now: 1.5));
     expect(find.byKey(const ValueKey('blindfold')), findsOneWidget);
     expect(find.byKey(const ValueKey('prop_pamalo')), findsOneWidget);
 
@@ -195,7 +196,7 @@ void main() {
     void take(ArMiniGame g) => used.addAll([...?g.takeScene()].map((s) => s.sheet));
 
     // Tumbang: a knock, a miss, and a throw blocked by the taya.
-    const tCam = ArPose(V3(0, 1.4, 5), V3(0, -0.27, -1));
+    const tCam = GamePose(V3(0, 1.4, 5), V3(0, -0.27, -1));
     final tz = TumbangPresoGame.sweetSpot(tCam.camera)!;
     final tum = TumbangGame()
       ..stand = const V3(0, 0, 5)
@@ -224,7 +225,7 @@ void main() {
       (const V3(0, 0, 2.5), 0.5),
       (fish + const V3(0, 0.03, 0), 1.0)
     ]) {
-      final s = pana.shoot(0, ArPose(const V3(0, 1.4, 5.5), (aim - const V3(0, 1.4, 5.5)).unit), draw);
+      final s = pana.shoot(0, GamePose(const V3(0, 1.4, 5.5), (aim - const V3(0, 1.4, 5.5)).unit), draw);
       used.addAll(pana.scene(0, shot: s).map((e) => e.sheet));
     }
     // Palayok: whole, cracked and broken.
@@ -240,7 +241,7 @@ void main() {
       ..stand = const V3(0, 0, 2.5)
       ..place(0, null);
     take(sipa);
-    sipa.press(0, const ArPose(V3(0, 1.4, 2.5), V3(0, -0.4, -1)));
+    sipa.press(0, const GamePose(V3(0, 1.4, 2.5), V3(0, -0.4, -1)));
     take(sipa);
     sipa.update(10, null);
     take(sipa);

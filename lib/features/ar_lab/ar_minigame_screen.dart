@@ -42,7 +42,7 @@ class _ArMiniGameScreenState extends State<ArMiniGameScreen> with SingleTickerPr
   String? _error;
   String? _callout;
   Timer? _calloutTimer;
-  ArPose? _pose;
+  GamePose? _pose;
 
   double get _now => _clock.elapsedMicroseconds / 1e6;
 
@@ -88,7 +88,7 @@ class _ArMiniGameScreenState extends State<ArMiniGameScreen> with SingleTickerPr
     }
     final c = GeoAnchor.cameraPosition(f.view!);
     final fw = GeoAnchor.cameraForward(f.view!);
-    _pose = ArPose(V3(c.x - a[12], c.y - a[13], c.z - a[14]), V3(fw.x, fw.y, fw.z));
+    _pose = GamePose(V3(c.x - a[12], c.y - a[13], c.z - a[14]), V3(fw.x, fw.y, fw.z));
   }
 
   /// Sends what the game asked for: scene, callout, haptics.
