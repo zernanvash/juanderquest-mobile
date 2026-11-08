@@ -11,6 +11,7 @@ import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/plaza/plaza_models.dart';
 import 'package:juanderquest_app/features/plaza/plaza_provider.dart';
 import 'package:juanderquest_app/features/plaza/plaza_screen.dart';
+import 'package:juanderquest_app/features/settings/home_town.dart';
 import 'package:juanderquest_app/features/spots/studio/pixel/studio_icons.dart';
 
 class _FakePlazaFeedNotifier extends PlazaFeedNotifier {
@@ -157,5 +158,39 @@ void main() {
       final chipWidget = tester.widget<PixelChip>(commentsPixelChip);
       expect(chipWidget.icon, equals(StudioIcons.edit));
     });
+  });
+
+  // Owner 2026-11-08: My Town follows the town you say you are from.
+  testWidgets('My Town without a home town asks for one and opens the picker',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final feedNotifier = _FakePlazaFeedNotifier(ApiClient(), AsyncValue.data([testActivity]));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        plazaFeedProvider.overrideWith((ref) => feedNotifier),
+        plazaStandingsProvider.overrideWith((ref, arg) async =>
+            arg.startsWith('town:') ? {'entries': [], 'reason': 'NO_HOME_TOWN'} : {'entries': []}),
+        homeTownProvider.overrideWith((ref) async =>
+            const HomeTownInfo(town: null, options: ['Bolinao', 'Dagupan City'])),
+        pushServiceProvider.overrideWithValue(_FakePushService()),
+      ],
+      child: MaterialApp(theme: AppTheme.pixel, home: const PlazaScreen()),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('plaza_no_home_town')), findsNothing);
+
+    await tester.tap(find.text('My Town'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('plaza_no_home_town')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('plaza_set_home_town')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('home_town_Dagupan City')), findsOneWidget);
+    expect(find.text("I'm visiting / not from Pangasinan *"), findsOneWidget);
   });
 }

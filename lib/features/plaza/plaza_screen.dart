@@ -15,6 +15,7 @@ import '../../core/theme/app_theme.dart';
 import '../auth/providers/auth_provider.dart';
 import '../cosmetics/widgets/cosmetic_avatar.dart';
 import '../spots/studio/pixel/studio_icons.dart';
+import '../settings/home_town.dart';
 import '../vote/pixel/wave3_art.dart';
 import 'activity_text.dart';
 import 'plaza_models.dart';
@@ -391,6 +392,37 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
         .toList();
     final meRaw = data['me'] as Map<String, dynamic>?;
     final me = meRaw != null ? StandingEntryModel.fromJson(meRaw) : null;
+
+    if (data['reason'] == 'NO_HOME_TOWN') {
+      // My Town follows the town you say you are from, not where you played.
+      return PixelPanel(
+        key: const ValueKey('plaza_no_home_town'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Which town are you from?', style: PixelType.title(context)),
+            SizedBox(height: grid.px(1)),
+            Text(
+              'Set your home town to compete with explorers from there, wherever you travel.',
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(2)),
+            Align(
+              alignment: Alignment.centerRight,
+              child: PixelButton(
+                key: const ValueKey('plaza_set_home_town'),
+                label: 'Set home town',
+                onPressed: () async {
+                  if (await showHomeTownPicker(context, ref)) {
+                    ref.invalidate(plazaStandingsProvider('$_board:$_period'));
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

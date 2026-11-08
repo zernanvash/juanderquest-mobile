@@ -18,6 +18,7 @@ import '../../app_update/providers/app_update_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../dashboard/home_tips.dart';
+import '../home_town.dart';
 
 /// Settings home: short categories that open their own pages, so a new
 /// setting adds a row here instead of growing one long screen.
@@ -69,6 +70,13 @@ class SettingsScreen extends ConsumerWidget {
                               subtitle:
                                   'Profile banners, frames, titles and name colours',
                               onTap: () => context.push('/settings/appearance'),
+                            ),
+                            _SettingsTile(
+                              key: const ValueKey('settings_home_town'),
+                              icon: 'H',
+                              title: 'Home town',
+                              subtitle: 'The town you are from, for My Town',
+                              onTap: () => showHomeTownPicker(context, ref),
                             ),
                             _SettingsTile(
                               key: const ValueKey('settings_interests'),
