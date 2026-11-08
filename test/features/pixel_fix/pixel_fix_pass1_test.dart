@@ -184,7 +184,7 @@ void main() {
 
     expect(find.text('REAL'), findsNothing);
     expect(find.text('PIXEL'), findsNothing);
-    expect(find.text('LIST'), findsOneWidget);
+    expect(find.text('LIST'), findsNothing);
 
     final card = find
         .ancestor(

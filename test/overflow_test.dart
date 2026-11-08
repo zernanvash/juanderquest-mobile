@@ -1963,6 +1963,18 @@ void main() {
       });
 
       testWidgets(
+          'MapViewScreen with open Quest Dossier card does not overflow in small portrait at 2.0x text scale (Plan 82 Option A)',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const MapViewScreen(initialQuestId: 'q1'),
+          const Size(320, 568),
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
           'MapViewScreen does not overflow in small landscape at 2.0x text scale',
           (tester) async {
         await testScreenOverflow(

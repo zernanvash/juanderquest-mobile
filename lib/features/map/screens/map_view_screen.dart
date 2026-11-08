@@ -42,10 +42,8 @@ import '../pixel/map_marker_art.dart';
 import '../utils/admin_areas.dart';
 import '../utils/map_cluster.dart';
 import '../utils/map_focus.dart';
-import '../utils/map_list.dart';
 import '../widgets/map_cluster_list_sheet.dart';
 import '../widgets/map_orientation_button.dart';
-import '../widgets/trail_preview_card.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
   const MapViewScreen({super.key, this.initialQuestId, this.initialSpotId});
@@ -101,6 +99,21 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     };
 
     _initSelection();
+    _checkPassiveLocation();
+  }
+
+  Future<void> _checkPassiveLocation() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
+        final pos = await Geolocator.getLastKnownPosition();
+        if (pos != null && mounted) {
+          setState(() => _userLocation = LatLng(pos.latitude, pos.longitude));
+          if (_native) _nativeMap.setMyLocation(true);
+        }
+      }
+    } catch (_) {}
   }
 
   JdqCamera get _camera {
@@ -165,7 +178,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
   QuestModel? _selectedQuest;
   SpotModel? _selectedSpot;
-  String _activeFilter = 'all'; // 'all', 'quests', 'spots'
+  static const double kQuestPinsMinZoom = 9.5;
+  static const double kSpotPinsMinZoom = 11.0;
   bool _isRefreshing = false;
   bool _locating = false;
   LatLng? _userLocation;
@@ -432,15 +446,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshAreas();
       _handleDeepLink();
-      final quests = ref.read(questProvider).quests;
-      if (quests.isNotEmpty &&
-          _selectedQuest == null &&
-          _selectedSpot == null &&
-          !_deepLinkHandled) {
-        setState(() {
-          _selectedQuest = quests.first;
-        });
-      }
     });
   }
 
@@ -498,18 +503,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       showTest: showTest,
     );
 
-    final points = <LatLng>[];
-
-    if (_activeFilter == 'all' || _activeFilter == 'quests') {
-      for (final q in quests) {
-        points.add(LatLng(q.gpsLat, q.gpsLng));
-      }
-    }
-    if (_activeFilter == 'all' || _activeFilter == 'spots') {
-      for (final s in spots) {
-        points.add(LatLng(s.gpsLat, s.gpsLng));
-      }
-    }
+    final points = <LatLng>[
+      for (final q in quests) LatLng(q.gpsLat, q.gpsLng),
+      for (final s in spots) LatLng(s.gpsLat, s.gpsLng),
+    ];
 
     if (points.isEmpty) {
       _move(
@@ -667,152 +664,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     }
   }
 
-  Future<void> _openPlacesList() async {
-    final showTest = ref.read(showTestContentProvider);
-    final quests = withoutTestContent(
-      ref.read(questProvider).quests,
-      (q) => q.isTest,
-      showTest: showTest,
-    );
-    final spots = withoutTestContent(
-      ref.read(spotDiscoveryProvider).spots,
-      (s) => s.isTest,
-      showTest: showTest,
-    );
-    final entries = filterMapEntries(
-      quests: quests,
-      spots: spots,
-      activeFilter: _activeFilter,
-    );
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.6,
-          minChildSize: 0.3,
-          maxChildSize: 0.9,
-          builder: (context, scrollController) {
-            final grid = PixelGrid.of(context);
-            return PixelPanel(
-              style: PixelBoxStyle.parchment,
-              padding: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      grid.px(1),
-                      0,
-                      grid.px(1),
-                      grid.px(1),
-                    ),
-                    child: Text(
-                      'PLACES (${entries.length})',
-                      style: PixelType.title(
-                        context,
-                        color: PixelPalette.ink,
-                      ).copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Expanded(
-                    child: entries.isEmpty
-                        ? Padding(
-                            padding: EdgeInsets.all(grid.px(2)),
-                            child: Text(
-                              'No places match this filter yet. Adjust the map filters or refresh the map data.',
-                              style: PixelType.body(
-                                context,
-                                color: PixelPalette.slate,
-                              ),
-                            ),
-                          )
-                        : ListView.separated(
-                            controller: scrollController,
-                            itemCount: entries.length,
-                            separatorBuilder: (_, __) =>
-                                SizedBox(height: grid.px(0.5)),
-                            itemBuilder: (context, index) {
-                              final entry = entries[index];
-                              return GestureDetector(
-                                onTap: () {
-                                  Navigator.of(sheetContext).pop();
-                                  setState(() {
-                                    if (entry.isQuest) {
-                                      _selectedQuest = quests.firstWhere(
-                                        (q) => q.id == entry.id,
-                                      );
-                                      _selectedSpot = null;
-                                    } else {
-                                      _selectedSpot = spots.firstWhere(
-                                        (s) => s.id == entry.id,
-                                      );
-                                      _selectedQuest = null;
-                                    }
-                                  });
-                                  _focusPlace(entry.lat, entry.lng, 13.0);
-                                },
-                                child: PixelPanel(
-                                  style: PixelBoxStyle.slot,
-                                  padding: 1,
-                                  child: Row(
-                                    children: [
-                                      PixelSprite(
-                                        entry.isQuest
-                                            ? DesignerArt.questMarker
-                                            : MapMarkerArt.spotPin,
-                                        scale: 2,
-                                      ),
-                                      SizedBox(width: grid.px(1.5)),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              entry.title,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: PixelType.body(
-                                                context,
-                                                color: PixelPalette.ink,
-                                              ).copyWith(
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            Text(
-                                              entry.isQuest
-                                                  ? '${entry.subtitle} • +${entry.rewardPoints ?? 0} mJDQ'
-                                                  : entry.subtitle,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: PixelType.small(
-                                                context,
-                                                color: PixelPalette.slate,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   Future<void> _refreshData() async {
     setState(() => _isRefreshing = true);
@@ -874,15 +726,32 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     );
 
     final markers = <Marker>[];
-    final visibleQuests = (_activeFilter == 'all' || _activeFilter == 'quests')
-        ? quests.where((q) => _inFocusedArea(q.gpsLat, q.gpsLng)).toList()
-        : <QuestModel>[];
-    final visibleSpots = (_activeFilter == 'all' || _activeFilter == 'spots')
-        ? <SpotModel>[
-            ...plannedSpots.ordinary,
-            ...plannedSpots.winners,
-          ].where((s) => _inFocusedArea(s.gpsLat, s.gpsLng)).toList()
-        : <SpotModel>[];
+    final currentZoom = _native ? _nativeMap.camera.zoom : _clusterZoom;
+    final isTownFocused = _focusedArea != null;
+
+    final List<QuestModel> visibleQuests;
+    final List<SpotModel> visibleSpots;
+
+    if (isTownFocused) {
+      visibleQuests =
+          quests.where((q) => _inFocusedArea(q.gpsLat, q.gpsLng)).toList();
+      visibleSpots = <SpotModel>[
+        ...plannedSpots.ordinary,
+        ...plannedSpots.winners,
+      ].where((s) => _inFocusedArea(s.gpsLat, s.gpsLng)).toList();
+    } else if (currentZoom >= kSpotPinsMinZoom) {
+      visibleQuests = quests;
+      visibleSpots = <SpotModel>[
+        ...plannedSpots.ordinary,
+        ...plannedSpots.winners,
+      ];
+    } else if (currentZoom >= kQuestPinsMinZoom) {
+      visibleQuests = quests;
+      visibleSpots = const [];
+    } else {
+      visibleQuests = const [];
+      visibleSpots = const [];
+    }
     final questsByPointId = <String, QuestModel>{};
     final spotsByPointId = <String, SpotModel>{};
     final clusterInputs = <MapClusterPoint>[];
@@ -1176,14 +1045,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
             title: 'MAP',
             isTab: true,
             actions: [
-              PixelChip(
-                'LIST',
-                style: PixelBoxStyle.parchment,
-                onTap: () {
-                  pixelTick(context);
-                  _openPlacesList();
-                },
-              ),
               PixelIconButton(
                 icon: DesignerArt.search,
                 semanticLabel: 'Search Spots',
@@ -1197,44 +1058,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           children: [
             _canvas(rasterMap, satellite: satellite),
 
-            // Top-Left Floating Filter Strip (single-depth segmented bar)
-            Positioned(
-              top: 12,
-              left: 12,
-              right: 68,
-              child: Stack(
-                children: [
-                  PixelSegmented(
-                    items: const ['ALL', 'QUESTS', 'SPOTS'],
-                    selectedIndex: _activeFilter == 'quests'
-                        ? 1
-                        : (_activeFilter == 'spots' ? 2 : 0),
-                    onChanged: (index) {
-                      setState(() {
-                        _activeFilter = index == 1
-                            ? 'quests'
-                            : (index == 2 ? 'spots' : 'all');
-                      });
-                    },
-                  ),
-                  SizedBox(
-                    width: 0,
-                    height: 0,
-                    child: OverflowBox(
-                      maxWidth: 0,
-                      maxHeight: 0,
-                      child: Text(
-                        '${quests.length} QUESTS • ${spots.length} SPOTS ACTIVE',
-                        style: const TextStyle(
-                          fontSize: 0,
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
             // Top-Right Floating Map Tool Controls
             Positioned(
               top: 12,
@@ -1399,9 +1222,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 right: 12,
                 child: _AreaBanner(
                   area: _focusedArea!,
-                  places: visibleQuests.length + visibleSpots.length,
+                  questsCount: visibleQuests.length,
+                  spotsCount: visibleSpots.length,
                   onClear: _clearArea,
-                  onList: _openPlacesList,
+                  onPinSpot: _startPinPlacement,
                 ),
               ),
 
@@ -1419,26 +1243,139 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     );
   }
 
+  String _cleanTitle(String rawTitle) {
+    var t = rawTitle.trim();
+    for (final prefix in const [
+      'SIM · ', 'SIM: ', 'SIM - ', 'SIM ·', 'SIM:',
+      'TEST · ', 'TEST: ', 'TEST - ', 'TEST ·', 'TEST:',
+    ]) {
+      if (t.toUpperCase().startsWith(prefix)) {
+        return t.substring(prefix.length).trim();
+      }
+    }
+    return t;
+  }
+
+  bool _isTestItem(String rawTitle, bool isTestFlag) {
+    if (isTestFlag) return true;
+    final upper = rawTitle.toUpperCase().trim();
+    return upper.startsWith('SIM') || upper.startsWith('TEST');
+  }
+
+  String _questGameBadge(QuestModel quest) {
+    for (final step in quest.steps) {
+      final v = step.verification;
+      if (v != null && v.containsKey('game')) {
+        final game = v['game']?.toString().toLowerCase();
+        switch (game) {
+          case 'tumbang_preso':
+            return '★ AR TUMBANG PRESO';
+          case 'shooting_hoop':
+            return '★ AR RING SHOOT';
+          case 'pana':
+            return '★ AR PANA';
+          case 'pabitin_palayok':
+            return '★ AR PALAYOK';
+          case 'sipa':
+            return '★ AR SIPA';
+          case 'collect':
+          default:
+            return '★ AR RELIC';
+        }
+      }
+    }
+    for (final step in quest.steps) {
+      if (step.checkpointType == 'ar') return '★ AR RELIC';
+    }
+    switch (quest.category.toLowerCase()) {
+      case 'eco':
+        return '★ ECO QUEST';
+      case 'cultural':
+      case 'heritage':
+        return '★ HERITAGE QUEST';
+      default:
+        return '★ QUEST TRAIL';
+    }
+  }
+
   Widget _buildMarkerInspectorCard() {
     final grid = PixelGrid.of(context);
     final isQuest = _selectedQuest != null;
-    final title = isQuest ? _selectedQuest!.title : _selectedSpot!.name;
-    final location = isQuest
+    final rawTitle = isQuest ? _selectedQuest!.title : _selectedSpot!.name;
+    final cleanTitle = _cleanTitle(rawTitle);
+    final isTest = _isTestItem(
+      rawTitle,
+      isQuest ? _selectedQuest!.isTest : _selectedSpot!.isTest,
+    );
+
+    final town = isQuest
         ? _selectedQuest!.locationName
         : (_selectedSpot!.address.trim().isNotEmpty
             ? _selectedSpot!.address
             : _selectedSpot!.municipality);
     final lat = isQuest ? _selectedQuest!.gpsLat : _selectedSpot!.gpsLat;
     final lng = isQuest ? _selectedQuest!.gpsLng : _selectedSpot!.gpsLng;
-    final bountyText = isQuest
+
+    String townAndDistance = town;
+    double? distanceMeters;
+    if (_userLocation != null) {
+      distanceMeters = Geolocator.distanceBetween(
+        _userLocation!.latitude,
+        _userLocation!.longitude,
+        lat,
+        lng,
+      );
+      final distanceStr = distanceMeters <= 100
+          ? "You're right here! (≤100m)"
+          : '${distanceMeters < 1000 ? '${distanceMeters.round()}m' : '${(distanceMeters / 1000).toStringAsFixed(1)}km'} away';
+      townAndDistance = '$town · $distanceStr';
+    }
+
+    final modeBadge = isQuest
+        ? _questGameBadge(_selectedQuest!)
+        : (_selectedSpot!.category.trim().isNotEmpty
+            ? _selectedSpot!.category.toUpperCase()
+            : 'DESTINATION SPOT');
+    final bountyOrStatus = isQuest
         ? '+${_selectedQuest!.rewardPoints} mJDQ'
-        : (_selectedSpot!.questId != null ? '+250 mJDQ' : null);
+        : (_selectedSpot!.questId != null ? '★ QUEST HERE' : null);
+
+    final imageUrl =
+        isQuest ? _selectedQuest!.markerImageUrl : _selectedSpot!.imageUrl;
+
+    final String descriptionLine;
+    if (isQuest) {
+      if (_selectedQuest!.description.trim().isNotEmpty) {
+        descriptionLine = _selectedQuest!.description.trim();
+      } else {
+        final count = _selectedQuest!.steps.length;
+        descriptionLine =
+            '⚑ $count ${count == 1 ? 'Task' : 'Tasks'} · Official Quest';
+      }
+    } else {
+      if (_selectedSpot!.description.trim().isNotEmpty) {
+        descriptionLine = _selectedSpot!.description.trim();
+      } else if (_selectedSpot!.questId != null) {
+        descriptionLine = '★ Active quest available here';
+      } else {
+        descriptionLine = _selectedSpot!.municipality;
+      }
+    }
+
+    final radiusMeters = isQuest
+        ? (_selectedQuest!.radiusMeters > 0
+            ? _selectedQuest!.radiusMeters
+            : 100)
+        : 100;
+    final isWithinRadius =
+        isQuest && distanceMeters != null && distanceMeters <= radiusMeters;
 
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.45,
+        maxHeight: math.max(198.0, MediaQuery.sizeOf(context).height * 0.35),
       ),
       child: PixelPanel(
+        key: const ValueKey('marker_inspector_card'),
         style: PixelBoxStyle.parchment,
         padding: 2,
         child: Column(
@@ -1451,23 +1388,37 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                   style: isQuest ? PixelBoxStyle.gold : PixelBoxStyle.green,
                   padding: 1,
                   child: Text(
-                    isQuest ? 'QUEST TRAIL' : 'DESTINATION SPOT',
+                    modeBadge,
                     style: PixelType.small(
                       context,
                       color: isQuest ? PixelPalette.ink : PixelPalette.white,
                     ).copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-                if (bountyText != null) ...[
-                  SizedBox(width: grid.px(1)),
+                if (bountyOrStatus != null) ...[
+                  SizedBox(width: grid.px(0.5)),
                   PixelPanel(
                     style: PixelBoxStyle.slot,
                     padding: 1,
                     child: Text(
-                      bountyText,
+                      bountyOrStatus,
                       style: PixelType.small(
                         context,
                         color: PixelPalette.woodDeep,
+                      ).copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+                if (isTest) ...[
+                  SizedBox(width: grid.px(0.5)),
+                  PixelPanel(
+                    style: PixelBoxStyle.slot,
+                    padding: 1,
+                    child: Text(
+                      'TEST',
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.amber,
                       ).copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -1486,54 +1437,107 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 ),
               ],
             ),
-            SizedBox(height: grid.px(1)),
+            SizedBox(height: grid.px(0.5)),
             Flexible(
               child: SingleChildScrollView(
-                child: Column(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      title,
-                      style: PixelType.body(
-                        context,
-                        color: PixelPalette.ink,
-                      ).copyWith(fontWeight: FontWeight.w700),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: grid.px(0.5)),
-                    Text(
-                      location,
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.slate,
+                    SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: PixelPanel(
+                        style: PixelBoxStyle.slot,
+                        padding: 0,
+                        child: ClipRect(
+                          child: (imageUrl != null && imageUrl.isNotEmpty)
+                              ? Image.network(
+                                  imageUrl,
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: PixelSprite(
+                                      isQuest
+                                          ? DesignerArt.questMarker
+                                          : MapMarkerArt.spotPin,
+                                      scale: 2,
+                                    ),
+                                  ),
+                                )
+                              : Center(
+                                  child: PixelSprite(
+                                    isQuest
+                                        ? DesignerArt.questMarker
+                                        : MapMarkerArt.spotPin,
+                                    scale: 2,
+                                  ),
+                                ),
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (!isQuest) ...[
-                      SizedBox(height: grid.px(1)),
-                      TrailPreviewCard(key: ValueKey(_selectedSpot!.id)),
-                    ],
+                    SizedBox(width: grid.px(1)),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            cleanTitle,
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.ink,
+                            ).copyWith(fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: grid.px(0.25)),
+                          Text(
+                            townAndDistance,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.slate,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: grid.px(0.25)),
+                          Text(
+                            descriptionLine,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.woodDeep,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            SizedBox(height: grid.px(1.5)),
+            SizedBox(height: grid.px(1)),
             Row(
               children: [
                 Expanded(
                   child: PixelButton(
-                    label: 'NAVIGATE',
+                    label: isWithinRadius ? 'START QUEST' : 'ROUTE HERE',
                     variant: PixelButtonVariant.primary,
-                    onPressed: () => _navigateTo(title, location, lat, lng),
+                    onPressed: () {
+                      if (isWithinRadius && isQuest) {
+                        context.push('/quests/${_selectedQuest!.id}');
+                      } else {
+                        _navigateTo(cleanTitle, town, lat, lng);
+                      }
+                    },
                   ),
                 ),
                 SizedBox(width: grid.px(1)),
                 Expanded(
                   child: PixelButton(
-                    label: 'VIEW DETAILS',
+                    label: isQuest ? 'VIEW DETAILS' : 'EXPLORE SPOT',
                     variant: PixelButtonVariant.secondary,
                     onPressed: () {
                       if (isQuest) {
@@ -1558,20 +1562,32 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
 class _AreaBanner extends StatelessWidget {
   final AdminArea area;
-  final int places;
+  final int questsCount;
+  final int spotsCount;
   final VoidCallback onClear;
-  final VoidCallback onList;
+  final VoidCallback onPinSpot;
 
   const _AreaBanner({
     required this.area,
-    required this.places,
+    required this.questsCount,
+    required this.spotsCount,
     required this.onClear,
-    required this.onList,
+    required this.onPinSpot,
   });
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
+    final total = questsCount + spotsCount;
+
+    final String subtitle;
+    if (total == 0) {
+      subtitle = 'No spots pinned here yet — be the first Scout!';
+    } else {
+      final qPart = '$questsCount ${questsCount == 1 ? 'Quest' : 'Quests'}';
+      final sPart = '$spotsCount ${spotsCount == 1 ? 'Spot' : 'Spots'}';
+      subtitle = '$qPart · $sPart in this town';
+    }
 
     return PixelPanel(
       key: const ValueKey('area_banner'),
@@ -1585,7 +1601,7 @@ class _AreaBanner extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  area.name,
+                  area.name.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: PixelType.body(
@@ -1594,7 +1610,7 @@ class _AreaBanner extends StatelessWidget {
                   ).copyWith(fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  '${area.levelLabel} · $places ${places == 1 ? 'place' : 'places'}',
+                  subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: PixelType.small(context, color: PixelPalette.slate),
@@ -1602,16 +1618,24 @@ class _AreaBanner extends StatelessWidget {
               ],
             ),
           ),
+          if (total == 0) ...[
+            PixelButton(
+              label: '+ PIN SPOT',
+              variant: PixelButtonVariant.primary,
+              onPressed: onPinSpot,
+            ),
+            SizedBox(width: grid.px(0.5)),
+          ],
           PixelButton(
-            label: 'List',
+            label: 'ZOOM OUT',
             variant: PixelButtonVariant.secondary,
-            onPressed: onList,
+            onPressed: onClear,
           ),
-          SizedBox(width: grid.px(1)),
+          SizedBox(width: grid.px(0.5)),
           PixelIconButton(
             key: const ValueKey('area_clear'),
             icon: MapMarkerArt.iconClose,
-            semanticLabel: 'Show all areas',
+            semanticLabel: 'Clear area focus',
             style: PixelBoxStyle.parchment,
             onPressed: onClear,
           ),

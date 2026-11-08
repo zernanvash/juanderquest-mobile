@@ -450,7 +450,15 @@ void main() {
 
       final testApi = _createTestApiClient();
 
-      // Test 5A: showTestContent = false -> header shows 1 QUEST • 1 SPOT
+      // Test 5A: showTestContent = false -> pins contain only non-test items
+      fakeMap.camera = const JdqCamera(
+        center: LatLng(16.0, 120.0),
+        zoom: 12.0,
+        size: Size(1080, 2400),
+        southWest: LatLng(15.0, 119.0),
+        northEast: LatLng(17.0, 121.0),
+      );
+
       await tester.pumpWidget(
         ProviderScope(
           key: UniqueKey(),
@@ -473,9 +481,13 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.text('1 QUESTS • 1 SPOTS ACTIVE'), findsOneWidget);
+      expect(
+        fakeMap.pins.map((p) => p.id).toList(),
+        ['quest:quest-real-1', 'spot:spot-real-1'],
+      );
+      expect(fakeMap.pins.any((p) => p.id.contains('test')), isFalse);
 
-      // Test 5B: showTestContent = true -> header shows 2 QUESTS • 2 SPOTS
+      // Test 5B: showTestContent = true -> pins contain all 4 items including test
       await tester.pumpWidget(
         ProviderScope(
           key: UniqueKey(),
@@ -498,7 +510,16 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.text('2 QUESTS • 2 SPOTS ACTIVE'), findsOneWidget);
+      expect(
+        fakeMap.pins.map((p) => p.id).toList(),
+        [
+          'quest:quest-real-1',
+          'quest:quest-test-2',
+          'spot:spot-real-1',
+          'spot:spot-test-2',
+        ],
+      );
+      expect(fakeMap.pins.any((p) => p.id.contains('test')), isTrue);
     });
   });
 }

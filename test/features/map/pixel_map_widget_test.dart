@@ -162,7 +162,8 @@ void main() {
 
       // Inspector card displays spot name and details
       expect(find.text('Deep Spot'), findsWidgets);
-      expect(find.text('NAVIGATE'), findsOneWidget);
+      expect(find.text('ROUTE HERE'), findsOneWidget);
+      expect(find.text('EXPLORE SPOT'), findsOneWidget);
     });
 
     testWidgets(
@@ -180,6 +181,103 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('MAP'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Map opens completely unobstructed on startup without auto-selected card (Plan 82 WP-1)',
+        (tester) async {
+      final fakeMap = FakeJdqMap();
+      await tester.pumpWidget(_buildTestApp(fakeMap: fakeMap));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // No inspector card or action button is popped up on initial open
+      expect(find.byKey(const ValueKey('marker_inspector_card')), findsNothing);
+      expect(find.text('ROUTE HERE'), findsNothing);
+      expect(find.text('VIEW DETAILS'), findsNothing);
+      expect(find.text('EXPLORE SPOT'), findsNothing);
+      expect(find.text('LIST'), findsNothing);
+    });
+
+    testWidgets(
+        'SIM/TEST prefix is stripped from title and TEST chip is shown (Plan 82 §5.7)',
+        (tester) async {
+      final fakeMap = FakeJdqMap();
+      final quest = _testQuest(id: 'q-test', title: 'SIM · Patar Coastal Trek');
+      await tester.pumpWidget(_buildTestApp(
+        fakeMap: fakeMap,
+        initialQuestId: 'q-test',
+        quests: [quest],
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(find.text('Patar Coastal Trek'), findsWidgets);
+      expect(find.text('TEST'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Semantic zoom hierarchy: pins hidden at macro zoom < 9.5, quests at 9.5-11, spots at >= 11 (Plan 82 WP-2)',
+        (tester) async {
+      final fakeMap = FakeJdqMap();
+      final quest = _testQuest(id: 'q1', title: 'Quest 1');
+      final spot = _testSpot(id: 's1', name: 'Spot 1');
+
+      // Macro overview (zoom 8.0): 0 pins
+      fakeMap.camera = fakeMap.camera.copyWith(zoom: 8.0);
+      await tester.pumpWidget(_buildTestApp(
+        fakeMap: fakeMap,
+        quests: [quest],
+        spots: [spot],
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(fakeMap.pins, isEmpty);
+
+      // Regional overview (zoom 10.0): quests only
+      fakeMap.camera = fakeMap.camera.copyWith(zoom: 10.0);
+      await tester.pumpWidget(_buildTestApp(
+        fakeMap: fakeMap,
+        quests: [quest],
+        spots: [spot],
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(fakeMap.pins.map((p) => p.id), ['quest:q1']);
+
+      // Local zoom (zoom 12.0): both quests and spots
+      fakeMap.camera = fakeMap.camera.copyWith(zoom: 12.0);
+      await tester.pumpWidget(_buildTestApp(
+        fakeMap: fakeMap,
+        quests: [quest],
+        spots: [spot],
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(fakeMap.pins.map((p) => p.id), ['quest:q1', 'spot:s1']);
+    });
+
+    testWidgets(
+        'Dossier card for spot has ROUTE HERE, EXPLORE SPOT, and no TrailPreviewCard (Plan 82 WP-4)',
+        (tester) async {
+      final fakeMap = FakeJdqMap();
+      final spot =
+          _testSpot(id: 'spot-dossier', name: 'Cape Bolinao Lighthouse');
+      await tester.pumpWidget(_buildTestApp(
+        fakeMap: fakeMap,
+        initialSpotId: 'spot-dossier',
+        spots: [spot],
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(find.text('Cape Bolinao Lighthouse'), findsWidgets);
+      expect(find.text('ROUTE HERE'), findsOneWidget);
+      expect(find.text('EXPLORE SPOT'), findsOneWidget);
+      expect(find.textContaining('IN DEVELOPMENT'), findsNothing);
     });
   });
 }

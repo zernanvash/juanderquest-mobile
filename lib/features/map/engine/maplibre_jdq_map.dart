@@ -14,6 +14,7 @@ import '../pixel/map_marker_art.dart';
 import '../utils/admin_areas.dart';
 import 'building_layer_style.dart';
 import 'jdq_map.dart';
+import 'map_mask.dart';
 import 'style_loader.dart';
 
 final jdqMapFactoryProvider = Provider<JdqMap Function()>(
@@ -33,6 +34,8 @@ class MapLibreJdqMap extends JdqMap {
   AreaShape? _focus;
   bool _satellite = false, _hasSatellite = false;
   VoidCallback? _failed;
+  bool? _lastOverlap;
+  static final Map<String, Uint8List> _labelBitmapCache = {};
   gl.LatLng _ll(LatLng point) => gl.LatLng(point.latitude, point.longitude);
   Future<void> _safe(Future<void> Function() action) async {
     if (_disposed || !_ready) return;
@@ -111,17 +114,140 @@ class MapLibreJdqMap extends JdqMap {
         },
         'properties': properties,
       };
+
+  List<String> _findPlaceLabelLayers() {
+    try {
+      final parsed = jsonDecode(_style);
+      if (parsed is Map && parsed['layers'] is List) {
+        return (parsed['layers'] as List)
+            .whereType<Map>()
+            .map((l) => l['id'] as String?)
+            .where((id) =>
+                id != null &&
+                (id.startsWith('place_') ||
+                    id.contains('place-label') ||
+                    id.contains('place_label')))
+            .cast<String>()
+            .toList();
+      }
+    } catch (_) {}
+    return const [];
+  }
+
+  Future<void> _updateBasePlaceLayerVisibility(bool hide) async {
+    final c = _controller;
+    if (c == null) return;
+    for (final layerId in _findPlaceLabelLayers()) {
+      try {
+        await c.setLayerVisibility(layerId, !hide);
+      } catch (_) {}
+    }
+  }
+
+  Future<Uint8List?> _rasterizeTownLabel(
+    String text, {
+    required bool isFocused,
+    required double dpr,
+  }) async {
+    try {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      final fontSize = 10.0 * dpr;
+
+      final tp = TextPainter(
+        text: TextSpan(
+          text: text.toUpperCase(),
+          style: TextStyle(
+            fontFamily: 'Silkscreen',
+            fontFamilyFallback: const ['Monocraft'],
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF3E1F0A),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      final textW = tp.width;
+      final textH = tp.height;
+      final padH = 5.0 * dpr;
+      final padV = 3.0 * dpr;
+      final underlineH = 2.0 * dpr;
+      final w = (textW + padH * 2).ceilToDouble();
+      final h = (textH + padV * 2 + underlineH).ceilToDouble();
+
+      final rect = Rect.fromLTWH(0, 0, w, h);
+
+      // Background badge fill: cream (#FFF8E1) or gold (#FFB703) when focused
+      final bgPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = isFocused ? const Color(0xFFFFB703) : const Color(0xFFFFF8E1);
+      canvas.drawRect(rect, bgPaint);
+
+      // 1px crisp woodDeep stroke (#3E1F0A)
+      final borderPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0 * dpr
+        ..color = const Color(0xFF3E1F0A);
+      canvas.drawRect(rect.deflate(0.5 * dpr), borderPaint);
+
+      // Pixel text inside
+      tp.paint(canvas, Offset(padH, padV));
+
+      // Clickable pixel underline indicator at bottom
+      final underlinePaint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = isFocused ? const Color(0xFF8B5E00) : const Color(0xFF8B6B4A);
+      canvas.drawRect(
+        Rect.fromLTWH(padH, h - padV - underlineH, textW, underlineH),
+        underlinePaint,
+      );
+
+      final picture = recorder.endRecording();
+      final img = await picture.toImage(w.toInt(), h.toInt());
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Future<void> setPlaces(List<AdminArea> places) async {
     _places = places;
-    await _safe(
-      () => _controller!.setGeoJsonSource(
+    await _safe(() async {
+      final c = _controller!;
+      final dpr = ui.PlatformDispatcher.instance.views.firstOrNull?.devicePixelRatio ?? 2.0;
+
+      for (final p in places) {
+        final isFocused = _focus != null &&
+            _focus!.contains(p.label.latitude, p.label.longitude);
+        final state = isFocused ? 'focused' : 'normal';
+        final key = '${p.name}|$state|${dpr.toStringAsFixed(1)}';
+        var bytes = _labelBitmapCache[key];
+        if (bytes == null) {
+          bytes = await _rasterizeTownLabel(p.name, isFocused: isFocused, dpr: dpr);
+          if (bytes != null) _labelBitmapCache[key] = bytes;
+        }
+        if (bytes != null) {
+          await c.addImage('admin-label-${p.id}', bytes);
+        }
+      }
+
+      await c.setGeoJsonSource(
         'admin-places',
         _collection([
-          for (final p in places) _point(p.label, {'id': p.id, 'name': p.name}),
+          for (final p in places)
+            _point(p.label, {
+              'id': p.id,
+              'name': p.name,
+              'icon': 'admin-label-${p.id}',
+            }),
         ]),
-      ),
-    );
+      );
+
+      await _updateBasePlaceLayerVisibility(places.isNotEmpty);
+    });
   }
 
   @override
@@ -150,28 +276,108 @@ class MapLibreJdqMap extends JdqMap {
     await _updateFocus();
   }
 
-  Future<void> _updateFocus() => _safe(() async {
+  Map<String, dynamic> _areaShapeToGeoJson(AreaShape shape) {
     List<List<double>> ring(List<LatLng> points) => [
       for (final p in points) [p.longitude, p.latitude],
     ];
-    await _controller!.setGeoJsonSource(
+
+    if (shape.polygons.length == 1) {
+      return {
+        'type': 'Polygon',
+        'coordinates': [
+          ring(shape.polygons[0].outer),
+          for (final h in shape.polygons[0].holes) ring(h),
+        ],
+      };
+    }
+    return {
+      'type': 'MultiPolygon',
+      'coordinates': [
+        for (final p in shape.polygons)
+          [
+            ring(p.outer),
+            for (final h in p.holes) ring(h),
+          ],
+      ],
+    };
+  }
+
+  Future<void> _updatePinOverlap() => _safe(() async {
+    final c = _controller;
+    if (c == null) return;
+    final allow = _focus != null || camera.zoom >= 13.0;
+    if (_lastOverlap == allow) return;
+    _lastOverlap = allow;
+    try {
+      await c.setLayerProperties(
+        'jdq-pin-symbols',
+        gl.SymbolLayerProperties(
+          iconImage: const [
+            'case',
+            ['get', 'quest'],
+            'jdq-pin-quest',
+            'jdq-pin-spot',
+          ],
+          iconSize: 1.0,
+          iconAllowOverlap: allow,
+          iconAnchor: 'bottom',
+        ),
+      );
+    } catch (_) {}
+  });
+
+  Future<void> _updateFocus() => _safe(() async {
+    final c = _controller!;
+    if (_focus == null) {
+      await c.setGeoJsonSource('jdq-focus', _collection([]));
+      await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
+      await _updatePinOverlap();
+      await setPlaces(_places);
+      return;
+    }
+
+    final shapeGeoJson = _areaShapeToGeoJson(_focus!);
+    final maskGeometry = buildInvertedMask(shapeGeoJson);
+
+    if (maskGeometry != null) {
+      await c.setGeoJsonSource(
+        'jdq-focus-mask',
+        _collection([
+          {
+            'type': 'Feature',
+            'properties': <String, dynamic>{},
+            'geometry': maskGeometry,
+          },
+        ]),
+      );
+    } else {
+      await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
+    }
+
+    List<List<double>> ring(List<LatLng> points) => [
+      for (final p in points) [p.longitude, p.latitude],
+    ];
+
+    await c.setGeoJsonSource(
       'jdq-focus',
       _collection([
-        if (_focus != null)
-          for (final p in _focus!.polygons)
-            {
-              'type': 'Feature',
-              'properties': <String, dynamic>{},
-              'geometry': {
-                'type': 'Polygon',
-                'coordinates': [
-                  ring(p.outer),
-                  for (final h in p.holes) ring(h),
-                ],
-              },
+        for (final p in _focus!.polygons)
+          {
+            'type': 'Feature',
+            'properties': <String, dynamic>{},
+            'geometry': {
+              'type': 'Polygon',
+              'coordinates': [
+                ring(p.outer),
+                for (final h in p.holes) ring(h),
+              ],
             },
+          },
       ]),
     );
+
+    await _updatePinOverlap();
+    await setPlaces(_places);
   });
   @override
   Future<void> setSatellite(bool on) async {
@@ -255,30 +461,56 @@ class MapLibreJdqMap extends JdqMap {
     if (_disposed) return;
     try {
       final c = _controller!;
-      for (final source in ['admin-places', 'jdq-pins', 'jdq-focus']) {
+      for (final source in [
+        'admin-places',
+        'jdq-pins',
+        'jdq-focus',
+        'jdq-focus-mask',
+      ]) {
         await c.addGeoJsonSource(source, _collection([]));
       }
       await c.addFillLayer(
+        'jdq-focus-mask',
+        'jdq-focus-mask-layer',
+        const gl.FillLayerProperties(
+          fillColor: '#0D1B2A',
+          fillOpacity: 0.32,
+        ),
+      );
+      await c.addFillLayer(
         'jdq-focus',
         'jdq-focus-fill',
-        const gl.FillLayerProperties(fillColor: '#2D6A4F', fillOpacity: 0.10),
+        const gl.FillLayerProperties(
+          fillColor: '#FFF8E1',
+          fillOpacity: 0.08,
+        ),
+      );
+      await c.addLineLayer(
+        'jdq-focus',
+        'jdq-focus-casing',
+        const gl.LineLayerProperties(
+          lineColor: '#3E1F0A',
+          lineWidth: 4.5,
+        ),
       );
       await c.addLineLayer(
         'jdq-focus',
         'jdq-focus-line',
-        const gl.LineLayerProperties(lineColor: '#2D6A4F', lineWidth: 2.0),
+        const gl.LineLayerProperties(
+          lineColor: '#FFB703',
+          lineWidth: 2.5,
+        ),
       );
+
+      final dpr = ui.PlatformDispatcher.instance.views.firstOrNull?.devicePixelRatio ?? 2.0;
       await c.addSymbolLayer(
         'admin-places',
         'admin-place-labels',
-        const gl.SymbolLayerProperties(
-          textField: ['get', 'name'],
-          textFont: ['Noto Sans Bold'],
-          textSize: 13,
-          textColor: '#3E1F0A',
-          textHaloColor: '#FFF8E1',
-          textHaloWidth: 2.0,
-          textAllowOverlap: false,
+        gl.SymbolLayerProperties(
+          iconImage: const ['get', 'icon'],
+          iconSize: 1.0 / dpr,
+          iconAllowOverlap: false,
+          iconAnchor: 'center',
         ),
       );
 
@@ -292,18 +524,20 @@ class MapLibreJdqMap extends JdqMap {
         if (questBytes != null && spotBytes != null) {
           await c.addImage('jdq-pin-quest', questBytes);
           await c.addImage('jdq-pin-spot', spotBytes);
+          final allowOverlap = _focus != null || camera.zoom >= 13.0;
+          _lastOverlap = allowOverlap;
           await c.addSymbolLayer(
             'jdq-pins',
             'jdq-pin-symbols',
-            const gl.SymbolLayerProperties(
-              iconImage: [
+            gl.SymbolLayerProperties(
+              iconImage: const [
                 'case',
                 ['get', 'quest'],
                 'jdq-pin-quest',
                 'jdq-pin-spot',
               ],
               iconSize: 1.0,
-              iconAllowOverlap: true,
+              iconAllowOverlap: allowOverlap,
               iconAnchor: 'bottom',
             ),
           );
@@ -373,6 +607,7 @@ class MapLibreJdqMap extends JdqMap {
         'jdq-buildings',
         buildingLayerProperties(opacity: position.tilt > 30 ? 0.85 : 0.0),
       );
+      await _updatePinOverlap();
       onCameraIdle?.call();
     } catch (_) {
       /* A disposed native surface may finish a pending callback. */
