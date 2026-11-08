@@ -2,6 +2,7 @@ import '../models/spot_model.dart';
 
 /// Truthful recommendation chip types supported by the explore feed.
 enum RecommendationReasonType {
+  personalized,
   questAvailable,
   quietNow,
   lguVerified,
@@ -9,14 +10,35 @@ enum RecommendationReasonType {
 
 /// Computes at most one truthful recommendation chip for a destination spot.
 ///
-/// Follows the web `topRecommendationReason` rules:
-/// 1. Quest available: if [spot.questId] exists or reasons indicate an active quest.
-/// 2. Quiet now: if [spot.crowdStatus] is quiet or reasons indicate low crowd.
-/// 3. LGU verified: if [spot.trustLevel] is `lgu_verified` or reasons indicate verification.
+/// Follows the `ExploreRanker v2` and web `topRecommendationReason` rules:
+/// 1. Personalized signals (when present on [spot.reasons]):
+///    - "Saved in your wishlist"
+///    - "Visited by @<handle>"
+///    - "Because you liked <Spot>"
+///    - "Matches your <Category> interests" / "Matches your #<tag> interest"
+///    - "Unclaimed Quest nearby" / "Quiet Hidden Gem in <Town>"
+/// 2. Quest available: if [spot.questId] exists or reasons indicate an active quest.
+/// 3. Quiet now: if [spot.crowdStatus] is quiet or reasons indicate low crowd.
+/// 4. LGU verified: if [spot.trustLevel] is `lgu_verified` or reasons indicate verification.
 ///
 /// Returns null if no truthful reason applies.
 String? getTopRecommendationReason(SpotModel spot) {
-  // 1. Quest available has highest action value
+  // 0. High-signal personalized reasons from ExploreRanker v2
+  for (final raw in spot.reasons) {
+    final reason = raw.trim();
+    final lower = reason.toLowerCase();
+    if (lower == 'saved in your wishlist' ||
+        lower.startsWith('visited by @') ||
+        lower.startsWith('because you liked ') ||
+        (lower.startsWith('matches your ') &&
+            (lower.endsWith('interests') || lower.contains('#'))) ||
+        lower == 'unclaimed quest nearby' ||
+        lower.startsWith('quiet hidden gem in ')) {
+      return reason;
+    }
+  }
+
+  // 1. Quest available has highest action value among general signals
   if (spot.questId != null && spot.questId!.trim().isNotEmpty) {
     return 'Quest available';
   }

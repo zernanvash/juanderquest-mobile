@@ -31,7 +31,11 @@ SpotModel _makeSpot({
 void main() {
   group('getTopRecommendationReason', () {
     test('returns "Quest available" when questId is present', () {
-      final spot = _makeSpot(questId: 'quest-123', crowdStatus: 'quiet', trustLevel: 'lgu_verified');
+      final spot = _makeSpot(
+        questId: 'quest-123',
+        crowdStatus: 'quiet',
+        trustLevel: 'lgu_verified',
+      );
       expect(getTopRecommendationReason(spot), 'Quest available');
     });
 
@@ -45,20 +49,29 @@ void main() {
       expect(getTopRecommendationReason(spot), 'Quiet now');
     });
 
-    test('returns "Quiet now" when reasons include quiet mention and no quest', () {
-      final spot = _makeSpot(reasons: ['Currently quiet']);
-      expect(getTopRecommendationReason(spot), 'Quiet now');
-    });
+    test(
+      'returns "Quiet now" when reasons include quiet mention and no quest',
+      () {
+        final spot = _makeSpot(reasons: ['Currently quiet']);
+        expect(getTopRecommendationReason(spot), 'Quiet now');
+      },
+    );
 
-    test('returns "LGU verified" when trustLevel is lgu_verified and not quiet, no quest', () {
-      final spot = _makeSpot(trustLevel: 'lgu_verified');
-      expect(getTopRecommendationReason(spot), 'LGU verified');
-    });
+    test(
+      'returns "LGU verified" when trustLevel is lgu_verified and not quiet, no quest',
+      () {
+        final spot = _makeSpot(trustLevel: 'lgu_verified');
+        expect(getTopRecommendationReason(spot), 'LGU verified');
+      },
+    );
 
-    test('returns "LGU verified" when reasons include verified and no quest/quiet', () {
-      final spot = _makeSpot(reasons: ['LGU Verified']);
-      expect(getTopRecommendationReason(spot), 'LGU verified');
-    });
+    test(
+      'returns "LGU verified" when reasons include verified and no quest/quiet',
+      () {
+        final spot = _makeSpot(reasons: ['LGU Verified']);
+        expect(getTopRecommendationReason(spot), 'LGU verified');
+      },
+    );
 
     test('returns null when spot has no truthful reasons', () {
       final spot = _makeSpot(
@@ -67,6 +80,41 @@ void main() {
         reasons: ['Matches your interest', 'Recently added'],
       );
       expect(getTopRecommendationReason(spot), isNull);
+    });
+
+    test('prioritizes personalized ExploreRanker v2 reasons when present', () {
+      expect(
+        getTopRecommendationReason(
+          _makeSpot(reasons: ['Saved in your wishlist', 'LGU verified']),
+        ),
+        'Saved in your wishlist',
+      );
+      expect(
+        getTopRecommendationReason(
+          _makeSpot(reasons: ['Visited by @aira_coast', 'LGU verified']),
+        ),
+        'Visited by @aira_coast',
+      );
+      expect(
+        getTopRecommendationReason(
+          _makeSpot(
+            reasons: ['Because you liked Patar White Beach', 'Quiet now'],
+          ),
+        ),
+        'Because you liked Patar White Beach',
+      );
+      expect(
+        getTopRecommendationReason(
+          _makeSpot(reasons: ['Matches your Nature & Outdoors interests']),
+        ),
+        'Matches your Nature & Outdoors interests',
+      );
+      expect(
+        getTopRecommendationReason(
+          _makeSpot(reasons: ['Quiet Hidden Gem in Bolinao']),
+        ),
+        'Quiet Hidden Gem in Bolinao',
+      );
     });
   });
 }

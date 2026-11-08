@@ -297,10 +297,10 @@ class ExploreSpotCard extends StatelessWidget {
 
   static PixelBoxStyle _recommendationStyle(String reason) {
     final lower = reason.toLowerCase();
-    if (lower.contains('quest')) {
+    if (lower.contains('quest') || lower.contains('saved in your wishlist')) {
       return PixelBoxStyle.gold;
     }
-    if (lower.contains('quiet')) {
+    if (lower.contains('quiet') || lower.startsWith('visited by @')) {
       return PixelBoxStyle.green;
     }
     return PixelBoxStyle.parchment;
@@ -308,10 +308,10 @@ class ExploreSpotCard extends StatelessWidget {
 
   static Color _recommendationTextColor(String reason) {
     final lower = reason.toLowerCase();
-    if (lower.contains('quest')) {
+    if (lower.contains('quest') || lower.contains('saved in your wishlist')) {
       return PixelPalette.ink;
     }
-    if (lower.contains('quiet')) {
+    if (lower.contains('quiet') || lower.startsWith('visited by @')) {
       return PixelPalette.white;
     }
     return PixelPalette.greenDeep;
