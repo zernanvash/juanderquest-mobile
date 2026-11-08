@@ -7,19 +7,18 @@ import 'package:maplibre_gl/maplibre_gl.dart' as gl;
 /// here when changing only the tilt-dependent opacity.
 gl.FillExtrusionLayerProperties buildingLayerProperties({
   required double opacity,
-}) =>
-    gl.FillExtrusionLayerProperties(
-      fillExtrusionColor: '#C6C2B9',
-      fillExtrusionHeight: [
-        'coalesce',
-        ['get', 'render_height'],
-        3
-      ],
-      fillExtrusionBase: [
-        'coalesce',
-        ['get', 'render_min_height'],
-        0
-      ],
-      fillExtrusionOpacity: opacity,
-      fillExtrusionVerticalGradient: true,
-    );
+}) => gl.FillExtrusionLayerProperties(
+  fillExtrusionColor: '#C49C6E',
+  fillExtrusionHeight: [
+    'coalesce',
+    ['get', 'render_height'],
+    3,
+  ],
+  fillExtrusionBase: [
+    'coalesce',
+    ['get', 'render_min_height'],
+    0,
+  ],
+  fillExtrusionOpacity: opacity,
+  fillExtrusionVerticalGradient: true,
+);

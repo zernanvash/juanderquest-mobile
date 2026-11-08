@@ -16,10 +16,12 @@ import 'building_layer_style.dart';
 import 'jdq_map.dart';
 import 'style_loader.dart';
 
-final jdqMapFactoryProvider =
-    Provider<JdqMap Function()>((ref) => MapLibreJdqMap.new);
+final jdqMapFactoryProvider = Provider<JdqMap Function()>(
+  (ref) => MapLibreJdqMap.new,
+);
 final mapStyleProvider = FutureProvider.autoDispose<String>(
-    (ref) async => StyleLoader().load(await MapOriginStore.read()));
+  (ref) async => StyleLoader().load(await MapOriginStore.read()),
+);
 
 class MapLibreJdqMap extends JdqMap {
   gl.MapLibreMapController? _controller;
@@ -47,76 +49,93 @@ class MapLibreJdqMap extends JdqMap {
   }
 
   @override
-  Future<void> easeTo(LatLng point, double zoom,
-          {bool reducedMotion = false}) =>
-      _safe(() async {
-        final update = gl.CameraUpdate.newLatLngZoom(_ll(point), zoom);
-        if (reducedMotion) {
-          await _controller!.moveCamera(update);
-        } else {
-          await _controller!.animateCamera(update,
-              duration: const Duration(milliseconds: 700));
-        }
-      });
+  Future<void> easeTo(
+    LatLng point,
+    double zoom, {
+    bool reducedMotion = false,
+  }) => _safe(() async {
+    final update = gl.CameraUpdate.newLatLngZoom(_ll(point), zoom);
+    if (reducedMotion) {
+      await _controller!.moveCamera(update);
+    } else {
+      await _controller!.animateCamera(
+        update,
+        duration: const Duration(milliseconds: 700),
+      );
+    }
+  });
 
   @override
   Future<void> resetOrientation() => _safe(() async {
-        final position = _controller!.cameraPosition;
-        if (position == null) return;
-        await _controller!.animateCamera(
-          gl.CameraUpdate.newCameraPosition(gl.CameraPosition(
-            target: position.target,
-            zoom: position.zoom,
-            bearing: 0,
-            tilt: 0,
-          )),
-          duration: const Duration(milliseconds: 350),
-        );
-      });
+    final position = _controller!.cameraPosition;
+    if (position == null) return;
+    await _controller!.animateCamera(
+      gl.CameraUpdate.newCameraPosition(
+        gl.CameraPosition(
+          target: position.target,
+          zoom: position.zoom,
+          bearing: 0,
+          tilt: 0,
+        ),
+      ),
+      duration: const Duration(milliseconds: 350),
+    );
+  });
   @override
   Future<void> fitBounds(
-          LatLng southWest, LatLng northEast, EdgeInsets padding) =>
-      _safe(() async {
-        await _controller!.animateCamera(
-            gl.CameraUpdate.newLatLngBounds(
-                gl.LatLngBounds(
-                    southwest: _ll(southWest), northeast: _ll(northEast)),
-                left: padding.left,
-                top: padding.top,
-                right: padding.right,
-                bottom: padding.bottom),
-            duration: const Duration(milliseconds: 700));
-      });
-  Map<String, dynamic> _collection(List<Map<String, dynamic>> features) =>
-      {'type': 'FeatureCollection', 'features': features};
+    LatLng southWest,
+    LatLng northEast,
+    EdgeInsets padding,
+  ) => _safe(() async {
+    await _controller!.animateCamera(
+      gl.CameraUpdate.newLatLngBounds(
+        gl.LatLngBounds(southwest: _ll(southWest), northeast: _ll(northEast)),
+        left: padding.left,
+        top: padding.top,
+        right: padding.right,
+        bottom: padding.bottom,
+      ),
+      duration: const Duration(milliseconds: 700),
+    );
+  });
+  Map<String, dynamic> _collection(List<Map<String, dynamic>> features) => {
+    'type': 'FeatureCollection',
+    'features': features,
+  };
   Map<String, dynamic> _point(LatLng point, Map<String, dynamic> properties) =>
       {
         'type': 'Feature',
         'geometry': {
           'type': 'Point',
-          'coordinates': [point.longitude, point.latitude]
+          'coordinates': [point.longitude, point.latitude],
         },
         'properties': properties,
       };
   @override
   Future<void> setPlaces(List<AdminArea> places) async {
     _places = places;
-    await _safe(() => _controller!.setGeoJsonSource(
+    await _safe(
+      () => _controller!.setGeoJsonSource(
         'admin-places',
         _collection([
-          for (final p in places) _point(p.label, {'id': p.id, 'name': p.name})
-        ])));
+          for (final p in places) _point(p.label, {'id': p.id, 'name': p.name}),
+        ]),
+      ),
+    );
   }
 
   @override
   Future<void> setPins(List<JdqPin> pins) async {
     _pins = pins;
-    await _safe(() => _controller!.setGeoJsonSource(
+    await _safe(
+      () => _controller!.setGeoJsonSource(
         'jdq-pins',
         _collection([
           for (final p in pins)
             _point(p.point, {'id': p.id, 'name': p.label, 'quest': p.quest}),
-        ])));
+        ]),
+      ),
+    );
   }
 
   @override
@@ -132,27 +151,28 @@ class MapLibreJdqMap extends JdqMap {
   }
 
   Future<void> _updateFocus() => _safe(() async {
-        List<List<double>> ring(List<LatLng> points) => [
-              for (final p in points) [p.longitude, p.latitude],
-            ];
-        await _controller!.setGeoJsonSource(
-            'jdq-focus',
-            _collection([
-              if (_focus != null)
-                for (final p in _focus!.polygons)
-                  {
-                    'type': 'Feature',
-                    'properties': <String, dynamic>{},
-                    'geometry': {
-                      'type': 'Polygon',
-                      'coordinates': [
-                        ring(p.outer),
-                        for (final h in p.holes) ring(h)
-                      ],
-                    }
-                  },
-            ]));
-      });
+    List<List<double>> ring(List<LatLng> points) => [
+      for (final p in points) [p.longitude, p.latitude],
+    ];
+    await _controller!.setGeoJsonSource(
+      'jdq-focus',
+      _collection([
+        if (_focus != null)
+          for (final p in _focus!.polygons)
+            {
+              'type': 'Feature',
+              'properties': <String, dynamic>{},
+              'geometry': {
+                'type': 'Polygon',
+                'coordinates': [
+                  ring(p.outer),
+                  for (final h in p.holes) ring(h),
+                ],
+              },
+            },
+      ]),
+    );
+  });
   @override
   Future<void> setSatellite(bool on) async {
     _satellite = on;
@@ -166,11 +186,15 @@ class MapLibreJdqMap extends JdqMap {
       final layers = (jsonDecode(style) as Map<String, dynamic>)['layers'];
       if (layers is! List) return null;
       for (final layer in layers) {
-        if (layer is Map && layer['type'] == 'symbol' && layer['id'] is String) {
+        if (layer is Map &&
+            layer['type'] == 'symbol' &&
+            layer['id'] is String) {
           return layer['id'] as String;
         }
       }
-    } catch (_) {/* A style URL or malformed JSON: put imagery under our own layers. */}
+    } catch (_) {
+      /* A style URL or malformed JSON: put imagery under our own layers. */
+    }
     return null;
   }
 
@@ -178,18 +202,25 @@ class MapLibreJdqMap extends JdqMap {
     if (!MapConfig.satelliteAvailable()) return;
     try {
       await c.addSource(
-          'jdq-satellite',
-          gl.RasterSourceProperties(
-              tiles: [MapConfig.satelliteTileUrl()],
-              tileSize: 256,
-              maxzoom: MapConfig.maxNativeZoom.toDouble(),
-              attribution: MapConfig.satelliteAttribution));
-      await c.addRasterLayer('jdq-satellite', 'jdq-satellite',
-          const gl.RasterLayerProperties(),
-          belowLayerId: firstSymbolLayerId(_style) ?? 'jdq-focus-fill');
+        'jdq-satellite',
+        gl.RasterSourceProperties(
+          tiles: [MapConfig.satelliteTileUrl()],
+          tileSize: 256,
+          maxzoom: MapConfig.maxNativeZoom.toDouble(),
+          attribution: MapConfig.satelliteAttribution,
+        ),
+      );
+      await c.addRasterLayer(
+        'jdq-satellite',
+        'jdq-satellite',
+        const gl.RasterLayerProperties(),
+        belowLayerId: firstSymbolLayerId(_style) ?? 'jdq-focus-fill',
+      );
       await c.setLayerVisibility('jdq-satellite', _satellite);
       _hasSatellite = true;
-    } catch (_) {/* Imagery is optional; the vector map stays usable. */}
+    } catch (_) {
+      /* Imagery is optional; the vector map stays usable. */
+    }
   }
 
   @override
@@ -228,28 +259,36 @@ class MapLibreJdqMap extends JdqMap {
         await c.addGeoJsonSource(source, _collection([]));
       }
       await c.addFillLayer(
-          'jdq-focus',
-          'jdq-focus-fill',
-          const gl.FillLayerProperties(
-              fillColor: '#2D6A4F', fillOpacity: 0.12));
-      await c.addLineLayer('jdq-focus', 'jdq-focus-line',
-          const gl.LineLayerProperties(lineColor: '#2D6A4F', lineWidth: 2.5));
+        'jdq-focus',
+        'jdq-focus-fill',
+        const gl.FillLayerProperties(fillColor: '#2D6A4F', fillOpacity: 0.10),
+      );
+      await c.addLineLayer(
+        'jdq-focus',
+        'jdq-focus-line',
+        const gl.LineLayerProperties(lineColor: '#2D6A4F', lineWidth: 2.0),
+      );
       await c.addSymbolLayer(
-          'admin-places',
-          'admin-place-labels',
-          const gl.SymbolLayerProperties(
-              textField: ['get', 'name'],
-              textFont: ['Noto Sans Bold'],
-              textSize: 14,
-              textColor: '#263F32',
-              textHaloColor: '#FFFFFF',
-              textHaloWidth: 1.5,
-              textAllowOverlap: false));
+        'admin-places',
+        'admin-place-labels',
+        const gl.SymbolLayerProperties(
+          textField: ['get', 'name'],
+          textFont: ['Noto Sans Bold'],
+          textSize: 13,
+          textColor: '#3E1F0A',
+          textHaloColor: '#FFF8E1',
+          textHaloWidth: 2.0,
+          textAllowOverlap: false,
+        ),
+      );
 
       bool symbolsAdded = false;
       try {
-        final questBytes = await _rasterizeToPng(DesignerArt.questMarker, scale: 2);
-        final spotBytes = await _rasterizeToPng(MapMarkerArt.spotPin, scale: 2);
+        final questBytes = await _rasterizeToPng(
+          DesignerArt.questMarker,
+          scale: 2,
+        );
+        final spotBytes = await _rasterizeToPng(MapMarkerArt.spotPin, scale: 3);
         if (questBytes != null && spotBytes != null) {
           await c.addImage('jdq-pin-quest', questBytes);
           await c.addImage('jdq-pin-spot', spotBytes);
@@ -277,21 +316,24 @@ class MapLibreJdqMap extends JdqMap {
       if (!symbolsAdded) {
         // Fallback: circle dots
         await c.addCircleLayer(
-            'jdq-pins',
-            'jdq-pin-dots',
-            const gl.CircleLayerProperties(
-                circleRadius: 6,
-                circleColor: '#2D6A4F',
-                circleStrokeColor: '#FFFFFF',
-                circleStrokeWidth: 2));
+          'jdq-pins',
+          'jdq-pin-dots',
+          const gl.CircleLayerProperties(
+            circleRadius: 6,
+            circleColor: '#2D6A4F',
+            circleStrokeColor: '#FFFFFF',
+            circleStrokeWidth: 2,
+          ),
+        );
       }
 
       await c.addFillExtrusionLayer(
-          'openmaptiles',
-          'jdq-buildings',
-          buildingLayerProperties(opacity: 0),
-          sourceLayer: 'building',
-          minzoom: 13);
+        'openmaptiles',
+        'jdq-buildings',
+        buildingLayerProperties(opacity: 0),
+        sourceLayer: 'building',
+        minzoom: 13,
+      );
       await _addSatellite(c);
       _ready = true;
       await setPlaces(_places);
@@ -313,27 +355,38 @@ class MapLibreJdqMap extends JdqMap {
       final bounds = await c.getVisibleRegion();
       if (_disposed) return;
       camera = JdqCamera(
-          center: LatLng(position.target.latitude, position.target.longitude),
-          zoom: position.zoom,
-          bearing: position.bearing,
-          tilt: position.tilt,
-          southWest:
-              LatLng(bounds.southwest.latitude, bounds.southwest.longitude),
-          northEast:
-              LatLng(bounds.northeast.latitude, bounds.northeast.longitude),
-          size: camera.size);
+        center: LatLng(position.target.latitude, position.target.longitude),
+        zoom: position.zoom,
+        bearing: position.bearing,
+        tilt: position.tilt,
+        southWest: LatLng(
+          bounds.southwest.latitude,
+          bounds.southwest.longitude,
+        ),
+        northEast: LatLng(
+          bounds.northeast.latitude,
+          bounds.northeast.longitude,
+        ),
+        size: camera.size,
+      );
       await c.setLayerProperties(
-          'jdq-buildings',
-          buildingLayerProperties(opacity: position.tilt > 30 ? 0.85 : 0.0));
+        'jdq-buildings',
+        buildingLayerProperties(opacity: position.tilt > 30 ? 0.85 : 0.0),
+      );
       onCameraIdle?.call();
-    } catch (_) {/* A disposed native surface may finish a pending callback. */}
+    } catch (_) {
+      /* A disposed native surface may finish a pending callback. */
+    }
   }
 
   Future<void> _tap(math.Point<double> point, gl.LatLng coordinate) async {
     if (!_ready || _disposed) return;
     try {
-      final hits = await _controller!.queryRenderedFeatures(
-          point, ['jdq-pin-symbols', 'jdq-pin-dots', 'admin-place-labels'], null);
+      final hits = await _controller!.queryRenderedFeatures(point, [
+        'jdq-pin-symbols',
+        'jdq-pin-dots',
+        'admin-place-labels',
+      ], null);
       if (_disposed) return;
       for (final hit in hits) {
         if (hit is! Map) continue;
@@ -347,42 +400,54 @@ class MapLibreJdqMap extends JdqMap {
         return;
       }
       onTapEmpty?.call(LatLng(coordinate.latitude, coordinate.longitude));
-    } catch (_) {/* Ignore a tap during surface disposal. */}
+    } catch (_) {
+      /* Ignore a tap during surface disposal. */
+    }
   }
 
   @override
-  Widget build(
-      {required VoidCallback onReady, required VoidCallback onFailure}) {
+  Widget build({
+    required VoidCallback onReady,
+    required VoidCallback onFailure,
+  }) {
     _failed = onFailure;
-    return LayoutBuilder(builder: (context, constraints) {
-      camera = camera.copyWith(size: constraints.biggest);
-      return ValueListenableBuilder<bool>(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        camera = camera.copyWith(size: constraints.biggest);
+        return ValueListenableBuilder<bool>(
           valueListenable: _location,
           builder: (_, enabled, __) => gl.MapLibreMap(
-              styleString: _style,
-              initialCameraPosition: gl.CameraPosition(
-                  target: _ll(camera.center), zoom: camera.zoom),
-              minMaxZoomPreference: const gl.MinMaxZoomPreference(5, 19),
-              cameraTargetBounds: gl.CameraTargetBounds(gl.LatLngBounds(
-                  southwest: const gl.LatLng(4.5, 116),
-                  northeast: const gl.LatLng(21.5, 127))),
-              rotateGesturesEnabled: true,
-              tiltGesturesEnabled: true,
-              compassEnabled: false,
-              attributionButtonPosition:
-                  gl.AttributionButtonPosition.bottomLeft,
-              trackCameraPosition: true,
-              myLocationEnabled: enabled,
-              // MapLibre otherwise consumes taps on rendered symbol features
-              // instead of forwarding them to onMapClick. Our place-label
-              // selection is resolved by querying the admin-place layer from
-              // that callback, so feature taps must also trigger map clicks.
-              featureTapsTriggersMapClick: true,
-              onMapCreated: (controller) => _controller = controller,
-              onStyleLoadedCallback: () => unawaited(_loaded(onReady)),
-              onCameraIdle: () => unawaited(_idle()),
-              onMapClick: _tap));
-    });
+            styleString: _style,
+            initialCameraPosition: gl.CameraPosition(
+              target: _ll(camera.center),
+              zoom: camera.zoom,
+            ),
+            minMaxZoomPreference: const gl.MinMaxZoomPreference(5, 19),
+            cameraTargetBounds: gl.CameraTargetBounds(
+              gl.LatLngBounds(
+                southwest: const gl.LatLng(4.5, 116),
+                northeast: const gl.LatLng(21.5, 127),
+              ),
+            ),
+            rotateGesturesEnabled: true,
+            tiltGesturesEnabled: true,
+            compassEnabled: false,
+            attributionButtonPosition: gl.AttributionButtonPosition.bottomLeft,
+            trackCameraPosition: true,
+            myLocationEnabled: enabled,
+            // MapLibre otherwise consumes taps on rendered symbol features
+            // instead of forwarding them to onMapClick. Our place-label
+            // selection is resolved by querying the admin-place layer from
+            // that callback, so feature taps must also trigger map clicks.
+            featureTapsTriggersMapClick: true,
+            onMapCreated: (controller) => _controller = controller,
+            onStyleLoadedCallback: () => unawaited(_loaded(onReady)),
+            onCameraIdle: () => unawaited(_idle()),
+            onMapClick: _tap,
+          ),
+        );
+      },
+    );
   }
 
   @override
