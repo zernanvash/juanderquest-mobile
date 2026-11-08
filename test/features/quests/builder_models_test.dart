@@ -59,6 +59,16 @@ void main() {
       expect(ver.color, '#2D6A4F');
     });
 
+    test('AR task keeps its game (Plan 77); old tasks are collect tasks', () {
+      const fence = GeoFence(lat: 16.035, lng: 120.335, radiusMeters: 50);
+      const ver = ArVerification(fence: fence, game: 'pana');
+      expect(ver.toJson()['game'], 'pana');
+      expect(ArVerification.fromJson(ver.toJson()).game, 'pana');
+      expect(ArVerification.fromJson({'type': 'ar', 'fence': fence.toJson()}).game, 'collect');
+      final moved = ver.copyWith(fence: const GeoFence(lat: 16.1, lng: 120.3, radiusMeters: 80));
+      expect((moved.game, moved.fence.radiusMeters), ('pana', 80));
+    });
+
     test('QR task (host scans traveler) round-trip JSON', () {
       const task = BuilderTask(
         key: 'task_qr_1',

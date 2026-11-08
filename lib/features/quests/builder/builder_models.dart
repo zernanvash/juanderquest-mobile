@@ -149,10 +149,14 @@ class ArVerification implements TaskVerification {
   final String object; // 'token' | 'gem' | 'beacon' | 'box'
   final String color; // '#FFB703' | '#2D6A4F' | '#3B82F6' | '#E11D48'
 
+  /// Plan 77: 'collect' (find the relic) or a mini-game.
+  final String game;
+
   const ArVerification({
     required this.fence,
     this.object = 'token',
     this.color = '#FFB703',
+    this.game = 'collect',
   });
 
   factory ArVerification.fromJson(Map<String, dynamic> json) => ArVerification(
@@ -161,6 +165,16 @@ class ArVerification implements TaskVerification {
             : const GeoFence(lat: 0, lng: 0, radiusMeters: 50),
         object: json['object'] as String? ?? 'token',
         color: json['color'] as String? ?? '#FFB703',
+        game: json['game'] as String? ?? 'collect',
+      );
+
+  ArVerification copyWith(
+          {GeoFence? fence, String? object, String? color, String? game}) =>
+      ArVerification(
+        fence: fence ?? this.fence,
+        object: object ?? this.object,
+        color: color ?? this.color,
+        game: game ?? this.game,
       );
 
   @override
@@ -169,6 +183,7 @@ class ArVerification implements TaskVerification {
         'fence': fence.toJson(),
         'object': object,
         'color': color,
+        'game': game,
       };
 }
 
@@ -235,7 +250,8 @@ class BuilderTask {
     final cpType = json['checkpoint_type'] as String? ?? 'location';
     TaskVerification ver;
     if (json['verification'] is Map<String, dynamic>) {
-      ver = TaskVerification.fromJson(json['verification'] as Map<String, dynamic>);
+      ver = TaskVerification.fromJson(
+          json['verification'] as Map<String, dynamic>);
     } else {
       ver = LocationVerification(
         fence: GeoFence(

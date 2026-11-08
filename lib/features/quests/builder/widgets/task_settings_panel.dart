@@ -4,6 +4,8 @@ import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_input.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../map/pixel/map_marker_art.dart';
+import '../../../ar_experience/games/ar_game_factory.dart';
+import '../../../ar_lab/ar_minigame_screen.dart';
 import '../builder_models.dart';
 import 'location_fence_map_picker.dart';
 
@@ -320,7 +322,8 @@ class TaskSettingsPanel extends StatelessWidget {
         const SizedBox(height: 6),
         PixelTextField(
           initialValue: ver.prompt,
-          hint: 'e.g., Take a photo of the heritage marker plaque or main pavilion.',
+          hint:
+              'e.g., Take a photo of the heritage marker plaque or main pavilion.',
           maxLines: 2,
           onChanged: (val) {
             onChanged(task.copyWith(
@@ -473,22 +476,25 @@ class TaskSettingsPanel extends StatelessWidget {
           child: const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.health_and_safety_rounded, size: 18, color: PixelPalette.goldDeep),
+              Icon(Icons.health_and_safety_rounded,
+                  size: 18, color: PixelPalette.goldDeep),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Safety first: pick an open, flat area such as a plaza, park lawn or field. '
                   'Avoid roads and parking lots, crowded spots, water edges, and places with many trees, posts or structures. '
                   'Travelers will be walking while looking at their phone.',
-                  style: TextStyle(fontSize: 11, height: 1.4, color: PixelPalette.woodDeep),
+                  style: TextStyle(
+                      fontSize: 11, height: 1.4, color: PixelPalette.woodDeep),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
+        // Plan 77: a mini-game instead of collecting the relic.
         const Text(
-          '3D Virtual Object',
+          'GAME',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -496,126 +502,137 @@ class TaskSettingsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: arObjects.map((obj) {
-            final isSelected = ver.object == obj['id'];
-            return InkWell(
-              onTap: () {
-                onChanged(task.copyWith(
-                  verification: ArVerification(
-                    fence: ver.fence,
-                    object: obj['id'] as String,
-                    color: ver.color,
-                  ),
-                ));
-              },
-              borderRadius: BorderRadius.zero,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color:
-                      isSelected ? PixelPalette.parchment : PixelPalette.white,
-                  borderRadius: BorderRadius.zero,
-                  border: Border.all(
-                    color: isSelected
-                        ? PixelPalette.blueBright
-                        : PixelPalette.mist,
-                    width: isSelected ? 1.5 : 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(obj['emoji'] as String,
-                        style: const TextStyle(fontSize: 16)),
-                    const SizedBox(width: 6),
-                    Text(
-                      obj['label'] as String,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected
-                            ? PixelPalette.blueDeep
-                            : AppColors.woodBrown,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+        ArGamePicker(
+          selected: ver.game,
+          onChanged: (g) =>
+              onChanged(task.copyWith(verification: ver.copyWith(game: g))),
         ),
-        const SizedBox(height: 12),
-        const Text(
-          'Illumination Hue',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.woodBrown,
+        if (ver.game == 'collect') ...[
+          const SizedBox(height: 12),
+          const Text(
+            '3D Virtual Object',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.woodBrown,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: arColors.map((col) {
-            final isSelected = ver.color == col['hex'];
-            return InkWell(
-              onTap: () {
-                onChanged(task.copyWith(
-                  verification: ArVerification(
-                    fence: ver.fence,
-                    object: ver.object,
-                    color: col['hex'] as String,
-                  ),
-                ));
-              },
-              borderRadius: BorderRadius.zero,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color:
-                      isSelected ? PixelPalette.parchment : PixelPalette.white,
-                  borderRadius: BorderRadius.zero,
-                  border: Border.all(
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: arObjects.map((obj) {
+              final isSelected = ver.object == obj['id'];
+              return InkWell(
+                onTap: () {
+                  onChanged(task.copyWith(
+                    verification: ver.copyWith(object: obj['id'] as String),
+                  ));
+                },
+                borderRadius: BorderRadius.zero,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
                     color: isSelected
-                        ? PixelPalette.blueBright
-                        : PixelPalette.mist,
-                    width: isSelected ? 1.5 : 1,
+                        ? PixelPalette.parchment
+                        : PixelPalette.white,
+                    borderRadius: BorderRadius.zero,
+                    border: Border.all(
+                      color: isSelected
+                          ? PixelPalette.blueBright
+                          : PixelPalette.mist,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(obj['emoji'] as String,
+                          style: const TextStyle(fontSize: 16)),
+                      const SizedBox(width: 6),
+                      Text(
+                        obj['label'] as String,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected
+                              ? PixelPalette.blueDeep
+                              : AppColors.woodBrown,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: col['color'] as Color,
-                        shape: BoxShape.circle,
-                      ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Illumination Hue',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.woodBrown,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: arColors.map((col) {
+              final isSelected = ver.color == col['hex'];
+              return InkWell(
+                onTap: () {
+                  onChanged(task.copyWith(
+                    verification: ver.copyWith(color: col['hex'] as String),
+                  ));
+                },
+                borderRadius: BorderRadius.zero,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? PixelPalette.parchment
+                        : PixelPalette.white,
+                    borderRadius: BorderRadius.zero,
+                    border: Border.all(
+                      color: isSelected
+                          ? PixelPalette.blueBright
+                          : PixelPalette.mist,
+                      width: isSelected ? 1.5 : 1,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      col['name'] as String,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected
-                            ? PixelPalette.blueDeep
-                            : AppColors.woodBrown,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: col['color'] as Color,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        col['name'] as String,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected
+                              ? PixelPalette.blueDeep
+                              : AppColors.woodBrown,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }).toList(),
-        ),
+              );
+            }).toList(),
+          ),
+        ],
         const SizedBox(height: 12),
         const Text(
           'AR Viewfinder Activation Fence',
@@ -631,11 +648,7 @@ class TaskSettingsPanel extends StatelessWidget {
           pinLabel: 'AR object placement pin',
           onChanged: (newFence) {
             onChanged(task.copyWith(
-              verification: ArVerification(
-                fence: newFence,
-                object: ver.object,
-                color: ver.color,
-              ),
+              verification: ver.copyWith(fence: newFence),
             ));
           },
         ),
@@ -790,5 +803,94 @@ class TaskSettingsPanel extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+/// Plan 77 WP-3: the AR task's game, as pixel cards two per row, each with its
+/// one-line rule and the open ground it needs, plus TRY IT for a game.
+class ArGamePicker extends StatelessWidget {
+  const ArGamePicker(
+      {super.key, required this.selected, required this.onChanged});
+
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final w = (box.maxWidth - 8) / 2;
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final e in arGameInfo.entries)
+            SizedBox(width: w, child: _card(context, e.key, e.value)),
+        ],
+      );
+    });
+  }
+
+  Widget _card(BuildContext context, String id,
+      ({String name, String rule, double metres}) info) {
+    final on = id == selected;
+    return InkWell(
+      key: ValueKey('ar_game_$id'),
+      onTap: () => onChanged(id),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: on ? PixelPalette.parchment : PixelPalette.white,
+          border: Border.all(
+              color: on ? PixelPalette.blueBright : PixelPalette.mist,
+              width: on ? 2 : 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(info.name,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: on ? PixelPalette.blueDeep : AppColors.woodBrown)),
+            const SizedBox(height: 2),
+            Text(info.rule,
+                style: const TextStyle(
+                    fontSize: 10, height: 1.3, color: AppColors.woodBrown)),
+            if (info.metres > 0)
+              Text('Needs ${_metres(info.metres)} m of open ground',
+                  style: const TextStyle(
+                      fontSize: 10, color: PixelPalette.goldDeep)),
+            if (on && id != 'collect') ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: const ValueKey('ar_game_try'),
+                  onPressed: () => _tryIt(context, id),
+                  child: const Text('TRY IT'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The game plus a metre behind the line.
+  static String _metres(double m) {
+    final need = m + 1;
+    return need == need.roundToDouble()
+        ? need.toStringAsFixed(0)
+        : need.toStringAsFixed(1);
+  }
+
+  /// Plays it here with no server session (Plan 77 WP-3).
+  void _tryIt(BuildContext context, String id) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ArMiniGameScreen(
+          create: () =>
+              createArGame(id, DateTime.now().millisecondsSinceEpoch)!),
+    ));
   }
 }
