@@ -74,9 +74,7 @@ class ActivityItemModel {
       actorName: actor['display_name'] as String? ?? 'An explorer',
       actorHandle: actor['handle'] as String?,
       actorAvatar: actor['avatar_url'] as String?,
-      actorCosmetics: actor['cosmetics'] is Map<String, dynamic>
-          ? Map<String, dynamic>.from(actor['cosmetics'])
-          : null,
+      actorCosmetics: actor['cosmetics'] is Map<String, dynamic> ? Map<String, dynamic>.from(actor['cosmetics']) : null,
       isFollowing: actor['is_following'] as bool? ?? false,
       subjectType: subject['type'] as String? ?? 'quest',
       subjectTitle: subject['title'] as String? ?? '',
@@ -89,12 +87,12 @@ class ActivityItemModel {
       cheeredByMe: json['cheered_by_me'] as bool? ?? false,
       commentCount: json['comment_count'] as int? ?? 0,
       canHide: json['can_hide'] as bool? ?? false,
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
-          DateTime.now(),
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
     );
   }
 
   ActivityItemModel copyWith({
+    String? reasonLabel,
     bool? cheeredByMe,
     int? cheerCount,
     int? commentCount,
@@ -113,7 +111,7 @@ class ActivityItemModel {
       municipality: municipality,
       payload: payload,
       reason: reason,
-      reasonLabel: reasonLabel,
+      reasonLabel: reasonLabel ?? this.reasonLabel,
       cheerCount: cheerCount ?? this.cheerCount,
       cheeredByMe: cheeredByMe ?? this.cheeredByMe,
       commentCount: commentCount ?? this.commentCount,

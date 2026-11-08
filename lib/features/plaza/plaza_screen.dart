@@ -88,8 +88,9 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                 children: [
                   PixelAppBar(
                     title: 'Plaza',
-                    onBack:
-                        canPop ? () => Navigator.of(context).maybePop() : null,
+                    onBack: canPop
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
                     actions: [
                       PixelIconButton(
                         icon: Wave3Art.refresh,
@@ -128,15 +129,13 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                           SizedBox(height: grid.px(3)),
                           standingsAsync.when(
                             loading: () => const Center(
-                              child: PixelLoader(label: 'Loading standings'),
-                            ),
+                                child: PixelLoader(label: 'Loading standings')),
                             error: (err, _) => _standingsError(
                               context,
                               grid,
                               'Standings unavailable: $err',
                               () => ref.invalidate(
-                                plazaStandingsProvider(standingsKey),
-                              ),
+                                  plazaStandingsProvider(standingsKey)),
                               retryKey: const ValueKey('plaza_retry'),
                             ),
                             data: (data) => _standings(context, grid, data),
@@ -146,8 +145,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                           SizedBox(height: grid.px(2)),
                           feedAsync.when(
                             loading: () => const Center(
-                              child: PixelLoader(label: 'Loading activity'),
-                            ),
+                                child: PixelLoader(label: 'Loading activity')),
                             error: (err, _) => _standingsError(
                               context,
                               grid,
@@ -297,7 +295,11 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
             },
           ),
           SizedBox(width: grid.px(2)),
-          Container(width: 2, height: grid.px(5), color: PixelPalette.paperDim),
+          Container(
+            width: 2,
+            height: grid.px(5),
+            color: PixelPalette.paperDim,
+          ),
           SizedBox(width: grid.px(2)),
           _toolbarChip(
             context,
@@ -356,7 +358,11 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
           SizedBox(height: grid.px(2)),
           Align(
             alignment: Alignment.centerRight,
-            child: PixelButton(key: retryKey, label: 'Retry', onPressed: retry),
+            child: PixelButton(
+              key: retryKey,
+              label: 'Retry',
+              onPressed: retry,
+            ),
           ),
         ],
       ),
@@ -366,31 +372,34 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
   Widget _feedHeader(BuildContext context, PixelGrid grid) {
     // Filter under the title, full width: squeezed beside it, "Following"
     // was cut to "FOLLOW…".
+    // When board is My Town, feed is already scoped to town, so hide the All/Following switch
+    // to prevent showing 'Following' incorrectly and keep content accessible above fold.
+    final currentScope = ref.watch(plazaFeedProvider.notifier).scope;
+    final showScopeSwitch = _board != 'town' && currentScope != 'town';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('Live explorer activity', style: PixelType.title(context)),
-        SizedBox(height: grid.px(1)),
-        SizedBox(
-          key: const ValueKey('plaza_feed_scope'),
-          child: PixelSegmented(
-            items: const ['All', 'Following'],
-            selectedIndex:
-                ref.watch(plazaFeedProvider.notifier).scope == 'mixed' ? 0 : 1,
-            onChanged: (index) => ref
-                .read(plazaFeedProvider.notifier)
-                .setScope(index == 0 ? 'mixed' : 'following'),
+        if (showScopeSwitch) ...[
+          SizedBox(height: grid.px(1)),
+          SizedBox(
+            key: const ValueKey('plaza_feed_scope'),
+            child: PixelSegmented(
+              items: const ['All', 'Following'],
+              selectedIndex: currentScope == 'following' ? 1 : 0,
+              onChanged: (index) => ref
+                  .read(plazaFeedProvider.notifier)
+                  .setScope(index == 0 ? 'mixed' : 'following'),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
 
   Widget _standings(
-    BuildContext context,
-    PixelGrid grid,
-    Map<String, dynamic> data,
-  ) {
+      BuildContext context, PixelGrid grid, Map<String, dynamic> data) {
     final entriesRaw = data['entries'] as List<dynamic>? ?? [];
     final entries = entriesRaw
         .map((e) => StandingEntryModel.fromJson(e as Map<String, dynamic>))
@@ -437,7 +446,8 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
             style: PixelBoxStyle.green,
             child: Row(
               children: [
-                PixelChip('#${me.rank}', style: PixelBoxStyle.gold),
+                PixelChip('#${me.rank}',
+                    style: PixelBoxStyle.gold),
                 SizedBox(width: grid.px(2)),
                 Expanded(
                   child: Column(
@@ -477,13 +487,16 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
         ],
         for (final scout in entries) ...[
           PixelPanel(
-            style: scout.isSelf ? PixelBoxStyle.green : PixelBoxStyle.parchment,
+            style: scout.isSelf
+                ? PixelBoxStyle.green
+                : PixelBoxStyle.parchment,
             child: Row(
               children: [
                 PixelChip(
                   '#${scout.rank}',
-                  style:
-                      scout.rank <= 3 ? PixelBoxStyle.gold : PixelBoxStyle.slot,
+                  style: scout.rank <= 3
+                      ? PixelBoxStyle.gold
+                      : PixelBoxStyle.slot,
                 ),
                 SizedBox(width: grid.px(2)),
                 Expanded(
@@ -532,10 +545,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
   }
 
   Widget _activity(
-    BuildContext context,
-    PixelGrid grid,
-    ActivityItemModel activity,
-  ) {
+      BuildContext context, PixelGrid grid, ActivityItemModel activity) {
     final formatted = formatActivityText(activity);
     return PixelPanel(
       key: ValueKey('plaza_activity_${activity.id}'),
@@ -549,8 +559,8 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
               CosmeticAvatar(
                 name: activity.actorName,
                 imageUrl: activity.actorAvatar,
-                frame: activity.actorCosmetics?['frame']?['asset']
-                    as Map<String, dynamic>?,
+                frame:
+                    activity.actorCosmetics?['frame']?['asset'] as Map<String, dynamic>?,
                 size: grid.px(14),
               ),
               SizedBox(width: grid.px(2)),
@@ -564,9 +574,8 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                       style: PixelType.title(
                         context,
                         color: _cosmeticColor(
-                              activity.actorCosmetics?['nameColor']?['asset']
-                                  ?['color'],
-                            ) ??
+                                activity.actorCosmetics?['nameColor']?['asset']
+                                    ?['color']) ??
                             PixelPalette.ink,
                       ),
                     ),
@@ -606,11 +615,8 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
           ),
           if (formatted.pointsBadge != null) ...[
             SizedBox(height: grid.px(1)),
-            PixelChip(
-              formatted.pointsBadge!,
-              style: PixelBoxStyle.green,
-              textColor: PixelPalette.white,
-            ),
+            PixelChip(formatted.pointsBadge!, style: PixelBoxStyle.green,
+                textColor: PixelPalette.white),
           ],
           SizedBox(height: grid.px(2)),
           Wrap(
@@ -629,7 +635,9 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                     ? PixelButtonVariant.primary
                     : PixelButtonVariant.secondary,
                 onPressed: () {
-                  ref.read(plazaFeedProvider.notifier).toggleCheer(activity.id);
+                  ref
+                      .read(plazaFeedProvider.notifier)
+                      .toggleCheer(activity.id);
                 },
               ),
               PixelChip(

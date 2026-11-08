@@ -18,12 +18,16 @@ class _FakePlazaFeedNotifier extends PlazaFeedNotifier {
   _FakePlazaFeedNotifier(
     super.api,
     AsyncValue<List<ActivityItemModel>> initial,
-  ) {
+  ) : _currentScope = 'mixed' {
     state = initial;
   }
 
+  String _currentScope;
   String? lastScope;
   int cheerToggles = 0;
+
+  @override
+  String get scope => _currentScope;
 
   @override
   Future<void> loadFeed({bool reset = false}) async {}
@@ -31,6 +35,7 @@ class _FakePlazaFeedNotifier extends PlazaFeedNotifier {
   @override
   void setScope(String newScope) {
     lastScope = newScope;
+    _currentScope = newScope;
   }
 
   @override
@@ -114,10 +119,25 @@ void main() {
         tester.widget<PixelChip>(myTownFinder).style,
         PixelBoxStyle.parchment,
       );
+      // Verify tapping 'Following' toolbar chip updates feed segmented switch to index 1 ('Following')
+      await tester.tap(find.text('Following').first);
+      await tester.pump();
+      expect(feedNotifier.lastScope, 'following');
+      final segmentedFinder = find.byKey(const ValueKey('plaza_feed_scope'));
+      expect(segmentedFinder, findsOneWidget);
+      PixelSegmented segmented = tester.widget<PixelSegmented>(
+        find.descendant(
+            of: segmentedFinder, matching: find.byType(PixelSegmented)),
+      );
+      expect(segmented.items, equals(const ['All', 'Following']));
+      expect(segmented.selectedIndex, equals(1));
+
+      // Verify tapping 'My Town' hides the All/Following feed switch so it never shows wrong 'Following' tab
       await tester.tap(find.text('My Town'));
       await tester.pump();
       expect(tester.widget<PixelChip>(myTownFinder).style, PixelBoxStyle.gold);
       expect(feedNotifier.lastScope, 'town');
+      expect(find.byKey(const ValueKey('plaza_feed_scope')), findsNothing);
     });
 
     testWidgets('Renders PlazaRanker v2 activity reason chips', (tester) async {
