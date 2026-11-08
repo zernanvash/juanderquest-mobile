@@ -11,23 +11,23 @@ import '../../../core/pixel/pixel_text.dart';
 
 /// Pixel art assets and widgets for map markers, tools, clusters, and reticle.
 abstract final class MapMarkerArt {
-  // TEMPORARY until Clarissa's art (spot pin 16x16, selected variant on Clarissa's list)
+  // High-contrast emerald RPG spot pin with warm cream halo
   static const spotPin = PixelArt('mapSpotPin', [
-    '.....000000.....',
-    '...00mmmmmm00...',
-    '..0mmmmmmmmmm0..',
-    '..0mm000000mm0..',
-    '.0mm0pppppp0mm0.',
-    '.0mm0pppppp0mm0.',
-    '.0mm0pppppp0mm0.',
-    '.0mm0pppppp0mm0.',
-    '..0mm000000mm0..',
-    '..0mmmmmmmmmm0..',
-    '...00mmmmmm00...',
-    '....00mmmm00....',
-    '.....00mm00.....',
-    '......0mm0......',
-    '.......00.......',
+    '.....jjjjjj.....',
+    '...jj000000jj...',
+    '..j00aaccaa00j..',
+    '.j00acccccca00j.',
+    '.j0acc66ccbba0j.',
+    '.j0acc66ccbba0j.',
+    '.j00acccccca00j.',
+    '..j00aaccaa00j..',
+    '...jj00aa00jj...',
+    '....j00aa00j....',
+    '.....j0000j.....',
+    '......j00j......',
+    '.......jj.......',
+    '................',
+    '................',
     '................',
   ]);
 

@@ -7,7 +7,7 @@ void main() {
         .toJson(skipNulls: false);
 
     expect(serialized['fill-extrusion-opacity'], 0.85);
-    expect(serialized['fill-extrusion-color'], '#C6C2B9');
+    expect(serialized['fill-extrusion-color'], '#C49C6E');
     expect(serialized['fill-extrusion-height'], [
       'coalesce',
       ['get', 'render_height'],
