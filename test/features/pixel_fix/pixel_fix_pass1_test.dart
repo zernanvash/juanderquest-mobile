@@ -23,6 +23,7 @@ import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
 import 'package:juanderquest_app/core/pixel/pixel_background.dart';
 import 'package:juanderquest_app/core/pixel/pixel_box.dart';
+import 'package:juanderquest_app/features/profile/showcase.dart';
 
 class _Auth extends AuthNotifier {
   _Auth(super.apiClient, super.refreshNotifier, UserModel user) {
@@ -276,6 +277,7 @@ void main() {
             ),
           ),
           userSpotsProvider.overrideWith((ref, handle) => Future.value(const [])),
+          showcaseProvider.overrideWith((ref, key) async => null),
         ],
         child: const MaterialApp(home: ProfileScreen()),
       ),
