@@ -277,7 +277,10 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
             grid,
             label: 'Everyone',
             selected: _board == 'everyone',
-            onTap: () => setState(() => _board = 'everyone'),
+            onTap: () {
+              setState(() => _board = 'everyone');
+              ref.read(plazaFeedProvider.notifier).setScope('mixed');
+            },
           ),
           SizedBox(width: grid.px(1)),
           _toolbarChip(
@@ -285,7 +288,10 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
             grid,
             label: 'Following',
             selected: _board == 'following',
-            onTap: () => setState(() => _board = 'following'),
+            onTap: () {
+              setState(() => _board = 'following');
+              ref.read(plazaFeedProvider.notifier).setScope('following');
+            },
           ),
           SizedBox(width: grid.px(1)),
           _toolbarChip(
@@ -293,7 +299,10 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
             grid,
             label: 'My Town',
             selected: _board == 'town',
-            onTap: () => setState(() => _board = 'town'),
+            onTap: () {
+              setState(() => _board = 'town');
+              ref.read(plazaFeedProvider.notifier).setScope('town');
+            },
           ),
           SizedBox(width: grid.px(2)),
           Container(
@@ -373,23 +382,28 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
   Widget _feedHeader(BuildContext context, PixelGrid grid) {
     // Filter under the title, full width: squeezed beside it, "Following"
     // was cut to "FOLLOW…".
+    // When board is My Town, feed is already scoped to town, so hide the All/Following switch
+    // to prevent showing 'Following' incorrectly and keep content accessible above fold.
+    final currentScope = ref.watch(plazaFeedProvider.notifier).scope;
+    final showScopeSwitch = _board != 'town' && currentScope != 'town';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('Live explorer activity', style: PixelType.title(context)),
-        SizedBox(height: grid.px(1)),
-        SizedBox(
-          key: const ValueKey('plaza_feed_scope'),
-          child: PixelSegmented(
-            items: const ['All', 'Following'],
-            selectedIndex: ref.watch(plazaFeedProvider.notifier).scope == 'mixed'
-                ? 0
-                : 1,
-            onChanged: (index) => ref
-                .read(plazaFeedProvider.notifier)
-                .setScope(index == 0 ? 'mixed' : 'following'),
+        if (showScopeSwitch) ...[
+          SizedBox(height: grid.px(1)),
+          SizedBox(
+            key: const ValueKey('plaza_feed_scope'),
+            child: PixelSegmented(
+              items: const ['All', 'Following'],
+              selectedIndex: currentScope == 'following' ? 1 : 0,
+              onChanged: (index) => ref
+                  .read(plazaFeedProvider.notifier)
+                  .setScope(index == 0 ? 'mixed' : 'following'),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -587,13 +601,21 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                           color: PixelPalette.slate,
                         ),
                       ),
+                    if (activity.displayReasonChip != null) ...[
+                      SizedBox(height: grid.px(1)),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: PixelChip(
+                          activity.displayReasonChip!,
+                          style: _activityReasonStyle(activity.reason),
+                          textColor: _activityReasonTextColor(activity.reason),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              if (activity.reason == 'following')
-                const PixelChip('Following',
-                    style: PixelBoxStyle.green,
-                    textColor: PixelPalette.white),
             ],
           ),
           SizedBox(height: grid.px(2)),
@@ -639,5 +661,33 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
         ],
       ),
     );
+  }
+
+  static PixelBoxStyle _activityReasonStyle(String reason) {
+    switch (reason) {
+      case 'following':
+        return PixelBoxStyle.green;
+      case 'you':
+      case 'rival':
+      case 'saved_spot':
+      case 'popular':
+        return PixelBoxStyle.gold;
+      default:
+        return PixelBoxStyle.slot;
+    }
+  }
+
+  static Color _activityReasonTextColor(String reason) {
+    switch (reason) {
+      case 'following':
+        return PixelPalette.white;
+      case 'you':
+      case 'rival':
+      case 'saved_spot':
+      case 'popular':
+        return PixelPalette.ink;
+      default:
+        return PixelPalette.slate;
+    }
   }
 }

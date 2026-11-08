@@ -12,6 +12,7 @@ class ActivityItemModel {
   final String? municipality;
   final Map<String, dynamic> payload;
   final String reason;
+  final String? reasonLabel;
   final int cheerCount;
   final bool cheeredByMe;
   final int commentCount;
@@ -32,12 +33,38 @@ class ActivityItemModel {
     this.municipality,
     this.payload = const {},
     required this.reason,
+    this.reasonLabel,
     required this.cheerCount,
     required this.cheeredByMe,
     required this.commentCount,
     this.canHide = false,
     required this.createdAt,
   });
+
+  String? get displayReasonChip {
+    if (reasonLabel != null && reasonLabel!.trim().isNotEmpty) {
+      return reasonLabel!.trim();
+    }
+    switch (reason) {
+      case 'following':
+        return 'Following';
+      case 'you':
+        return 'You';
+      case 'rival':
+        return 'Leaderboard Rival';
+      case 'saved_spot':
+        return 'At a spot you saved';
+      case 'popular':
+        return 'Popular in Plaza';
+      case 'nearby':
+        if (municipality != null && municipality!.trim().isNotEmpty) {
+          return 'In ${municipality!.trim()}';
+        }
+        return null;
+      default:
+        return null;
+    }
+  }
 
   factory ActivityItemModel.fromJson(Map<String, dynamic> json) {
     final actor = json['actor'] as Map<String, dynamic>? ?? {};
@@ -57,6 +84,7 @@ class ActivityItemModel {
       municipality: json['municipality'] as String?,
       payload: json['payload'] as Map<String, dynamic>? ?? {},
       reason: json['reason'] as String? ?? 'nearby',
+      reasonLabel: json['reason_label'] as String?,
       cheerCount: json['cheer_count'] as int? ?? 0,
       cheeredByMe: json['cheered_by_me'] as bool? ?? false,
       commentCount: json['comment_count'] as int? ?? 0,
@@ -66,6 +94,7 @@ class ActivityItemModel {
   }
 
   ActivityItemModel copyWith({
+    String? reasonLabel,
     bool? cheeredByMe,
     int? cheerCount,
     int? commentCount,
@@ -84,6 +113,7 @@ class ActivityItemModel {
       municipality: municipality,
       payload: payload,
       reason: reason,
+      reasonLabel: reasonLabel ?? this.reasonLabel,
       cheerCount: cheerCount ?? this.cheerCount,
       cheeredByMe: cheeredByMe ?? this.cheeredByMe,
       commentCount: commentCount ?? this.commentCount,
