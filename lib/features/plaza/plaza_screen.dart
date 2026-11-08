@@ -660,6 +660,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
       case 'you':
       case 'rival':
       case 'saved_spot':
+      case 'popular':
         return PixelBoxStyle.gold;
       default:
         return PixelBoxStyle.slot;
@@ -673,6 +674,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
       case 'you':
       case 'rival':
       case 'saved_spot':
+      case 'popular':
         return PixelPalette.ink;
       default:
         return PixelPalette.slate;

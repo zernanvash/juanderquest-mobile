@@ -32,6 +32,7 @@ String? getTopRecommendationReason(SpotModel spot) {
         lower.startsWith('because you liked ') ||
         (lower.startsWith('matches your ') &&
             (lower.endsWith('interests') || lower.contains('#'))) ||
+        lower.startsWith('popular · ') ||
         lower == 'unclaimed quest nearby' ||
         lower.startsWith('quiet hidden gem in ')) {
       return reason;

@@ -115,6 +115,12 @@ void main() {
         ),
         'Quiet Hidden Gem in Bolinao',
       );
+      expect(
+        getTopRecommendationReason(
+          _makeSpot(reasons: ['Popular · 3 likes', 'Quiet now']),
+        ),
+        'Popular · 3 likes',
+      );
     });
   });
 }

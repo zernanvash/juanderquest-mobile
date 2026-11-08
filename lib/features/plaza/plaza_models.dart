@@ -54,6 +54,8 @@ class ActivityItemModel {
         return 'Leaderboard Rival';
       case 'saved_spot':
         return 'At a spot you saved';
+      case 'popular':
+        return 'Popular in Plaza';
       case 'nearby':
         if (municipality != null && municipality!.trim().isNotEmpty) {
           return 'In ${municipality!.trim()}';
