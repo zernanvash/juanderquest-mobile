@@ -17,6 +17,12 @@ class ArTaskSpec {
   final String objectLabel;
   final Color color;
 
+  /// Plan 77 `verification.game`: 'collect' (find the relic) or a mini-game.
+  final String game;
+
+  /// The `verification.object` value ('token', 'gem', 'beacon', 'box').
+  final String object;
+
   const ArTaskSpec({
     required this.questId,
     required this.stepOrder,
@@ -26,7 +32,20 @@ class ArTaskSpec {
     required this.shape,
     this.objectLabel = 'Token',
     required this.color,
+    this.game = 'collect',
+    this.object = 'token',
   });
+
+  /// The mini-games a task can use (Plan 77 §4.1).
+  static const games = [
+    'tumbang_preso',
+    'shooting_hoop',
+    'pana',
+    'pabitin_palayok',
+    'sipa'
+  ];
+
+  bool get isGame => games.contains(game);
 
   static const defaultRadiusMeters = 50.0;
 
@@ -66,6 +85,8 @@ class ArTaskSpec {
       shape: shape,
       objectLabel: labelForShape(shape),
       color: colorFor(cfg['color']),
+      game: games.contains(cfg['game']) ? cfg['game'] as String : 'collect',
+      object: cfg['object'] is String ? cfg['object'] as String : 'token',
     );
   }
 
@@ -105,6 +126,54 @@ class ArQuestApi {
   /// The last challenge came with a hidden relic spot: the collect says so.
   bool _hiddenSpot = false;
 
+  /// Plan 77: a game task on a phone without ARCore hunts the relic instead,
+  /// and tells the server so.
+  bool noArcoreFallback = false;
+
+  /// Plan 77: starts a mini-game session (inside the task's area).
+  Future<ArServerResult<ArGameSession>> startGame(ArFix fix) async {
+    try {
+      final res = await dio.post(
+        '/quests/${task.questId}/steps/${task.stepOrder}/ar-game',
+        data: {
+          'captured_lat': fix.lat,
+          'captured_lng': fix.lng,
+          'captured_accuracy': fix.accuracy
+        },
+      );
+      final data = res.data is Map ? res.data['data'] : null;
+      if (data is Map && data['session_id'] is String && data['seed'] is num) {
+        return ArServerResult.ok(ArGameSession(
+            id: data['session_id'] as String,
+            seed: (data['seed'] as num).toInt()));
+      }
+      return const ArServerResult.error(
+          'BAD_RESPONSE', 'The server sent an unexpected reply.');
+    } on DioException catch (e) {
+      return _error(e);
+    }
+  }
+
+  /// Plan 77: records the result; the reply has the best score and the top 5 here.
+  Future<ArServerResult<ArGameResult>> finishGame(String sessionId,
+      {required int score,
+      required bool passed,
+      required Map<String, Object> stats}) async {
+    try {
+      final res = await dio.post('/ar-games/sessions/$sessionId/finish',
+          data: {'score': score, 'passed': passed, 'stats': stats});
+      final data = res.data is Map ? res.data['data'] : null;
+      if (data is Map) {
+        return ArServerResult.ok(
+            ArGameResult.fromJson(Map<String, dynamic>.from(data)));
+      }
+      return const ArServerResult.error(
+          'BAD_RESPONSE', 'The server sent an unexpected reply.');
+    } on DioException catch (e) {
+      return _error(e);
+    }
+  }
+
   Future<ArServerResult<ArChallenge>> requestChallenge(ArFix fix) async {
     try {
       final res = await dio.post(
@@ -123,7 +192,8 @@ class ArQuestApi {
             ? ArFence(
                 lat: (r['lat'] as num).toDouble(),
                 lng: (r['lng'] as num).toDouble(),
-                radiusMeters: (data['relic_reach_meters'] as num?)?.toDouble() ?? 12)
+                radiusMeters:
+                    (data['relic_reach_meters'] as num?)?.toDouble() ?? 12)
             : null;
         _hiddenSpot = relic != null;
         return ArServerResult.ok(ArChallenge(
@@ -140,8 +210,8 @@ class ArQuestApi {
     }
   }
 
-  Future<ArServerResult<void>> submitEvidence(
-      ArFix fix, String challengeToken) async {
+  Future<ArServerResult<void>> submitEvidence(ArFix fix, String challengeToken,
+      {String? gameSessionId}) async {
     try {
       await dio.post(
         '/quests/${task.questId}/steps/${task.stepOrder}/evidence',
@@ -151,7 +221,11 @@ class ArQuestApi {
           'captured_lng': fix.lng,
           'captured_accuracy': fix.accuracy,
           'challenge_token': challengeToken,
-          if (_hiddenSpot) 'relic_mode': 'hidden_spot',
+          // A game is played at the player's own line, not at the relic spot.
+          if (_hiddenSpot && gameSessionId == null) 'relic_mode': 'hidden_spot',
+          if (gameSessionId != null) 'ar_game_session_id': gameSessionId,
+          if (noArcoreFallback && gameSessionId == null)
+            'fallback': 'no_arcore',
         },
       );
       return const ArServerResult.ok(null);
@@ -184,6 +258,12 @@ class ArQuestApi {
         return 'This task is not an AR task.';
       case 'RELIC_NOT_HERE':
         return 'The relic is not here. Keep searching the area.';
+      case 'GAME_NOT_PASSED':
+        return 'Win the game first, then collect.';
+      case 'SCORE_REJECTED':
+        return 'That game could not be counted. Play again.';
+      case 'RATE_LIMITED':
+        return 'Too many games for now. Take a break and try again later.';
       case 'CHALLENGE_TOKEN_EXPIRED':
       case 'CHALLENGE_NONCE_REUSED':
       case 'INVALID_CHALLENGE_TOKEN':
@@ -194,4 +274,67 @@ class ArQuestApi {
     }
     return 'Something went wrong. Please try again.';
   }
+}
+
+/// Plan 77: a mini-game session from the server.
+class ArGameSession {
+  final String id;
+  final int seed;
+  const ArGameSession({required this.id, required this.seed});
+}
+
+/// One row of a mini-game board.
+class ArBoardEntry {
+  final int rank;
+  final String name;
+  final int score;
+  final bool isSelf;
+  const ArBoardEntry(
+      {required this.rank,
+      required this.name,
+      required this.score,
+      required this.isSelf});
+
+  factory ArBoardEntry.fromJson(Map<String, dynamic> j) => ArBoardEntry(
+        rank: (j['rank'] as num?)?.toInt() ?? 0,
+        name: j['handle'] is String
+            ? '@${j['handle']}'
+            : '${j['display_name'] ?? 'Explorer'}',
+        score: (j['score'] as num?)?.toInt() ?? 0,
+        isSelf: j['is_self'] == true,
+      );
+}
+
+/// Plan 77: what the server says after a game.
+class ArGameResult {
+  final bool passed;
+  final int score;
+  final int? best;
+  final int? rankPlace;
+  final int? rankWeek;
+  final List<ArBoardEntry> top;
+  final bool lowerIsBetter;
+
+  const ArGameResult({
+    required this.passed,
+    required this.score,
+    this.best,
+    this.rankPlace,
+    this.rankWeek,
+    this.top = const [],
+    this.lowerIsBetter = false,
+  });
+
+  factory ArGameResult.fromJson(Map<String, dynamic> j) => ArGameResult(
+        passed: j['passed'] == true,
+        score: (j['score'] as num?)?.toInt() ?? 0,
+        best: (j['best'] as num?)?.toInt(),
+        rankPlace: (j['rank_place'] as num?)?.toInt(),
+        rankWeek: (j['rank_week'] as num?)?.toInt(),
+        top: [
+          for (final e in (j['top'] as List? ?? const []))
+            if (e is Map) ArBoardEntry.fromJson(Map<String, dynamic>.from(e)),
+        ],
+        lowerIsBetter: j['lower_is_better'] == true,
+      );
 }

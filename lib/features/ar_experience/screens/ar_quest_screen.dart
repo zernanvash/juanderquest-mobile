@@ -24,9 +24,14 @@ import '../widgets/ar_overlay.dart';
 import '../widgets/world_ar_view.dart';
 import '../core/ar_math.dart';
 import '../core/geo_anchor.dart';
+import '../games/ar_game_factory.dart';
+import '../games/ar_minigame.dart';
+import '../games/ar_minigame_host.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../map/pixel/map_marker_art.dart';
 
@@ -98,6 +103,15 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
   final ValueNotifier<ArScreenObject?> _worldObject = ValueNotifier(null);
   CompassObjectProjector? _compassObject;
 
+  // Plan 77: a game task plays its mini-game once the player is in the area.
+  ArQuestApi? _api;
+  ArGameSession? _gameSession;
+  ArMiniGame? _game;
+  ArGameResult? _gameResult;
+  bool _gameBusy = false;
+  bool _gameDone = false;
+  String? _gameError;
+
   @override
   void initState() {
     super.initState();
@@ -127,6 +141,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       setState(() {
         _task = task;
         _hunt = hunt;
+        _api = api;
       });
       _device.pose.addListener(_onPose);
       await _startSensors();
@@ -204,13 +219,18 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       }
       if (a == WorldArAvailability.installed) tier = ArTier.world;
     }
-    final showTutorial = tier == ArTier.world && !await ArTutorialPrefs.seen();
+    // Plan 77: a phone without ARCore hunts the relic for a game task instead.
+    _api?.noArcoreFallback = tier == ArTier.compass;
+    final showTutorial = tier == ArTier.world &&
+        _task?.isGame != true &&
+        !await ArTutorialPrefs.seen();
     if (mounted) {
       setState(() {
         _tier = tier;
         _showTutorial = showTutorial;
       });
     }
+    if (tier == ArTier.compass) _noGameNotice();
   }
 
   void _fallBackToCompass() {
@@ -219,7 +239,9 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     world?.frame.removeListener(_onWorldFrame);
     world?.dispose();
     _worldObject.value = null;
+    _api?.noArcoreFallback = true;
     if (mounted) setState(() => _tier = ArTier.compass);
+    _noGameNotice();
   }
 
   void _onWorldViewCreated(int id) {
@@ -228,12 +250,28 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     _world = session;
     // Drawn natively in the camera frame, so it never lags behind the picture.
     session.setNativeObject(true, color: _task?.color);
+    final task = _task;
+    if (task != null && !task.isGame) _showPixelRelic(session, task);
+  }
+
+  /// Plan 77c: the relic as a pixel sprite; the 3D gem stays if the sheets fail.
+  Future<void> _showPixelRelic(WorldArSession session, ArTaskSpec task) async {
+    final ok =
+        await loadArSpriteSheets(session, DefaultAssetBundle.of(context));
+    if (!ok) {
+      await session.setNativeObject(true, color: task.color);
+      return;
+    }
+    await session
+        .setSprites(relicSprites(task.object, height: WorldProjection.liftM));
   }
 
   void _onWorldFrame() {
     final frame = _world?.frame.value;
     final hunt = _hunt;
     if (frame == null || hunt == null || !mounted) return;
+    // A game runs its own anchor and tracking (ArMiniGameHost).
+    if (_game != null || _gameBusy) return;
     if (frame.error != null) {
       _fallBackToCompass();
       return;
@@ -357,6 +395,18 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
 
   void _onHunt() {
     if (!mounted) return;
+    final p = _hunt?.phase;
+    if (_task?.isGame == true &&
+        _tier == ArTier.world &&
+        _gameSession == null &&
+        !_gameBusy &&
+        _gameError == null &&
+        (p == ArHuntPhase.seeking ||
+            p == ArHuntPhase.searching ||
+            p == ArHuntPhase.aligned)) {
+      // Inside the area with a challenge: play the game instead of the hunt.
+      _startGame();
+    }
     // While the object exists, only the gyro moves the scene, so it stays put.
     switch (_hunt?.phase) {
       case ArHuntPhase.searching:
@@ -389,6 +439,88 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     _hunt?.removeListener(_onHunt);
     _hunt?.dispose();
     super.dispose();
+  }
+
+  /// Plan 77: a game task on a phone that cannot run ARCore games.
+  void _noGameNotice() {
+    if (mounted && _task?.isGame == true && _game == null) {
+      showPixelToast(
+          context, "This phone can't run the game; collect the relic instead.");
+    }
+  }
+
+  /// Plan 77: a new server session (and a newly seeded game).
+  Future<void> _startGame() async {
+    final api = _api, fix = _hunt?.fix, task = _task;
+    if (api == null || fix == null || task == null) return;
+    setState(() {
+      _gameBusy = true;
+      _gameError = null;
+    });
+    final r = await api.startGame(fix);
+    if (!mounted) return;
+    setState(() {
+      _gameBusy = false;
+      if (r.ok) {
+        _gameSession = r.data;
+        _game = createArGame(task.game, r.data!.seed);
+        _gameResult = null;
+      } else {
+        _gameError = r.message;
+      }
+    });
+  }
+
+  Future<void> _onGameOver(ArMiniGame game) async {
+    final api = _api, session = _gameSession;
+    if (api == null || session == null) return;
+    setState(() => _gameBusy = true);
+    final r = await api.finishGame(session.id,
+        score: game.boardScore, passed: game.passed, stats: game.stats);
+    if (!mounted) return;
+    setState(() {
+      _gameBusy = false;
+      if (r.ok) {
+        _gameResult = r.data;
+      } else {
+        _gameError = r.message;
+      }
+    });
+  }
+
+  /// Passed: a fresh challenge (games can outlast one), then the evidence.
+  Future<void> _collectGame() async {
+    final api = _api, fix = _hunt?.fix, session = _gameSession;
+    if (api == null || fix == null || session == null) return;
+    setState(() {
+      _gameBusy = true;
+      _gameError = null;
+    });
+    final ch = await api.requestChallenge(fix);
+    final ArServerResult<void> r = ch.ok
+        ? await api.submitEvidence(fix, ch.data!.token,
+            gameSessionId: session.id)
+        : ArServerResult.error(ch.code!, ch.message!);
+    if (!mounted) return;
+    setState(() {
+      _gameBusy = false;
+      if (r.ok) {
+        _gameDone = true;
+        HapticFeedback.mediumImpact();
+      } else {
+        _gameError = r.message;
+      }
+    });
+  }
+
+  void _replayGame() {
+    setState(() {
+      _gameSession = null;
+      _game = null;
+      _gameResult = null;
+      _gameError = null;
+    });
+    _startGame();
   }
 
   void _finishTutorial() {
@@ -465,7 +597,62 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     return c;
   }
 
+  /// Plan 77: the game over the camera, below the top bar.
+  Widget _gameLayer(ArTaskSpec task) {
+    final game = _game;
+    if (game == null) {
+      final err = _gameError;
+      return _MessagePanel(
+        icon: err == null
+            ? Icons.sports_esports_rounded
+            : Icons.error_outline_rounded,
+        message: err ?? 'Getting the game ready...',
+        actionLabel: err == null ? 'Back' : 'Try again',
+        onAction: err == null ? _close : _startGame,
+      );
+    }
+    final result = _gameResult;
+    final busy = _gameBusy;
+    return Theme(
+      data: AppTheme.pixel,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 64),
+        child: ArMiniGameHost(
+          key: ValueKey(_gameSession?.id),
+          game: game,
+          session: _world,
+          onOver: _onGameOver,
+          onRestart: _replayGame,
+          endExtra: ArGameEndExtra(
+              result: result, error: _gameError, done: _gameDone, busy: busy),
+          endActions: [
+            if (_gameDone)
+              PixelButton(
+                  key: const ValueKey('ar_game_done'),
+                  label: 'DONE',
+                  onPressed: () => _close(completed: true))
+            else if (game.passed && result != null && result.passed)
+              PixelButton(
+                  key: const ValueKey('ar_game_collect'),
+                  label: 'COLLECT',
+                  onPressed: busy ? null : _collectGame)
+            else
+              PixelButton(
+                  key: const ValueKey('play_again'),
+                  label: 'PLAY AGAIN',
+                  onPressed: busy ? null : _replayGame),
+          ],
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildScene(ArTaskSpec task, ArHuntController hunt) {
+    if (task.isGame &&
+        _tier == ArTier.world &&
+        (_game != null || _gameBusy || _gameError != null)) {
+      return [_gameLayer(task)];
+    }
     final phase = hunt.phase;
     final unlocked = phase == ArHuntPhase.searching ||
         phase == ArHuntPhase.aligned ||
@@ -474,7 +661,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     if (world && _showTutorial == true) {
       return [ArTutorial(onDone: _finishTutorial)];
     }
-    if (world && !_calibration.done) {
+    if (world && !_calibration.done && !task.isGame) {
       return [
         ArCalibrationPanel(
           calibration: _calibration,
@@ -1157,5 +1344,64 @@ class ArHelpSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Plan 77: the server's word on a finished game, on the end panel: your best
+/// here, your ranks, and the top 5 at this place.
+class ArGameEndExtra extends StatelessWidget {
+  const ArGameEndExtra(
+      {super.key,
+      this.result,
+      this.error,
+      this.done = false,
+      this.busy = false});
+  final ArGameResult? result;
+  final String? error;
+  final bool done;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = result;
+    final small = PixelType.small(context, color: PixelPalette.ink);
+    String show(int v) => r != null && r.lowerIsBetter
+        ? '${(v / 1000).toStringAsFixed(1)} s'
+        : '$v';
+    return Column(
+        key: const ValueKey('ar_game_result'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (done)
+            Text('TASK COMPLETE!',
+                style: PixelType.title(context, color: PixelPalette.greenDeep))
+          else if (error != null)
+            Text(error!,
+                textAlign: TextAlign.center,
+                style: PixelType.small(context, color: PixelPalette.red))
+          else if (busy)
+            Text('Saving...', style: small)
+          else if (r != null) ...[
+            if (r.best != null)
+              Text(
+                  'YOUR BEST HERE ${show(r.best!)}${r.rankPlace != null ? ' · #${r.rankPlace}' : ''}',
+                  style: small),
+            if (r.rankWeek != null)
+              Text('#${r.rankWeek} IN PANGASINAN THIS WEEK', style: small),
+            if (r.top.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text('TOP AT THIS PLACE',
+                  style: PixelType.small(context, color: PixelPalette.slate)),
+              for (final e in r.top.take(5))
+                Text('${e.rank}. ${e.name}  ${show(e.score)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PixelType.small(context,
+                        color: e.isSelf
+                            ? PixelPalette.greenDeep
+                            : PixelPalette.ink)),
+            ],
+          ],
+        ]);
   }
 }

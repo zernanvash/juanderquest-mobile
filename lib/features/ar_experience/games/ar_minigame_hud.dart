@@ -28,7 +28,14 @@ class ArMiniGameHud extends StatelessWidget {
     this.onPull,
     this.placing = false,
     this.pressed = false,
+    this.endExtra,
+    this.endActions,
   });
+
+  /// Plan 77 quest task: shown under the result on the end panel, and buttons
+  /// that replace PLAY AGAIN / MOVE IT.
+  final Widget? endExtra;
+  final List<Widget>? endActions;
 
   final ArMiniGame game;
   final double now;
@@ -270,11 +277,17 @@ class ArMiniGameHud extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(game.endText, textAlign: TextAlign.center, style: PixelType.body(context)),
+            if (endExtra != null) ...[const SizedBox(height: 8), endExtra!],
             const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
-              PixelButton(key: const ValueKey('play_again'), label: 'PLAY AGAIN', onPressed: onRestart),
-              PixelButton(label: 'MOVE IT', variant: PixelButtonVariant.secondary, onPressed: onMove),
-            ]),
+            Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: endActions ??
+                    [
+                      PixelButton(key: const ValueKey('play_again'), label: 'PLAY AGAIN', onPressed: onRestart),
+                      PixelButton(label: 'MOVE IT', variant: PixelButtonVariant.secondary, onPressed: onMove),
+                    ]),
           ]),
         ),
       );
