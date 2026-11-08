@@ -1,0 +1,387 @@
+{
+ "lata_stand": {
+  "file": "lata_stand.png",
+  "frames": 1,
+  "frameW": 64,
+  "frameH": 64,
+  "pivot": [
+   32.0,
+   53.0
+  ],
+  "fps": 12
+ },
+ "lata_tumble": {
+  "file": "lata_tumble.png",
+  "frames": 8,
+  "frameW": 64,
+  "frameH": 64,
+  "pivot": [
+   32.0,
+   32.0
+  ],
+  "fps": 12
+ },
+ "lata_down": {
+  "file": "lata_down.png",
+  "frames": 1,
+  "frameW": 64,
+  "frameH": 64,
+  "pivot": [
+   32.0,
+   47.0
+  ],
+  "fps": 12
+ },
+ "tsinelas_spin": {
+  "file": "tsinelas_spin.png",
+  "frames": 8,
+  "frameW": 96,
+  "frameH": 96,
+  "pivot": [
+   48.0,
+   48.0
+  ],
+  "fps": 12
+ },
+ "tsinelas_ground": {
+  "file": "tsinelas_ground.png",
+  "frames": 1,
+  "frameW": 96,
+  "frameH": 96,
+  "pivot": [
+   48.0,
+   54.0
+  ],
+  "fps": 12
+ },
+ "chalk_circle": {
+  "file": "chalk_circle.png",
+  "frames": 1,
+  "frameW": 256,
+  "frameH": 256,
+  "pivot": [
+   128,
+   128
+  ],
+  "fps": 12
+ },
+ "shadow": {
+  "file": "shadow.png",
+  "frames": 1,
+  "frameW": 48,
+  "frameH": 14,
+  "pivot": [
+   24,
+   7
+  ],
+  "fps": 12
+ },
+ "fx_sparkle": {
+  "file": "fx_sparkle.png",
+  "frames": 6,
+  "frameW": 32,
+  "frameH": 32,
+  "pivot": [
+   16,
+   16
+  ],
+  "fps": 15
+ },
+ "fx_dust": {
+  "file": "fx_dust.png",
+  "frames": 6,
+  "frameW": 48,
+  "frameH": 32,
+  "pivot": [
+   24,
+   28
+  ],
+  "fps": 12
+ },
+ "hoop": {
+  "file": "hoop.png",
+  "frames": 1,
+  "frameW": 352,
+  "frameH": 864,
+  "pivot": [
+   176.0,
+   857.6
+  ],
+  "fps": 12
+ },
+ "hoop_swish": {
+  "file": "hoop_swish.png",
+  "frames": 4,
+  "frameW": 352,
+  "frameH": 864,
+  "pivot": [
+   176.0,
+   857.6
+  ],
+  "fps": 12
+ },
+ "ball_spin": {
+  "file": "ball_spin.png",
+  "frames": 8,
+  "frameW": 96,
+  "frameH": 96,
+  "pivot": [
+   48.0,
+   48.0
+  ],
+  "fps": 12
+ },
+ "bilao_target": {
+  "file": "bilao_target.png",
+  "frames": 1,
+  "frameW": 208,
+  "frameH": 208,
+  "pivot": [
+   104.0,
+   104.0
+  ],
+  "fps": 12
+ },
+ "arrow_flight": {
+  "file": "arrow_flight.png",
+  "frames": 1,
+  "frameW": 256,
+  "frameH": 32,
+  "pivot": [
+   243.2,
+   16.0
+  ],
+  "fps": 12
+ },
+ "arrow_stuck": {
+  "file": "arrow_stuck.png",
+  "frames": 1,
+  "frameW": 128,
+  "frameH": 128,
+  "pivot": [
+   25.6,
+   92.8
+  ],
+  "fps": 12
+ },
+ "palayok_whole": {
+  "file": "palayok_whole.png",
+  "frames": 1,
+  "frameW": 96,
+  "frameH": 192,
+  "pivot": [
+   48.0,
+   6.4
+  ],
+  "fps": 12
+ },
+ "palayok_crack1": {
+  "file": "palayok_crack1.png",
+  "frames": 1,
+  "frameW": 96,
+  "frameH": 192,
+  "pivot": [
+   48.0,
+   6.4
+  ],
+  "fps": 12
+ },
+ "palayok_crack2": {
+  "file": "palayok_crack2.png",
+  "frames": 1,
+  "frameW": 96,
+  "frameH": 192,
+  "pivot": [
+   48.0,
+   6.4
+  ],
+  "fps": 12
+ },
+ "palayok_break": {
+  "file": "palayok_break.png",
+  "frames": 8,
+  "frameW": 224,
+  "frameH": 320,
+  "pivot": [
+   112.0,
+   6.4
+  ],
+  "fps": 12
+ },
+ "coin_spin": {
+  "file": "coin_spin.png",
+  "frames": 8,
+  "frameW": 25,
+  "frameH": 25,
+  "pivot": [
+   12.8,
+   12.8
+  ],
+  "fps": 12
+ },
+ "sipa": {
+  "file": "sipa.png",
+  "frames": 4,
+  "frameW": 83,
+  "frameH": 83,
+  "pivot": [
+   41.6,
+   41.6
+  ],
+  "fps": 10
+ },
+ "windsock": {
+  "file": "windsock.png",
+  "frames": 4,
+  "frameW": 230,
+  "frameH": 563,
+  "pivot": [
+   19.2,
+   556.8
+  ],
+  "fps": 0
+ },
+ "chalk_line": {
+  "file": "chalk_line.png",
+  "frames": 1,
+  "frameW": 384,
+  "frameH": 32,
+  "pivot": [
+   192.0,
+   16.0
+  ],
+  "fps": 12
+ },
+ "bangus_target": {
+  "file": "bangus_target.png",
+  "frames": 1,
+  "frameW": 192,
+  "frameH": 96,
+  "pivot": [
+   99.2,
+   48.0
+  ],
+  "fps": 12
+ },
+ "bangus_wiggle": {
+  "file": "bangus_wiggle.png",
+  "frames": 4,
+  "frameW": 192,
+  "frameH": 96,
+  "pivot": [
+   99.2,
+   48.0
+  ],
+  "fps": 10
+ },
+ "taya_guard": {
+  "file": "taya_guard.png",
+  "frames": 4,
+  "frameW": 435,
+  "frameH": 448,
+  "pivot": [
+   217.6,
+   439.5
+  ],
+  "fps": 8
+ },
+ "bow_fps": {
+  "file": "bow_fps.png",
+  "frames": 7,
+  "frameW": 240,
+  "frameH": 360,
+  "pivot": [
+   -34.6,
+   99.1
+  ],
+  "fps": 0
+ },
+ "taya_smack": {
+  "file": "taya_smack.png",
+  "frames": 4,
+  "frameW": 435,
+  "frameH": 448,
+  "pivot": [
+   217.6,
+   439.5
+  ],
+  "fps": 12
+ },
+ "item_token": {
+  "file": "item_token.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_gem": {
+  "file": "item_gem.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_crate": {
+  "file": "item_crate.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_beacon": {
+  "file": "item_beacon.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_orb": {
+  "file": "item_orb.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "item_pyramid": {
+  "file": "item_pyramid.png",
+  "frames": 8,
+  "frameW": 141,
+  "frameH": 141,
+  "pivot": [
+   70.4,
+   70.4
+  ],
+  "fps": 10
+ },
+ "pamalo": {
+  "file": "pamalo.png",
+  "frames": 1,
+  "frameW": 77,
+  "frameH": 345,
+  "pivot": [
+   38.4,
+   307.1
+  ],
+  "fps": 0
+ }
+}

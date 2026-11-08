@@ -3,9 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/features/ar_experience/core/world_ar.dart';
 
 /// Column-major perspective matrix like ARCore's getProjectionMatrix.
-List<double> perspective(
-        {double a = 2.0, double b = 1.0, double n = 0.05, double f = 100}) =>
-    [
+List<double> perspective({double a = 2.0, double b = 1.0, double n = 0.05, double f = 100}) => [
       a, 0, 0, 0, //
       0, b, 0, 0, //
       0, 0, -(f + n) / (f - n), -1, //
@@ -14,8 +12,7 @@ List<double> perspective(
 
 const identity = <double>[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
-List<double> anchorAt(double x, double y, double z) =>
-    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1];
+List<double> anchorAt(double x, double y, double z) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1];
 
 void main() {
   const screen = Size(400, 800);
@@ -80,16 +77,8 @@ void main() {
   });
 
   test('no anchor or no tracking means nothing to draw', () {
-    expect(
-        WorldProjection.project(
-            const WorldArFrame(
-                state: 'paused', reason: 'excessive_motion', planes: 0),
-            screen),
+    expect(WorldProjection.project(const WorldArFrame(state: 'paused', reason: 'excessive_motion', planes: 0), screen),
         isNull);
-    expect(
-        const WorldArFrame(
-                state: 'paused', reason: 'insufficient_light', planes: 0)
-            .trackingHint,
-        contains('dark'));
+    expect(const WorldArFrame(state: 'paused', reason: 'insufficient_light', planes: 0).trackingHint, contains('dark'));
   });
 }
