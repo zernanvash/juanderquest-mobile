@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/pixel/generated/designer_art.g.dart';
 import '../../core/pixel/generated/pixel_palette.g.dart';
@@ -139,6 +140,15 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                               retryKey: const ValueKey('plaza_retry'),
                             ),
                             data: (data) => _standings(context, grid, data),
+                          ),
+                          // Plan 77: the AR mini-game boards.
+                          SizedBox(height: grid.px(2)),
+                          PixelButton(
+                            key: const ValueKey('plaza_laro_boards'),
+                            label: 'Laro boards',
+                            variant: PixelButtonVariant.secondary,
+                            expand: true,
+                            onPressed: () => context.push('/laro'),
                           ),
                           SizedBox(height: grid.px(4)),
                           _feedHeader(context, grid),

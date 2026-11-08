@@ -55,6 +55,7 @@ import '../features/cultural_quizzes/models/cultural_quiz_model.dart';
 import '../features/cultural_quizzes/screens/cultural_quiz_detail_screen.dart';
 import '../features/cultural_quizzes/screens/cultural_quiz_play_screen.dart';
 import '../features/cultural_quizzes/screens/cultural_quiz_result_screen.dart';
+import '../features/ar_experience/games/laro_board.dart';
 import 'main_shell.dart';
 import 'auth_redirect.dart';
 
@@ -397,6 +398,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/leaderboard',
         redirect: (context, state) => '/plaza',
+      ),
+      // Plan 77: the AR mini-game ("Laro ng Lahi") weekly boards.
+      GoRoute(
+        path: '/laro',
+        builder: (context, state) => LaroBoardScreen(
+            initialGame: state.uri.queryParameters['game'] ?? 'tumbang_preso'),
       ),
       GoRoute(
         path: '/about',

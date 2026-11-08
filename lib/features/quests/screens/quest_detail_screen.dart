@@ -29,6 +29,9 @@ import '../pixel/pixel_tag.dart';
 import '../pixel/saved_quest_heart.dart';
 import '../pixel/saved_quests.dart';
 import '../pixel/task_icons.dart';
+import '../../ar_experience/core/ar_task.dart';
+import '../../ar_experience/games/ar_game_factory.dart';
+import '../../ar_experience/games/laro_board.dart';
 import 'qr_scan_screen.dart';
 import 'quest_pass_host.dart';
 
@@ -1453,7 +1456,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            'Step ${step.order} · ${_taskTypeLabel(step.checkpointType)}',
+                            'Step ${step.order} · ${_gameOf(step) != null ? 'AR game' : _taskTypeLabel(step.checkpointType)}',
                             style: PixelType.small(
                               context,
                               color: PixelPalette.slate,
@@ -1485,6 +1488,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                           color: PixelPalette.slate,
                         ),
                       ),
+                      if (_gameOf(step) != null && step.key != null)
+                        LaroPlaceBoard(
+                            questId: widget.quest.id, taskKey: step.key!),
                       if (step.rejectionReason != null &&
                           step.rejectionReason!.isNotEmpty) ...[
                         SizedBox(height: grid.px(1)),
@@ -1807,6 +1813,14 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       ? value.toInt().toString()
       : value.toStringAsFixed(1);
 
+  /// Plan 77: the AR task's mini-game, or null for a collect task.
+  static String? _gameOf(QuestStepModel step) {
+    final g = step.verification?['game'];
+    return step.checkpointType == 'ar' && ArTaskSpec.games.contains(g)
+        ? g as String
+        : null;
+  }
+
   static String _taskTypeLabel(String type) => switch (type) {
         'qr' => 'QR code',
         'photo' => 'Photo',
@@ -1821,7 +1835,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       'location' => 'Verify location',
       'qr' => 'Scan QR code',
       'photo' => 'Submit photo proof',
-      'ar' => 'Open AR',
+      'ar' => _gameOf(step) != null
+          ? 'Play ${arGameInfo[_gameOf(step)]!.name}'
+          : 'Open AR',
       _ => 'Check task',
     };
   }
