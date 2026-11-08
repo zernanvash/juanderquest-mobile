@@ -37,8 +37,9 @@ Future<bool> showHomeTownPicker(BuildContext context, WidgetRef ref) async {
   try {
     info = await ref.read(homeTownProvider.future);
   } catch (_) {
-    if (context.mounted)
+    if (context.mounted) {
       showPixelToast(context, 'Could not load the towns. Try again.');
+    }
     return false;
   }
   if (!context.mounted) return false;
@@ -86,8 +87,9 @@ Future<bool> showHomeTownPicker(BuildContext context, WidgetRef ref) async {
     await ref.read(apiClientProvider).dio.put('/me/home-town',
         data: {'municipality': picked.isEmpty ? null : picked});
   } catch (_) {
-    if (context.mounted)
+    if (context.mounted) {
       showPixelToast(context, 'Could not save your home town. Try again.');
+    }
     return false;
   }
   ref.invalidate(homeTownProvider);
