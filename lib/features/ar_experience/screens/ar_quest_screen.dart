@@ -233,9 +233,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     }
     // Plan 77: a phone without ARCore hunts the relic for a game task instead.
     _api?.noArcoreFallback = tier == ArTier.compass;
-    final showTutorial = tier == ArTier.world &&
-        _task?.isGame != true &&
-        !await ArTutorialPrefs.seen();
+    final showTutorial = tier == ArTier.world && !await ArTutorialPrefs.seen();
     if (mounted) {
       setState(() {
         _tier = tier;
@@ -263,7 +261,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     // Drawn natively in the camera frame, so it never lags behind the picture.
     session.setNativeObject(true, color: _task?.color);
     final task = _task;
-    if (task != null && !task.isGame) _showPixelRelic(session, task);
+    if (task != null) _showPixelRelic(session, task);
   }
 
   /// Plan 77c: the relic as a pixel sprite; the 3D gem stays if the sheets fail.
@@ -274,8 +272,9 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       await session.setNativeObject(true, color: task.color);
       return;
     }
-    await session
-        .setSprites(relicSprites(task.object, height: WorldProjection.liftM));
+    await session.setSprites(relicSprites(
+        huntSheetFor(game: task.game, object: task.object),
+        height: WorldProjection.liftM));
   }
 
   void _onWorldFrame() {
@@ -410,18 +409,6 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
 
   void _onHunt() {
     if (!mounted) return;
-    final p = _hunt?.phase;
-    if (_task?.isGame == true &&
-        _tier == ArTier.world &&
-        _gameSession == null &&
-        !_gameBusy &&
-        _gameError == null &&
-        (p == ArHuntPhase.seeking ||
-            p == ArHuntPhase.searching ||
-            p == ArHuntPhase.aligned)) {
-      // Inside the area with a challenge: play the game instead of the hunt.
-      _startGame();
-    }
     // While the object exists, only the gyro moves the scene, so it stays put.
     switch (_hunt?.phase) {
       case ArHuntPhase.searching:
@@ -462,6 +449,19 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
       showPixelToast(
           context, "This phone can't run the game; collect the relic instead.");
     }
+  }
+
+  /// Plan 77 (owner 2026-11-08): the player found the game's object; tapping
+  /// PLAY starts the game right there. Phones without ARCore collect it.
+  bool get _playsGame => _task?.isGame == true && _tier == ArTier.world;
+
+  void _collectOrPlay() {
+    if (!_playsGame) {
+      _hunt?.collect();
+      return;
+    }
+    _world?.setSprites(const []);
+    _startGame();
   }
 
   /// Plan 77: a new server session (and a newly seeded game).
@@ -676,7 +676,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
     if (world && _showTutorial == true) {
       return [ArTutorial(onDone: _finishTutorial)];
     }
-    if (world && !_calibration.done && !task.isGame) {
+    if (world && !_calibration.done) {
       return [
         ArCalibrationPanel(
           calibration: _calibration,
@@ -715,7 +715,7 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
           mesh: ShapesFactory.createShape(task.shape, themeColor: task.color),
           color: task.color,
           collectable: phase == ArHuntPhase.aligned,
-          onTap: hunt.collect,
+          onTap: _collectOrPlay,
           drawObject: !world,
         ),
       ],
@@ -756,7 +756,8 @@ class _ArQuestScreenState extends ConsumerState<ArQuestScreen> {
               phase: phase,
               error: hunt.error,
               objectLabel: task.objectLabel,
-              onCollect: hunt.collect,
+              collectLabel: _playsGame ? 'Play' : 'Collect',
+              onCollect: _collectOrPlay,
               onDone: () => _close(completed: true),
               onRetry: () =>
                   hunt.retry(cameraBearing: _device.pose.value.camera.bearing),
@@ -857,6 +858,9 @@ class ArStatusCard extends StatelessWidget {
 
   /// What the traveler is looking for, e.g. "3D Gem".
   final String objectLabel;
+
+  /// 'Collect', or 'Play' when the object starts a game (Plan 77).
+  final String collectLabel;
   final VoidCallback onCollect;
   final VoidCallback onDone;
   final VoidCallback onRetry;
@@ -867,6 +871,7 @@ class ArStatusCard extends StatelessWidget {
     required this.error,
     this.searchingHint,
     this.objectLabel = 'AR object',
+    this.collectLabel = 'Collect',
     required this.onCollect,
     required this.onDone,
     required this.onRetry,
@@ -923,14 +928,18 @@ class ArStatusCard extends StatelessWidget {
         break;
       case ArHuntPhase.aligned:
         title = 'Locked on';
-        detail = 'Tap Collect to claim the $objectLabel.';
+        detail = collectLabel == 'Play'
+            ? 'Tap Play to start the game here.'
+            : 'Tap Collect to claim the $objectLabel.';
         icon = Icons.center_focus_strong_rounded;
         accent = const Color(0xFF52B788);
         action = FilledButton.icon(
           key: const ValueKey('ar_collect'),
           onPressed: onCollect,
-          icon: const Icon(Icons.back_hand_rounded),
-          label: const Text('Collect'),
+          icon: Icon(collectLabel == 'Play'
+              ? Icons.sports_esports_rounded
+              : Icons.back_hand_rounded),
+          label: Text(collectLabel),
           style: FilledButton.styleFrom(
             backgroundColor: _green,
             minimumSize: const Size.fromHeight(52),

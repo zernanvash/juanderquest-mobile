@@ -47,6 +47,17 @@ class ArTaskSpec {
 
   bool get isGame => games.contains(game);
 
+  /// What the player hunts for on a game task (owner 2026-11-08): the thing
+  /// they then play with.
+  static String gameObjectLabel(String game) => switch (game) {
+        'tumbang_preso' => 'Tsinelas',
+        'shooting_hoop' => 'Ball',
+        'pana' => 'Bow',
+        'pabitin_palayok' => 'Pamalo',
+        'sipa' => 'Sipa',
+        _ => 'AR object',
+      };
+
   static const defaultRadiusMeters = 50.0;
 
   /// Builds the spec from the quest and its AR step. The fence falls back to
@@ -83,7 +94,9 @@ class ArTaskSpec {
       description: step.description,
       fence: fence,
       shape: shape,
-      objectLabel: labelForShape(shape),
+      objectLabel: games.contains(cfg['game'])
+          ? gameObjectLabel(cfg['game'] as String)
+          : labelForShape(shape),
       color: colorFor(cfg['color']),
       game: games.contains(cfg['game']) ? cfg['game'] as String : 'collect',
       object: cfg['object'] is String ? cfg['object'] as String : 'token',

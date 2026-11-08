@@ -67,16 +67,24 @@ Future<bool> loadArSpriteSheets(WorldArSession session, AssetBundle bundle) asyn
   }
 }
 
-/// The relic of a collect task in the games' pixel style (owner 2026-11-07:
-/// "the object collection should now be the same style from the games"),
-/// spinning and bobbing over its shadow at the anchor, where the gem was.
-List<ArSprite> relicSprites(String object, {required double height}) {
-  final item = object == 'box' ? 'crate' : object;
-  return [
-    const ArSprite('shadow', x: 0, y: 0, z: 0, scale: 2, floor: true),
-    ArSprite('item_$item', x: 0, y: height, z: 0, scale: 1.6, fps: 10, loop: true, oscPeriod: 2.0, oy: 0.06),
-  ];
-}
+/// The sprite a task's hunt reveals: the relic of a collect task (owner
+/// 2026-11-07: "the object collection should now be the same style from the
+/// games"), or for a game the thing you play with (owner 2026-11-08: "i find a
+/// object(sipa, bow, basketball, bat(palayok), tsinelas) then interact to play").
+String huntSheetFor({required String game, required String object}) => switch (game) {
+      'tumbang_preso' => 'tsinelas_ground',
+      'shooting_hoop' => 'ball_spin',
+      'pana' => 'bow_fps',
+      'pabitin_palayok' => 'pamalo',
+      'sipa' => 'sipa',
+      _ => 'item_${object == 'box' ? 'crate' : object}',
+    };
+
+/// [sheet] spinning and bobbing over its shadow at the anchor, where the gem was.
+List<ArSprite> relicSprites(String sheet, {required double height}) => [
+      const ArSprite('shadow', x: 0, y: 0, z: 0, scale: 2, floor: true),
+      ArSprite(sheet, x: 0, y: height, z: 0, scale: 1.6, fps: 10, loop: true, oscPeriod: 2.0, oy: 0.06),
+    ];
 
 class _ArMiniGameHostState extends State<ArMiniGameHost> with SingleTickerProviderStateMixin {
   final Stopwatch _clock = Stopwatch()..start();

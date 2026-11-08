@@ -145,14 +145,45 @@ void main() {
       expect(arGameInfo.keys.toSet(), {'collect', ...ArTaskSpec.games});
     });
 
-    test('the pixel relic sprites are in the bundled manifest', () async {
+    test('every hunt object is in the bundled manifest: relics and the game props', () async {
       TestWidgetsFlutterBinding.ensureInitialized();
       final sheets = await ArSpriteSheet.loadManifest(rootBundle);
-      for (final o in ['token', 'gem', 'box', 'beacon']) {
-        for (final s in relicSprites(o, height: 0.35)) {
-          expect(sheets.containsKey(s.sheet), isTrue, reason: s.sheet);
+      for (final game in ['collect', ...ArTaskSpec.games]) {
+        for (final o in ['token', 'gem', 'box', 'beacon']) {
+          for (final s in relicSprites(huntSheetFor(game: game, object: o), height: 0.35)) {
+            expect(sheets.containsKey(s.sheet), isTrue, reason: '$game/$o: ${s.sheet}');
+          }
         }
       }
+      expect(huntSheetFor(game: 'sipa', object: 'token'), 'sipa');
+      expect(huntSheetFor(game: 'collect', object: 'box'), 'item_crate');
+    });
+
+    test('a game task hunts for the thing you play with (owner 2026-11-08)', () {
+      expect(ArTaskSpec.from(quest(), step({'game': 'sipa'})).objectLabel, 'Sipa');
+      expect(ArTaskSpec.from(quest(), step({'game': 'pabitin_palayok'})).objectLabel, 'Pamalo');
+      expect(ArTaskSpec.from(quest(), step({'object': 'gem'})).objectLabel, '3D Gem');
+    });
+
+    testWidgets('once the object is in the frame, a game task says Play', (tester) async {
+      var tapped = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: ArStatusCard(
+            phase: ArHuntPhase.aligned,
+            error: null,
+            objectLabel: 'Sipa',
+            collectLabel: 'Play',
+            onCollect: () => tapped++,
+            onDone: () {},
+            onRetry: () {},
+          ),
+        ),
+      ));
+      expect(find.text('Play'), findsOneWidget);
+      expect(find.text('Tap Play to start the game here.'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('ar_collect')));
+      expect(tapped, 1);
     });
 
     for (final size in const [Size(320, 568), Size(568, 320)]) {
