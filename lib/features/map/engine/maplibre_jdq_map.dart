@@ -150,6 +150,95 @@ Future<Uint8List?> rasterizeTownLabel(
   }
 }
 
+Future<Uint8List?> rasterizeRoutePointMarker({
+  required String label,
+  required JdqRoutePointKind kind,
+  required double dpr,
+}) async {
+  try {
+    const double sizeDp = 24.0;
+    final double sizePx = (sizeDp * dpr).roundToDouble();
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    final Color bg;
+    final Color textColor;
+    switch (kind) {
+      case JdqRoutePointKind.start:
+        bg = const Color(0xFF0284C7);
+        textColor = const Color(0xFFFAF9F5);
+        break;
+      case JdqRoutePointKind.end:
+        bg = const Color(0xFFD62828);
+        textColor = const Color(0xFFFAF9F5);
+        break;
+      case JdqRoutePointKind.stop:
+        bg = const Color(0xFFFFB703);
+        textColor = const Color(0xFF3E1F0A);
+        break;
+      case JdqRoutePointKind.detour:
+        bg = const Color(0xFFF4A261);
+        textColor = const Color(0xFF3E1F0A);
+        break;
+      case JdqRoutePointKind.done:
+        bg = const Color(0xFF2D6A4F);
+        textColor = const Color(0xFFFAF9F5);
+        break;
+    }
+
+    // Outer 1.5dp wood casing
+    final borderThickness = math.max(1.0, (1.5 * dpr).roundToDouble());
+    final outerPaint = Paint()
+      ..color = const Color(0xFF3E1F0A)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(0, 0, sizePx, sizePx), outerPaint);
+
+    // Inner background
+    final bgPaint = Paint()
+      ..color = bg
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(
+      Rect.fromLTWH(
+        borderThickness,
+        borderThickness,
+        sizePx - (borderThickness * 2),
+        sizePx - (borderThickness * 2),
+      ),
+      bgPaint,
+    );
+
+    // Draw label
+    final double fontSize = (11.0 * dpr);
+    final textSpan = TextSpan(
+      text: label.toUpperCase(),
+      style: TextStyle(
+        fontFamily: 'Silkscreen',
+        fontFamilyFallback: const ['Monocraft'],
+        fontSize: fontSize,
+        fontWeight: FontWeight.bold,
+        color: textColor,
+      ),
+    );
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    )..layout(maxWidth: sizePx);
+
+    final textOffset = Offset(
+      (sizePx - textPainter.width) / 2,
+      (sizePx - textPainter.height) / 2,
+    );
+    textPainter.paint(canvas, textOffset);
+
+    final img = await recorder.endRecording().toImage(sizePx.round(), sizePx.round());
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    return byteData?.buffer.asUint8List();
+  } catch (_) {
+    return null;
+  }
+}
+
 class MapLibreJdqMap extends JdqMap {
   gl.MapLibreMapController? _controller;
   final _location = ValueNotifier(false);
@@ -158,10 +247,12 @@ class MapLibreJdqMap extends JdqMap {
   List<AdminArea> _places = [];
   List<JdqPin> _pins = [];
   AreaShape? _focus;
+  JdqRouteOverlay? _routeOverlay;
   bool _satellite = false, _hasSatellite = false;
   VoidCallback? _failed;
   bool? _lastOverlap;
   static final Map<String, Uint8List> _labelBitmapCache = {};
+  static final Map<String, Uint8List> _routeMarkerBitmapCache = {};
   gl.LatLng _ll(LatLng point) => gl.LatLng(point.latitude, point.longitude);
   Future<void> _safe(Future<void> Function() action) async {
     if (_disposed || !_ready) return;
@@ -341,6 +432,100 @@ class MapLibreJdqMap extends JdqMap {
     _focus = null;
     await _updateFocus();
   }
+
+  @override
+  Future<void> setRouteOverlay(JdqRouteOverlay? overlay) async {
+    _routeOverlay = overlay;
+    await _updateRouteOverlay();
+  }
+
+  Future<void> _updateRouteOverlay() => _safe(() async {
+        final c = _controller!;
+        final overlay = _routeOverlay;
+        if (overlay == null || overlay.line.isEmpty) {
+          await c.setGeoJsonSource('jdq-route-overlay', _collection([]));
+          return;
+        }
+
+        final dpr = WidgetsBinding.instance.platformDispatcher.views.firstOrNull?.devicePixelRatio ?? 2.0;
+
+        for (final pt in overlay.points) {
+          final key = '${pt.label}|${pt.kind.name}|${dpr.toStringAsFixed(1)}';
+          var bytes = _routeMarkerBitmapCache[key];
+          if (bytes == null) {
+            bytes = await rasterizeRoutePointMarker(
+              label: pt.label,
+              kind: pt.kind,
+              dpr: dpr,
+            );
+            if (bytes != null) _routeMarkerBitmapCache[key] = bytes;
+          }
+          if (bytes != null) {
+            await c.addImage('jdq-route-point-${pt.label}-${pt.kind.name}', bytes);
+          }
+        }
+
+        final lineColorHex = overlay.color != null
+            ? '#${overlay.color!.value.toRadixString(16).padLeft(8, '0').substring(2)}'
+            : (overlay.degraded ? '#6F6352' : '#0284C7');
+
+        final features = <Map<String, dynamic>>[
+          {
+            'type': 'Feature',
+            'properties': {
+              'kind': 'line',
+              'color': lineColorHex,
+              'degraded': overlay.degraded,
+            },
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': [
+                for (final p in overlay.line) [p.longitude, p.latitude],
+              ],
+            },
+          },
+          for (final pt in overlay.points)
+            {
+              'type': 'Feature',
+              'properties': {
+                'kind': 'point',
+                'label': pt.label,
+                'pointKind': pt.kind.name,
+                'icon': 'jdq-route-point-${pt.label}-${pt.kind.name}',
+              },
+              'geometry': {
+                'type': 'Point',
+                'coordinates': [pt.point.longitude, pt.point.latitude],
+              },
+            },
+        ];
+
+        await c.setGeoJsonSource('jdq-route-overlay', _collection(features));
+
+        if (overlay.line.isNotEmpty) {
+          double minLat = overlay.line.first.latitude;
+          double maxLat = overlay.line.first.latitude;
+          double minLng = overlay.line.first.longitude;
+          double maxLng = overlay.line.first.longitude;
+          for (final p in overlay.line) {
+            if (p.latitude < minLat) minLat = p.latitude;
+            if (p.latitude > maxLat) maxLat = p.latitude;
+            if (p.longitude < minLng) minLng = p.longitude;
+            if (p.longitude > maxLng) maxLng = p.longitude;
+          }
+          for (final pt in overlay.points) {
+            if (pt.point.latitude < minLat) minLat = pt.point.latitude;
+            if (pt.point.latitude > maxLat) maxLat = pt.point.latitude;
+            if (pt.point.longitude < minLng) minLng = pt.point.longitude;
+            if (pt.point.longitude > maxLng) maxLng = pt.point.longitude;
+          }
+          await fitBounds(
+            LatLng(minLat, minLng),
+            LatLng(maxLat, maxLng),
+            const EdgeInsets.only(top: 140, bottom: 220, left: 32, right: 32),
+          );
+        }
+      });
 
   Map<String, dynamic> _areaShapeToGeoJson(AreaShape shape) {
     List<List<double>> ring(List<LatLng> points) => [
@@ -532,6 +717,7 @@ class MapLibreJdqMap extends JdqMap {
         'jdq-pins',
         'jdq-focus',
         'jdq-focus-mask',
+        'jdq-route-overlay',
       ]) {
         await c.addGeoJsonSource(source, _collection([]));
       }
@@ -566,6 +752,61 @@ class MapLibreJdqMap extends JdqMap {
           lineColor: '#FFB703',
           lineWidth: 2.5,
         ),
+      );
+
+      await c.addLineLayer(
+        'jdq-route-overlay',
+        'jdq-route-casing',
+        const gl.LineLayerProperties(
+          lineColor: '#3E1F0A',
+          lineWidth: 8.0,
+          lineCap: 'round',
+          lineJoin: 'round',
+        ),
+        filter: ['==', 'kind', 'line'],
+      );
+      await c.addLineLayer(
+        'jdq-route-overlay',
+        'jdq-route-line',
+        const gl.LineLayerProperties(
+          lineColor: ['get', 'color'],
+          lineWidth: 4.5,
+          lineCap: 'round',
+          lineJoin: 'round',
+        ),
+        filter: [
+          'all',
+          ['==', 'kind', 'line'],
+          ['!=', 'degraded', true],
+        ],
+      );
+      await c.addLineLayer(
+        'jdq-route-overlay',
+        'jdq-route-line-dashed',
+        const gl.LineLayerProperties(
+          lineColor: ['get', 'color'],
+          lineWidth: 4.5,
+          lineCap: 'round',
+          lineJoin: 'round',
+          lineDasharray: [2.0, 2.0],
+        ),
+        filter: [
+          'all',
+          ['==', 'kind', 'line'],
+          ['==', 'degraded', true],
+        ],
+      );
+      await c.addSymbolLayer(
+        'jdq-route-overlay',
+        'jdq-route-point-symbols',
+        const gl.SymbolLayerProperties(
+          iconImage: ['get', 'icon'],
+          iconSize: 1.0,
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+          iconAnchor: 'center',
+        ),
+        filter: ['==', 'kind', 'point'],
       );
 
       await c.addSymbolLayer(
@@ -639,6 +880,7 @@ class MapLibreJdqMap extends JdqMap {
       await setPlaces(_places);
       await setPins(_pins);
       await _updateFocus();
+      await _updateRouteOverlay();
       await _idle();
       if (!_disposed) onReady();
     } catch (_) {

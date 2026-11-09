@@ -36,6 +36,32 @@ class JdqCamera {
           size: size ?? this.size);
 }
 
+enum JdqRoutePointKind { start, end, stop, detour, done }
+
+class JdqRoutePoint {
+  const JdqRoutePoint({
+    required this.point,
+    required this.label,
+    required this.kind,
+  });
+  final LatLng point;
+  final String label;
+  final JdqRoutePointKind kind;
+}
+
+class JdqRouteOverlay {
+  const JdqRouteOverlay({
+    required this.line,
+    this.points = const [],
+    this.degraded = false,
+    this.color,
+  });
+  final List<LatLng> line;
+  final List<JdqRoutePoint> points;
+  final bool degraded;
+  final Color? color;
+}
+
 class JdqPin {
   const JdqPin(this.id, this.point, this.label, {this.quest = false});
   final String id, label;
@@ -62,6 +88,7 @@ abstract class JdqMap {
   Future<void> setPlaces(List<AdminArea> places);
   Future<void> setFocusArea(AreaShape shape);
   Future<void> clearFocus();
+  Future<void> setRouteOverlay(JdqRouteOverlay? overlay);
   /// Draws satellite imagery under the labels and pins (no-op without an imagery key).
   Future<void> setSatellite(bool on);
   void setMyLocation(bool enabled);
@@ -76,6 +103,7 @@ class FakeJdqMap extends JdqMap {
   List<JdqPin> pins = [];
   List<AdminArea> places = [];
   AreaShape? focus;
+  JdqRouteOverlay? routeOverlay;
   bool locationEnabled = false;
   bool satellite = false;
   @override
@@ -137,6 +165,11 @@ class FakeJdqMap extends JdqMap {
   @override
   Future<void> clearFocus() async {
     focus = null;
+  }
+
+  @override
+  Future<void> setRouteOverlay(JdqRouteOverlay? overlay) async {
+    routeOverlay = overlay;
   }
 
   @override
