@@ -70,6 +70,14 @@ class RouteSummary {
     required this.engine,
   });
 
+  const RouteSummary.empty()
+      : distanceKm = 0.0,
+        durationSeconds = 0,
+        durationFormatted = '-- min',
+        costing = TravelCosting.auto,
+        hasCrowdDiversion = false,
+        engine = 'valhalla';
+
   factory RouteSummary.fromJson(Map<String, dynamic> json) {
     return RouteSummary(
       distanceKm: (json['distanceKm'] as num?)?.toDouble() ?? 0.0,
@@ -103,6 +111,15 @@ class RouteModel {
     this.warningMessage,
     this.coverageLabel,
   });
+
+  const RouteModel.empty()
+      : summary = const RouteSummary.empty(),
+        coordinates = const [],
+        maneuvers = const [],
+        degraded = false,
+        warningCode = null,
+        warningMessage = null,
+        coverageLabel = null;
 
   factory RouteModel.fromJson(Map<String, dynamic> json) {
     final summaryData = json['summary'] is Map<String, dynamic>
@@ -149,5 +166,20 @@ class NavTarget {
     required this.lng,
     this.address = '',
   });
+
+  LatLng get point => LatLng(lat, lng);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NavTarget &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          lat == other.lat &&
+          lng == other.lng &&
+          address == other.address;
+
+  @override
+  int get hashCode => Object.hash(name, lat, lng, address);
 }
 

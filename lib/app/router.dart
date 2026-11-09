@@ -445,10 +445,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }
 
+          final trailId = state.uri.queryParameters['trail_id'];
+          final from = state.uri.queryParameters['from'];
+
           return buildDirectionalSlidePage(
             context: context,
             state: state,
-            child: NavigationScreen(destination: destination),
+            child: NavigationScreen(
+              destination: destination,
+              initialTrailId: trailId,
+              initialFrom: from,
+            ),
           );
         },
       ),
