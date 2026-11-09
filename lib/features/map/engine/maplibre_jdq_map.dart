@@ -24,6 +24,158 @@ final mapStyleProvider = FutureProvider.autoDispose<String>(
   (ref) async => StyleLoader().load(await MapOriginStore.read()),
 );
 
+class TownLabelMetrics {
+  final double fontSizeDp;
+  final FontWeight fontWeight;
+  final double padHDp;
+  final double padVDp;
+  final double outlineDp;
+  final double underlineDp;
+  final double effectiveFontSizeDp;
+
+  const TownLabelMetrics({
+    required this.fontSizeDp,
+    required this.fontWeight,
+    this.padHDp = 6.0,
+    this.padVDp = 4.0,
+    this.outlineDp = 1.5,
+    this.underlineDp = 2.0,
+    required this.effectiveFontSizeDp,
+  });
+}
+
+TownLabelMetrics computeTownLabelMetrics({
+  required String text,
+  required String level,
+}) {
+  final normalizedLevel = level.toLowerCase();
+  final double baseFontSizeDp;
+  final FontWeight fontWeight;
+  switch (normalizedLevel) {
+    case 'province':
+      baseFontSizeDp = 16.0;
+      fontWeight = FontWeight.bold;
+      break;
+    case 'barangay':
+      baseFontSizeDp = 12.0;
+      fontWeight = FontWeight.normal;
+      break;
+    case 'city':
+    case 'municipality':
+    case 'town':
+    default:
+      baseFontSizeDp = 14.0;
+      fontWeight = FontWeight.bold;
+      break;
+  }
+
+  const padHDp = 6.0;
+  const maxLabelWidthDp = 180.0;
+  const maxTextWidthDp = maxLabelWidthDp - (padHDp * 2); // 168.0
+
+  final tp = TextPainter(
+    text: TextSpan(
+      text: text.toUpperCase(),
+      style: TextStyle(
+        fontFamily: 'Silkscreen',
+        fontFamilyFallback: const ['Monocraft'],
+        fontSize: baseFontSizeDp,
+        fontWeight: fontWeight,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+
+  double effectiveFontSizeDp = baseFontSizeDp;
+  if (tp.width > maxTextWidthDp) {
+    final scale = maxTextWidthDp / tp.width;
+    effectiveFontSizeDp =
+        math.max(10.0, math.min(baseFontSizeDp, baseFontSizeDp * scale));
+  }
+
+  return TownLabelMetrics(
+    fontSizeDp: baseFontSizeDp,
+    fontWeight: fontWeight,
+    padHDp: padHDp,
+    padVDp: 4.0,
+    outlineDp: 1.5,
+    underlineDp: 2.0,
+    effectiveFontSizeDp: effectiveFontSizeDp,
+  );
+}
+
+Future<Uint8List?> rasterizeTownLabel(
+  String text, {
+  required String level,
+  required bool isFocused,
+  required double dpr,
+}) async {
+  try {
+    final metrics = computeTownLabelMetrics(text: text, level: level);
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final fontSizePx = metrics.effectiveFontSizeDp * dpr;
+
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text.toUpperCase(),
+        style: TextStyle(
+          fontFamily: 'Silkscreen',
+          fontFamilyFallback: const ['Monocraft'],
+          fontSize: fontSizePx,
+          fontWeight: metrics.fontWeight,
+          color: const Color(0xFF3E1F0A),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final textW = tp.width;
+    final textH = tp.height;
+    final padH = metrics.padHDp * dpr;
+    final padV = metrics.padVDp * dpr;
+    final strokeWidth =
+        math.max(1.0, (metrics.outlineDp * dpr).roundToDouble());
+    final underlineH = (metrics.underlineDp * dpr).roundToDouble();
+    final w = (textW + padH * 2).ceilToDouble();
+    final h = (textH + padV * 2 + underlineH).ceilToDouble();
+
+    final rect = Rect.fromLTWH(0, 0, w, h);
+
+    // Background badge fill: cream (#FFF8E1) or gold (#FFB703) when focused
+    final bgPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = isFocused ? const Color(0xFFFFB703) : const Color(0xFFFFF8E1);
+    canvas.drawRect(rect, bgPaint);
+
+    // Crisp woodDeep stroke (#3E1F0A) on whole device pixels
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..color = const Color(0xFF3E1F0A);
+    canvas.drawRect(rect.deflate(strokeWidth / 2), borderPaint);
+
+    // Pixel text inside
+    tp.paint(canvas, Offset(padH, padV));
+
+    // Clickable pixel underline indicator at bottom
+    final underlinePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = isFocused ? const Color(0xFF8B5E00) : const Color(0xFF8B6B4A);
+    canvas.drawRect(
+      Rect.fromLTWH(padH, h - padV - underlineH, textW, underlineH),
+      underlinePaint,
+    );
+
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(w.toInt(), h.toInt());
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    return byteData?.buffer.asUint8List();
+  } catch (_) {
+    return null;
+  }
+}
+
 class MapLibreJdqMap extends JdqMap {
   gl.MapLibreMapController? _controller;
   final _location = ValueNotifier(false);
@@ -144,89 +296,29 @@ class MapLibreJdqMap extends JdqMap {
     }
   }
 
-  Future<Uint8List?> _rasterizeTownLabel(
-    String text, {
-    required bool isFocused,
-    required double dpr,
-  }) async {
-    try {
-      final recorder = ui.PictureRecorder();
-      final canvas = Canvas(recorder);
-      final fontSize = 10.0 * dpr;
-
-      final tp = TextPainter(
-        text: TextSpan(
-          text: text.toUpperCase(),
-          style: TextStyle(
-            fontFamily: 'Silkscreen',
-            fontFamilyFallback: const ['Monocraft'],
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF3E1F0A),
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-
-      final textW = tp.width;
-      final textH = tp.height;
-      final padH = 5.0 * dpr;
-      final padV = 3.0 * dpr;
-      final underlineH = 2.0 * dpr;
-      final w = (textW + padH * 2).ceilToDouble();
-      final h = (textH + padV * 2 + underlineH).ceilToDouble();
-
-      final rect = Rect.fromLTWH(0, 0, w, h);
-
-      // Background badge fill: cream (#FFF8E1) or gold (#FFB703) when focused
-      final bgPaint = Paint()
-        ..style = PaintingStyle.fill
-        ..color = isFocused ? const Color(0xFFFFB703) : const Color(0xFFFFF8E1);
-      canvas.drawRect(rect, bgPaint);
-
-      // 1px crisp woodDeep stroke (#3E1F0A)
-      final borderPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0 * dpr
-        ..color = const Color(0xFF3E1F0A);
-      canvas.drawRect(rect.deflate(0.5 * dpr), borderPaint);
-
-      // Pixel text inside
-      tp.paint(canvas, Offset(padH, padV));
-
-      // Clickable pixel underline indicator at bottom
-      final underlinePaint = Paint()
-        ..style = PaintingStyle.fill
-        ..color = isFocused ? const Color(0xFF8B5E00) : const Color(0xFF8B6B4A);
-      canvas.drawRect(
-        Rect.fromLTWH(padH, h - padV - underlineH, textW, underlineH),
-        underlinePaint,
-      );
-
-      final picture = recorder.endRecording();
-      final img = await picture.toImage(w.toInt(), h.toInt());
-      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-      return byteData?.buffer.asUint8List();
-    } catch (_) {
-      return null;
-    }
-  }
-
   @override
   Future<void> setPlaces(List<AdminArea> places) async {
     _places = places;
     await _safe(() async {
       final c = _controller!;
-      final dpr = ui.PlatformDispatcher.instance.views.firstOrNull?.devicePixelRatio ?? 2.0;
+      final dpr =
+          ui.PlatformDispatcher.instance.views.firstOrNull?.devicePixelRatio ??
+              2.0;
 
       for (final p in places) {
+        final level = p.level.toLowerCase();
         final isFocused = _focus != null &&
             _focus!.contains(p.label.latitude, p.label.longitude);
         final state = isFocused ? 'focused' : 'normal';
-        final key = '${p.name}|$state|${dpr.toStringAsFixed(1)}';
+        final key = '${p.name}|$level|$state|${dpr.toStringAsFixed(1)}';
         var bytes = _labelBitmapCache[key];
         if (bytes == null) {
-          bytes = await _rasterizeTownLabel(p.name, isFocused: isFocused, dpr: dpr);
+          bytes = await rasterizeTownLabel(
+            p.name,
+            level: p.level,
+            isFocused: isFocused,
+            dpr: dpr,
+          );
           if (bytes != null) _labelBitmapCache[key] = bytes;
         }
         if (bytes != null) {
@@ -502,14 +594,14 @@ class MapLibreJdqMap extends JdqMap {
         ),
       );
 
-      final dpr = ui.PlatformDispatcher.instance.views.firstOrNull?.devicePixelRatio ?? 2.0;
       await c.addSymbolLayer(
         'admin-places',
         'admin-place-labels',
-        gl.SymbolLayerProperties(
-          iconImage: const ['get', 'icon'],
-          iconSize: 1.0 / dpr,
+        const gl.SymbolLayerProperties(
+          iconImage: ['get', 'icon'],
+          iconSize: 1.0,
           iconAllowOverlap: false,
+          iconPadding: 4.0,
           iconAnchor: 'center',
         ),
       );
@@ -617,7 +709,8 @@ class MapLibreJdqMap extends JdqMap {
   Future<void> _tap(math.Point<double> point, gl.LatLng coordinate) async {
     if (!_ready || _disposed) return;
     try {
-      final hits = await _controller!.queryRenderedFeatures(point, [
+      final c = _controller!;
+      final hits = await c.queryRenderedFeatures(point, [
         'jdq-pin-symbols',
         'jdq-pin-dots',
         'admin-place-labels',
@@ -634,6 +727,31 @@ class MapLibreJdqMap extends JdqMap {
         }
         return;
       }
+
+      // If point query missed, query a small box around the tap (±8 dp) for admin-place-labels only
+      try {
+        final boxHits = await c.queryRenderedFeaturesInRect(
+          Rect.fromLTRB(
+            point.x - 8.0,
+            point.y - 8.0,
+            point.x + 8.0,
+            point.y + 8.0,
+          ),
+          ['admin-place-labels'],
+          null,
+        );
+        if (_disposed) return;
+        for (final hit in boxHits) {
+          if (hit is! Map) continue;
+          final id = (hit['properties'] as Map?)?['id'];
+          if (id is! String) continue;
+          onTapPlace?.call(id);
+          return;
+        }
+      } catch (_) {
+        /* queryRenderedFeaturesInRect fallback */
+      }
+
       onTapEmpty?.call(LatLng(coordinate.latitude, coordinate.longitude));
     } catch (_) {
       /* Ignore a tap during surface disposal. */
