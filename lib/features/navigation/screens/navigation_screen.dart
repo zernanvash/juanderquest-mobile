@@ -404,7 +404,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                                                 .showSnackBar(
                                               const SnackBar(
                                                 content: Text(
-                                                  'START ADVENTURE: Live turn-by-turn navigation coming in Part 83b!',
+                                                  'Live turn-by-turn navigation is coming next.',
                                                 ),
                                               ),
                                             );

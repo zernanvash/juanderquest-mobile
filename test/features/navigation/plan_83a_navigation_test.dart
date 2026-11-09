@@ -426,7 +426,7 @@ void main() {
       // Tapping START ADVENTURE triggers coming soon snackbar
       await tester.tap(find.byKey(const ValueKey('nav_start_adventure')));
       await tester.pump();
-      expect(find.textContaining('Live turn-by-turn navigation coming in Part 83b'), findsOneWidget);
+      expect(find.textContaining('Live turn-by-turn navigation is coming next'), findsOneWidget);
 
       // Tapping STEPS bar button opens StepsSheet
       await tester.tap(find.byKey(const ValueKey('nav_steps_bar_button')));
