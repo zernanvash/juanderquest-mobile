@@ -1040,18 +1040,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                               style: PixelType.body(
                                 context,
                                 color: PixelPalette.woodDeep,
-                              ).copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            PixelText(
-                              'Move the map so the crosshair is on the place.',
-                              style: PixelType.small(
-                                context,
-                                color: PixelPalette.woodDeep,
-                              ).copyWith(fontSize: 9),
+                              ).copyWith(fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),

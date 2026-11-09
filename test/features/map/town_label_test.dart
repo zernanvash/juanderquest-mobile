@@ -7,43 +7,25 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Town Label Metrics & Rasterization (Plan 82b WP-1 & WP-3)', () {
-    test('computeTownLabelMetrics computes sizes and weights by administrative level', () {
+    // Owner 2026-11-09: no box, plain text with a halo, like Google Maps.
+    test('label style by level: towns 13 dp bold, province 15, barangays 10 dp grey', () {
       final province = computeTownLabelMetrics(text: 'Pangasinan', level: 'province');
-      expect(province.fontSizeDp, 16.0);
-      expect(province.fontWeight, FontWeight.bold);
-      expect(province.padHDp, 6.0);
-      expect(province.padVDp, 4.0);
-      expect(province.outlineDp, 1.5);
-      expect(province.underlineDp, 2.0);
-
-      final city = computeTownLabelMetrics(text: 'Dagupan', level: 'city');
-      expect(city.fontSizeDp, 14.0);
-      expect(city.fontWeight, FontWeight.bold);
-
-      final municipality = computeTownLabelMetrics(text: 'Bolinao', level: 'municipality');
-      expect(municipality.fontSizeDp, 14.0);
-      expect(municipality.fontWeight, FontWeight.bold);
-
-      final town = computeTownLabelMetrics(text: 'Calasiao', level: 'town');
-      expect(town.fontSizeDp, 14.0);
-      expect(town.fontWeight, FontWeight.bold);
-
-      final barangay = computeTownLabelMetrics(text: 'Poblacion', level: 'barangay');
-      expect(barangay.fontSizeDp, 12.0);
-      expect(barangay.fontWeight, FontWeight.normal);
+      expect((province.fontSizeDp, province.fontWeight), (15.0, FontWeight.bold));
+      for (final level in ['city', 'municipality', 'town']) {
+        final t = computeTownLabelMetrics(text: 'Dagupan', level: level);
+        expect((t.fontSizeDp, t.fontWeight), (13.0, FontWeight.bold), reason: level);
+      }
+      final barangay = computeTownLabelMetrics(text: 'Bonuan Gueset', level: 'barangay');
+      expect((barangay.fontSizeDp, barangay.fontWeight), (10.0, FontWeight.normal));
+      expect(barangay.color, isNot(province.color));
+      expect(province.haloDp, 2.0);
     });
 
-    test('Long town names scale down font size with a minimum of 10 dp', () {
-      final shortName = computeTownLabelMetrics(text: 'Alaminos', level: 'city');
-      expect(shortName.effectiveFontSizeDp, 14.0);
-
-      // Very long place name
-      final longName = computeTownLabelMetrics(
-        text: 'SAN CARLOS CITY AGRICULTURAL DISTRICT THREE',
-        level: 'city',
-      );
-      expect(longName.effectiveFontSizeDp, lessThan(14.0));
-      expect(longName.effectiveFontSizeDp, greaterThanOrEqualTo(10.0));
+    test('long names shrink to fit, never below 9 dp', () {
+      expect(computeTownLabelMetrics(text: 'Alaminos', level: 'city').effectiveFontSizeDp, 13.0);
+      final long = computeTownLabelMetrics(text: 'SAN CARLOS CITY AGRICULTURAL DISTRICT THREE', level: 'city');
+      expect(long.effectiveFontSizeDp, lessThan(13.0));
+      expect(long.effectiveFontSizeDp, greaterThanOrEqualTo(9.0));
     });
 
     test('rasterizeTownLabel produces valid image buffer with expected dimensions at dpr 3', () async {
@@ -58,8 +40,8 @@ void main() {
       final frameCity = await codecCity.getNextFrame();
       final imgCity = frameCity.image;
 
-      // Font size at dpr 3: 14 * 3 = 42 px. With padding and underline, height is around 42 + pad (24) + underline (6)
-      expect(imgCity.height, greaterThan(40));
+      // 13 dp at dpr 3 = 39 px text plus a 6 px halo on each side, and no box padding.
+      expect(imgCity.height, inInclusiveRange(40, 70));
 
       final bytesProvince = await rasterizeTownLabel(
         'Pangasinan',
