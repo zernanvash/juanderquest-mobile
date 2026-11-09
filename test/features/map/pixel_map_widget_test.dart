@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
@@ -12,6 +13,7 @@ import 'package:juanderquest_app/features/quests/models/quest_model.dart';
 import 'package:juanderquest_app/features/quests/providers/quest_provider.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
+import 'package:latlong2/latlong.dart';
 
 class _TestQuestNotifier extends QuestNotifier {
   _TestQuestNotifier(super.apiClient, List<QuestModel> quests) {
@@ -49,6 +51,52 @@ ApiClient _createTestApiClient() {
     0,
     InterceptorsWrapper(
       onRequest: (options, handler) {
+        if (options.path.contains('/shape')) {
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'type': 'Polygon',
+                'coordinates': [
+                  [
+                    [120.30, 16.00],
+                    [120.40, 16.00],
+                    [120.40, 16.10],
+                    [120.30, 16.10],
+                    [120.30, 16.00],
+                  ]
+                ],
+              },
+            ),
+          );
+          return;
+        }
+        if (options.path == '/areas') {
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'success': true,
+                'data': [
+                  {
+                    'id': 'dagupan',
+                    'name': 'Dagupan',
+                    'display_name': 'Dagupan City',
+                    'level': 'city',
+                    'label_lat': 16.0433,
+                    'label_lng': 120.3333,
+                    'has_boundary': true,
+                    'bbox': [120.30, 16.00, 120.40, 16.10],
+                    'published_spot_count': 5,
+                  }
+                ],
+              },
+            ),
+          );
+          return;
+        }
         handler.resolve(
           Response(
             requestOptions: options,
@@ -278,6 +326,111 @@ void main() {
       expect(find.text('ROUTE HERE'), findsOneWidget);
       expect(find.text('EXPLORE SPOT'), findsOneWidget);
       expect(find.textContaining('IN DEVELOPMENT'), findsNothing);
+    });
+
+    testWidgets(
+        'Plan 82b WP-2 & WP-3: Empty map tap does not select town, label tap focuses town, tap outside clears',
+        (tester) async {
+      final fakeMap = FakeJdqMap();
+      await tester.pumpWidget(_buildTestApp(fakeMap: fakeMap));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // 1. onTapEmpty with nothing focused -> nothing focused
+      fakeMap.onTapEmpty?.call(const LatLng(16.0433, 120.3333));
+      await tester.pump();
+      expect(fakeMap.focus, isNull);
+      expect(find.text('DAGUPAN'), findsNothing);
+
+      // 2. onTapPlace('dagupan') -> Dagupan focused
+      fakeMap.onTapPlace?.call('dagupan');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(fakeMap.focus, isNotNull);
+      expect(find.text('DAGUPAN'), findsWidgets);
+
+      // 3. onTapPlace('dagupan') again while focused -> still focused, no flicker
+      fakeMap.onTapPlace?.call('dagupan');
+      await tester.pump();
+      expect(fakeMap.focus, isNotNull);
+
+      // 4. onTapEmpty inside focused town (16.05, 120.35 is inside [120.30, 16.00] - [120.40, 16.10]) -> still focused
+      fakeMap.onTapEmpty?.call(const LatLng(16.05, 120.35));
+      await tester.pump();
+      expect(fakeMap.focus, isNotNull);
+
+      // 5. onTapEmpty outside focused town (15.50, 119.50 is outside) -> focus cleared
+      fakeMap.onTapEmpty?.call(const LatLng(15.50, 119.50));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(fakeMap.focus, isNull);
+    });
+
+    testWidgets(
+        'Plan 82b WP-4: Standalone POST SPOT FAB and posting banner flow',
+        (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final fakeMap = FakeJdqMap();
+      await tester.pumpWidget(_buildTestApp(fakeMap: fakeMap));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // FAB is visible on empty map
+      final fabFinder = find.byKey(const ValueKey('map_post_spot_fab'));
+      expect(fabFinder, findsOneWidget);
+      expect(find.text('+ POST SPOT'), findsOneWidget);
+
+      // Tap FAB -> enters pin placement mode
+      tester.widget<PixelButton>(fabFinder).onPressed!();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Top banner shows and FAB is hidden while posting
+      expect(find.byKey(const ValueKey('map_post_spot_banner')), findsOneWidget);
+      expect(find.text('POST A DESTINATION SPOT'), findsOneWidget);
+      expect(
+        find.text('Move the map so the crosshair is on the place.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('map_post_spot_fab')), findsNothing);
+
+      // Close [X] on the banner cancels pin placement
+      final closeFinder = find.descendant(
+        of: find.byKey(const ValueKey('map_post_spot_banner')),
+        matching: find.byType(PixelIconButton),
+      );
+      expect(closeFinder, findsOneWidget);
+      tester.widget<PixelIconButton>(closeFinder).onPressed!();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Posting ended: banner gone, FAB restored
+      expect(find.byKey(const ValueKey('map_post_spot_banner')), findsNothing);
+      expect(find.byKey(const ValueKey('map_post_spot_fab')), findsOneWidget);
+    });
+
+    testWidgets(
+        'Plan 82b WP-4: POST SPOT FAB is hidden when a pin card is open',
+        (tester) async {
+      final fakeMap = FakeJdqMap();
+      final spot = _testSpot(id: 'spot-dossier', name: 'Cape Bolinao');
+      await tester.pumpWidget(_buildTestApp(
+        fakeMap: fakeMap,
+        initialSpotId: 'spot-dossier',
+        spots: [spot],
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // Inspector card is open, FAB is hidden
+      expect(find.text('Cape Bolinao'), findsWidgets);
+      expect(find.byKey(const ValueKey('map_post_spot_fab')), findsNothing);
     });
   });
 }

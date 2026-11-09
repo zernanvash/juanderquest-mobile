@@ -84,6 +84,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     );
     _nativeMap.onTapEmpty = _handleMapTap;
     _nativeMap.onTapPlace = (id) {
+      if (_focusedArea?.id == id) return;
       for (final area in _areas) {
         if (area.id == id) {
           unawaited(_focusArea(area));
@@ -195,7 +196,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     ref.read(apiClientProvider).dio,
   );
   List<AdminArea> _areas = const [];
-  bool _resolvingArea = false;
   AdminArea? _focusedArea;
   AreaShape? _focusedShape;
   LatLng? _preFocusCenter;
@@ -241,37 +241,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     } catch (_) {
       // Names are an enhancement; the map works without them.
     }
-  }
-
-  Future<AdminArea?> _areaAt(LatLng point) async {
-    final zoom = _camera.zoom;
-    final levels = _focusedArea != null && _focusedArea!.level != 'province'
-        ? const {'barangay'}
-        : _focusedArea?.level == 'province' || zoom >= 9
-            ? const {'city', 'municipality', 'town'}
-            : const {'province'};
-    final candidates = _areas
-        .where(
-          (a) =>
-              levels.contains(a.level) &&
-              a.id != _focusedArea?.id &&
-              areaBboxContains(a.bbox, point.latitude, point.longitude),
-        )
-        .toList()
-      ..sort(
-        (a, b) => areaBboxSize(a.bbox).compareTo(areaBboxSize(b.bbox)),
-      );
-    for (final a in candidates.take(6)) {
-      try {
-        final shape = await _areaApi.shape(a.id);
-        if (shape != null && shape.contains(point.latitude, point.longitude)) {
-          return a;
-        }
-      } catch (_) {
-        // Try the next candidate.
-      }
-    }
-    return null;
   }
 
   Future<void> _focusArea(AdminArea area) async {
@@ -554,15 +523,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       final shape = _focusedShape;
       if (shape != null && !shape.contains(point.latitude, point.longitude)) {
         _clearArea();
-        return;
-      }
-      if (_resolvingArea) return;
-      _resolvingArea = true;
-      try {
-        final area = await _areaAt(point);
-        if (area != null && mounted) await _focusArea(area);
-      } finally {
-        _resolvingArea = false;
       }
       return;
     }
@@ -1058,9 +1018,59 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           children: [
             _canvas(rasterMap, satellite: satellite),
 
+            // Top posting banner
+            if (_pinPlacementActive)
+              Positioned(
+                top: 12,
+                left: 12,
+                right: 12,
+                child: PixelPanel(
+                  key: const ValueKey('map_post_spot_banner'),
+                  style: PixelBoxStyle.gold,
+                  padding: 8,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PixelText(
+                              'POST A DESTINATION SPOT',
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.woodDeep,
+                              ).copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            PixelText(
+                              'Move the map so the crosshair is on the place.',
+                              style: PixelType.small(
+                                context,
+                                color: PixelPalette.woodDeep,
+                              ).copyWith(fontSize: 9),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      PixelIconButton(
+                        icon: MapMarkerArt.iconClose,
+                        semanticLabel: 'Cancel',
+                        style: PixelBoxStyle.parchment,
+                        onPressed: _cancelPinPlacement,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             // Top-Right Floating Map Tool Controls
             Positioned(
-              top: 12,
+              top: _pinPlacementActive ? 84 : 12,
               right: 12,
               child: Column(
                 children: [
@@ -1097,30 +1107,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     ),
                     const SizedBox(height: 4),
                   ],
-
-                  // Pin a New Destination
-                  Tooltip(
-                    message: _pinPlacementActive
-                        ? 'Cancel Pin Placement'
-                        : 'Pin a New Destination',
-                    child: PixelIconButton(
-                      icon: MapMarkerArt.iconAddPin,
-                      semanticLabel: _pinPlacementActive
-                          ? 'Cancel Pin Placement'
-                          : 'Pin a New Destination',
-                      style: _pinPlacementActive
-                          ? PixelBoxStyle.gold
-                          : PixelBoxStyle.parchment,
-                      onPressed: () {
-                        if (_pinPlacementActive) {
-                          _cancelPinPlacement();
-                        } else {
-                          _startPinPlacement();
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 4),
 
                   // Use My Location
                   Tooltip(
@@ -1236,6 +1222,35 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                 left: 12,
                 right: 12,
                 child: _buildMarkerInspectorCard(),
+              ),
+
+            // Standalone Bottom-Right Post Spot Button (Plan 82b)
+            if (!_pinPlacementActive &&
+                _selectedQuest == null &&
+                _selectedSpot == null &&
+                _focusedArea == null)
+              Positioned(
+                right: 12,
+                bottom: 28,
+                child: Semantics(
+                  label: 'Post a destination spot',
+                  button: true,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minHeight: 48,
+                      minWidth: 48,
+                    ),
+                    child: PixelButton(
+                      key: const ValueKey('map_post_spot_fab'),
+                      label: MediaQuery.sizeOf(context).width >
+                              MediaQuery.sizeOf(context).height
+                          ? '+'
+                          : '+ POST SPOT',
+                      style: PixelBoxStyle.gold,
+                      onPressed: _startPinPlacement,
+                    ),
+                  ),
+                ),
               ),
           ],
         ),
