@@ -24,85 +24,91 @@ final mapStyleProvider = FutureProvider.autoDispose<String>(
   (ref) async => StyleLoader().load(await MapOriginStore.read()),
 );
 
+/// Map town/barangay label style (owner 2026-11-09: "remove the box text
+/// background ... optimize the text in the map but still very visible and
+/// readable, just like how google maps do"). Plain pixel-font text with a
+/// cream halo, no box: towns dark and bold, barangays small, grey and spaced.
 class TownLabelMetrics {
   final double fontSizeDp;
   final FontWeight fontWeight;
-  final double padHDp;
-  final double padVDp;
-  final double outlineDp;
-  final double underlineDp;
+  final double haloDp;
+  final double letterSpacingDp;
+  final Color color;
   final double effectiveFontSizeDp;
 
   const TownLabelMetrics({
     required this.fontSizeDp,
     required this.fontWeight,
-    this.padHDp = 6.0,
-    this.padVDp = 4.0,
-    this.outlineDp = 1.5,
-    this.underlineDp = 2.0,
+    required this.haloDp,
+    required this.letterSpacingDp,
+    required this.color,
     required this.effectiveFontSizeDp,
   });
 }
+
+const _labelInk = Color(0xFF3E1F0A); // woodDeep
+const _labelMuted = Color(0xFF7A6656); // barangay grey-brown
+const _labelHalo = Color(0xFFFFF8E1); // cream
+const _labelFocus = Color(0xFF8B4A00); // focused: deep amber
+const _labelFocusHalo = Color(0xFFFFD166); // focused halo: soft gold
 
 TownLabelMetrics computeTownLabelMetrics({
   required String text,
   required String level,
 }) {
-  final normalizedLevel = level.toLowerCase();
-  final double baseFontSizeDp;
-  final FontWeight fontWeight;
-  switch (normalizedLevel) {
+  final double size;
+  final FontWeight weight;
+  final double spacing;
+  final Color color;
+  switch (level.toLowerCase()) {
     case 'province':
-      baseFontSizeDp = 16.0;
-      fontWeight = FontWeight.bold;
+      size = 15;
+      weight = FontWeight.bold;
+      spacing = 1.5;
+      color = _labelInk;
       break;
     case 'barangay':
-      baseFontSizeDp = 12.0;
-      fontWeight = FontWeight.normal;
+      size = 10;
+      weight = FontWeight.normal;
+      spacing = 1.2;
+      color = _labelMuted;
       break;
-    case 'city':
-    case 'municipality':
-    case 'town':
-    default:
-      baseFontSizeDp = 14.0;
-      fontWeight = FontWeight.bold;
-      break;
+    default: // city, municipality, town
+      size = 13;
+      weight = FontWeight.bold;
+      spacing = 0.5;
+      color = _labelInk;
   }
 
-  const padHDp = 6.0;
-  const maxLabelWidthDp = 180.0;
-  const maxTextWidthDp = maxLabelWidthDp - (padHDp * 2); // 168.0
-
+  // Long names shrink to fit 180 dp, down to 9 dp.
+  const maxWidthDp = 180.0;
   final tp = TextPainter(
-    text: TextSpan(
-      text: text.toUpperCase(),
-      style: TextStyle(
-        fontFamily: 'Silkscreen',
-        fontFamilyFallback: const ['Monocraft'],
-        fontSize: baseFontSizeDp,
-        fontWeight: fontWeight,
-      ),
-    ),
+    text: TextSpan(text: text.toUpperCase(), style: _labelStyle(size, weight, spacing, color)),
     textDirection: TextDirection.ltr,
   )..layout();
-
-  double effectiveFontSizeDp = baseFontSizeDp;
-  if (tp.width > maxTextWidthDp) {
-    final scale = maxTextWidthDp / tp.width;
-    effectiveFontSizeDp =
-        math.max(10.0, math.min(baseFontSizeDp, baseFontSizeDp * scale));
+  var effective = size;
+  if (tp.width > maxWidthDp) {
+    effective = math.max(9.0, size * maxWidthDp / tp.width);
   }
-
   return TownLabelMetrics(
-    fontSizeDp: baseFontSizeDp,
-    fontWeight: fontWeight,
-    padHDp: padHDp,
-    padVDp: 4.0,
-    outlineDp: 1.5,
-    underlineDp: 2.0,
-    effectiveFontSizeDp: effectiveFontSizeDp,
+    fontSizeDp: size,
+    fontWeight: weight,
+    haloDp: 2.0,
+    letterSpacingDp: spacing,
+    color: color,
+    effectiveFontSizeDp: effective,
   );
 }
+
+TextStyle _labelStyle(double size, FontWeight weight, double spacing, Color color, {Paint? foreground}) => TextStyle(
+      fontFamily: 'Silkscreen',
+      fontFamilyFallback: const ['Monocraft'],
+      fontSize: size,
+      fontWeight: weight,
+      letterSpacing: spacing,
+      color: foreground == null ? color : null,
+      foreground: foreground,
+    );
 
 Future<Uint8List?> rasterizeTownLabel(
   String text, {
@@ -111,66 +117,34 @@ Future<Uint8List?> rasterizeTownLabel(
   required double dpr,
 }) async {
   try {
-    final metrics = computeTownLabelMetrics(text: text, level: level);
+    final m = computeTownLabelMetrics(text: text, level: level);
+    final size = m.effectiveFontSizeDp * dpr;
+    final spacing = m.letterSpacingDp * dpr;
+    // Whole device pixels keep the pixel font crisp.
+    final halo = math.max(1.0, (m.haloDp * dpr).roundToDouble());
+    final upper = text.toUpperCase();
+
+    TextPainter painter(TextStyle style) =>
+        TextPainter(text: TextSpan(text: upper, style: style), textDirection: TextDirection.ltr)..layout();
+
+    final haloPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = halo * 2
+      ..strokeJoin = StrokeJoin.miter
+      ..color = isFocused ? _labelFocusHalo : _labelHalo;
+    final back = painter(_labelStyle(size, m.fontWeight, spacing, m.color, foreground: haloPaint));
+    final front = painter(_labelStyle(size, m.fontWeight, spacing, isFocused ? _labelFocus : m.color));
+
+    final w = (front.width + halo * 2).ceil();
+    final h = (front.height + halo * 2).ceil();
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    final fontSizePx = metrics.effectiveFontSizeDp * dpr;
-
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text.toUpperCase(),
-        style: TextStyle(
-          fontFamily: 'Silkscreen',
-          fontFamilyFallback: const ['Monocraft'],
-          fontSize: fontSizePx,
-          fontWeight: metrics.fontWeight,
-          color: const Color(0xFF3E1F0A),
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    final textW = tp.width;
-    final textH = tp.height;
-    final padH = metrics.padHDp * dpr;
-    final padV = metrics.padVDp * dpr;
-    final strokeWidth =
-        math.max(1.0, (metrics.outlineDp * dpr).roundToDouble());
-    final underlineH = (metrics.underlineDp * dpr).roundToDouble();
-    final w = (textW + padH * 2).ceilToDouble();
-    final h = (textH + padV * 2 + underlineH).ceilToDouble();
-
-    final rect = Rect.fromLTWH(0, 0, w, h);
-
-    // Background badge fill: cream (#FFF8E1) or gold (#FFB703) when focused
-    final bgPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = isFocused ? const Color(0xFFFFB703) : const Color(0xFFFFF8E1);
-    canvas.drawRect(rect, bgPaint);
-
-    // Crisp woodDeep stroke (#3E1F0A) on whole device pixels
-    final borderPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..color = const Color(0xFF3E1F0A);
-    canvas.drawRect(rect.deflate(strokeWidth / 2), borderPaint);
-
-    // Pixel text inside
-    tp.paint(canvas, Offset(padH, padV));
-
-    // Clickable pixel underline indicator at bottom
-    final underlinePaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = isFocused ? const Color(0xFF8B5E00) : const Color(0xFF8B6B4A);
-    canvas.drawRect(
-      Rect.fromLTWH(padH, h - padV - underlineH, textW, underlineH),
-      underlinePaint,
-    );
-
-    final picture = recorder.endRecording();
-    final img = await picture.toImage(w.toInt(), h.toInt());
-    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-    return byteData?.buffer.asUint8List();
+    final at = Offset(halo, halo);
+    back.paint(canvas, at);
+    front.paint(canvas, at);
+    final img = await recorder.endRecording().toImage(w, h);
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    return bytes?.buffer.asUint8List();
   } catch (_) {
     return null;
   }

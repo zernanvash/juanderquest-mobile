@@ -394,9 +394,10 @@ void main() {
       // Top banner shows and FAB is hidden while posting
       expect(find.byKey(const ValueKey('map_post_spot_banner')), findsOneWidget);
       expect(find.text('POST A DESTINATION SPOT'), findsOneWidget);
+      // The pin-aim card below already says how to aim; the banner is one line.
       expect(
         find.text('Move the map so the crosshair is on the place.'),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.byKey(const ValueKey('map_post_spot_fab')), findsNothing);
 
