@@ -186,6 +186,26 @@ Future<Uint8List?> rasterizeRoutePointMarker({
         break;
     }
 
+    // Owner 2026-11-10: "i dont like the look of the A and B with textbox
+    // background ... simpler, i dont want the A and B text either". Start and
+    // end are plain square dots with a cream edge: blue = start, red with a
+    // cream centre = destination. No letters.
+    if (kind == JdqRoutePointKind.start || kind == JdqRoutePointKind.end) {
+      final end = kind == JdqRoutePointKind.end;
+      final side = ((end ? 16.0 : 12.0) * dpr).roundToDouble();
+      final edge = math.max(1.0, (2.0 * dpr).roundToDouble());
+      canvas.drawRect(Rect.fromLTWH(0, 0, side, side), Paint()..color = const Color(0xFFFFF8E1));
+      canvas.drawRect(Rect.fromLTWH(edge, edge, side - edge * 2, side - edge * 2), Paint()..color = bg);
+      if (end) {
+        final dot = (4.0 * dpr).roundToDouble();
+        canvas.drawRect(
+            Rect.fromLTWH((side - dot) / 2, (side - dot) / 2, dot, dot), Paint()..color = const Color(0xFFFFF8E1));
+      }
+      final img = await recorder.endRecording().toImage(side.round(), side.round());
+      final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+      return bytes?.buffer.asUint8List();
+    }
+
     // Outer 1.5dp wood casing
     final borderThickness = math.max(1.0, (1.5 * dpr).roundToDouble());
     final outerPaint = Paint()
