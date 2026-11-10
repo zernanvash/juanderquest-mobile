@@ -58,6 +58,9 @@ import 'package:juanderquest_app/core/services/push_service.dart';
 import 'package:juanderquest_app/features/about/screens/about_screen.dart';
 import 'package:juanderquest_app/features/navigation/models/route_model.dart';
 import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
+import 'package:juanderquest_app/features/navigation/widgets/adventure_bottom_bar.dart';
+import 'package:juanderquest_app/features/navigation/widgets/adventure_top_banner.dart';
+import 'package:juanderquest_app/features/trail/models/trail_models.dart';
 import 'package:juanderquest_app/features/ar_experience/core/ar_hunt.dart';
 import 'package:juanderquest_app/features/ar_experience/core/heading_fusion.dart';
 import 'package:juanderquest_app/features/ar_experience/screens/ar_diagnostics_screen.dart';
@@ -1113,6 +1116,150 @@ void main() {
         1.4,
       );
     });
+
+    for (final size in const [Size(320, 568), Size(568, 320)]) {
+      testWidgets(
+          'AdventureTopBanner (collapsed) does not overflow at ${size.width.toInt()}x${size.height.toInt()} with 2x text',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: SafeArea(
+              child: SingleChildScrollView(
+                child: AdventureTopBanner(
+                  currentManeuver: const RouteManeuver(
+                    instruction:
+                        'Turn right onto Lingayen-Dagupan Diversion Rd',
+                    distanceMeters: 4500,
+                    timeSeconds: 300,
+                    streetName: 'Diversion Rd',
+                  ),
+                  distanceToManeuverM: 250,
+                  upcomingManeuvers: const [],
+                  isExpanded: false,
+                  onToggleExpand: () {},
+                ),
+              ),
+            ),
+          ),
+          size,
+          2.0,
+        );
+      });
+
+      testWidgets(
+          'AdventureTopBanner (expanded) does not overflow at ${size.width.toInt()}x${size.height.toInt()} with 2x text',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: SafeArea(
+              child: SingleChildScrollView(
+                child: AdventureTopBanner(
+                  currentManeuver: const RouteManeuver(
+                    instruction:
+                        'Turn right onto Lingayen-Dagupan Diversion Rd',
+                    distanceMeters: 4500,
+                    timeSeconds: 300,
+                    streetName: 'Diversion Rd',
+                  ),
+                  distanceToManeuverM: 250,
+                  upcomingManeuvers: const [
+                    RouteManeuver(
+                      instruction: 'Continue straight for 3 km',
+                      distanceMeters: 3000,
+                      timeSeconds: 240,
+                    ),
+                    RouteManeuver(
+                      instruction: 'Turn left onto Capitol Blvd',
+                      distanceMeters: 800,
+                      timeSeconds: 90,
+                    ),
+                    RouteManeuver(
+                      instruction: 'Arrive at Provincial Capitol',
+                      distanceMeters: 100,
+                      timeSeconds: 15,
+                    ),
+                  ],
+                  isExpanded: true,
+                  onToggleExpand: () {},
+                ),
+              ),
+            ),
+          ),
+          size,
+          2.0,
+        );
+      });
+
+      testWidgets(
+          'AdventureBottomBar (with CHECK IN) does not overflow at ${size.width.toInt()}x${size.height.toInt()} with 2x text',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: SafeArea(
+              child: SingleChildScrollView(
+                child: AdventureBottomBar(
+                  summary: const RouteSummary(
+                    distanceKm: 18.5,
+                    durationSeconds: 1200,
+                    durationFormatted: '20 min',
+                    costing: TravelCosting.auto,
+                    hasCrowdDiversion: false,
+                    engine: 'valhalla',
+                  ),
+                  selectedTrail: const TrailDetail(
+                    id: 't-1',
+                    slug: 'trail-1',
+                    title: 'Heritage Trail',
+                    tagline: 'Coastal historic monuments',
+                    tier: TrailTier.starter,
+                    theme: 'history',
+                    intro: 'Heritage walk',
+                    rewardPoints: 50,
+                    totalMinutes: 60,
+                    totalKm: 10.0,
+                    stopCount: 3,
+                    municipalities: ['Lingayen'],
+                    unlockRule: UnlockRule(type: 'free'),
+                    isUnlocked: true,
+                    stops: [],
+                    preview: [],
+                  ),
+                  nextStop: const TrailStop(
+                    position: 2,
+                    spotId: 's-2',
+                    name: 'Veterans Memorial Beach',
+                    municipality: 'Lingayen',
+                    category: 'history',
+                    lat: 16.03,
+                    lng: 120.24,
+                    narration: '',
+                    arriveOffsetMin: 20,
+                    dwellMin: 15,
+                    legMinutes: 10,
+                    legKm: 3.0,
+                    checkinRadiusM: 50.0,
+                    checkedIn: false,
+                  ),
+                  totalStops: 3,
+                  currentStopNumber: 2,
+                  isWithinCheckinRadius: true,
+                  currentSpeedMs: 1.2,
+                  isCheckingIn: false,
+                  onCheckIn: () {},
+                  onOpenSteps: () {},
+                  onEnd: () {},
+                ),
+              ),
+            ),
+          ),
+          size,
+          2.0,
+        );
+      });
+    }
 
     for (final size in const [Size(320, 568), Size(568, 320)]) {
       for (final phase in ArHuntPhase.values) {
