@@ -297,9 +297,10 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         // Multi-stop route using POST /api/v1/routes (WP-1 fix)
         final response = await _apiClient.dio.post(
           '/routes',
+          // The server's body: start/end objects (not "lat,lng" strings).
           data: {
-            'origin': '${originCoord.latitude},${originCoord.longitude}',
-            'destination': '${dest.lat},${dest.lng}',
+            'start': {'lat': originCoord.latitude, 'lng': originCoord.longitude},
+            'end': {'lat': dest.lat, 'lng': dest.lng},
             'costing': state.costing.key,
             'avoid_congested': state.avoidCongested,
             'via': viaPoints,
@@ -311,8 +312,10 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         final response = await _apiClient.dio.get(
           '/routes',
           queryParameters: {
-            'origin': '${originCoord.latitude},${originCoord.longitude}',
-            'destination': '${dest.lat},${dest.lng}',
+            'start_lat': originCoord.latitude,
+            'start_lng': originCoord.longitude,
+            'end_lat': dest.lat,
+            'end_lng': dest.lng,
             'costing': state.costing.key,
             'avoid_congested': state.avoidCongested,
           },

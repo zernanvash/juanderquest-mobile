@@ -9,6 +9,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../trail/models/trail_models.dart';
 import '../../trail/services/trails_api.dart';
+import 'trail_route_thumbnail.dart';
 
 class TrailOfferSheet extends ConsumerStatefulWidget {
   final NearbyTrail trail;
@@ -276,6 +277,15 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                       Text(
                         _detail!.intro,
                         style: PixelType.body(context, color: PixelPalette.ink),
+                      ),
+                      SizedBox(height: grid.px(2)),
+                    ],
+
+                    // Route shape (only when the stop coordinates are known)
+                    if (isUnlocked && _detail!.stops.length >= 2) ...[
+                      TrailRouteThumbnail(
+                        key: const ValueKey('trail_offer_route_shape'),
+                        points: [for (final s in _detail!.stops) (s.lat, s.lng)],
                       ),
                       SizedBox(height: grid.px(2)),
                     ],
