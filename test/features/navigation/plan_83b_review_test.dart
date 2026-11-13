@@ -62,6 +62,7 @@ Position _at(double accuracy) => Position(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  unlockedDetailParses();
 
   Future<(NavigationNotifier, List<RequestOptions>)> setup(
       Map<String, dynamic> checkinData) async {
@@ -110,5 +111,42 @@ void main() {
     await n.checkInCurrentStop();
     expect(n.state.isTrailCompleted, isTrue);
     expect(n.state.trailCompletionReward, isNull);
+  });
+}
+
+// Owner phone 2026-11-13: an unlocked trail showed "type 'String' is not a
+// subtype of type 'num?' in type cast". The unlocked detail spreads the raw
+// trails row, so Postgres NUMERIC values (total_km, check-in distance and
+// accuracy) arrive as strings.
+void unlockedDetailParses() {
+  test('unlocked trail detail with numeric strings parses', () {
+    final d = TrailDetail.fromJson({
+      'id': 'coastal_wonders_trail',
+      'title': 'Coastal Wonders Trail',
+      'tier': 'starter',
+      'stop_count': 6,
+      'total_minutes': 435,
+      'total_km': '61.20',
+      'is_unlocked': true,
+      'story': {'intro': 'Sea and sand.'},
+      'stops': [
+        {
+          'position': 1,
+          'spot_id': 's1',
+          'name': 'Tondaligan Beach',
+          'lat': 16.07,
+          'lng': 120.33,
+          'leg_km': 0,
+          'checkin_radius_m': 80,
+          'checked_in': true,
+          'verified_at': '2026-11-13T02:00:00Z',
+          'distance_m': '12.40',
+          'accuracy_m': '8.00',
+        },
+      ],
+    });
+    expect(d.totalKm, 61.2);
+    expect(d.stops.single.distanceM, 12.4);
+    expect(d.stops.single.accuracyM, 8.0);
   });
 }

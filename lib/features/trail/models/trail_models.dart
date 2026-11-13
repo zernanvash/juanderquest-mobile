@@ -1,6 +1,10 @@
 import 'package:latlong2/latlong.dart';
 import '../../navigation/models/route_model.dart';
 
+/// Postgres NUMERIC columns arrive as strings (e.g. total_km "8.74" on an
+/// unlocked trail), so accept a number or a numeric string.
+num? _num(Object? v) => v is num ? v : (v is String ? num.tryParse(v) : null);
+
 enum TrailTier {
   starter('starter', 'Starter'),
   explorer('explorer', 'Explorer'),
@@ -36,8 +40,8 @@ class UnlockRule {
   factory UnlockRule.fromJson(Map<String, dynamic> json) {
     return UnlockRule(
       type: json['type']?.toString() ?? 'free',
-      pricePoints: (json['price_points'] as num?)?.toInt(),
-      minLevel: (json['min_level'] as num?)?.toInt(),
+      pricePoints: _num(json['price_points'])?.toInt(),
+      minLevel: _num(json['min_level'])?.toInt(),
     );
   }
 }
@@ -96,18 +100,18 @@ class NearbyTrail {
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      stopCount: (json['stop_count'] as num?)?.toInt() ?? 0,
-      totalMinutes: (json['total_minutes'] as num?)?.toInt() ?? 0,
-      totalKm: (json['total_km'] as num?)?.toDouble() ?? 0.0,
+      stopCount: _num(json['stop_count'])?.toInt() ?? 0,
+      totalMinutes: _num(json['total_minutes'])?.toInt() ?? 0,
+      totalKm: _num(json['total_km'])?.toDouble() ?? 0.0,
       unlockRule: UnlockRule.fromJson(unlockMap),
       availableUntil: json['available_until'] != null
           ? DateTime.tryParse(json['available_until'].toString())
           : null,
       isUnlocked: json['is_unlocked'] == true,
-      rewardPoints: (json['reward_points'] as num?)?.toInt() ?? 0,
+      rewardPoints: _num(json['reward_points'])?.toInt() ?? 0,
       coverImageUrl: json['cover_image_url']?.toString(),
       passesHere: json['passes_here'] == true,
-      nearestKm: (json['nearest_km'] as num?)?.toDouble() ?? 0.0,
+      nearestKm: _num(json['nearest_km'])?.toDouble() ?? 0.0,
     );
   }
 }
@@ -177,22 +181,22 @@ class TrailStop {
 
   factory TrailStop.fromJson(Map<String, dynamic> json) {
     return TrailStop(
-      position: (json['position'] as num?)?.toInt() ?? 1,
+      position: _num(json['position'])?.toInt() ?? 1,
       spotId: json['spot_id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       municipality: json['municipality']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
-      lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
-      lng: (json['lng'] as num?)?.toDouble() ?? 0.0,
+      lat: _num(json['lat'])?.toDouble() ?? 0.0,
+      lng: _num(json['lng'])?.toDouble() ?? 0.0,
       narration: json['narration']?.toString() ?? '',
-      arriveOffsetMin: (json['arrive_offset_min'] as num?)?.toInt() ?? 0,
-      dwellMin: (json['dwell_min'] as num?)?.toInt() ?? 30,
-      legMinutes: (json['leg_minutes'] as num?)?.toInt() ?? 0,
-      legKm: (json['leg_km'] as num?)?.toDouble() ?? 0.0,
-      checkinRadiusM: (json['checkin_radius_m'] as num?)?.toDouble() ?? 50.0,
+      arriveOffsetMin: _num(json['arrive_offset_min'])?.toInt() ?? 0,
+      dwellMin: _num(json['dwell_min'])?.toInt() ?? 30,
+      legMinutes: _num(json['leg_minutes'])?.toInt() ?? 0,
+      legKm: _num(json['leg_km'])?.toDouble() ?? 0.0,
+      checkinRadiusM: _num(json['checkin_radius_m'])?.toDouble() ?? 50.0,
       checkedIn: json['checked_in'] == true,
-      distanceM: (json['distance_m'] as num?)?.toDouble(),
-      accuracyM: (json['accuracy_m'] as num?)?.toDouble(),
+      distanceM: _num(json['distance_m'])?.toDouble(),
+      accuracyM: _num(json['accuracy_m'])?.toDouble(),
     );
   }
 
@@ -253,15 +257,15 @@ class TrailDetail {
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      stopCount: (json['stop_count'] as num?)?.toInt() ?? 0,
-      totalMinutes: (json['total_minutes'] as num?)?.toInt() ?? 0,
-      totalKm: (json['total_km'] as num?)?.toDouble() ?? 0.0,
+      stopCount: _num(json['stop_count'])?.toInt() ?? 0,
+      totalMinutes: _num(json['total_minutes'])?.toInt() ?? 0,
+      totalKm: _num(json['total_km'])?.toDouble() ?? 0.0,
       unlockRule: UnlockRule.fromJson(unlockMap),
       availableUntil: json['available_until'] != null
           ? DateTime.tryParse(json['available_until'].toString())
           : null,
       isUnlocked: json['is_unlocked'] == true,
-      rewardPoints: (json['reward_points'] as num?)?.toInt() ?? 0,
+      rewardPoints: _num(json['reward_points'])?.toInt() ?? 0,
       intro: json['intro']?.toString() ??
           (json['story'] is Map ? (json['story']['intro']?.toString() ?? '') : ''),
       stops: (json['stops'] as List<dynamic>?)
@@ -353,14 +357,14 @@ class DetourArea {
     final c = json['center'] as Map<String, dynamic>? ?? {};
     return DetourArea(
       municipality: json['municipality']?.toString() ?? '',
-      detourKm: (json['detour_km'] as num?)?.toDouble() ?? 0.0,
-      extraMinutes: (json['extra_minutes'] as num?)?.toInt() ?? 0,
-      score: (json['score'] as num?)?.toDouble() ?? 0.0,
+      detourKm: _num(json['detour_km'])?.toDouble() ?? 0.0,
+      extraMinutes: _num(json['extra_minutes'])?.toInt() ?? 0,
+      score: _num(json['score'])?.toDouble() ?? 0.0,
       center: LatLng(
-        (c['lat'] as num?)?.toDouble() ?? 0.0,
-        (c['lng'] as num?)?.toDouble() ?? 0.0,
+        _num(c['lat'])?.toDouble() ?? 0.0,
+        _num(c['lng'])?.toDouble() ?? 0.0,
       ),
-      spotCount: (json['spot_count'] as num?)?.toInt() ?? 0,
+      spotCount: _num(json['spot_count'])?.toInt() ?? 0,
       highlights: (json['highlights'] as List<dynamic>?)
               ?.map((h) => DetourHighlight.fromJson(h as Map<String, dynamic>))
               .toList() ??
