@@ -724,12 +724,17 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                       child: AdventureArriveOverlay(
                         checkedInStop: navState.lastCheckedInStop,
                         nextStop: navState.nextUncheckedStop,
+                        stops: navState.selectedTrail?.stops ?? const [],
                         totalStops: navState.totalTrailStops,
                         isTrailCompleted: navState.isTrailCompleted,
                         trailTitle: navState.selectedTrail?.title,
                         trailRewardPoints: navState.trailCompletionReward,
                         hasArrivedDirect: navState.hasArrivedDirect,
                         destinationName: widget.destination.name,
+                        tripMinutes: route != null
+                            ? (route.summary.durationSeconds / 60).ceil()
+                            : null,
+                        tripKm: route?.summary.distanceKm,
                         onContinueCheckIn: () =>
                             unawaited(notifier.continueAfterCheckIn()),
                         onDone: () {
