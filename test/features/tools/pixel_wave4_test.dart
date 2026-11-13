@@ -442,7 +442,6 @@ void main() {
         ('settings_updates', '/settings/updates'),
         ('settings_developer', '/settings/developer'),
         ('settings_about', '/about'),
-        ('settings_governance', '/vote'),
       ]) {
         await _pump(tester, const SettingsScreen());
         final tile = find.byKey(ValueKey(entry.$1));

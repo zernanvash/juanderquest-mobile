@@ -91,8 +91,8 @@ class SettingsScreen extends ConsumerWidget {
                               icon: 'W',
                               title: 'Web3 Wallet',
                               subtitle: user?.hasBoundWallet == true
-                                  ? 'Linked ${user!.formattedWalletAddress}'
-                                  : 'Off-chain demo account · Tap to link',
+                                  ? 'Linked ${user!.formattedWalletAddress} · Polygon Amoy testnet · not real money'
+                                  : 'Polygon Amoy testnet · not real money',
                               onTap: () => context.push('/wallet/connect'),
                             ),
                           ]),
@@ -166,14 +166,6 @@ class SettingsScreen extends ConsumerWidget {
                               subtitle:
                                   'Universidad de Dagupan capstone authors',
                               onTap: () => context.push('/about'),
-                            ),
-                            _SettingsTile(
-                              key: const ValueKey('settings_governance'),
-                              icon: 'G',
-                              title: 'Governance prototype',
-                              subtitle:
-                                  'Separate from JuanChoice community voting',
-                              onTap: () => context.push('/vote'),
                             ),
                           ]),
                           SizedBox(height: grid.px(4)),

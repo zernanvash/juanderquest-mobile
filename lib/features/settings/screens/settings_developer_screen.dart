@@ -189,6 +189,16 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                             onTap: () => context.push('/settings/pixel-lab'),
                           ),
                         ],
+                        SizedBox(height: grid.px(2)),
+                        _link(
+                          context,
+                          grid,
+                          key: const ValueKey('settings_governance'),
+                          title: 'Governance prototype',
+                          subtitle:
+                              'Separate from JuanChoice community voting',
+                          onTap: () => context.push('/vote'),
+                        ),
                       ],
                     ),
                   ),

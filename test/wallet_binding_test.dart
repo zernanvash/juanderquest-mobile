@@ -103,7 +103,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Web3 Wallet'), findsOneWidget);
-      expect(find.text('Off-chain demo account · Tap to link'), findsOneWidget);
+      expect(find.text('Polygon Amoy testnet · not real money'), findsOneWidget);
     });
 
     testWidgets('renders verified wallet badge and address when traveler has bound wallet', (tester) async {
@@ -135,7 +135,12 @@ void main() {
       await tester.pump();
 
       expect(find.text('Web3 Wallet'), findsOneWidget);
-      expect(find.text('Linked 0x71C8...0E40'), findsOneWidget);
+      expect(
+        find.text(
+          'Linked 0x71C8...0E40 · Polygon Amoy testnet · not real money',
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

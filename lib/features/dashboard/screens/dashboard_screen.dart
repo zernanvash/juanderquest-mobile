@@ -829,6 +829,7 @@ class _ExplorerMenuGrid extends ConsumerWidget {
                   icon: const PixelMicro(PixelMicroArt.coin, scale: 2),
                   title: 'WEB3 WALLET',
                   subtitle: walletPreview,
+                  chipLabel: 'Testnet',
                   onTap: () => context.push('/wallet/connect'),
                 ),
               ),
@@ -969,6 +970,7 @@ class _MenuTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.chipLabel,
   });
 
   final Key tileKey;
@@ -976,6 +978,7 @@ class _MenuTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final String? chipLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -995,7 +998,16 @@ class _MenuTile extends StatelessWidget {
               children: [
                 icon,
                 const Spacer(),
-                const PixelMicro(PixelMicroArt.sparkle, scale: 1),
+                if (chipLabel != null)
+                  Flexible(
+                    child: PixelChip(
+                      chipLabel!,
+                      style: PixelBoxStyle.parchment,
+                      textColor: PixelPalette.woodMid,
+                    ),
+                  )
+                else
+                  const PixelMicro(PixelMicroArt.sparkle, scale: 1),
               ],
             ),
             SizedBox(height: grid.px(1)),
