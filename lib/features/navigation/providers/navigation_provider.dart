@@ -50,6 +50,7 @@ class NavigationState {
   final List<DetourArea> availableDetours;
   final bool isLoadingRoute;
   final bool isLoadingTrails;
+  final String? trailsError;
   final bool isLocating;
   final bool isFindingGps;
   final String? error;
@@ -84,6 +85,7 @@ class NavigationState {
     this.availableDetours = const [],
     this.isLoadingRoute = false,
     this.isLoadingTrails = false,
+    this.trailsError,
     this.isLocating = false,
     this.isFindingGps = false,
     this.error,
@@ -176,6 +178,7 @@ class NavigationState {
     List<DetourArea>? availableDetours,
     bool? isLoadingRoute,
     bool? isLoadingTrails,
+    String? Function()? trailsError,
     bool? isLocating,
     bool? isFindingGps,
     String? Function()? error,
@@ -211,6 +214,7 @@ class NavigationState {
       availableDetours: availableDetours ?? this.availableDetours,
       isLoadingRoute: isLoadingRoute ?? this.isLoadingRoute,
       isLoadingTrails: isLoadingTrails ?? this.isLoadingTrails,
+      trailsError: trailsError != null ? trailsError() : this.trailsError,
       isLocating: isLocating ?? this.isLocating,
       isFindingGps: isFindingGps ?? this.isFindingGps,
       error: error != null ? error() : this.error,
@@ -249,8 +253,13 @@ class NavigationState {
     );
   }
 
-  /// Builds vector route overlay for JdqMap (Plan 83 WP-2 / 83d)
-  JdqRouteOverlay? get routeOverlay {
+  /// Builds vector route overlay for JdqMap (Plan 83 WP-2 / 83d / 83e)
+  JdqRouteOverlay? get routeOverlay => buildRouteOverlay();
+
+  JdqRouteOverlay? buildRouteOverlay({
+    bool startPulsed = false,
+    bool puckPulsed = false,
+  }) {
     if (route == null || route!.coordinates.isEmpty) return null;
 
     final points = <JdqRoutePoint>[];
@@ -260,10 +269,12 @@ class NavigationState {
         point: effectiveOriginPoint,
         label: 'A',
         kind: JdqRoutePointKind.start,
+        isPulsed: startPulsed,
       ));
     }
 
     // If trail is active: draw stops 1..N (no end marker on top of last shield)
+    final nextStopPos = nextUncheckedStop?.position;
     if (selectedTrail != null && selectedTrail!.stops.isNotEmpty) {
       for (final stop in selectedTrail!.stops) {
         points.add(JdqRoutePoint(
@@ -271,6 +282,7 @@ class NavigationState {
           label: '${stop.position}',
           kind:
               stop.checkedIn ? JdqRoutePointKind.done : JdqRoutePointKind.stop,
+          isPulsed: !stop.checkedIn && stop.position == nextStopPos,
         ));
       }
     } else {
@@ -299,6 +311,7 @@ class NavigationState {
         bearing: currentPosition!.speed > 1.0 && currentPosition!.heading >= 0
             ? currentPosition!.heading
             : 0.0,
+        isPulsed: puckPulsed,
       ));
     }
 
@@ -314,7 +327,7 @@ class NavigationState {
     return JdqRouteOverlay(
       line: activeLine,
       points: points,
-      degraded: route!.isStraightLineFallback,
+      degraded: route!.isStraightLineFallback || isLoadingRoute,
       color: isTrailOrQuiet
           ? const Color(0xFF2D6A4F) // Forest emerald
           : const Color(0xFF0284C7), // Sky route blue
@@ -623,28 +636,33 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
   /// Fetch nearby published trails and corridor detours
   Future<void> fetchNearbyTrails() async {
-    state = state.copyWith(isLoadingTrails: true);
+    state = state.copyWith(isLoadingTrails: true, trailsError: () => null);
     try {
       final dest = state.destination;
-      final trailsFuture = _trailsApi.fetchTrailsNear(
-        lat: dest.lat,
-        lng: dest.lng,
-      );
+      String? loadError;
+      final trailsFuture = _trailsApi
+          .fetchTrailsNear(
+            lat: dest.lat,
+            lng: dest.lng,
+          )
+          .catchError((Object e) {
+            loadError = TrailsApi.extractErrorMessage(e);
+            return <NearbyTrail>[];
+          });
 
-      final tripPlanFuture = _trailsApi.planTrip(
-        start: state.effectiveOriginPoint,
-        end: dest.point,
-        costing: state.costing.key,
-        avoidCongested: state.avoidCongested,
-      );
+      final tripPlanFuture = _trailsApi
+          .planTrip(
+            start: state.effectiveOriginPoint,
+            end: dest.point,
+            costing: state.costing.key,
+            avoidCongested: state.avoidCongested,
+          )
+          .catchError((_) => const TripPlan(
+                baselineRoute: RouteModel.empty(),
+                detourAreas: [],
+              ));
 
-      final results = await Future.wait([
-        trailsFuture.catchError((_) => <NearbyTrail>[]),
-        tripPlanFuture.catchError((_) => const TripPlan(
-              baselineRoute: RouteModel.empty(),
-              detourAreas: [],
-            )),
-      ]);
+      final results = await Future.wait([trailsFuture, tripPlanFuture]);
 
       final trails = results[0] as List<NearbyTrail>;
       final plan = results[1] as TripPlan;
@@ -653,10 +671,14 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         nearbyTrails: trails,
         availableDetours: plan.detourAreas,
         isLoadingTrails: false,
+        trailsError: () => loadError,
       );
     } catch (e) {
       debugPrint('[Navigation] Note loading trails/detours: $e');
-      state = state.copyWith(isLoadingTrails: false);
+      state = state.copyWith(
+        isLoadingTrails: false,
+        trailsError: () => TrailsApi.extractErrorMessage(e),
+      );
     }
   }
 
@@ -738,10 +760,38 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   }
 
   /// Select a chosen trail (from TrailOfferSheet)
+  static NearbyTrail _asUnlocked(NearbyTrail t) => NearbyTrail(
+        id: t.id,
+        slug: t.slug,
+        title: t.title,
+        tagline: t.tagline,
+        tier: t.tier,
+        theme: t.theme,
+        municipalities: t.municipalities,
+        stopCount: t.stopCount,
+        totalMinutes: t.totalMinutes,
+        totalKm: t.totalKm,
+        unlockRule: t.unlockRule,
+        availableUntil: t.availableUntil,
+        isUnlocked: true,
+        rewardPoints: t.rewardPoints,
+        coverImageUrl: t.coverImageUrl,
+        passesHere: t.passesHere,
+        nearestKm: t.nearestKm,
+      );
+
   void selectTrail(TrailDetail trail) {
     state = state.copyWith(
       selectedTrail: () => trail,
       isDirectRoute: false,
+      // A trail unlocked in the offer sheet must stop looking locked in the
+      // carousel, or its button keeps saying CHOOSE TRAIL instead of START.
+      nearbyTrails: trail.isUnlocked
+          ? [
+              for (final t in state.nearbyTrails)
+                t.id == trail.id && !t.isUnlocked ? _asUnlocked(t) : t,
+            ]
+          : null,
     );
     fetchRoute();
   }

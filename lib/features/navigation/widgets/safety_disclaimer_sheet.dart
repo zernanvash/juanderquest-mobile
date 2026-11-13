@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
@@ -54,6 +55,7 @@ class SafetyDisclaimerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
+    final reduce = MediaQuery.disableAnimationsOf(context);
     return Container(
       decoration: const BoxDecoration(
         color: PixelPalette.paper,
@@ -63,16 +65,40 @@ class SafetyDisclaimerSheet extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: EdgeInsets.all(grid.px(3)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              color: PixelPalette.wood,
+              padding: EdgeInsets.symmetric(
+                horizontal: grid.px(2),
+                vertical: grid.px(1.5),
+              ),
+              child: Row(
                 children: [
-                  const PixelChip('SAFETY FIRST', style: PixelBoxStyle.gold),
-                  const Spacer(),
+                  SizedBox(
+                    width: 32,
+                    height: 48,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: reduce
+                          ? PixelSprite(DesignerArt.juanIdle.frames.first,
+                              scale: 2)
+                          : const PixelAnimation(DesignerArt.juanIdle,
+                              scale: 2),
+                    ),
+                  ),
+                  SizedBox(width: grid.px(1.5)),
+                  Expanded(
+                    child: Text(
+                      'SAFETY FIRST',
+                      style: PixelType.title(
+                        context,
+                        color: PixelPalette.paper,
+                      ),
+                    ),
+                  ),
                   PixelButton(
                     key: const ValueKey('nav_safety_close'),
                     label: 'X',
@@ -81,20 +107,29 @@ class SafetyDisclaimerSheet extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: grid.px(2)),
-              Text(
-                'Let a passenger handle the phone while driving. Keep your eyes on the road.',
-                style: PixelType.body(context, color: PixelPalette.woodDeep),
+            ),
+            Padding(
+              padding: EdgeInsets.all(grid.px(3)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Let a passenger handle the phone while driving. Keep your eyes on the road.',
+                    style:
+                        PixelType.body(context, color: PixelPalette.woodDeep),
+                  ),
+                  SizedBox(height: grid.px(3)),
+                  PixelButton(
+                    key: const ValueKey('nav_safety_agree'),
+                    label: 'I UNDERSTAND · START',
+                    variant: PixelButtonVariant.primary,
+                    onPressed: () => Navigator.of(context).pop(true),
+                  ),
+                ],
               ),
-              SizedBox(height: grid.px(3)),
-              PixelButton(
-                key: const ValueKey('nav_safety_agree'),
-                label: 'I UNDERSTAND · START',
-                variant: PixelButtonVariant.primary,
-                onPressed: () => Navigator.of(context).pop(true),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,14 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../core/pixel/pixel_box.dart';
-import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../trail/models/trail_models.dart';
 import '../models/route_model.dart';
+import 'trail_tracker_bar.dart';
 
-class AdventureBottomBar extends StatelessWidget {
+class AdventureBottomBar extends StatefulWidget {
   final RouteSummary summary;
   final TrailDetail? selectedTrail;
   final TrailStop? nextStop;
@@ -52,6 +53,55 @@ class AdventureBottomBar extends StatelessWidget {
 
   bool get isMovingTooFast => currentSpeedMs > 3.0;
 
+  @override
+  State<AdventureBottomBar> createState() => _AdventureBottomBarState();
+}
+
+class _AdventureBottomBarState extends State<AdventureBottomBar> {
+  Timer? _blinkTimer;
+  bool _bevelRaised = true;
+
+  bool get _shouldBlinkCheckIn {
+    return widget.selectedTrail != null &&
+        !widget.isTrailCompleted &&
+        widget.isWithinCheckinRadius &&
+        widget.nextStop != null &&
+        !widget.isMovingTooFast &&
+        !widget.isCheckingIn;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncBlinkTimer();
+  }
+
+  @override
+  void didUpdateWidget(AdventureBottomBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncBlinkTimer();
+  }
+
+  void _syncBlinkTimer() {
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    if (_shouldBlinkCheckIn && !reduce) {
+      _blinkTimer ??= Timer.periodic(const Duration(milliseconds: 500), (_) {
+        if (!mounted) return;
+        setState(() => _bevelRaised = !_bevelRaised);
+      });
+    } else {
+      _blinkTimer?.cancel();
+      _blinkTimer = null;
+      _bevelRaised = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _blinkTimer?.cancel();
+    super.dispose();
+  }
+
   String _formatArriveTime(int secondsFromNow) {
     final eta = DateTime.now().add(Duration(seconds: secondsFromNow));
     final hour24 = eta.hour;
@@ -71,14 +121,22 @@ class AdventureBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final isTrail = selectedTrail != null;
+    final isTrail = widget.selectedTrail != null;
+    final nextStop = widget.nextStop;
+    final isTrailCompleted = widget.isTrailCompleted;
+    final isWithinCheckinRadius = widget.isWithinCheckinRadius;
+    final isMovingTooFast = widget.isMovingTooFast;
+    final isCheckingIn = widget.isCheckingIn;
+    final distanceToStopMeters = widget.distanceToStopMeters;
 
-    final remMeters = remainingDistanceMeters ?? (summary.distanceKm * 1000.0);
+    final remMeters =
+        widget.remainingDistanceMeters ?? (widget.summary.distanceKm * 1000.0);
     final remKm = remMeters / 1000.0;
-    final remSec = remainingDurationSeconds ?? summary.durationSeconds;
+    final remSec =
+        widget.remainingDurationSeconds ?? widget.summary.durationSeconds;
     final remMins = (remSec / 60).ceil().clamp(0, 9999);
     final arriveText = 'ARRIVE ${_formatArriveTime(remSec)}';
-    final subLine = isDegraded
+    final subLine = widget.isDegraded
         ? 'ESTIMATE · ${remKm.toStringAsFixed(0)} KM'
         : '$remMins MIN · ${remKm.toStringAsFixed(1)} KM';
 
@@ -100,19 +158,28 @@ class AdventureBottomBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Trail stop strip (when on a trail)
+              // Trail stop strip with TrailTrackerBar (when on a trail)
               if (isTrail && !isTrailCompleted && nextStop != null) ...[
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    PixelChip(
-                      'STOP $currentStopNumber OF $totalStops',
-                      style: PixelBoxStyle.gold,
+                    TrailTrackerBar(
+                      key: const ValueKey('nav_trail_tracker'),
+                      stops: widget.selectedTrail!.stops,
+                      nextStopPosition: nextStop.position,
+                    ),
+                    SizedBox(width: grid.px(1)),
+                    Text(
+                      'STOP ${widget.currentStopNumber} OF ${widget.totalStops}',
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.woodDeep,
+                      ).copyWith(fontWeight: FontWeight.w700),
                     ),
                     SizedBox(width: grid.px(1)),
                     Expanded(
                       child: Text(
-                        nextStop!.name.toUpperCase(),
+                        nextStop.name.toUpperCase(),
                         style: PixelType.body(
                           context,
                           color: PixelPalette.ink,
@@ -124,7 +191,7 @@ class AdventureBottomBar extends StatelessWidget {
                     if (distanceToStopMeters != null) ...[
                       SizedBox(width: grid.px(1)),
                       Text(
-                        _formatMeters(distanceToStopMeters!),
+                        _formatMeters(distanceToStopMeters),
                         style: PixelType.small(
                           context,
                           color: PixelPalette.slate,
@@ -143,8 +210,9 @@ class AdventureBottomBar extends StatelessWidget {
                   nextStop != null) ...[
                 InkWell(
                   key: const ValueKey('nav_check_in_button'),
-                  onTap:
-                      (isMovingTooFast || isCheckingIn) ? null : onCheckIn,
+                  onTap: (isMovingTooFast || isCheckingIn)
+                      ? null
+                      : widget.onCheckIn,
                   child: Container(
                     constraints: const BoxConstraints(minHeight: 64),
                     padding: const EdgeInsets.symmetric(
@@ -155,16 +223,29 @@ class AdventureBottomBar extends StatelessWidget {
                       color: isMovingTooFast
                           ? PixelPalette.parchment
                           : PixelPalette.gold,
-                      border: const Border.fromBorderSide(
-                        BorderSide(color: PixelPalette.ink, width: 2),
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: PixelPalette.ink,
-                          offset: Offset(3, 3),
-                          blurRadius: 0,
-                        ),
-                      ],
+                      border: (!isMovingTooFast && !isCheckingIn && _bevelRaised)
+                          ? const Border(
+                              top: BorderSide(
+                                  color: PixelPalette.sunLight, width: 3),
+                              left: BorderSide(
+                                  color: PixelPalette.sunLight, width: 3),
+                              right: BorderSide(
+                                  color: PixelPalette.ink, width: 3),
+                              bottom: BorderSide(
+                                  color: PixelPalette.ink, width: 3),
+                            )
+                          : const Border.fromBorderSide(
+                              BorderSide(color: PixelPalette.ink, width: 2),
+                            ),
+                      boxShadow: (!isMovingTooFast && !isCheckingIn && _bevelRaised)
+                          ? const [
+                              BoxShadow(
+                                color: PixelPalette.ink,
+                                offset: Offset(3, 3),
+                                blurRadius: 0,
+                              ),
+                            ]
+                          : const [],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -235,7 +316,7 @@ class AdventureBottomBar extends StatelessWidget {
                   SizedBox(width: grid.px(2)),
                   InkWell(
                     key: const ValueKey('nav_end_adventure'),
-                    onTap: onEnd,
+                    onTap: widget.onEnd,
                     child: Container(
                       width: 88,
                       height: 56,
