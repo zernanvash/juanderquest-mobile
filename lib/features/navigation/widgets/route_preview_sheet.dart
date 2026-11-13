@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -13,6 +14,31 @@ import '../models/route_model.dart';
 import '../providers/navigation_provider.dart';
 import 'nav_pixel_art.dart';
 import 'route_map_thumbnail.dart';
+
+class NavCarouselHintPrefs {
+  static const key = 'nav_carousel_hint_seen_v1';
+  static const _storage = FlutterSecureStorage();
+
+  static Future<bool> seen() async {
+    try {
+      return await _storage.read(key: key) == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> markSeen() async {
+    try {
+      await _storage.write(key: key, value: 'true');
+    } catch (_) {}
+  }
+
+  static Future<void> reset() async {
+    try {
+      await _storage.delete(key: key);
+    } catch (_) {}
+  }
+}
 
 class RoutePreviewSheet extends StatefulWidget {
   final NavigationState navState;
@@ -48,10 +74,12 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
     with TickerProviderStateMixin {
   late final PageController _pageController;
   late final AnimationController _snapController;
+  late final AnimationController _nudgeController;
   int _centredPage = 0;
   Timer? _debounceTimer;
   bool _isOpen = false;
   bool _isDragging = false;
+  bool _nudgeDecided = false;
   double _height = 0;
   double _snapFrom = 0;
   double _snapTo = 0;
@@ -101,6 +129,49 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
           _height = _snapFrom + (_snapTo - _snapFrom) * t;
         });
       });
+    _nudgeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..addListener(_applyNudge);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_nudgeDecided) return;
+    _nudgeDecided = true;
+    if (!MediaQuery.disableAnimationsOf(context)) {
+      unawaited(_maybeStartNudge());
+    }
+  }
+
+  Future<void> _maybeStartNudge() async {
+    final seen = await NavCarouselHintPrefs.seen();
+    if (!mounted || seen) return;
+    final trails = _sortedTrails(widget.navState);
+    final hasGhost = widget.navState.isLoadingTrails ||
+        widget.navState.trailsError != null ||
+        trails.isEmpty;
+    final count = 1 + trails.length + (hasGhost ? 1 : 0);
+    if (count <= 1) return;
+    await NavCarouselHintPrefs.markSeen();
+    if (!mounted) return;
+    _nudgeController.forward();
+  }
+
+  void _applyNudge() {
+    if (!_pageController.hasClients) return;
+    final t = ((_nudgeController.value - 0.5) / 0.5).clamp(0.0, 1.0);
+    final stepped = (t * 6).floor() / 6;
+    _pageController.jumpTo(40 * math.sin(math.pi * stepped));
+  }
+
+  void _stopNudge() {
+    if (!_nudgeController.isAnimating) return;
+    _nudgeController.stop();
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(_centredPage);
+    }
   }
 
   @override
@@ -131,6 +202,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
   void dispose() {
     _debounceTimer?.cancel();
     _snapController.dispose();
+    _nudgeController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -214,9 +286,38 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
       _pageController.animateToPage(
         index,
         duration: const Duration(milliseconds: 160),
-        curve: Curves.linear,
+        curve: const _Stepped(4),
       );
     }
+  }
+
+  Widget _carouselArrow(bool back, int cardCount) {
+    final enabled = back ? _centredPage > 0 : _centredPage < cardCount - 1;
+    const icon = NavPixelIcon(NavPixelArt.arrowRightSmall, size: 16);
+    return Semantics(
+      button: true,
+      label: back ? 'Previous route' : 'Next route',
+      child: GestureDetector(
+        key: ValueKey(back ? 'nav_route_prev' : 'nav_route_next'),
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled
+            ? () {
+                _stopNudge();
+                _jumpToCard(_centredPage + (back ? -1 : 1));
+              }
+            : null,
+        child: SizedBox(
+          width: 44,
+          height: 32,
+          child: Center(
+            child: Opacity(
+              opacity: enabled ? 1.0 : 0.25,
+              child: back ? Transform.flip(flipX: true, child: icon) : icon,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   NearbyTrail? _centredLockedTrail(List<NearbyTrail> trails) {
@@ -549,12 +650,15 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                   // Swipeable Route Carousel (always visible in Option B)
                   SizedBox(
                     height: cardHeight,
-                    child: PageView.builder(
-                      key: const ValueKey('nav_route_carousel'),
-                      controller: _pageController,
-                      itemCount: cardCount,
-                      onPageChanged: (p) => _onPageChanged(p, sortedTrails),
-                      itemBuilder: (context, index) {
+                    child: Listener(
+                      onPointerDown: (_) => _stopNudge(),
+                      child: PageView.builder(
+                        key: const ValueKey('nav_route_carousel'),
+                        controller: _pageController,
+                        padEnds: false,
+                        itemCount: cardCount,
+                        onPageChanged: (p) => _onPageChanged(p, sortedTrails),
+                        itemBuilder: (context, index) {
                         final thumbSize = isShort ? 48.0 : 68.0;
                         if (index == 0) {
                           final detourCount = navState.selectedDetours.length;
@@ -632,19 +736,27 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                           ),
                         );
                       },
+                      ),
                     ),
                   ),
 
-                  // Swipe row (page squares; arrows added in Step 4)
+                  // Swipe row (arrows flanking page squares)
                   SizedBox(
                     height: swipeHeight,
-                    child: Center(
-                      child: _PageSquares(
-                        key: const ValueKey('nav_route_dots'),
-                        count: cardCount,
-                        current:
-                            _centredPage.clamp(0, math.max(0, cardCount - 1)),
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _carouselArrow(true, cardCount),
+                        Flexible(
+                          child: _PageSquares(
+                            key: const ValueKey('nav_route_dots'),
+                            count: cardCount,
+                            current: _centredPage.clamp(
+                                0, math.max(0, cardCount - 1)),
+                          ),
+                        ),
+                        _carouselArrow(false, cardCount),
+                      ],
                     ),
                   ),
 
