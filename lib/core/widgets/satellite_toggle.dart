@@ -1,39 +1,8 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/map_config.dart';
 import '../theme/app_colors.dart';
-
-/// Shared proxy-backed tile layer with flutter_map's native disk cache enabled.
-/// With [satellite], Esri World Imagery is drawn instead (straight from Esri).
-TileLayer buildBaseTileLayer({bool satellite = false}) => satellite
-    ? TileLayer(
-        key: const ValueKey('satellite_tiles'),
-        urlTemplate: MapConfig.satelliteTileUrl(),
-        userAgentPackageName: MapConfig.userAgentPackageName,
-        maxNativeZoom: MapConfig.maxNativeZoom,
-        maxZoom: MapConfig.maxZoom,
-      )
-    : TileLayer(
-        urlTemplate: MapConfig.tileUrl,
-        userAgentPackageName: MapConfig.userAgentPackageName,
-        maxNativeZoom: MapConfig.maxNativeZoom,
-        maxZoom: MapConfig.maxZoom,
-      );
-
-/// Shader-wrapped tile layer for the pixel map mode.
-Widget buildPixelBaseTileLayer({
-  required ui.FragmentShader shader,
-  bool satellite = false,
-}) {
-  return ImageFiltered(
-    imageFilter: ui.ImageFilter.shader(shader),
-    child: buildBaseTileLayer(satellite: satellite),
-  );
-}
 
 /// Map / Satellite choice, shared by every map for this app session.
 final satelliteModeProvider = StateProvider<bool>((ref) => false);
@@ -80,23 +49,4 @@ class SatelliteToggleButton extends ConsumerWidget {
       label: Text(on ? 'Map' : 'Satellite'),
     );
   }
-}
-
-/// Esri credit shown on flutter_map canvases while satellite imagery is drawn.
-class SatelliteAttribution extends StatelessWidget {
-  const SatelliteAttribution({super.key});
-
-  @override
-  Widget build(BuildContext context) => Align(
-        alignment: Alignment.bottomLeft,
-        child: Container(
-          margin: const EdgeInsets.all(4),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          color: Colors.white70,
-          child: const Text(MapConfig.satelliteAttribution,
-              style: TextStyle(fontSize: 9, color: Colors.black87),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
-        ),
-      );
 }

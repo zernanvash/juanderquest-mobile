@@ -20,7 +20,7 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/base_tile_layer.dart';
+import '../../../core/widgets/satellite_toggle.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../map/engine/jdq_map.dart';
 import '../../map/engine/jdq_map_canvas.dart';

@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'app/app.dart';
 import 'core/network/api_client.dart';
 import 'core/pixel/pixel_background.dart';
@@ -14,9 +13,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   PixelFonts.registerLicences();
   await PixelShaders.load();
-  BuiltInMapCachingProvider.getOrCreateInstance(
-    maxCacheSize: 200 * 1024 * 1024,
-  );
 
   // Catch any unhandled synchronous Flutter framework errors
   FlutterError.onError = (FlutterErrorDetails details) {

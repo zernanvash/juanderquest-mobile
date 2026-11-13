@@ -19,7 +19,7 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/pixel/pixel_theme.dart';
-import '../../../core/widgets/base_tile_layer.dart';
+import '../../../core/widgets/satellite_toggle.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
