@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
+import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
+import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
 import 'package:juanderquest_app/features/quests/builder/builder_models.dart';
 import 'package:juanderquest_app/features/quests/builder/widgets/task_settings_panel.dart';
 
@@ -22,7 +25,13 @@ void main() {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
+    // Plan 85e: the fence picker is a JdqMap now, so it needs the map providers.
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        jdqMapFactoryProvider.overrideWithValue(() => FakeJdqMap()),
+        mapStyleProvider.overrideWith((ref) async => '{}'),
+      ],
+      child: MaterialApp(
       theme: AppTheme.lightTheme,
       home: MediaQuery(
         data: MediaQueryData(size: size, textScaler: const TextScaler.linear(2)),
@@ -37,7 +46,7 @@ void main() {
           ),
         ),
       ),
-    ));
+    )));
     await tester.pump();
     expect(tester.takeException(), isNull);
   }
