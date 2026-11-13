@@ -44,23 +44,17 @@ class RoutePreviewSheet extends StatefulWidget {
   State<RoutePreviewSheet> createState() => _RoutePreviewSheetState();
 }
 
-class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
+class _RoutePreviewSheetState extends State<RoutePreviewSheet>
+    with TickerProviderStateMixin {
   late final PageController _pageController;
+  late final AnimationController _snapController;
   int _centredPage = 0;
   Timer? _debounceTimer;
-  bool _isCollapsed = false;
-  bool _didInitCollapse = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_didInitCollapse) {
-      _didInitCollapse = true;
-      if (MediaQuery.sizeOf(context).height < 360) {
-        _isCollapsed = true;
-      }
-    }
-  }
+  bool _isOpen = false;
+  bool _isDragging = false;
+  double _height = 0;
+  double _snapFrom = 0;
+  double _snapTo = 0;
 
   @override
   void initState() {
@@ -71,6 +65,15 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
       viewportFraction: 0.86,
       initialPage: initial,
     );
+    _snapController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 160),
+    )..addListener(() {
+        final t = const _Stepped(4).transform(_snapController.value);
+        setState(() {
+          _height = _snapFrom + (_snapTo - _snapFrom) * t;
+        });
+      });
   }
 
   @override
@@ -100,8 +103,40 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _snapController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _animateTo(double target,
+      {required bool open, required bool disableAnimations}) {
+    _isOpen = open;
+    if (disableAnimations) {
+      _snapController.stop();
+      setState(() => _height = target);
+      return;
+    }
+    _snapFrom = _height;
+    _snapTo = target;
+    _snapController.forward(from: 0);
+  }
+
+  void _drag(DragUpdateDetails d, double minH, double maxH) {
+    _snapController.stop();
+    _isDragging = true;
+    setState(() {
+      _height = (_height - d.delta.dy).clamp(minH, maxH);
+      _isOpen = _height > (minH + maxH) / 2;
+    });
+  }
+
+  void _dragEnd(
+      DragEndDetails d, double minH, double maxH, bool disableAnimations) {
+    _isDragging = false;
+    final v = d.primaryVelocity ?? 0;
+    final up = v.abs() > 300 ? v < 0 : _height > (minH + maxH) / 2;
+    _animateTo(up ? maxH : minH,
+        open: up, disableAnimations: disableAnimations);
   }
 
   List<NearbyTrail> _sortedTrails(NavigationState state) {
@@ -306,6 +341,24 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
         (baseCardHeight * textScale.clamp(1.0, 1.42)).clamp(baseCardHeight, 148.0);
     final modeHeight = isShort ? 44.0 : 52.0;
     final actionHeight = isShort ? 48.0 : 56.0;
+    final screenHeight = media.size.height;
+    final bottomInset = media.padding.bottom;
+    final minHeight = (isShort ? 132.0 : 148.0) + bottomInset;
+    final rawMaxHeight = minHeight +
+        cardHeight +
+        modeHeight +
+        (isShort ? 48.0 : 64.0) +
+        (textScale > 1.3 ? 16.0 : 0.0);
+    final maxHeight = math.max(
+      minHeight,
+      math.min(rawMaxHeight, screenHeight * 0.6),
+    );
+    if (!_isDragging && !_snapController.isAnimating) {
+      _height = _isOpen ? maxHeight : minHeight;
+    }
+    final currentHeight = _height.clamp(minHeight, maxHeight);
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    final showOpenBody = currentHeight > minHeight + 12;
 
     final String goLabel;
     final VoidCallback? goTap;
@@ -322,53 +375,53 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
       goTap = (route == null || navState.isFindingGps) ? null : widget.onGo;
     }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onVerticalDragEnd: (details) {
-        final v = details.primaryVelocity ?? 0;
-        if (v > 120 && !_isCollapsed) {
-          setState(() => _isCollapsed = true);
-        } else if (v < -120 && _isCollapsed) {
-          setState(() => _isCollapsed = false);
-        }
-      },
-      child: Container(
-        decoration: const BoxDecoration(
-          color: PixelPalette.paper,
-          border: Border(
-            top: BorderSide(color: PixelPalette.ink, width: 2),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: PixelPalette.white,
-              offset: Offset(0, 2),
+    return SizedBox(
+      height: currentHeight,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragUpdate: (d) => _drag(d, minHeight, maxHeight),
+        onVerticalDragEnd: (d) =>
+            _dragEnd(d, minHeight, maxHeight, disableAnimations),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: PixelPalette.paper,
+            border: Border(
+              top: BorderSide(color: PixelPalette.ink, width: 2),
             ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(12, isShort ? 4 : 6, 12, 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 32x4 dp ink sheet handle
-                GestureDetector(
-                  key: const ValueKey('nav_sheet_handle'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _isCollapsed = !_isCollapsed),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 2, bottom: 6),
-                    child: Center(
-                      child: Container(
-                        width: 32,
-                        height: 4,
-                        color: PixelPalette.ink,
+            boxShadow: [
+              BoxShadow(
+                color: PixelPalette.white,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(12, isShort ? 4 : 6, 12, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 32x4 dp ink sheet handle
+                  GestureDetector(
+                    key: const ValueKey('nav_sheet_handle'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _animateTo(
+                      _isOpen ? minHeight : maxHeight,
+                      open: !_isOpen,
+                      disableAnimations: disableAnimations,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 6),
+                      child: Center(
+                        child: Container(
+                          width: 32,
+                          height: 4,
+                          color: PixelPalette.ink,
+                        ),
                       ),
                     ),
                   ),
-                ),
                 if (hasNonServerError) ...[
                   Row(
                     children: [
@@ -463,120 +516,133 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
                     ],
                   ),
                 ],
-                if (!_isCollapsed) ...[
-                  SizedBox(height: isShort ? 4 : 6),
+                if (showOpenBody)
+                  Expanded(
+                    child: ClipRect(
+                      child: SingleChildScrollView(
+                        physics: const NeverScrollableScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(height: isShort ? 4 : 6),
 
-                  // 4 Mode buttons with pixel icons + sunken selected bevel
-                  Row(
-                    children: [
-                      for (var i = 0; i < TravelCosting.values.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 6),
-                        Expanded(
-                          child: _ModeButton(
-                            key: ValueKey(
-                                'nav_costing_${TravelCosting.values[i].key}'),
-                            costing: TravelCosting.values[i],
-                            selected:
-                                navState.costing == TravelCosting.values[i],
-                            height: modeHeight,
-                            onTap: () =>
-                                widget.onSelectCosting(TravelCosting.values[i]),
-                          ),
+                            // 4 Mode buttons with pixel icons + sunken selected bevel
+                            Row(
+                              children: [
+                                for (var i = 0; i < TravelCosting.values.length; i++) ...[
+                                  if (i > 0) const SizedBox(width: 6),
+                                  Expanded(
+                                    child: _ModeButton(
+                                      key: ValueKey(
+                                          'nav_costing_${TravelCosting.values[i].key}'),
+                                      costing: TravelCosting.values[i],
+                                      selected:
+                                          navState.costing == TravelCosting.values[i],
+                                      height: modeHeight,
+                                      onTap: () =>
+                                          widget.onSelectCosting(TravelCosting.values[i]),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            SizedBox(height: isShort ? 4 : 6),
+
+                            // Swipeable Route Carousel
+                            SizedBox(
+                              height: cardHeight,
+                              child: PageView.builder(
+                                key: const ValueKey('nav_route_carousel'),
+                                controller: _pageController,
+                                itemCount: cardCount,
+                                onPageChanged: (p) => _onPageChanged(p, sortedTrails),
+                                itemBuilder: (context, index) {
+                                  if (index == 0) {
+                                    final detourCount = navState.selectedDetours.length;
+                                    final meta = detourCount > 0
+                                        ? '$detourCount DETOUR${detourCount > 1 ? 'S' : ''}'
+                                        : 'FASTEST';
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                      child: _DirectCarouselCard(
+                                        key: const ValueKey('nav_route_direct'),
+                                        meta: meta,
+                                        picked: navState.selectedTrail == null,
+                                        showThumb: !isShort,
+                                        onTap: () {
+                                          if (_centredPage != 0) {
+                                            _jumpToCard(0);
+                                          } else if (navState.selectedTrail != null) {
+                                            widget.onSelectDirect();
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  }
+
+                                  final trailIdx = index - 1;
+                                  if (trailIdx < sortedTrails.length) {
+                                    final t = sortedTrails[trailIdx];
+                                    final isPicked = navState.selectedTrail?.id == t.id;
+                                    final isCentredLocked =
+                                        !t.isUnlocked && _centredPage == index;
+                                    final stopPoints = isPicked &&
+                                            navState.selectedTrail != null &&
+                                            navState.selectedTrail!.stops.isNotEmpty
+                                        ? navState.selectedTrail!.stops
+                                            .map((s) => (s.lat, s.lng))
+                                            .toList()
+                                        : null;
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                      child: _TrailCarouselCard(
+                                        key: ValueKey('nav_route_trail_${t.id}'),
+                                        trail: t,
+                                        picked: isPicked,
+                                        centredLocked: isCentredLocked,
+                                        showThumb: !isShort,
+                                        durationLabel:
+                                            _formatTrailDuration(t.totalMinutes),
+                                        kmLabel: '${_formatKm(t.totalKm)} KM',
+                                        stopPoints: stopPoints,
+                                        onTap: () {
+                                          if (_centredPage != index) {
+                                            _jumpToCard(index);
+                                          } else {
+                                            widget.onInspectTrail(t);
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  }
+
+                                  // Ghost card (loading / error / empty)
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: _GhostCarouselCard(
+                                      isLoading: navState.isLoadingTrails,
+                                      error: navState.trailsError,
+                                      onRetry: widget.onRetryTrails ?? widget.onRetry,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+
+                            SizedBox(height: isShort ? 3 : 6),
+                            // Page squares indicator
+                            _PageSquares(
+                              key: const ValueKey('nav_route_dots'),
+                              count: cardCount,
+                              current: _centredPage.clamp(0, math.max(0, cardCount - 1)),
+                            ),
+                          ],
                         ),
-                      ],
-                    ],
-                  ),
-                  SizedBox(height: isShort ? 4 : 6),
-
-                  // Swipeable Route Carousel
-                  SizedBox(
-                    height: cardHeight,
-                    child: PageView.builder(
-                      key: const ValueKey('nav_route_carousel'),
-                      controller: _pageController,
-                      itemCount: cardCount,
-                      onPageChanged: (p) => _onPageChanged(p, sortedTrails),
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          final detourCount = navState.selectedDetours.length;
-                          final meta = detourCount > 0
-                              ? '$detourCount DETOUR${detourCount > 1 ? 'S' : ''}'
-                              : 'FASTEST';
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: _DirectCarouselCard(
-                              key: const ValueKey('nav_route_direct'),
-                              meta: meta,
-                              picked: navState.selectedTrail == null,
-                              showThumb: !isShort,
-                              onTap: () {
-                                if (_centredPage != 0) {
-                                  _jumpToCard(0);
-                                } else if (navState.selectedTrail != null) {
-                                  widget.onSelectDirect();
-                                }
-                              },
-                            ),
-                          );
-                        }
-
-                        final trailIdx = index - 1;
-                        if (trailIdx < sortedTrails.length) {
-                          final t = sortedTrails[trailIdx];
-                          final isPicked = navState.selectedTrail?.id == t.id;
-                          final isCentredLocked =
-                              !t.isUnlocked && _centredPage == index;
-                          final stopPoints = isPicked &&
-                                  navState.selectedTrail != null &&
-                                  navState.selectedTrail!.stops.isNotEmpty
-                              ? navState.selectedTrail!.stops
-                                  .map((s) => (s.lat, s.lng))
-                                  .toList()
-                              : null;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: _TrailCarouselCard(
-                              key: ValueKey('nav_route_trail_${t.id}'),
-                              trail: t,
-                              picked: isPicked,
-                              centredLocked: isCentredLocked,
-                              showThumb: !isShort,
-                              durationLabel:
-                                  _formatTrailDuration(t.totalMinutes),
-                              kmLabel: '${_formatKm(t.totalKm)} KM',
-                              stopPoints: stopPoints,
-                              onTap: () {
-                                if (_centredPage != index) {
-                                  _jumpToCard(index);
-                                } else {
-                                  widget.onInspectTrail(t);
-                                }
-                              },
-                            ),
-                          );
-                        }
-
-                        // Ghost card (loading / error / empty)
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: _GhostCarouselCard(
-                            isLoading: navState.isLoadingTrails,
-                            error: navState.trailsError,
-                            onRetry: widget.onRetryTrails ?? widget.onRetry,
-                          ),
-                        );
-                      },
+                      ),
                     ),
-                  ),
-
-                  SizedBox(height: isShort ? 3 : 6),
-                  // Page squares indicator
-                  _PageSquares(
-                    key: const ValueKey('nav_route_dots'),
-                    count: cardCount,
-                    current: _centredPage.clamp(0, math.max(0, cardCount - 1)),
-                  ),
-                ],
+                  )
+                else
+                  const Spacer(),
                 SizedBox(height: isShort ? 4 : 6),
 
                 // Actions row: STEPS + GO / START TRAIL / CHOOSE / UNLOCK
@@ -1210,4 +1276,12 @@ class _PixelRectButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Stepped extends Curve {
+  const _Stepped(this.steps);
+  final int steps;
+
+  @override
+  double transformInternal(double t) => (t * steps).ceil() / steps;
 }
