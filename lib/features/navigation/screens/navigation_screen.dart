@@ -10,7 +10,6 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
-import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../map/engine/jdq_map.dart';
@@ -24,10 +23,13 @@ import '../services/location_stream_service.dart';
 import '../services/wakelock_service.dart';
 import '../widgets/adventure_bottom_bar.dart';
 import '../widgets/adventure_top_banner.dart';
+import '../widgets/detour_sheet.dart';
 import '../widgets/origin_picker_sheet.dart';
-import '../widgets/route_deck.dart';
+import '../widgets/route_preview_sheet.dart';
+import '../widgets/route_preview_top_bar.dart';
 import '../widgets/safety_disclaimer_sheet.dart';
 import '../widgets/steps_sheet.dart';
+import '../widgets/trail_offer_sheet.dart';
 
 class NavigationScreen extends ConsumerStatefulWidget {
   final NavTarget destination;
@@ -49,8 +51,6 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     with WidgetsBindingObserver {
   late final JdqMap _nativeMap;
   late final Future<String> _style;
-  bool _isControlsCollapsed = false;
-  bool _showDirectionsDrawer = true;
   bool _hasInitialFitted = false;
   bool _isBannerExpanded = false;
   StreamSubscription<Position>? _positionSubscription;
@@ -390,340 +390,225 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
 
           return Scaffold(
             backgroundColor: PixelPalette.paper,
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            body: Stack(
+              fit: StackFit.expand,
               children: [
-                PixelAppBar(
-                  title: 'Navigation',
-                  onBack:
-                      canPop ? () => Navigator.of(context).maybePop() : null,
-                ),
-                Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // 1. Vector Map Canvas
-                      Listener(
-                        onPointerDown: (_) {
-                          if (navState.isAdventureActive &&
-                              navState.isCameraFollowing) {
-                            notifier.setCameraFollowing(false);
-                          }
-                        },
-                        child: JdqMapCanvas(
-                          map: _nativeMap,
-                          style: _style,
-                          fallback: const ColoredBox(
-                            color: PixelPalette.paper,
-                            child: Center(
-                              child: Text(
-                                'Offline Map Mode',
-                                style: TextStyle(fontFamily: 'Silkscreen'),
-                              ),
-                            ),
-                          ),
-                          onFallback: () {},
+                // 1. Full-screen Vector Map Canvas
+                Listener(
+                  onPointerDown: (_) {
+                    if (navState.isAdventureActive &&
+                        navState.isCameraFollowing) {
+                      notifier.setCameraFollowing(false);
+                    }
+                  },
+                  child: JdqMapCanvas(
+                    map: _nativeMap,
+                    style: _style,
+                    fallback: const ColoredBox(
+                      color: PixelPalette.paper,
+                      child: Center(
+                        child: Text(
+                          'Offline Map Mode',
+                          style: TextStyle(fontFamily: 'Silkscreen'),
                         ),
                       ),
+                    ),
+                    onFallback: () {},
+                  ),
+                ),
 
-                      if (!navState.isAdventureActive) ...[
-                        // 2. Top Controls & Docked Action Buttons
-                        Positioned(
-                          top: grid.px(2),
-                          left: grid.px(2),
-                          right: grid.px(2),
-                          child: Column(
+                if (!navState.isAdventureActive) ...[
+                  // 2. Preview Top Bar (Back + TO destination)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: RoutePreviewTopBar(
+                      toLabel: widget.destination.name,
+                      onBack: canPop
+                          ? () => Navigator.of(context).maybePop()
+                          : null,
+                    ),
+                  ),
+
+                  // 3. Preview Bottom Sheet
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: RoutePreviewSheet(
+                      navState: navState,
+                      onSelectCosting: notifier.setCosting,
+                      onChangeOrigin: () {
+                        OriginPickerSheet.show(
+                          context,
+                          currentOrigin: navState.origin,
+                          onSelect: notifier.setOrigin,
+                          avoidCongested: navState.avoidCongested,
+                          onToggleAvoidCongested: notifier.toggleAvoidCongested,
+                          selectedDetoursCount: navState.selectedDetours.length,
+                          onOpenDetours: navState.isDirectRoute
+                              ? () => _openDetours(navState, notifier)
+                              : null,
+                        );
+                      },
+                      onSelectDirect: notifier.selectDirectRoute,
+                      onSelectTrail: (trail) {
+                        if (trail.isUnlocked) {
+                          unawaited(notifier.selectUnlockedTrail(trail.id));
+                        } else {
+                          _openTrailOffer(trail, notifier);
+                        }
+                      },
+                      onInspectTrail: (trail) =>
+                          _openTrailOffer(trail, notifier),
+                      onOpenSteps: () {
+                        if (route != null && route.maneuvers.isNotEmpty) {
+                          StepsSheet.show(
+                            context,
+                            maneuvers: route.maneuvers,
+                            activeStepIndex: navState.activeStepIndex,
+                            onStepSelected: (idx) => _focusStep(idx, route),
+                          );
+                        }
+                      },
+                      onGo: () => unawaited(_handleStartAdventure()),
+                      onRetry: () => notifier.fetchRoute(),
+                    ),
+                  ),
+                ] else ...[
+                  // Adventure Top Banner
+                  Positioned(
+                    top: grid.px(2),
+                    left: grid.px(2),
+                    right: grid.px(2),
+                    child: AdventureTopBanner(
+                      currentManeuver: navState.currentManeuver,
+                      distanceToManeuverM: navState.distanceToManeuverM,
+                      upcomingManeuvers: navState.upcomingManeuvers,
+                      isRerouting: navState.isRerouting,
+                      isExpanded: _isBannerExpanded,
+                      onToggleExpand: () => setState(
+                          () => _isBannerExpanded = !_isBannerExpanded),
+                    ),
+                  ),
+
+                  // Loading Toast (driving only)
+                  if (navState.isLoadingRoute)
+                    Positioned(
+                      top: grid.px(90),
+                      left: grid.px(8),
+                      right: grid.px(8),
+                      child: Center(
+                        child: PixelPanel(
+                          style: PixelBoxStyle.parchment,
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _controlsPanel(
-                                context,
-                                grid,
-                                navState,
-                                notifier,
-                                route,
-                              ),
-                              SizedBox(height: grid.px(1)),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Wrap(
-                                  spacing: grid.px(1),
-                                  runSpacing: grid.px(1),
-                                  alignment: WrapAlignment.end,
-                                  children: [
-                                    PixelButton(
-                                      key: const ValueKey('nav_fit_route'),
-                                      label: 'Fit',
-                                      variant: PixelButtonVariant.secondary,
-                                      onPressed: route != null
-                                          ? () => _fitRouteBounds(
-                                              route, originPoint)
-                                          : null,
-                                    ),
-                                    if (route?.isStraightLineFallback != true)
-                                      PixelButton(
-                                        key: const ValueKey('nav_locate'),
-                                        label: 'Locate',
-                                        variant: PixelButtonVariant.secondary,
-                                        loading: navState.isLocating,
-                                        onPressed: navState.isLocating
-                                            ? null
-                                            : () => notifier
-                                                .acquireCurrentLocation(),
-                                      ),
-                                    if (!_showDirectionsDrawer &&
-                                        route != null &&
-                                        !route.isStraightLineFallback &&
-                                        route.maneuvers.isNotEmpty)
-                                      PixelButton(
-                                        key: const ValueKey('nav_toggle_steps'),
-                                        label: 'Steps',
-                                        variant: PixelButtonVariant.secondary,
-                                        onPressed: () {
-                                          setState(() =>
-                                              _showDirectionsDrawer = true);
-                                        },
-                                      ),
-                                  ],
+                              const PixelLoader(label: 'Routing', artPx: 6),
+                              SizedBox(width: grid.px(2)),
+                              Flexible(
+                                child: Text(
+                                  'Calculating Valhalla road network...',
+                                  style: PixelType.body(context),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ] else ...[
-                        // Adventure Top Banner
-                        Positioned(
-                          top: grid.px(2),
-                          left: grid.px(2),
-                          right: grid.px(2),
-                          child: AdventureTopBanner(
-                            currentManeuver: navState.currentManeuver,
-                            distanceToManeuverM: navState.distanceToManeuverM,
-                            upcomingManeuvers: navState.upcomingManeuvers,
-                            isRerouting: navState.isRerouting,
-                            isExpanded: _isBannerExpanded,
-                            onToggleExpand: () => setState(
-                                () => _isBannerExpanded = !_isBannerExpanded),
-                          ),
-                        ),
-                      ],
+                      ),
+                    ),
 
-                      // 3. Loading Toast
-                      if (navState.isLoadingRoute)
-                        Positioned(
-                          top: grid.px(90),
-                          left: grid.px(8),
-                          right: grid.px(8),
-                          child: Center(
-                            child: PixelPanel(
-                              style: PixelBoxStyle.parchment,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const PixelLoader(label: 'Routing', artPx: 6),
-                                  SizedBox(width: grid.px(2)),
-                                  Flexible(
-                                    child: Text(
-                                      'Calculating Valhalla road network...',
-                                      style: PixelType.body(context),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // 4. Error Toast Banner
-                      if (navState.error != null)
-                        Positioned(
-                          top: grid.px(90),
-                          left: grid.px(4),
-                          right: grid.px(4),
-                          child: PixelPanel(
-                            style: PixelBoxStyle.gold,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    navState.error!,
-                                    style: PixelType.body(
-                                      context,
-                                      color: PixelPalette.goldDeep,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: grid.px(1)),
-                                PixelButton(
-                                  key: const ValueKey('nav_error_retry'),
-                                  label: 'Retry',
-                                  variant: PixelButtonVariant.secondary,
-                                  onPressed: () => notifier.fetchRoute(),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                      // 5. Bottom floating turn guidance (legacy drawer if active)
-                      if (!navState.isAdventureActive &&
-                          route != null &&
-                          !route.isStraightLineFallback &&
-                          _showDirectionsDrawer &&
-                          route.maneuvers.isNotEmpty)
-                        Positioned(
-                          bottom: grid.px(36),
-                          left: grid.px(2),
-                          right: grid.px(2),
-                          child:
-                              _directionsDrawer(context, grid, navState, route),
-                        ),
-
-                      // Floating RE-CENTER button during adventure
-                      if (navState.isAdventureActive &&
-                          !navState.isCameraFollowing)
-                        Positioned(
-                          bottom: grid.px(24),
-                          right: grid.px(2),
-                          child: PixelButton(
-                            key: const ValueKey('nav_recenter'),
-                            label: 'RE-CENTER',
-                            variant: PixelButtonVariant.primary,
-                            onPressed: () {
-                              notifier.setCameraFollowing(true);
-                              if (navState.currentPosition != null) {
-                                unawaited(_nativeMap.easeTo(
-                                  LatLng(navState.currentPosition!.latitude,
-                                      navState.currentPosition!.longitude),
-                                  16.5,
-                                  bearing: navState.currentPosition!.speed > 1.0
-                                      ? navState.currentPosition!.heading
-                                      : null,
-                                  tilt: 45.0,
-                                ));
-                              }
-                            },
-                          ),
-                        ),
-
-                      if (!navState.isAdventureActive)
-                        // 6. Bottom Deck (Direct Route + Nearby Trails) & Pinned Action Bar
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: PixelPalette.paper.withValues(alpha: 0.95),
-                              border: const Border(
-                                top: BorderSide(
-                                  color: PixelPalette.woodDeep,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            child: SafeArea(
-                              top: false,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  SizedBox(height: grid.px(1)),
-                                  // Horizontal Deck (<= 84 dp tall)
-                                  RouteDeck(
-                                    state: navState,
-                                    notifier: notifier,
-                                  ),
-                                  SizedBox(height: grid.px(1)),
-                                  // Pinned Bottom Action Bar
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: grid.px(2),
-                                      vertical: grid.px(1),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        PixelButton(
-                                          key: const ValueKey(
-                                              'nav_steps_bar_button'),
-                                          label:
-                                              'STEPS (${route?.maneuvers.length ?? 0})',
-                                          variant: PixelButtonVariant.secondary,
-                                          onPressed: route != null &&
-                                                  route.maneuvers.isNotEmpty
-                                              ? () {
-                                                  StepsSheet.show(
-                                                    context,
-                                                    maneuvers: route.maneuvers,
-                                                    activeStepIndex: navState
-                                                        .activeStepIndex,
-                                                    onStepSelected: (idx) =>
-                                                        _focusStep(idx, route),
-                                                  );
-                                                }
-                                              : null,
-                                        ),
-                                        SizedBox(width: grid.px(1)),
-                                        Expanded(
-                                          child: PixelButton(
-                                            key: const ValueKey(
-                                                'nav_start_adventure'),
-                                            label: 'START ADVENTURE',
-                                            variant: PixelButtonVariant.primary,
-                                            onPressed: route != null
-                                                ? _handleStartAdventure
-                                                : null,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        // Active Adventure Bottom Bar
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: AdventureBottomBar(
-                            summary:
-                                route?.summary ?? const RouteSummary.empty(),
-                            selectedTrail: navState.selectedTrail,
-                            nextStop: navState.nextUncheckedStop,
-                            totalStops: navState.totalTrailStops,
-                            currentStopNumber: navState.currentStopNumber,
-                            isWithinCheckinRadius:
-                                navState.isWithinCheckinRadius,
-                            currentSpeedMs: navState.currentSpeedMs,
-                            isCheckingIn: navState.isCheckingIn,
-                            hasArrivedDirect: navState.hasArrivedDirect,
-                            isTrailCompleted: navState.isTrailCompleted,
-                            trailRewardPoints:
-                                navState.trailCompletionReward ?? 0,
-                            onCheckIn: () => notifier.checkInCurrentStop(),
-                            onOpenSteps: () {
-                              if (route != null && route.maneuvers.isNotEmpty) {
-                                StepsSheet.show(
+                  // Error Toast Banner (driving only)
+                  if (navState.error != null)
+                    Positioned(
+                      top: grid.px(90),
+                      left: grid.px(4),
+                      right: grid.px(4),
+                      child: PixelPanel(
+                        style: PixelBoxStyle.gold,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                navState.error!,
+                                style: PixelType.body(
                                   context,
-                                  maneuvers: route.maneuvers,
-                                  activeStepIndex: navState.activeStepIndex,
-                                  onStepSelected: (idx) =>
-                                      _focusStep(idx, route),
-                                );
-                              }
-                            },
-                            onEnd: _confirmEndAdventure,
-                          ),
+                                  color: PixelPalette.goldDeep,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: grid.px(1)),
+                            PixelButton(
+                              key: const ValueKey('nav_error_retry'),
+                              label: 'Retry',
+                              variant: PixelButtonVariant.secondary,
+                              onPressed: () => notifier.fetchRoute(),
+                            ),
+                          ],
                         ),
-                    ],
+                      ),
+                    ),
+
+                  // Floating RE-CENTER button during adventure
+                  if (!navState.isCameraFollowing)
+                    Positioned(
+                      bottom: grid.px(24),
+                      right: grid.px(2),
+                      child: PixelButton(
+                        key: const ValueKey('nav_recenter'),
+                        label: 'RE-CENTER',
+                        variant: PixelButtonVariant.primary,
+                        onPressed: () {
+                          notifier.setCameraFollowing(true);
+                          if (navState.currentPosition != null) {
+                            unawaited(_nativeMap.easeTo(
+                              LatLng(navState.currentPosition!.latitude,
+                                  navState.currentPosition!.longitude),
+                              16.5,
+                              bearing: navState.currentPosition!.speed > 1.0
+                                  ? navState.currentPosition!.heading
+                                  : null,
+                              tilt: 45.0,
+                            ));
+                          }
+                        },
+                      ),
+                    ),
+
+                  // Active Adventure Bottom Bar
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: AdventureBottomBar(
+                      summary: route?.summary ?? const RouteSummary.empty(),
+                      selectedTrail: navState.selectedTrail,
+                      nextStop: navState.nextUncheckedStop,
+                      totalStops: navState.totalTrailStops,
+                      currentStopNumber: navState.currentStopNumber,
+                      isWithinCheckinRadius: navState.isWithinCheckinRadius,
+                      currentSpeedMs: navState.currentSpeedMs,
+                      isCheckingIn: navState.isCheckingIn,
+                      hasArrivedDirect: navState.hasArrivedDirect,
+                      isTrailCompleted: navState.isTrailCompleted,
+                      trailRewardPoints: navState.trailCompletionReward ?? 0,
+                      onCheckIn: () => notifier.checkInCurrentStop(),
+                      onOpenSteps: () {
+                        if (route != null && route.maneuvers.isNotEmpty) {
+                          StepsSheet.show(
+                            context,
+                            maneuvers: route.maneuvers,
+                            activeStepIndex: navState.activeStepIndex,
+                            onStepSelected: (idx) => _focusStep(idx, route),
+                          );
+                        }
+                      },
+                      onEnd: _confirmEndAdventure,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           );
@@ -732,289 +617,21 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     );
   }
 
-  Widget _controlsPanel(
-    BuildContext context,
-    PixelGrid grid,
-    NavigationState navState,
-    NavigationNotifier notifier,
-    RouteModel? route,
-  ) {
-    return PixelPanel(
-      style: PixelBoxStyle.parchment,
-      padding: 2,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      route?.isStraightLineFallback == true
-                          ? 'Distance estimate'
-                          : 'Valhalla Engine',
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.greenDark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    // FROM / TO rows
-                    Row(
-                      children: [
-                        const PixelChip('FROM', style: PixelBoxStyle.parchment),
-                        SizedBox(width: grid.px(1)),
-                        Expanded(
-                          child: InkWell(
-                            key: const ValueKey('nav_origin_selector'),
-                            onTap: () {
-                              OriginPickerSheet.show(
-                                context,
-                                currentOrigin: navState.origin,
-                                onSelect: notifier.setOrigin,
-                              );
-                            },
-                            child: Text(
-                              navState.origin.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: PixelType.body(context,
-                                  color: PixelPalette.woodDeep),
-                            ),
-                          ),
-                        ),
-                        InkWell(
-                          key: const ValueKey('nav_swap_origin'),
-                          onTap: notifier.swapOriginAndDestination,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              'SWAP',
-                              style: PixelType.small(context,
-                                  color: PixelPalette.goldDeep),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const PixelChip('TO', style: PixelBoxStyle.parchment),
-                        SizedBox(width: grid.px(1)),
-                        Expanded(
-                          child: Text(
-                            widget.destination.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: PixelType.body(context,
-                                color: PixelPalette.woodNight),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: grid.px(1)),
-              PixelButton(
-                key: const ValueKey('nav_toggle_controls'),
-                label: _isControlsCollapsed ? 'Show' : 'Hide',
-                variant: PixelButtonVariant.secondary,
-                onPressed: () => setState(
-                    () => _isControlsCollapsed = !_isControlsCollapsed),
-              ),
-            ],
-          ),
-          if (!_isControlsCollapsed) ...[
-            SizedBox(height: grid.px(1)),
-            PixelSegmented(
-              items: TravelCosting.values.map((cost) {
-                switch (cost) {
-                  case TravelCosting.auto:
-                    return 'Drive';
-                  case TravelCosting.motorcycle:
-                    return 'Moto';
-                  case TravelCosting.bicycle:
-                    return 'Bike';
-                  case TravelCosting.pedestrian:
-                    return 'Eco';
-                }
-              }).toList(),
-              selectedIndex: TravelCosting.values.indexOf(navState.costing),
-              onChanged: (index) =>
-                  notifier.setCosting(TravelCosting.values[index]),
-            ),
-            SizedBox(height: grid.px(1)),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('QUIET ROADS', style: PixelType.body(context)),
-                      Text(
-                        'Avoid tourist bottlenecks',
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                PixelSwitch(
-                  key: const ValueKey('nav_anti_crowd'),
-                  value: navState.avoidCongested,
-                  semanticLabel: 'Anti-Crowd Diversion',
-                  onChanged: (_) => notifier.toggleAvoidCongested(),
-                ),
-              ],
-            ),
-          ],
-          if (route != null && !route.isStraightLineFallback) ...[
-            SizedBox(height: grid.px(1)),
-            Wrap(
-              spacing: grid.px(1),
-              runSpacing: grid.px(1),
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  route.summary.durationFormatted,
-                  style: PixelType.title(
-                    context,
-                    color: PixelPalette.greenDark,
-                  ),
-                ),
-                Text(
-                  '(${route.summary.distanceKm} km)',
-                  style: PixelType.body(context, color: PixelPalette.wood),
-                ),
-                if (route.summary.hasCrowdDiversion)
-                  const PixelChip(
-                    'Tranquil route',
-                    style: PixelBoxStyle.parchment,
-                  ),
-              ],
-            ),
-          ] else if (route != null && route.isStraightLineFallback) ...[
-            SizedBox(height: grid.px(1)),
-            Text(
-              'ESTIMATE · ${route.summary.distanceKm.toStringAsFixed(0)} KM',
-              style: PixelType.body(
-                context,
-                color: PixelPalette.goldDeep,
-              ),
-            ),
-          ],
-        ],
-      ),
+  void _openTrailOffer(NearbyTrail trail, NavigationNotifier notifier) {
+    TrailOfferSheet.show(
+      context,
+      trail: trail,
+      onChoose: notifier.selectTrail,
     );
   }
 
-  Widget _directionsDrawer(
-    BuildContext context,
-    PixelGrid grid,
-    NavigationState navState,
-    RouteModel route,
-  ) {
-    return PixelPanel(
-      style: PixelBoxStyle.parchment,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: grid.px(100)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'TURN GUIDANCE (${route.maneuvers.length} STEPS)',
-                    style: PixelType.small(context),
-                  ),
-                ),
-                PixelButton(
-                  key: const ValueKey('nav_close_steps'),
-                  label: 'Close',
-                  variant: PixelButtonVariant.secondary,
-                  onPressed: () =>
-                      setState(() => _showDirectionsDrawer = false),
-                ),
-              ],
-            ),
-            SizedBox(height: grid.px(1)),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: route.maneuvers.length,
-                separatorBuilder: (_, __) => SizedBox(height: grid.px(1)),
-                itemBuilder: (context, index) {
-                  final step = route.maneuvers[index];
-                  final isSelected = navState.activeStepIndex == index;
-                  return GestureDetector(
-                    key: ValueKey('nav_step_$index'),
-                    onTap: () => _focusStep(index, route),
-                    child: PixelPanel(
-                      style: isSelected
-                          ? PixelBoxStyle.gold
-                          : PixelBoxStyle.parchment,
-                      padding: 1,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          PixelChip('${index + 1}'),
-                          SizedBox(width: grid.px(1)),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  step.instruction,
-                                  style: PixelType.body(
-                                    context,
-                                    color: isSelected
-                                        ? PixelPalette.woodDeep
-                                        : PixelPalette.ink,
-                                  ),
-                                ),
-                                if (step.streetName != null &&
-                                    step.streetName!.isNotEmpty)
-                                  Text(
-                                    step.streetName!,
-                                    style: PixelType.small(
-                                      context,
-                                      color: isSelected
-                                          ? PixelPalette.woodDeep
-                                          : PixelPalette.slate,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(width: grid.px(1)),
-                          Text(
-                            step.formattedDistance,
-                            style: PixelType.small(
-                              context,
-                              color: isSelected
-                                  ? PixelPalette.woodDeep
-                                  : PixelPalette.slate,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+  void _openDetours(NavigationState navState, NavigationNotifier notifier) {
+    DetourSheet.show(
+      context,
+      availableDetours: navState.availableDetours,
+      selectedDetours: navState.selectedDetours,
+      onToggleDetour: notifier.toggleDetour,
+      onClear: notifier.clearDetours,
     );
   }
 }

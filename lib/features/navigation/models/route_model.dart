@@ -1,17 +1,16 @@
 import 'package:latlong2/latlong.dart';
 
-/// Travel costing profile supported by Valhalla engine on Azure VM
+/// Travel costing profile supported by Valhalla engine
 enum TravelCosting {
-  auto('auto', 'Driving', '🚗'),
-  motorcycle('motorcycle', 'Moto', '🏍️'),
-  bicycle('bicycle', 'Bicycle', '🚲'),
-  pedestrian('pedestrian', 'Eco-Trail', '🚶');
+  auto('auto', 'DRIVE'),
+  motorcycle('motorcycle', 'MOTO'),
+  bicycle('bicycle', 'BIKE'),
+  pedestrian('pedestrian', 'WALK');
 
   final String key;
   final String label;
-  final String iconEmoji;
 
-  const TravelCosting(this.key, this.label, this.iconEmoji);
+  const TravelCosting(this.key, this.label);
 
   static TravelCosting fromKey(String? key) {
     return TravelCosting.values.firstWhere(

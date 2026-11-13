@@ -677,6 +677,21 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     fetchRoute();
   }
 
+  /// Fetch an already-unlocked trail's details and select it directly.
+  Future<void> selectUnlockedTrail(String trailId) async {
+    if (state.selectedTrail?.id == trailId && !state.isDirectRoute) {
+      return;
+    }
+    try {
+      final detail = await _trailsApi.fetchTrail(trailId);
+      selectTrail(detail);
+    } catch (e) {
+      state = state.copyWith(
+        error: () => TrailsApi.extractErrorMessage(e),
+      );
+    }
+  }
+
   /// Toggle scenic detour on direct route
   void toggleDetour(DetourArea area) {
     final current = List<DetourArea>.from(state.selectedDetours);
