@@ -1,5 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -9,12 +11,14 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
-import '../../../core/widgets/base_tile_layer.dart';
+import '../../map/engine/jdq_map.dart';
+import '../../map/engine/jdq_map_canvas.dart';
+import '../../map/engine/maplibre_jdq_map.dart';
 import '../../map/pixel/map_marker_art.dart';
 import '../models/spot_model.dart';
 import 'theater_panel.dart';
 
-class TheaterVenueSection extends StatelessWidget {
+class TheaterVenueSection extends ConsumerStatefulWidget {
   const TheaterVenueSection({
     super.key,
     required this.spot,
@@ -25,10 +29,53 @@ class TheaterVenueSection extends StatelessWidget {
   final VoidCallback onDirections;
 
   @override
+  ConsumerState<TheaterVenueSection> createState() =>
+      _TheaterVenueSectionState();
+}
+
+class _TheaterVenueSectionState extends ConsumerState<TheaterVenueSection> {
+  late final JdqMap _map;
+  late final Future<String> _style;
+
+  bool get _hasCoords => widget.spot.gpsLat != 0 || widget.spot.gpsLng != 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _map = ref.read(jdqMapFactoryProvider)();
+    _style = ref.read(mapStyleProvider.future);
+    _syncCameraAndPin();
+  }
+
+  @override
+  void didUpdateWidget(covariant TheaterVenueSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.spot.id != widget.spot.id ||
+        oldWidget.spot.gpsLat != widget.spot.gpsLat ||
+        oldWidget.spot.gpsLng != widget.spot.gpsLng) {
+      _syncCameraAndPin();
+    }
+  }
+
+  void _syncCameraAndPin() {
+    if (!_hasCoords) return;
+    final spotCoord = LatLng(widget.spot.gpsLat, widget.spot.gpsLng);
+    unawaited(_map.easeTo(spotCoord, 16.0, reducedMotion: true));
+    unawaited(_map.setPins([
+      JdqPin('spot:${widget.spot.id}', spotCoord, widget.spot.name),
+    ]));
+  }
+
+  @override
+  void dispose() {
+    _map.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final hasCoords = spot.gpsLat != 0 || spot.gpsLng != 0;
-    final spotCoord = LatLng(spot.gpsLat, spot.gpsLng);
+    final spot = widget.spot;
 
     return TheaterPanel(
       child: Column(
@@ -59,8 +106,8 @@ class TheaterVenueSection extends StatelessWidget {
           ],
           SizedBox(height: grid.px(2)),
 
-          // Non-interactive pixel-framed FlutterMap preview
-          if (hasCoords)
+          // Non-interactive pixel-framed JdqMapCanvas preview
+          if (_hasCoords)
             PixelPanel(
               style: PixelBoxStyle.inkDialogue.copyWith(
                 fill: PixelPalette.ink,
@@ -77,32 +124,19 @@ class TheaterVenueSection extends StatelessWidget {
                 child: RepaintBoundary(
                   child: ClipRect(
                     child: IgnorePointer(
-                      child: FlutterMap(
-                        options: MapOptions(
-                          initialCenter: spotCoord,
-                          initialZoom: 16.0,
-                          interactionOptions: const InteractionOptions(
-                            flags: InteractiveFlag.none,
+                      child: JdqMapCanvas(
+                        map: _map,
+                        style: _style,
+                        fallback: const ColoredBox(
+                          color: PixelPalette.ink,
+                          child: Center(
+                            child: PixelSprite(
+                              MapMarkerArt.spotPin,
+                              scale: 2,
+                            ),
                           ),
                         ),
-                        children: [
-                          buildBaseTileLayer(),
-                          MarkerLayer(
-                            markers: [
-                              Marker(
-                                point: spotCoord,
-                                width: 36,
-                                height: 36,
-                                child: const Center(
-                                  child: PixelSprite(
-                                    MapMarkerArt.spotPin,
-                                    scale: 2,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                        onFallback: () {},
                       ),
                     ),
                   ),
@@ -131,7 +165,7 @@ class TheaterVenueSection extends StatelessWidget {
                   label: 'GET DIRECTIONS',
                   variant: PixelButtonVariant.primary,
                   expand: true,
-                  onPressed: onDirections,
+                  onPressed: widget.onDirections,
                 ),
               ),
             ],
