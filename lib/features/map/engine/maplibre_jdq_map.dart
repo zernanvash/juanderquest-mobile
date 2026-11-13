@@ -184,6 +184,42 @@ Future<Uint8List?> rasterizeRoutePointMarker({
         bg = const Color(0xFF2D6A4F);
         textColor = const Color(0xFFFAF9F5);
         break;
+      case JdqRoutePointKind.puck:
+        bg = const Color(0xFF2563EB);
+        textColor = const Color(0xFFFAF9F5);
+        break;
+    }
+
+    if (kind == JdqRoutePointKind.puck) {
+      final side = (28.0 * dpr).roundToDouble();
+      final cx = side / 2;
+      final pad = 2.0 * dpr;
+      final outer = ui.Path()
+        ..moveTo(cx, pad)
+        ..lineTo(side - pad, side - pad)
+        ..lineTo(cx, side - 6.0 * dpr)
+        ..lineTo(pad, side - pad)
+        ..close();
+      canvas.drawPath(
+        outer,
+        Paint()
+          ..color = const Color(0xFF0D1B2A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(2.0, 2.0 * dpr)
+          ..strokeJoin = StrokeJoin.miter,
+      );
+      canvas.drawPath(outer, Paint()..color = const Color(0xFFFFF8E1));
+      final inner = ui.Path()
+        ..moveTo(cx, pad + 3.0 * dpr)
+        ..lineTo(side - pad - 3.0 * dpr, side - pad - 2.0 * dpr)
+        ..lineTo(cx, side - 8.0 * dpr)
+        ..lineTo(pad + 3.0 * dpr, side - pad - 2.0 * dpr)
+        ..close();
+      canvas.drawPath(inner, Paint()..color = bg);
+      final img =
+          await recorder.endRecording().toImage(side.round(), side.round());
+      final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+      return bytes?.buffer.asUint8List();
     }
 
     // Owner 2026-11-10: "i dont like the look of the A and B with textbox
@@ -469,6 +505,23 @@ class MapLibreJdqMap extends JdqMap {
     await _updateRouteOverlay();
   }
 
+  static int _pointZOrder(JdqRoutePointKind kind) {
+    switch (kind) {
+      case JdqRoutePointKind.start:
+        return 0;
+      case JdqRoutePointKind.detour:
+        return 1;
+      case JdqRoutePointKind.end:
+        return 2;
+      case JdqRoutePointKind.done:
+        return 3;
+      case JdqRoutePointKind.stop:
+        return 4;
+      case JdqRoutePointKind.puck:
+        return 5;
+    }
+  }
+
   Future<void> _updateRouteOverlay() => _safe(() async {
         final c = _controller!;
         final overlay = _routeOverlay;
@@ -499,6 +552,9 @@ class MapLibreJdqMap extends JdqMap {
             ? '#${overlay.color!.value.toRadixString(16).padLeft(8, '0').substring(2)}'
             : (overlay.degraded ? '#6F6352' : '#0284C7');
 
+        final orderedPoints = List<JdqRoutePoint>.from(overlay.points)
+          ..sort((a, b) => _pointZOrder(a.kind).compareTo(_pointZOrder(b.kind)));
+
         final features = <Map<String, dynamic>>[
           {
             'type': 'Feature',
@@ -514,13 +570,14 @@ class MapLibreJdqMap extends JdqMap {
               ],
             },
           },
-          for (final pt in overlay.points)
+          for (final pt in orderedPoints)
             {
               'type': 'Feature',
               'properties': {
                 'kind': 'point',
                 'label': pt.label,
                 'pointKind': pt.kind.name,
+                'bearing': pt.bearing ?? 0.0,
                 'icon': 'jdq-route-point-${pt.label}-${pt.kind.name}',
               },
               'geometry': {
@@ -532,7 +589,7 @@ class MapLibreJdqMap extends JdqMap {
 
         await c.setGeoJsonSource('jdq-route-overlay', _collection(features));
 
-        if (overlay.line.isNotEmpty) {
+        if (overlay.fitBounds && overlay.line.isNotEmpty) {
           double minLat = overlay.line.first.latitude;
           double maxLat = overlay.line.first.latitude;
           double minLng = overlay.line.first.longitude;
@@ -836,7 +893,29 @@ class MapLibreJdqMap extends JdqMap {
           iconIgnorePlacement: true,
           iconAnchor: 'center',
         ),
-        filter: ['==', 'kind', 'point'],
+        filter: [
+          'all',
+          ['==', 'kind', 'point'],
+          ['!=', 'pointKind', 'puck'],
+        ],
+      );
+      await c.addSymbolLayer(
+        'jdq-route-overlay',
+        'jdq-route-puck-symbol',
+        const gl.SymbolLayerProperties(
+          iconImage: ['get', 'icon'],
+          iconSize: 1.0,
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+          iconAnchor: 'center',
+          iconRotationAlignment: 'map',
+          iconRotate: ['get', 'bearing'],
+        ),
+        filter: [
+          'all',
+          ['==', 'kind', 'point'],
+          ['==', 'pointKind', 'puck'],
+        ],
       );
 
       await c.addSymbolLayer(

@@ -196,14 +196,13 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 100));
 
-      // nav_fit_route and nav_locate exist
-      expect(find.byKey(const ValueKey('nav_fit_route')), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_locate')), findsOneWidget);
-
-      // Verify there is only one "Hide" button on screen (the one toggling controls),
-      // and NOT a second duplicate floating hide button
-      final hideButtons = find.widgetWithText(PixelButton, 'Hide');
-      expect(hideButtons, findsOneWidget);
+      // Plan 83d: full-screen map with floating TO bar and bottom preview sheet;
+      // no duplicate floating Hide/Fit/Locate buttons.
+      expect(find.text('TO'), findsOneWidget);
+      expect(find.text('Patar Beach'), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav_start_adventure')), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav_steps_button')), findsOneWidget);
+      expect(find.widgetWithText(PixelButton, 'Hide'), findsNothing);
     });
 
     testWidgets(

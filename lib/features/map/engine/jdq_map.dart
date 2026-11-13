@@ -36,17 +36,19 @@ class JdqCamera {
           size: size ?? this.size);
 }
 
-enum JdqRoutePointKind { start, end, stop, detour, done }
+enum JdqRoutePointKind { start, end, stop, detour, done, puck }
 
 class JdqRoutePoint {
   const JdqRoutePoint({
     required this.point,
     required this.label,
     required this.kind,
+    this.bearing,
   });
   final LatLng point;
   final String label;
   final JdqRoutePointKind kind;
+  final double? bearing;
 }
 
 class JdqRouteOverlay {
@@ -55,11 +57,13 @@ class JdqRouteOverlay {
     this.points = const [],
     this.degraded = false,
     this.color,
+    this.fitBounds = true,
   });
   final List<LatLng> line;
   final List<JdqRoutePoint> points;
   final bool degraded;
   final Color? color;
+  final bool fitBounds;
 }
 
 class JdqPin {
@@ -107,6 +111,8 @@ class FakeJdqMap extends JdqMap {
   JdqRouteOverlay? routeOverlay;
   bool locationEnabled = false;
   bool satellite = false;
+  int fitBoundsCallCount = 0;
+  int easeToCallCount = 0;
   @override
   Future<void> setStyle(String style) async {
     this.style = style;
@@ -115,6 +121,7 @@ class FakeJdqMap extends JdqMap {
   @override
   Future<void> easeTo(LatLng point, double zoom,
       {double? bearing, double? tilt, bool reducedMotion = false}) async {
+    easeToCallCount++;
     camera = JdqCamera(
         center: point,
         zoom: zoom,
@@ -140,6 +147,7 @@ class FakeJdqMap extends JdqMap {
   @override
   Future<void> fitBounds(
       LatLng southWest, LatLng northEast, EdgeInsets padding) async {
+    fitBoundsCallCount++;
     camera = camera.copyWith(
         center: LatLng((southWest.latitude + northEast.latitude) / 2,
             (southWest.longitude + northEast.longitude) / 2),

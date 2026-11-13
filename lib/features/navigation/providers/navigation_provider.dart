@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,6 +11,8 @@ import '../../map/engine/jdq_map.dart';
 import '../../trail/models/trail_models.dart';
 import '../../trail/services/trails_api.dart';
 import '../models/route_model.dart';
+import '../services/location_stream_service.dart';
+import '../services/voice_guide.dart';
 import '../utils/route_geometry.dart';
 
 /// Default fallback coordinate: Lingayen Provincial Capitol, Pangasinan
@@ -47,6 +51,7 @@ class NavigationState {
   final bool isLoadingRoute;
   final bool isLoadingTrails;
   final bool isLocating;
+  final bool isFindingGps;
   final String? error;
   final int? activeStepIndex;
   final bool isDirectRoute;
@@ -58,7 +63,13 @@ class NavigationState {
   final bool hasArrivedDirect;
   final bool isTrailCompleted;
   final int? trailCompletionReward;
+  final TrailStop? lastCheckedInStop;
   final double? distanceToManeuverM;
+  final LatLng? snappedPuckPosition;
+  final List<LatLng>? trimmedPolyline;
+  final double? remainingDistanceMeters;
+  final int? remainingDurationSeconds;
+  final bool isVoiceMuted;
 
   const NavigationState({
     this.origin = NavOrigin.defaultLingayen,
@@ -74,6 +85,7 @@ class NavigationState {
     this.isLoadingRoute = false,
     this.isLoadingTrails = false,
     this.isLocating = false,
+    this.isFindingGps = false,
     this.error,
     this.activeStepIndex,
     this.isDirectRoute = true,
@@ -85,10 +97,24 @@ class NavigationState {
     this.hasArrivedDirect = false,
     this.isTrailCompleted = false,
     this.trailCompletionReward,
+    this.lastCheckedInStop,
     this.distanceToManeuverM,
+    this.snappedPuckPosition,
+    this.trimmedPolyline,
+    this.remainingDistanceMeters,
+    this.remainingDurationSeconds,
+    this.isVoiceMuted = false,
   });
 
   LatLng get effectiveOriginPoint => userLocation ?? origin.point;
+
+  LatLng get effectiveEndPoint {
+    final stops = selectedTrail?.stops;
+    if (stops != null && stops.isNotEmpty) {
+      return stops.last.point;
+    }
+    return destination.point;
+  }
 
   TrailStop? get nextUncheckedStop {
     if (selectedTrail == null || selectedTrail!.stops.isEmpty) return null;
@@ -151,6 +177,7 @@ class NavigationState {
     bool? isLoadingRoute,
     bool? isLoadingTrails,
     bool? isLocating,
+    bool? isFindingGps,
     String? Function()? error,
     int? Function()? activeStepIndex,
     bool? isDirectRoute,
@@ -162,7 +189,13 @@ class NavigationState {
     bool? hasArrivedDirect,
     bool? isTrailCompleted,
     int? Function()? trailCompletionReward,
+    TrailStop? Function()? lastCheckedInStop,
     double? Function()? distanceToManeuverM,
+    LatLng? Function()? snappedPuckPosition,
+    List<LatLng>? Function()? trimmedPolyline,
+    double? Function()? remainingDistanceMeters,
+    int? Function()? remainingDurationSeconds,
+    bool? isVoiceMuted,
   }) {
     return NavigationState(
       origin: origin ?? this.origin,
@@ -179,6 +212,7 @@ class NavigationState {
       isLoadingRoute: isLoadingRoute ?? this.isLoadingRoute,
       isLoadingTrails: isLoadingTrails ?? this.isLoadingTrails,
       isLocating: isLocating ?? this.isLocating,
+      isFindingGps: isFindingGps ?? this.isFindingGps,
       error: error != null ? error() : this.error,
       activeStepIndex:
           activeStepIndex != null ? activeStepIndex() : this.activeStepIndex,
@@ -194,25 +228,42 @@ class NavigationState {
       trailCompletionReward: trailCompletionReward != null
           ? trailCompletionReward()
           : this.trailCompletionReward,
+      lastCheckedInStop: lastCheckedInStop != null
+          ? lastCheckedInStop()
+          : this.lastCheckedInStop,
       distanceToManeuverM: distanceToManeuverM != null
           ? distanceToManeuverM()
           : this.distanceToManeuverM,
+      snappedPuckPosition: snappedPuckPosition != null
+          ? snappedPuckPosition()
+          : this.snappedPuckPosition,
+      trimmedPolyline:
+          trimmedPolyline != null ? trimmedPolyline() : this.trimmedPolyline,
+      remainingDistanceMeters: remainingDistanceMeters != null
+          ? remainingDistanceMeters()
+          : this.remainingDistanceMeters,
+      remainingDurationSeconds: remainingDurationSeconds != null
+          ? remainingDurationSeconds()
+          : this.remainingDurationSeconds,
+      isVoiceMuted: isVoiceMuted ?? this.isVoiceMuted,
     );
   }
 
-  /// Builds vector route overlay for JdqMap (Plan 83 WP-2)
+  /// Builds vector route overlay for JdqMap (Plan 83 WP-2 / 83d)
   JdqRouteOverlay? get routeOverlay {
     if (route == null || route!.coordinates.isEmpty) return null;
 
     final points = <JdqRoutePoint>[];
-    // Start point A
-    points.add(JdqRoutePoint(
-      point: effectiveOriginPoint,
-      label: 'A',
-      kind: JdqRoutePointKind.start,
-    ));
+    if (!isAdventureActive) {
+      // Start point dot (only in preview, not drawn while driving)
+      points.add(JdqRoutePoint(
+        point: effectiveOriginPoint,
+        label: 'A',
+        kind: JdqRoutePointKind.start,
+      ));
+    }
 
-    // If trail is active
+    // If trail is active: draw stops 1..N (no end marker on top of last shield)
     if (selectedTrail != null && selectedTrail!.stops.isNotEmpty) {
       for (final stop in selectedTrail!.stops) {
         points.add(JdqRoutePoint(
@@ -239,16 +290,35 @@ class NavigationState {
       ));
     }
 
+    if (isAdventureActive && currentPosition != null) {
+      points.add(JdqRoutePoint(
+        point: snappedPuckPosition ??
+            LatLng(currentPosition!.latitude, currentPosition!.longitude),
+        label: 'puck',
+        kind: JdqRoutePointKind.puck,
+        bearing: currentPosition!.speed > 1.0 && currentPosition!.heading >= 0
+            ? currentPosition!.heading
+            : 0.0,
+      ));
+    }
+
     final isTrailOrQuiet = selectedTrail != null ||
         (avoidCongested && route!.summary.hasCrowdDiversion);
 
+    final activeLine = (isAdventureActive &&
+            trimmedPolyline != null &&
+            trimmedPolyline!.length >= 2)
+        ? trimmedPolyline!
+        : route!.coordinates;
+
     return JdqRouteOverlay(
-      line: route!.coordinates,
+      line: activeLine,
       points: points,
       degraded: route!.isStraightLineFallback,
       color: isTrailOrQuiet
           ? const Color(0xFF2D6A4F) // Forest emerald
           : const Color(0xFF0284C7), // Sky route blue
+      fitBounds: !isAdventureActive,
     );
   }
 }
@@ -256,15 +326,21 @@ class NavigationState {
 class NavigationNotifier extends StateNotifier<NavigationState> {
   final ApiClient _apiClient;
   final TrailsApi _trailsApi;
+  final VoiceGuide? _voiceGuide;
   int _consecutiveOffRouteFixes = 0;
   DateTime? _lastRerouteTime;
+  DateTime? _lastPolylineTrimTime;
+  List<LatLng> _cachedManeuverWaypoints = const [];
+  final Set<String> _spokenCues = {};
 
   NavigationNotifier({
     required ApiClient apiClient,
     TrailsApi? trailsApi,
+    VoiceGuide? voiceGuide,
     required NavTarget initialDestination,
   })  : _apiClient = apiClient,
         _trailsApi = trailsApi ?? TrailsApi(apiClient),
+        _voiceGuide = voiceGuide,
         super(NavigationState(
           origin: NavOrigin.defaultLingayen,
           destination: initialDestination,
@@ -274,9 +350,22 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
   /// Initialization: Acquire initial GPS (or default) and load route + trails
   Future<void> initNavigation() async {
+    await _voiceGuide?.init();
+    if (_voiceGuide != null) {
+      state = state.copyWith(isVoiceMuted: _voiceGuide!.isMuted);
+    }
     await _acquireLocation(silent: true);
     await fetchRoute();
     await fetchNearbyTrails();
+  }
+
+  void _speakOnce(String cueKey, String phrase) {
+    if (!state.isAdventureActive || state.isVoiceMuted || _voiceGuide == null) {
+      return;
+    }
+    if (_spokenCues.add(cueKey)) {
+      unawaited(_voiceGuide!.speak(phrase));
+    }
   }
 
   /// Acquire GPS position from device
@@ -330,7 +419,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
       final gpsPoint = LatLng(position.latitude, position.longitude);
       final newOrigin = NavOrigin(
-        name: 'My GPS Location',
+        name: 'My Location',
         point: gpsPoint,
         isGps: true,
       );
@@ -355,19 +444,62 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     }
   }
 
+  /// Acquire GPS fix (max 15s) and re-fetch route before entering driving view (Bug A1)
+  Future<bool> acquireStartFixAndFetchRoute(
+    LocationStreamService locationService,
+  ) async {
+    state = state.copyWith(isFindingGps: true, error: () => null);
+    try {
+      final pos = await locationService.getCurrentPosition(
+        timeLimit: locationService.gpsAcquireTimeout,
+      );
+      if (pos == null) {
+        state = state.copyWith(
+          isFindingGps: false,
+          error: () =>
+              "Couldn't find your location. Go outside or turn on GPS.",
+        );
+        return false;
+      }
+
+      final gpsPoint = LatLng(pos.latitude, pos.longitude);
+      state = state.copyWith(
+        origin: NavOrigin(
+          name: 'My Location',
+          point: gpsPoint,
+          isGps: true,
+        ),
+        userLocation: () => gpsPoint,
+        currentPosition: () => pos,
+      );
+
+      await fetchRoute();
+      state = state.copyWith(isFindingGps: false);
+      return true;
+    } catch (_) {
+      state = state.copyWith(
+        isFindingGps: false,
+        error: () => "Couldn't find your location. Go outside or turn on GPS.",
+      );
+      return false;
+    }
+  }
+
   /// Fetch Sovereign route from POST /api/v1/routes or GET /api/v1/routes
   Future<void> fetchRoute() async {
     state = state.copyWith(isLoadingRoute: true, error: () => null);
 
     try {
       final originCoord = state.effectiveOriginPoint;
-      final dest = state.destination;
+      final endCoord = state.effectiveEndPoint;
 
-      // Check if we have intermediate 'via' stops (trail stops or detours)
+      // Check if we have intermediate 'via' stops (trail stops before last, or detours)
       final viaPoints = <Map<String, dynamic>>[];
       if (state.selectedTrail != null &&
           state.selectedTrail!.stops.isNotEmpty) {
-        for (final stop in state.selectedTrail!.stops) {
+        final stops = state.selectedTrail!.stops;
+        for (int i = 0; i < stops.length - 1; i++) {
+          final stop = stops[i];
           if (!state.isAdventureActive || !stop.checkedIn) {
             viaPoints.add({
               'lat': stop.lat,
@@ -396,7 +528,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
               'lat': originCoord.latitude,
               'lng': originCoord.longitude
             },
-            'end': {'lat': dest.lat, 'lng': dest.lng},
+            'end': {'lat': endCoord.latitude, 'lng': endCoord.longitude},
             'costing': state.costing.key,
             'avoid_congested': state.avoidCongested,
             'via': viaPoints,
@@ -410,8 +542,8 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
           queryParameters: {
             'start_lat': originCoord.latitude,
             'start_lng': originCoord.longitude,
-            'end_lat': dest.lat,
-            'end_lng': dest.lng,
+            'end_lat': endCoord.latitude,
+            'end_lng': endCoord.longitude,
             'costing': state.costing.key,
             'avoid_congested': state.avoidCongested,
           },
@@ -420,22 +552,38 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       }
 
       final routeModel = RouteModel.fromJson(responseData);
+      _cachedManeuverWaypoints = RouteGeometry.computeManeuverWaypoints(
+        routeModel.coordinates,
+        routeModel.maneuvers,
+      );
+      _lastPolylineTrimTime = null;
 
       state = state.copyWith(
         route: () => routeModel,
         isLoadingRoute: false,
+        trimmedPolyline: () => null,
+        remainingDistanceMeters: () => null,
+        remainingDurationSeconds: () => null,
       );
     } catch (e) {
       debugPrint('[Navigation] Routing error: $e');
       // If backend fails, build a degraded straight-line fallback (never crash)
       final fallbackRoute = _buildStraightLineFallback(
         state.effectiveOriginPoint,
-        LatLng(state.destination.lat, state.destination.lng),
+        state.effectiveEndPoint,
       );
+      _cachedManeuverWaypoints = RouteGeometry.computeManeuverWaypoints(
+        fallbackRoute.coordinates,
+        fallbackRoute.maneuvers,
+      );
+      _lastPolylineTrimTime = null;
       state = state.copyWith(
         route: () => fallbackRoute,
         isLoadingRoute: false,
-        error: () => 'Sovereign routing unavailable. Showing direct estimate.',
+        trimmedPolyline: () => null,
+        remainingDistanceMeters: () => null,
+        remainingDurationSeconds: () => null,
+        error: () => 'Routing estimate only — road guidance unavailable.',
       );
     }
   }
@@ -598,6 +746,21 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     fetchRoute();
   }
 
+  /// Fetch an already-unlocked trail's details and select it directly.
+  Future<void> selectUnlockedTrail(String trailId) async {
+    if (state.selectedTrail?.id == trailId && !state.isDirectRoute) {
+      return;
+    }
+    try {
+      final detail = await _trailsApi.fetchTrail(trailId);
+      selectTrail(detail);
+    } catch (e) {
+      state = state.copyWith(
+        error: () => TrailsApi.extractErrorMessage(e),
+      );
+    }
+  }
+
   /// Toggle scenic detour on direct route
   void toggleDetour(DetourArea area) {
     final current = List<DetourArea>.from(state.selectedDetours);
@@ -628,25 +791,44 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   void startAdventure() {
     _consecutiveOffRouteFixes = 0;
     _lastRerouteTime = null;
+    _lastPolylineTrimTime = null;
+    _spokenCues.clear();
     state = state.copyWith(
       isAdventureActive: true,
       isCameraFollowing: true,
       activeStepIndex: () => 0,
       hasArrivedDirect: false,
       isTrailCompleted: false,
+      lastCheckedInStop: () => null,
       isRerouting: false,
+      snappedPuckPosition: () => null,
+      trimmedPolyline: () => null,
+      remainingDistanceMeters: () => null,
+      remainingDurationSeconds: () => null,
     );
+    final route = state.route;
+    if (route != null && route.maneuvers.isNotEmpty) {
+      _speakOnce('step_0_start', route.maneuvers.first.instruction);
+    }
   }
 
   /// End active adventure live guidance
   void endAdventure() {
     _consecutiveOffRouteFixes = 0;
     _lastRerouteTime = null;
+    _lastPolylineTrimTime = null;
+    _spokenCues.clear();
+    unawaited(_voiceGuide?.stop());
     state = state.copyWith(
       isAdventureActive: false,
       isCameraFollowing: true,
       isRerouting: false,
       hasArrivedDirect: false,
+      lastCheckedInStop: () => null,
+      snappedPuckPosition: () => null,
+      trimmedPolyline: () => null,
+      remainingDistanceMeters: () => null,
+      remainingDurationSeconds: () => null,
     );
   }
 
@@ -655,22 +837,69 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     state = state.copyWith(isCameraFollowing: follow);
   }
 
+  /// Toggle or set voice mute state
+  void setVoiceMuted(bool muted) {
+    if (state.isVoiceMuted == muted) return;
+    state = state.copyWith(isVoiceMuted: muted);
+    unawaited(_voiceGuide?.setMuted(muted));
+  }
+
+  void toggleVoiceMuted() {
+    setVoiceMuted(!state.isVoiceMuted);
+  }
+
   /// Live GPS position update from Geolocator stream
   void updatePosition(Position position) {
     final gpsPoint = LatLng(position.latitude, position.longitude);
+    final route = state.route;
+
+    LatLng? snappedPuck = gpsPoint;
+    List<LatLng>? nextTrimmed = state.trimmedPolyline;
+    double? nextRemDist = state.remainingDistanceMeters;
+    int? nextRemSec = state.remainingDurationSeconds;
+
+    if (route != null && route.coordinates.length >= 2) {
+      final snap = RouteGeometry.snapToPolyline(
+        gpsPoint,
+        route.coordinates,
+        maxSnapMeters: 30.0,
+      );
+      snappedPuck = snap.snapped ? snap.snappedPoint : gpsPoint;
+      nextRemDist = snap.remainingMeters;
+      final totalMeters = route.summary.distanceKm * 1000.0;
+      nextRemSec = RouteGeometry.remainingDurationSeconds(
+        snap.remainingMeters,
+        totalMeters > 0 ? totalMeters : snap.remainingMeters,
+        route.summary.durationSeconds,
+      );
+
+      final now = DateTime.now();
+      if (_lastPolylineTrimTime == null ||
+          now.difference(_lastPolylineTrimTime!) >=
+              const Duration(seconds: 1)) {
+        _lastPolylineTrimTime = now;
+        nextTrimmed = snap.remainingPolyline;
+      }
+    }
+
     state = state.copyWith(
       currentPosition: () => position,
       userLocation: () => gpsPoint,
+      snappedPuckPosition: () => snappedPuck,
+      trimmedPolyline: () => nextTrimmed,
+      remainingDistanceMeters: () => nextRemDist,
+      remainingDurationSeconds: () => nextRemSec,
     );
 
-    final route = state.route;
     if (route == null) return;
 
-    // 1. Maneuver waypoint distance and step advancement
-    final waypoints = RouteGeometry.computeManeuverWaypoints(
-      route.coordinates,
-      route.maneuvers,
-    );
+    // 1. Maneuver waypoint distance and step advancement (Bug A8: cached once per route)
+    final waypoints = _cachedManeuverWaypoints.isNotEmpty
+        ? _cachedManeuverWaypoints
+        : (_cachedManeuverWaypoints = RouteGeometry.computeManeuverWaypoints(
+            route.coordinates,
+            route.maneuvers,
+          ));
 
     final curIdx = state.activeStepIndex ?? 0;
     if (waypoints.isNotEmpty && curIdx < waypoints.length) {
@@ -696,10 +925,24 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
           activeStepIndex: () => nextIdx,
           distanceToManeuverM: () => nextDist,
         );
+        if (nextIdx < route.maneuvers.length) {
+          _speakOnce(
+            'step_${nextIdx}_start',
+            route.maneuvers[nextIdx].instruction,
+          );
+        }
       } else {
         state = state.copyWith(
           distanceToManeuverM: () => distToTurn,
         );
+        if (curIdx < route.maneuvers.length) {
+          final instr = route.maneuvers[curIdx].instruction;
+          if (distToTurn <= 40.0) {
+            _speakOnce('step_${curIdx}_40', 'Now, $instr');
+          } else if (distToTurn <= 300.0) {
+            _speakOnce('step_${curIdx}_300', 'In 300 meters, $instr');
+          }
+        }
       }
     }
 
@@ -719,6 +962,10 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
             _lastRerouteTime = now;
             _consecutiveOffRouteFixes = 0;
             state = state.copyWith(isRerouting: true);
+            _speakOnce(
+              'reroute_${now.millisecondsSinceEpoch}',
+              'Recalculating route',
+            );
             rerouteFromCurrentLocation();
           }
         }
@@ -740,7 +987,17 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       );
       if (distToDest <= 40.0 && !state.hasArrivedDirect) {
         state = state.copyWith(hasArrivedDirect: true);
+        _speakOnce(
+          'arrive_direct',
+          'You have arrived at ${state.destination.name}',
+        );
       }
+    } else if (state.isWithinCheckinRadius && state.nextUncheckedStop != null) {
+      final stop = state.nextUncheckedStop!;
+      _speakOnce(
+        'stop_checkin_${stop.position}',
+        'Arrived at stop ${stop.position}, ${stop.name}',
+      );
     }
   }
 
@@ -758,6 +1015,11 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       isRerouting: false,
       activeStepIndex: () => 0,
     );
+    // A new route restarts at step 0: forget which turns were announced, or
+    // the voice stays silent for every step number it has already spoken.
+    _spokenCues.removeWhere((k) => k.startsWith('step_'));
+    final first = state.route?.maneuvers.firstOrNull;
+    if (first != null) _speakOnce('step_0_start', first.instruction);
   }
 
   /// Check in at current trail stop
@@ -836,6 +1098,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         isCheckingIn: false,
         isTrailCompleted: allDone,
         trailCompletionReward: () => allDone ? reward : null,
+        lastCheckedInStop: () => allDone ? null : stop,
       );
     } catch (e) {
       state = state.copyWith(
@@ -843,6 +1106,13 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         error: () => TrailsApi.extractErrorMessage(e),
       );
     }
+  }
+
+  /// Dismisses the stop check-in card and re-fetches the route from the
+  /// current position through the remaining stops.
+  Future<void> continueAfterCheckIn() async {
+    state = state.copyWith(lastCheckedInStop: () => null);
+    await rerouteFromCurrentLocation();
   }
 }
 
@@ -852,9 +1122,11 @@ final navigationProvider = StateNotifierProvider.autoDispose
   (ref, destination) {
     final apiClient = ref.watch(apiClientProvider);
     final trailsApi = ref.watch(trailsApiProvider);
+    final voiceGuide = ref.watch(voiceGuideProvider);
     return NavigationNotifier(
       apiClient: apiClient,
       trailsApi: trailsApi,
+      voiceGuide: voiceGuide,
       initialDestination: destination,
     );
   },

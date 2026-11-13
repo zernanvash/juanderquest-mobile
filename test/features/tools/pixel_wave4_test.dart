@@ -18,7 +18,6 @@ import 'package:juanderquest_app/features/navigation/models/route_model.dart';
 import 'package:juanderquest_app/features/navigation/providers/navigation_provider.dart';
 import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
 import 'package:juanderquest_app/core/dev/test_content.dart';
-import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/features/notifications/screens/notifications_screen.dart';
 import 'package:juanderquest_app/features/quests/builder/quest_builder_repository.dart';
 import 'package:juanderquest_app/features/quests/screens/qr_scan_screen.dart';
@@ -893,36 +892,22 @@ void main() {
             fixture = _NavFixture(client, t, stateFor(route: _route)),
       );
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Navigation'), findsOneWidget);
-      expect(find.text('Valhalla Engine'), findsOneWidget);
-      tester
-          .widget<PixelSegmented>(find.byType(PixelSegmented).first)
-          .onChanged(1);
+      expect(find.text('TO'), findsOneWidget);
+      expect(find.text('Patar Beach'), findsOneWidget);
+      expect(find.text('DIRECT ROUTE'), findsOneWidget);
+      await tester.tap(find.text('MOTO'));
       await tester.pump();
       expect(fixture.costings, greaterThanOrEqualTo(1));
-      tester
-          .widget<PixelSwitch>(find.byKey(const ValueKey('nav_anti_crowd')))
-          .onChanged(true);
+
+      await tester.tap(find.text('CHANGE'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nav_anti_crowd')));
       await tester.pump();
       expect(fixture.crowds, greaterThanOrEqualTo(1));
-      tester
-          .widget<PixelButton>(
-              find.byKey(const ValueKey('nav_toggle_controls')))
-          .onPressed!();
-      await tester.pump();
-      tester
-          .widget<PixelButton>(find.byKey(const ValueKey('nav_close_steps')))
-          .onPressed!();
-      await tester.pump();
-      tester
-          .widget<PixelButton>(find.byKey(const ValueKey('nav_toggle_steps')))
-          .onPressed!();
-      await tester.pump();
-      tester
-          .widget<PixelButton>(find.byKey(const ValueKey('nav_locate')))
-          .onPressed!();
-      await tester.pump();
-      expect(fixture.locates, greaterThanOrEqualTo(1));
+
+      await tester.tap(find.text('MY GPS LOCATION'));
+      await tester.pumpAndSettle();
+      expect(find.text('TO'), findsOneWidget);
     });
 
     testWidgets('error banner retries', (tester) async {
@@ -935,10 +920,8 @@ void main() {
             client, t, stateFor(route: null, error: 'Route unavailable')),
       );
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Route unavailable'), findsOneWidget);
-      tester
-          .widget<PixelButton>(find.byKey(const ValueKey('nav_error_retry')))
-          .onPressed!();
+      expect(find.text("Couldn't load this. Try again."), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('nav_retry')));
       await tester.pump();
       expect(fixture.routes, greaterThanOrEqualTo(1));
     });

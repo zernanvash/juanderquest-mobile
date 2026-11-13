@@ -218,57 +218,84 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                   ],
                   SizedBox(height: grid.px(2)),
 
-                  // Stats Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: PixelPanel(
-                          style: PixelBoxStyle.parchment,
-                          child: Column(
-                            children: [
-                              Text(
-                                '${widget.trail.stopCount}',
-                                style: PixelType.title(context,
-                                    color: PixelPalette.woodDeep),
-                              ),
-                              Text('STOPS', style: PixelType.small(context)),
-                            ],
+                  // Stats Row (C3: equal height, single-line scale down)
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: PixelPanel(
+                            style: PixelBoxStyle.parchment,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '${widget.trail.stopCount}',
+                                    maxLines: 1,
+                                    style: PixelType.title(context,
+                                        color: PixelPalette.woodDeep),
+                                  ),
+                                ),
+                                Text('STOPS',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: PixelType.small(context)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: grid.px(1)),
-                      Expanded(
-                        child: PixelPanel(
-                          style: PixelBoxStyle.parchment,
-                          child: Column(
-                            children: [
-                              Text(
-                                formatMinutes(widget.trail.totalMinutes),
-                                style: PixelType.title(context,
-                                    color: PixelPalette.woodDeep),
-                              ),
-                              Text('DURATION', style: PixelType.small(context)),
-                            ],
+                        SizedBox(width: grid.px(1)),
+                        Expanded(
+                          child: PixelPanel(
+                            style: PixelBoxStyle.parchment,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    formatMinutes(widget.trail.totalMinutes),
+                                    maxLines: 1,
+                                    style: PixelType.title(context,
+                                        color: PixelPalette.woodDeep),
+                                  ),
+                                ),
+                                Text('DURATION',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: PixelType.small(context)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: grid.px(1)),
-                      Expanded(
-                        child: PixelPanel(
-                          style: PixelBoxStyle.gold,
-                          child: Column(
-                            children: [
-                              Text(
-                                '+${widget.trail.rewardPoints}',
-                                style: PixelType.title(context,
-                                    color: PixelPalette.woodDeep),
-                              ),
-                              Text('POINTS', style: PixelType.small(context)),
-                            ],
+                        SizedBox(width: grid.px(1)),
+                        Expanded(
+                          child: PixelPanel(
+                            style: PixelBoxStyle.gold,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '+${widget.trail.rewardPoints}',
+                                    maxLines: 1,
+                                    style: PixelType.title(context,
+                                        color: PixelPalette.woodDeep),
+                                  ),
+                                ),
+                                Text('POINTS',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: PixelType.small(context)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   SizedBox(height: grid.px(2)),
 
@@ -283,10 +310,27 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                   else if (_error != null)
                     Padding(
                       padding: EdgeInsets.only(bottom: grid.px(2)),
-                      child: Text(
-                        _error!,
-                        style: PixelType.body(context,
-                            color: PixelPalette.redDeep),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            _error!,
+                            style: PixelType.body(context,
+                                color: PixelPalette.redDeep),
+                          ),
+                          if (_detail == null) ...[
+                            SizedBox(height: grid.px(1)),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: PixelButton(
+                                key: const ValueKey('trail_offer_retry'),
+                                label: 'RETRY',
+                                variant: PixelButtonVariant.secondary,
+                                onPressed: _loadDetail,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     )
                   else if (_detail != null) ...[
@@ -326,9 +370,7 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                             children: [
                               PixelChip(
                                 '${stop.position}',
-                                style: stop.checkedIn
-                                    ? PixelBoxStyle.gold
-                                    : PixelBoxStyle.wood,
+                                style: PixelBoxStyle.gold,
                               ),
                               SizedBox(width: grid.px(2)),
                               Expanded(
@@ -469,7 +511,7 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                     child: PixelButton(
                       key: const ValueKey('trail_offer_primary_cta'),
                       label: isUnlocked
-                          ? 'LOAD TRAIL ON MAP'
+                          ? 'USE THIS TRAIL'
                           : isFree
                               ? 'CHOOSE TRAIL'
                               : _isConfirmingUnlock

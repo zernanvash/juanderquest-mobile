@@ -14,7 +14,8 @@ import 'package:juanderquest_app/features/navigation/screens/navigation_screen.d
 import 'package:juanderquest_app/features/navigation/widgets/detour_sheet.dart';
 import 'package:juanderquest_app/features/navigation/widgets/origin_picker_sheet.dart';
 import 'package:juanderquest_app/features/navigation/widgets/route_deck.dart';
-import 'package:juanderquest_app/features/navigation/widgets/safety_disclaimer_sheet.dart';
+import 'package:juanderquest_app/features/navigation/widgets/route_preview_sheet.dart';
+import 'package:juanderquest_app/features/navigation/widgets/route_preview_top_bar.dart';
 import 'package:juanderquest_app/features/navigation/widgets/steps_sheet.dart';
 import 'package:juanderquest_app/features/trail/models/trail_models.dart';
 import 'package:juanderquest_app/features/trail/services/trails_api.dart';
@@ -412,37 +413,31 @@ void main() {
       expect(fakeMap.routeOverlay, isNotNull);
       expect(fakeMap.routeOverlay!.points.length, equals(2));
 
-      // Header controls rendered
-      expect(find.text('Valhalla Engine'), findsOneWidget);
-      expect(find.text('Lingayen Capitol'), findsOneWidget);
+      // Header controls rendered (83d RoutePreviewTopBar + RoutePreviewSheet)
+      expect(find.byType(RoutePreviewTopBar), findsOneWidget);
+      expect(find.text('TO'), findsOneWidget);
       expect(find.text('Patar Beach'), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_swap_origin')), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_anti_crowd')), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_fit_route')), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_locate')), findsOneWidget);
+      expect(find.byType(RoutePreviewSheet), findsOneWidget);
+      expect(find.text('CHANGE'), findsOneWidget);
 
-      // RouteDeck cards rendered
-      expect(find.byType(RouteDeck), findsOneWidget);
+      // Route modes and route rows rendered
+      expect(find.text('DRIVE'), findsOneWidget);
+      expect(find.text('MOTO'), findsOneWidget);
+      expect(find.text('BIKE'), findsOneWidget);
+      expect(find.text('WALK'), findsOneWidget);
       expect(
-          find.byKey(const ValueKey('nav_card_direct_route')), findsOneWidget);
+          find.byKey(const ValueKey('nav_route_direct')), findsOneWidget);
       expect(find.text('DIRECT ROUTE'), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_card_trail_trail-lingayen-gulf')),
+      expect(find.byKey(const ValueKey('nav_route_trail_trail-lingayen-gulf')),
           findsOneWidget);
 
       // Pinned Action Bar
       expect(
-          find.byKey(const ValueKey('nav_steps_bar_button')), findsOneWidget);
+          find.byKey(const ValueKey('nav_steps_button')), findsOneWidget);
       expect(find.byKey(const ValueKey('nav_start_adventure')), findsOneWidget);
 
-      // Tapping START ADVENTURE triggers safety disclaimer
-      await tester.tap(find.byKey(const ValueKey('nav_start_adventure')));
-      await tester.pumpAndSettle();
-      expect(find.byType(SafetyDisclaimerSheet), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('nav_safety_close')));
-      await tester.pumpAndSettle();
-
       // Tapping STEPS bar button opens StepsSheet
-      await tester.tap(find.byKey(const ValueKey('nav_steps_bar_button')));
+      await tester.tap(find.byKey(const ValueKey('nav_steps_button')));
       await tester.pumpAndSettle();
       expect(find.byType(StepsSheet), findsOneWidget);
       expect(
@@ -509,7 +504,7 @@ void main() {
         ),
       );
 
-      expect(find.text('CHOOSE STARTING POINT'), findsOneWidget);
+      expect(find.text('ROUTE OPTIONS'), findsOneWidget);
       expect(find.text('MY GPS LOCATION'), findsOneWidget);
       expect(find.text('POPULAR STARTING HUBS'), findsOneWidget);
 
