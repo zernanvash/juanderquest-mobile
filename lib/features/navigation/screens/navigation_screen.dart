@@ -62,7 +62,10 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   void _syncPulseTimer(BuildContext context, NavigationState navState) {
     final reduce = MediaQuery.disableAnimationsOf(context);
     final isMoving = navState.isAdventureActive && navState.currentSpeedMs > 0.3;
-    final shouldPulse = !reduce && (!navState.isAdventureActive || isMoving);
+    final needsRecenterBlink =
+        navState.isAdventureActive && !navState.isCameraFollowing;
+    final shouldPulse =
+        !reduce && (!navState.isAdventureActive || isMoving || needsRecenterBlink);
     if (shouldPulse) {
       _pulseTimer ??= Timer.periodic(const Duration(milliseconds: 500), (_) {
         if (!mounted) return;
@@ -643,6 +646,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                                     label: 'CTR',
                                     semanticLabel: 'Re-centre map',
                                     isHighlighted: !navState.isCameraFollowing,
+                                    blinkDim: !navState.isCameraFollowing &&
+                                        _pulseFrame,
                                     onTap: () {
                                       notifier.setCameraFollowing(true);
                                       if (navState.currentPosition != null) {
@@ -753,7 +758,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   }
 
   Widget _speedBox(BuildContext context, double speedMs) {
-    final kmh = (speedMs * 3.6).round().clamp(0, 999);
+    final rawKmh = speedMs * 3.6;
+    final kmh = rawKmh < 1.0 ? 0 : rawKmh.round().clamp(0, 999);
     return Container(
       key: const ValueKey('nav_speed_box'),
       width: 56,
@@ -797,8 +803,12 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     required String label,
     required String semanticLabel,
     required bool isHighlighted,
+    bool blinkDim = false,
     required VoidCallback onTap,
   }) {
+    final bgColor = !isHighlighted
+        ? PixelPalette.cream
+        : (blinkDim ? PixelPalette.sunLight : PixelPalette.sun);
     return Semantics(
       button: true,
       label: semanticLabel,
@@ -809,7 +819,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: isHighlighted ? PixelPalette.gold : PixelPalette.cream,
+            color: bgColor,
             border: const Border.fromBorderSide(
               BorderSide(color: PixelPalette.ink, width: 2),
             ),

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../core/pixel/pixel_box.dart';
-import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../trail/models/trail_models.dart';
 import '../models/route_model.dart';
+import 'trail_tracker_bar.dart';
 
 class AdventureBottomBar extends StatelessWidget {
   final RouteSummary summary;
@@ -100,14 +99,23 @@ class AdventureBottomBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Trail stop strip (when on a trail)
+              // Trail stop strip with TrailTrackerBar (when on a trail)
               if (isTrail && !isTrailCompleted && nextStop != null) ...[
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    PixelChip(
+                    TrailTrackerBar(
+                      key: const ValueKey('nav_trail_tracker'),
+                      stops: selectedTrail!.stops,
+                      nextStopPosition: nextStop!.position,
+                    ),
+                    SizedBox(width: grid.px(1)),
+                    Text(
                       'STOP $currentStopNumber OF $totalStops',
-                      style: PixelBoxStyle.gold,
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.woodDeep,
+                      ).copyWith(fontWeight: FontWeight.w700),
                     ),
                     SizedBox(width: grid.px(1)),
                     Expanded(
