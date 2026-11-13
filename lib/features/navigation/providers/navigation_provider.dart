@@ -804,8 +804,12 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       }).toList();
 
       final allDone = updatedStops.every((s) => s.checkedIn);
-      final reward =
-          (response['reward_points'] as num?)?.toInt() ?? trail.rewardPoints;
+      // The server puts the reward in `completion` (null if this trail was
+      // already completed before).
+      final completion = response['completion'];
+      final reward = completion is Map
+          ? (completion['reward_points'] as num?)?.toInt()
+          : null;
 
       final updatedTrail = TrailDetail(
         id: trail.id,

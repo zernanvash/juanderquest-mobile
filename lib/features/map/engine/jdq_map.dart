@@ -80,13 +80,8 @@ abstract class JdqMap {
   void Function(LatLng point)? onTapEmpty;
   VoidCallback? onCameraIdle;
   Future<void> setStyle(String style);
-  Future<void> easeTo(
-    LatLng point,
-    double zoom, {
-    double? bearing,
-    double? tilt,
-    bool reducedMotion = false,
-  });
+  Future<void> easeTo(LatLng point, double zoom,
+      {double? bearing, double? tilt, bool reducedMotion = false});
   Future<void> resetOrientation();
   Future<void> fitBounds(
       LatLng southWest, LatLng northEast, EdgeInsets padding);
@@ -95,7 +90,6 @@ abstract class JdqMap {
   Future<void> setFocusArea(AreaShape shape);
   Future<void> clearFocus();
   Future<void> setRouteOverlay(JdqRouteOverlay? overlay);
-
   /// Draws satellite imagery under the labels and pins (no-op without an imagery key).
   Future<void> setSatellite(bool on);
   void setMyLocation(bool enabled);
@@ -119,22 +113,16 @@ class FakeJdqMap extends JdqMap {
   }
 
   @override
-  Future<void> easeTo(
-    LatLng point,
-    double zoom, {
-    double? bearing,
-    double? tilt,
-    bool reducedMotion = false,
-  }) async {
+  Future<void> easeTo(LatLng point, double zoom,
+      {double? bearing, double? tilt, bool reducedMotion = false}) async {
     camera = JdqCamera(
-      center: point,
-      zoom: zoom,
-      bearing: bearing ?? camera.bearing,
-      tilt: tilt ?? camera.tilt,
-      southWest: camera.southWest,
-      northEast: camera.northEast,
-      size: camera.size,
-    );
+        center: point,
+        zoom: zoom,
+        bearing: bearing ?? camera.bearing,
+        tilt: tilt ?? camera.tilt,
+        southWest: camera.southWest,
+        northEast: camera.northEast,
+        size: camera.size);
     onCameraIdle?.call();
   }
 

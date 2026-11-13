@@ -148,7 +148,8 @@ class TrailsApi {
         data: {
           'lat': lat,
           'lng': lng,
-          'accuracy_m': accuracyM.clamp(0.0, 100.0),
+          // The real accuracy: the server rejects fixes worse than 100 m.
+          'accuracy_m': accuracyM,
         },
       );
 

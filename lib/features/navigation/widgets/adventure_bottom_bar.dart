@@ -83,7 +83,9 @@ class AdventureBottomBar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'TRAIL COMPLETED! +$trailRewardPoints PTS',
+                    trailRewardPoints > 0
+                        ? 'TRAIL COMPLETED! +$trailRewardPoints PTS'
+                        : 'TRAIL COMPLETED!',
                     style: PixelType.title(
                       context,
                       color: PixelPalette.woodDeep,

@@ -83,9 +83,7 @@ TownLabelMetrics computeTownLabelMetrics({
   // Long names shrink to fit 180 dp, down to 9 dp.
   const maxWidthDp = 180.0;
   final tp = TextPainter(
-    text: TextSpan(
-        text: text.toUpperCase(),
-        style: _labelStyle(size, weight, spacing, color)),
+    text: TextSpan(text: text.toUpperCase(), style: _labelStyle(size, weight, spacing, color)),
     textDirection: TextDirection.ltr,
   )..layout();
   var effective = size;
@@ -102,10 +100,7 @@ TownLabelMetrics computeTownLabelMetrics({
   );
 }
 
-TextStyle _labelStyle(
-        double size, FontWeight weight, double spacing, Color color,
-        {Paint? foreground}) =>
-    TextStyle(
+TextStyle _labelStyle(double size, FontWeight weight, double spacing, Color color, {Paint? foreground}) => TextStyle(
       fontFamily: 'Silkscreen',
       fontFamilyFallback: const ['Monocraft'],
       fontSize: size,
@@ -129,20 +124,16 @@ Future<Uint8List?> rasterizeTownLabel(
     final halo = math.max(1.0, (m.haloDp * dpr).roundToDouble());
     final upper = text.toUpperCase();
 
-    TextPainter painter(TextStyle style) => TextPainter(
-        text: TextSpan(text: upper, style: style),
-        textDirection: TextDirection.ltr)
-      ..layout();
+    TextPainter painter(TextStyle style) =>
+        TextPainter(text: TextSpan(text: upper, style: style), textDirection: TextDirection.ltr)..layout();
 
     final haloPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = halo * 2
       ..strokeJoin = StrokeJoin.miter
       ..color = isFocused ? _labelFocusHalo : _labelHalo;
-    final back = painter(_labelStyle(size, m.fontWeight, spacing, m.color,
-        foreground: haloPaint));
-    final front = painter(_labelStyle(
-        size, m.fontWeight, spacing, isFocused ? _labelFocus : m.color));
+    final back = painter(_labelStyle(size, m.fontWeight, spacing, m.color, foreground: haloPaint));
+    final front = painter(_labelStyle(size, m.fontWeight, spacing, isFocused ? _labelFocus : m.color));
 
     final w = (front.width + halo * 2).ceil();
     final h = (front.height + halo * 2).ceil();
@@ -203,19 +194,14 @@ Future<Uint8List?> rasterizeRoutePointMarker({
       final end = kind == JdqRoutePointKind.end;
       final side = ((end ? 16.0 : 12.0) * dpr).roundToDouble();
       final edge = math.max(1.0, (2.0 * dpr).roundToDouble());
-      canvas.drawRect(Rect.fromLTWH(0, 0, side, side),
-          Paint()..color = const Color(0xFFFFF8E1));
-      canvas.drawRect(
-          Rect.fromLTWH(edge, edge, side - edge * 2, side - edge * 2),
-          Paint()..color = bg);
+      canvas.drawRect(Rect.fromLTWH(0, 0, side, side), Paint()..color = const Color(0xFFFFF8E1));
+      canvas.drawRect(Rect.fromLTWH(edge, edge, side - edge * 2, side - edge * 2), Paint()..color = bg);
       if (end) {
         final dot = (4.0 * dpr).roundToDouble();
         canvas.drawRect(
-            Rect.fromLTWH((side - dot) / 2, (side - dot) / 2, dot, dot),
-            Paint()..color = const Color(0xFFFFF8E1));
+            Rect.fromLTWH((side - dot) / 2, (side - dot) / 2, dot, dot), Paint()..color = const Color(0xFFFFF8E1));
       }
-      final img =
-          await recorder.endRecording().toImage(side.round(), side.round());
+      final img = await recorder.endRecording().toImage(side.round(), side.round());
       final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
       return bytes?.buffer.asUint8List();
     }
@@ -265,8 +251,7 @@ Future<Uint8List?> rasterizeRoutePointMarker({
     );
     textPainter.paint(canvas, textOffset);
 
-    final img =
-        await recorder.endRecording().toImage(sizePx.round(), sizePx.round());
+    final img = await recorder.endRecording().toImage(sizePx.round(), sizePx.round());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     return byteData?.buffer.asUint8List();
   } catch (_) {
@@ -310,70 +295,63 @@ class MapLibreJdqMap extends JdqMap {
     double? bearing,
     double? tilt,
     bool reducedMotion = false,
-  }) =>
-      _safe(() async {
-        final gl.CameraUpdate update;
-        if (bearing != null || tilt != null) {
-          update = gl.CameraUpdate.newCameraPosition(
-            gl.CameraPosition(
-              target: _ll(point),
-              zoom: zoom,
-              bearing: bearing ?? _controller?.cameraPosition?.bearing ?? 0.0,
-              tilt: tilt ?? _controller?.cameraPosition?.tilt ?? 0.0,
-            ),
-          );
-        } else {
-          update = gl.CameraUpdate.newLatLngZoom(_ll(point), zoom);
-        }
-        if (reducedMotion) {
-          await _controller!.moveCamera(update);
-        } else {
-          await _controller!.animateCamera(
-            update,
-            duration: const Duration(milliseconds: 700),
-          );
-        }
-      });
+  }) => _safe(() async {
+    final pos = _controller!.cameraPosition;
+    final update = bearing == null && tilt == null
+        ? gl.CameraUpdate.newLatLngZoom(_ll(point), zoom)
+        : gl.CameraUpdate.newCameraPosition(gl.CameraPosition(
+            target: _ll(point),
+            zoom: zoom,
+            bearing: bearing ?? pos?.bearing ?? 0,
+            tilt: tilt ?? pos?.tilt ?? 0,
+          ));
+    if (reducedMotion) {
+      await _controller!.moveCamera(update);
+    } else {
+      await _controller!.animateCamera(
+        update,
+        duration: const Duration(milliseconds: 700),
+      );
+    }
+  });
 
   @override
   Future<void> resetOrientation() => _safe(() async {
-        final position = _controller!.cameraPosition;
-        if (position == null) return;
-        await _controller!.animateCamera(
-          gl.CameraUpdate.newCameraPosition(
-            gl.CameraPosition(
-              target: position.target,
-              zoom: position.zoom,
-              bearing: 0,
-              tilt: 0,
-            ),
-          ),
-          duration: const Duration(milliseconds: 350),
-        );
-      });
+    final position = _controller!.cameraPosition;
+    if (position == null) return;
+    await _controller!.animateCamera(
+      gl.CameraUpdate.newCameraPosition(
+        gl.CameraPosition(
+          target: position.target,
+          zoom: position.zoom,
+          bearing: 0,
+          tilt: 0,
+        ),
+      ),
+      duration: const Duration(milliseconds: 350),
+    );
+  });
   @override
   Future<void> fitBounds(
     LatLng southWest,
     LatLng northEast,
     EdgeInsets padding,
-  ) =>
-      _safe(() async {
-        await _controller!.animateCamera(
-          gl.CameraUpdate.newLatLngBounds(
-            gl.LatLngBounds(
-                southwest: _ll(southWest), northeast: _ll(northEast)),
-            left: padding.left,
-            top: padding.top,
-            right: padding.right,
-            bottom: padding.bottom,
-          ),
-          duration: const Duration(milliseconds: 700),
-        );
-      });
+  ) => _safe(() async {
+    await _controller!.animateCamera(
+      gl.CameraUpdate.newLatLngBounds(
+        gl.LatLngBounds(southwest: _ll(southWest), northeast: _ll(northEast)),
+        left: padding.left,
+        top: padding.top,
+        right: padding.right,
+        bottom: padding.bottom,
+      ),
+      duration: const Duration(milliseconds: 700),
+    );
+  });
   Map<String, dynamic> _collection(List<Map<String, dynamic>> features) => {
-        'type': 'FeatureCollection',
-        'features': features,
-      };
+    'type': 'FeatureCollection',
+    'features': features,
+  };
   Map<String, dynamic> _point(LatLng point, Map<String, dynamic> properties) =>
       {
         'type': 'Feature',
@@ -499,9 +477,7 @@ class MapLibreJdqMap extends JdqMap {
           return;
         }
 
-        final dpr = WidgetsBinding.instance.platformDispatcher.views.firstOrNull
-                ?.devicePixelRatio ??
-            2.0;
+        final dpr = WidgetsBinding.instance.platformDispatcher.views.firstOrNull?.devicePixelRatio ?? 2.0;
 
         for (final pt in overlay.points) {
           final key = '${pt.label}|${pt.kind.name}|${dpr.toStringAsFixed(1)}';
@@ -515,8 +491,7 @@ class MapLibreJdqMap extends JdqMap {
             if (bytes != null) _routeMarkerBitmapCache[key] = bytes;
           }
           if (bytes != null) {
-            await c.addImage(
-                'jdq-route-point-${pt.label}-${pt.kind.name}', bytes);
+            await c.addImage('jdq-route-point-${pt.label}-${pt.kind.name}', bytes);
           }
         }
 
@@ -584,8 +559,8 @@ class MapLibreJdqMap extends JdqMap {
 
   Map<String, dynamic> _areaShapeToGeoJson(AreaShape shape) {
     List<List<double>> ring(List<LatLng> points) => [
-          for (final p in points) [p.longitude, p.latitude],
-        ];
+      for (final p in points) [p.longitude, p.latitude],
+    ];
 
     if (shape.polygons.length == 1) {
       return {
@@ -609,82 +584,82 @@ class MapLibreJdqMap extends JdqMap {
   }
 
   Future<void> _updatePinOverlap() => _safe(() async {
-        final c = _controller;
-        if (c == null) return;
-        final allow = _focus != null || camera.zoom >= 13.0;
-        if (_lastOverlap == allow) return;
-        _lastOverlap = allow;
-        try {
-          await c.setLayerProperties(
-            'jdq-pin-symbols',
-            gl.SymbolLayerProperties(
-              iconImage: const [
-                'case',
-                ['get', 'quest'],
-                'jdq-pin-quest',
-                'jdq-pin-spot',
-              ],
-              iconSize: 1.0,
-              iconAllowOverlap: allow,
-              iconAnchor: 'bottom',
-            ),
-          );
-        } catch (_) {}
-      });
+    final c = _controller;
+    if (c == null) return;
+    final allow = _focus != null || camera.zoom >= 13.0;
+    if (_lastOverlap == allow) return;
+    _lastOverlap = allow;
+    try {
+      await c.setLayerProperties(
+        'jdq-pin-symbols',
+        gl.SymbolLayerProperties(
+          iconImage: const [
+            'case',
+            ['get', 'quest'],
+            'jdq-pin-quest',
+            'jdq-pin-spot',
+          ],
+          iconSize: 1.0,
+          iconAllowOverlap: allow,
+          iconAnchor: 'bottom',
+        ),
+      );
+    } catch (_) {}
+  });
 
   Future<void> _updateFocus() => _safe(() async {
-        final c = _controller!;
-        if (_focus == null) {
-          await c.setGeoJsonSource('jdq-focus', _collection([]));
-          await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
-          await _updatePinOverlap();
-          await setPlaces(_places);
-          return;
-        }
+    final c = _controller!;
+    if (_focus == null) {
+      await c.setGeoJsonSource('jdq-focus', _collection([]));
+      await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
+      await _updatePinOverlap();
+      await setPlaces(_places);
+      return;
+    }
 
-        final shapeGeoJson = _areaShapeToGeoJson(_focus!);
-        final maskGeometry = buildInvertedMask(shapeGeoJson);
+    final shapeGeoJson = _areaShapeToGeoJson(_focus!);
+    final maskGeometry = buildInvertedMask(shapeGeoJson);
 
-        if (maskGeometry != null) {
-          await c.setGeoJsonSource(
-            'jdq-focus-mask',
-            _collection([
-              {
-                'type': 'Feature',
-                'properties': <String, dynamic>{},
-                'geometry': maskGeometry,
-              },
-            ]),
-          );
-        } else {
-          await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
-        }
+    if (maskGeometry != null) {
+      await c.setGeoJsonSource(
+        'jdq-focus-mask',
+        _collection([
+          {
+            'type': 'Feature',
+            'properties': <String, dynamic>{},
+            'geometry': maskGeometry,
+          },
+        ]),
+      );
+    } else {
+      await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
+    }
 
-        List<List<double>> ring(List<LatLng> points) => [
-              for (final p in points) [p.longitude, p.latitude],
-            ];
+    List<List<double>> ring(List<LatLng> points) => [
+      for (final p in points) [p.longitude, p.latitude],
+    ];
 
-        await c.setGeoJsonSource(
-          'jdq-focus',
-          _collection([
-            for (final p in _focus!.polygons)
-              {
-                'type': 'Feature',
-                'properties': <String, dynamic>{},
-                'geometry': {
-                  'type': 'Polygon',
-                  'coordinates': [
-                    ring(p.outer),
-                    for (final h in p.holes) ring(h),
-                  ],
-                },
-              },
-          ]),
-        );
+    await c.setGeoJsonSource(
+      'jdq-focus',
+      _collection([
+        for (final p in _focus!.polygons)
+          {
+            'type': 'Feature',
+            'properties': <String, dynamic>{},
+            'geometry': {
+              'type': 'Polygon',
+              'coordinates': [
+                ring(p.outer),
+                for (final h in p.holes) ring(h),
+              ],
+            },
+          },
+      ]),
+    );
 
-        await _updatePinOverlap();
-        await setPlaces(_places);
-      });
+    await _updatePinOverlap();
+    await setPlaces(_places);
+  });
   @override
   Future<void> setSatellite(bool on) async {
     _satellite = on;
@@ -981,14 +956,11 @@ class MapLibreJdqMap extends JdqMap {
     if (!_ready || _disposed) return;
     try {
       final c = _controller!;
-      final hits = await c.queryRenderedFeatures(
-          point,
-          [
-            'jdq-pin-symbols',
-            'jdq-pin-dots',
-            'admin-place-labels',
-          ],
-          null);
+      final hits = await c.queryRenderedFeatures(point, [
+        'jdq-pin-symbols',
+        'jdq-pin-dots',
+        'admin-place-labels',
+      ], null);
       if (_disposed) return;
       for (final hit in hits) {
         if (hit is! Map) continue;

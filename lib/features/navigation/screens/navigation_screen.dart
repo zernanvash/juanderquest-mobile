@@ -670,9 +670,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                             isCheckingIn: navState.isCheckingIn,
                             hasArrivedDirect: navState.hasArrivedDirect,
                             isTrailCompleted: navState.isTrailCompleted,
-                            trailRewardPoints: navState.trailCompletionReward ??
-                                navState.selectedTrail?.rewardPoints ??
-                                0,
+                            trailRewardPoints:
+                                navState.trailCompletionReward ?? 0,
                             onCheckIn: () => notifier.checkInCurrentStop(),
                             onOpenSteps: () {
                               if (route != null && route.maneuvers.isNotEmpty) {
