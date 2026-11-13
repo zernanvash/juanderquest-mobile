@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -337,6 +339,7 @@ class NavigationState {
 }
 
 class NavigationNotifier extends StateNotifier<NavigationState> {
+  static const _uuid = Uuid();
   final ApiClient _apiClient;
   final TrailsApi _trailsApi;
   final VoiceGuide? _voiceGuide;
@@ -535,6 +538,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         // Multi-stop route using POST /api/v1/routes (WP-1 fix)
         final response = await _apiClient.dio.post(
           '/routes',
+          options: Options(headers: {'Idempotency-Key': _uuid.v4()}),
           // The server's body: start/end objects (not "lat,lng" strings).
           data: {
             'start': {
