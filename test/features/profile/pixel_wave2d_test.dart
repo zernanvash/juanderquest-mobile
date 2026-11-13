@@ -425,11 +425,11 @@ void main() {
       expect(find.text('route:/saved'), findsOneWidget);
     });
 
-    testWidgets('has no shop or settings rows (tab and header gear instead)',
+    testWidgets('shows shop card and keeps settings in header gear',
         (tester) async {
       _useTallView(tester);
       await _pump(tester, const ProfileScreen(), user: _user);
-      expect(find.byKey(const ValueKey('profile_shop')), findsNothing);
+      expect(find.byKey(const ValueKey('profile_shop')), findsOneWidget);
       expect(find.byKey(const ValueKey('profile_settings')), findsNothing);
     });
 

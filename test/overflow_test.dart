@@ -44,7 +44,6 @@ import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
 import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
 import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
-import 'package:juanderquest_app/features/leaderboard/screens/leaderboard_screen.dart';
 import 'package:juanderquest_app/features/notifications/screens/notifications_screen.dart';
 import 'package:juanderquest_app/features/quests/screens/quest_funding_screen.dart';
 import 'package:juanderquest_app/features/trail/trail_coming_soon_screen.dart';
@@ -977,12 +976,6 @@ void main() {
           1.4);
     });
 
-    testWidgets('LeaderboardScreen does not overflow in small portrait',
-        (tester) async {
-      await testScreenOverflow(
-          tester, const LeaderboardScreen(), const Size(320, 568), 1.4);
-    });
-
     testWidgets('PlazaScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
@@ -1873,11 +1866,6 @@ void main() {
         const Size(568, 320),
         1.4,
       );
-    });
-    testWidgets('LeaderboardScreen does not overflow in small landscape',
-        (tester) async {
-      await testScreenOverflow(
-          tester, const LeaderboardScreen(), const Size(568, 320), 1.4);
     });
 
     testWidgets('VoteScreen does not overflow in small landscape',

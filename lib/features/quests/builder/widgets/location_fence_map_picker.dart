@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_box.dart';
 import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/base_tile_layer.dart';
+import '../../../map/engine/jdq_map.dart';
+import '../../../map/engine/jdq_map_canvas.dart';
+import '../../../map/engine/maplibre_jdq_map.dart';
 import '../../../map/pixel/map_marker_art.dart';
+import '../../../map/utils/admin_areas.dart';
 import '../builder_models.dart';
 
-class LocationFenceMapPicker extends StatefulWidget {
+class LocationFenceMapPicker extends ConsumerStatefulWidget {
   final GeoFence fence;
   final ValueChanged<GeoFence> onChanged;
   final String pinLabel;
@@ -23,23 +28,78 @@ class LocationFenceMapPicker extends StatefulWidget {
   });
 
   @override
-  State<LocationFenceMapPicker> createState() => _LocationFenceMapPickerState();
+  ConsumerState<LocationFenceMapPicker> createState() =>
+      _LocationFenceMapPickerState();
 }
 
-class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
-  late final MapController _mapController;
+class _LocationFenceMapPickerState
+    extends ConsumerState<LocationFenceMapPicker> {
+  late final JdqMap _map;
+  late final Future<String> _style;
   // Locked by default so a page scroll that crosses the map never moves the pin.
   bool _editing = false;
 
   @override
   void initState() {
     super.initState();
-    _mapController = MapController();
+    _map = ref.read(jdqMapFactoryProvider)();
+    _style = ref.read(mapStyleProvider.future);
+    _map.onCameraIdle = () {
+      if (!_editing) return;
+      final c = _map.camera.center;
+      if ((c.latitude - widget.fence.lat).abs() < 1e-6 &&
+          (c.longitude - widget.fence.lng).abs() < 1e-6) {
+        return;
+      }
+      widget.onChanged(
+        widget.fence.copyWith(lat: c.latitude, lng: c.longitude),
+      );
+    };
+    unawaited(
+      _map.easeTo(
+        LatLng(widget.fence.lat, widget.fence.lng),
+        16,
+        reducedMotion: true,
+      ),
+    );
+    _syncFence();
+  }
+
+  @override
+  void didUpdateWidget(covariant LocationFenceMapPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fence.lat != widget.fence.lat ||
+        oldWidget.fence.lng != widget.fence.lng ||
+        oldWidget.fence.radiusMeters != widget.fence.radiusMeters) {
+      _syncFence();
+      if (!_editing &&
+          (oldWidget.fence.lat != widget.fence.lat ||
+              oldWidget.fence.lng != widget.fence.lng)) {
+        unawaited(
+          _map.easeTo(
+            LatLng(widget.fence.lat, widget.fence.lng),
+            _map.camera.zoom,
+            reducedMotion: true,
+          ),
+        );
+      }
+    }
+  }
+
+  void _syncFence() {
+    final center = LatLng(widget.fence.lat, widget.fence.lng);
+    const dist = Distance();
+    final radius = widget.fence.radiusMeters.toDouble();
+    final ring = <LatLng>[
+      for (var deg = 0; deg <= 360; deg += 15)
+        dist.offset(center, radius, deg.toDouble()),
+    ];
+    unawaited(_map.setFocusArea(AreaShape([AreaPolygon(ring)])));
   }
 
   @override
   void dispose() {
-    _mapController.dispose();
+    _map.dispose();
     super.dispose();
   }
 
@@ -57,37 +117,11 @@ class _LocationFenceMapPickerState extends State<LocationFenceMapPicker> {
               children: [
                 IgnorePointer(
                   ignoring: !_editing,
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: LatLng(widget.fence.lat, widget.fence.lng),
-                      initialZoom: 16,
-                      minZoom: 8,
-                      maxZoom: 19,
-                      onPositionChanged: (pos, hasGesture) {
-                        if (hasGesture) {
-                          widget.onChanged(widget.fence.copyWith(
-                            lat: pos.center.latitude,
-                            lng: pos.center.longitude,
-                          ));
-                        }
-                      },
-                    ),
-                    children: [
-                      buildBaseTileLayer(satellite: false),
-                      CircleLayer(
-                        circles: [
-                          CircleMarker(
-                            point: LatLng(widget.fence.lat, widget.fence.lng),
-                            radius: widget.fence.radiusMeters.toDouble(),
-                            useRadiusInMeter: true,
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            borderColor: AppColors.primary,
-                            borderStrokeWidth: 2,
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: JdqMapCanvas(
+                    map: _map,
+                    style: _style,
+                    fallback: const ColoredBox(color: PixelPalette.paperDim),
+                    onFallback: () {},
                   ),
                 ),
                 // Center pin

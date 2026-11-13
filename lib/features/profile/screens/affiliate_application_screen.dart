@@ -1,14 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/map_config.dart';
-import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -18,8 +17,10 @@ import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/base_tile_layer.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../map/engine/jdq_map.dart';
+import '../../map/engine/jdq_map_canvas.dart';
+import '../../map/engine/maplibre_jdq_map.dart';
 import '../../map/pixel/map_marker_art.dart';
 
 const _affiliateCategories = <String>[
@@ -52,7 +53,8 @@ class _AffiliateApplicationScreenState
   final _municipality = TextEditingController();
   final _province = TextEditingController();
   final _placeSearch = TextEditingController();
-  final _mapController = MapController();
+  late final JdqMap _map;
+  late final Future<String> _style;
   LatLng _mapCenter =
       const LatLng(MapConfig.pangasinanLat, MapConfig.pangasinanLng);
   double _mapZoom = MapConfig.defaultZoom;
@@ -74,7 +76,24 @@ class _AffiliateApplicationScreenState
   @override
   void initState() {
     super.initState();
+    _map = ref.read(jdqMapFactoryProvider)();
+    _style = ref.read(mapStyleProvider.future);
+    _map.onTapEmpty = (point) {
+      setState(() {
+        _pin = point;
+        _error = null;
+      });
+      _syncPin();
+    };
+    unawaited(_map.easeTo(_mapCenter, _mapZoom, reducedMotion: true));
     Future.microtask(_loadApplication);
+  }
+
+  void _syncPin() {
+    final pin = _pin;
+    unawaited(_map.setPins(
+      pin == null ? const [] : [JdqPin('affiliate_pin', pin, 'Business pin')],
+    ));
   }
 
   @override
@@ -83,7 +102,7 @@ class _AffiliateApplicationScreenState
     _municipality.dispose();
     _province.dispose();
     _placeSearch.dispose();
-    _mapController.dispose();
+    _map.dispose();
     _contact.dispose();
     _email.dispose();
     _phone.dispose();
@@ -115,6 +134,8 @@ class _AffiliateApplicationScreenState
             _pin = LatLng(lat, lng);
             _mapCenter = _pin!;
             _mapZoom = 15;
+            _syncPin();
+            unawaited(_map.easeTo(_mapCenter, _mapZoom, reducedMotion: true));
           }
           _contact.text = data['contact_name']?.toString() ?? '';
           _email.text = data['contact_email']?.toString() ?? '';
@@ -256,6 +277,7 @@ class _AffiliateApplicationScreenState
         _pin = point;
         _error = null;
       });
+      _syncPin();
       _moveMap(point, 16);
     } catch (_) {
       if (mounted) {
@@ -268,12 +290,7 @@ class _AffiliateApplicationScreenState
   void _moveMap(LatLng center, double zoom) {
     _mapCenter = center;
     _mapZoom = zoom;
-    // The map may not be mounted yet inside the scrolling form.
-    try {
-      _mapController.move(center, zoom);
-    } catch (_) {
-      // The stored center is used when the map enters the viewport.
-    }
+    unawaited(_map.easeTo(center, zoom, reducedMotion: true));
   }
 
   Future<void> _chooseCategory(PixelGrid grid) async {
@@ -607,6 +624,7 @@ class _AffiliateApplicationScreenState
                 setState(() {
                   _pin = null;
                   _places = const [];
+                  _syncPin();
                   if (place['type'] == 'city' ||
                       place['type'] == 'municipality') {
                     _municipality.text =
@@ -651,51 +669,15 @@ class _AffiliateApplicationScreenState
           child: Stack(
             children: [
               ClipRect(
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: _mapCenter,
-                    initialZoom: _mapZoom,
-                    minZoom: 5,
-                    maxZoom: 19,
-                    onTap: (_, point) => setState(() {
-                      _pin = point;
-                      _error = null;
-                    }),
-                  ),
-                  children: [
-                    buildBaseTileLayer(),
-                    if (_pin != null)
-                      MarkerLayer(markers: [
-                        Marker(
-                          point: _pin!,
-                          width: grid.px(24),
-                          height: grid.px(24),
-                          child: const Center(
-                            child: PixelSprite(
-                              DesignerArt.questMarker,
-                              scale: 3,
-                            ),
-                          ),
-                        )
-                      ]),
-                  ],
+                child: JdqMapCanvas(
+                  map: _map,
+                  style: _style,
+                  fallback: const ColoredBox(color: PixelPalette.paperDim),
+                  onFallback: () {},
                 ),
               ),
               const Positioned.fill(
                 child: PixelCrosshairReticle(),
-              ),
-              Positioned(
-                right: grid.px(1),
-                bottom: grid.px(1),
-                child: PixelPanel(
-                  style: PixelBoxStyle.parchment.copyWith(shadowPx: 0),
-                  padding: 1,
-                  child: Text(
-                    '© OpenStreetMap contributors',
-                    style: PixelType.small(context),
-                  ),
-                ),
               ),
             ],
           ),

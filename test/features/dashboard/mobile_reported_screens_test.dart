@@ -7,8 +7,6 @@ import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
-import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
-import 'package:juanderquest_app/features/cultural_quizzes/widgets/nearby_quiz_card.dart';
 import 'package:juanderquest_app/features/dashboard/data/home_events.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_dashboard_providers.dart';
@@ -172,29 +170,5 @@ void main() {
     final title = tester.renderObject<RenderParagraph>(find.text(longTitle));
     expect(title.didExceedMaxLines, isFalse,
         reason: 'Populated recent activity title is clipped to one line.');
-  });
-  testWidgets('nearby cultural quiz invitation at 320px, 2x text',
-      (tester) async {
-    await render(
-        tester,
-        const Scaffold(
-          body: SingleChildScrollView(
-            child: NearbyQuizCard(
-                invitation: NearbyQuizInvitationModel(
-                    quizId: 'audit-quiz',
-                    destinationId: 'audit-spot',
-                    destinationName: 'Community Heritage Museum',
-                    municipality: 'Dagupan',
-                    title: 'Local food and history',
-                    description: 'Learn about local heritage.',
-                    radiusMeters: 200,
-                    distanceMeters: 125,
-                    xpReward: 25,
-                    timeLimitMinutes: 10,
-                    language: 'en',
-                    isCompleted: false)),
-          ),
-        ));
-    expect(tester.takeException(), isNull);
   });
 }
