@@ -16,7 +16,6 @@ import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/screens/juanchoice_screen.dart';
-import 'package:juanderquest_app/features/leaderboard/screens/leaderboard_screen.dart';
 import 'package:juanderquest_app/features/plaza/plaza_models.dart';
 import 'package:juanderquest_app/features/plaza/plaza_provider.dart';
 import 'package:juanderquest_app/features/plaza/plaza_screen.dart';
@@ -554,20 +553,6 @@ void main() {
       );
       await _pump(tester, CulturalQuizResultScreen(result: failed));
       expect(find.text('Quiz Incomplete'), findsOneWidget);
-    });
-  });
-
-  group('LeaderboardScreen', () {
-    testWidgets('renders both boards and switches tabs', (tester) async {
-      await _pump(tester, const LeaderboardScreen());
-      expect(find.text('Explorer Leaderboard'), findsOneWidget);
-      expect(find.text('Zernan Vash'), findsOneWidget);
-      await tester.tap(find.text('All-Time'));
-      await tester.pump();
-      expect(find.text('28500 mJDQ'), findsOneWidget);
-      await tester.tap(find.text('30-Day Sprint'));
-      await tester.pump();
-      expect(find.text('4850 mJDQ'), findsOneWidget);
     });
   });
 

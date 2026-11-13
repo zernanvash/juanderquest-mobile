@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
 import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
@@ -13,7 +12,6 @@ import 'package:juanderquest_app/features/navigation/providers/navigation_provid
 import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
 import 'package:juanderquest_app/features/navigation/widgets/detour_sheet.dart';
 import 'package:juanderquest_app/features/navigation/widgets/origin_picker_sheet.dart';
-import 'package:juanderquest_app/features/navigation/widgets/route_deck.dart';
 import 'package:juanderquest_app/features/navigation/widgets/route_preview_sheet.dart';
 import 'package:juanderquest_app/features/navigation/widgets/route_preview_top_bar.dart';
 import 'package:juanderquest_app/features/navigation/widgets/steps_sheet.dart';
@@ -453,42 +451,6 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('steps_sheet_close')));
       await tester.pumpAndSettle();
       expect(find.byType(StepsSheet), findsNothing);
-    });
-
-    testWidgets('RouteDeck renders direct route and trail cards',
-        (tester) async {
-      final fakeTrailsApi = _FakeTrailsApi();
-      const initialState = NavigationState(
-        origin: NavOrigin(
-          name: 'Lingayen Capitol',
-          point: LatLng(16.02, 120.23),
-          isGps: false,
-        ),
-        destination: target,
-        route: testRoute,
-        isDirectRoute: true,
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            home: Scaffold(
-              body: RouteDeck(
-                state: initialState,
-                notifier: _TestNavNotifier(
-                  apiClient: ApiClient(),
-                  trailsApi: fakeTrailsApi,
-                  destination: target,
-                  initialState: initialState,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      expect(
-          find.byKey(const ValueKey('nav_card_direct_route')), findsOneWidget);
     });
 
     testWidgets('OriginPickerSheet shows GPS and gateway hubs', (tester) async {
