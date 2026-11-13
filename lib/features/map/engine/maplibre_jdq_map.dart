@@ -292,9 +292,19 @@ class MapLibreJdqMap extends JdqMap {
   Future<void> easeTo(
     LatLng point,
     double zoom, {
+    double? bearing,
+    double? tilt,
     bool reducedMotion = false,
   }) => _safe(() async {
-    final update = gl.CameraUpdate.newLatLngZoom(_ll(point), zoom);
+    final pos = _controller!.cameraPosition;
+    final update = bearing == null && tilt == null
+        ? gl.CameraUpdate.newLatLngZoom(_ll(point), zoom)
+        : gl.CameraUpdate.newCameraPosition(gl.CameraPosition(
+            target: _ll(point),
+            zoom: zoom,
+            bearing: bearing ?? pos?.bearing ?? 0,
+            tilt: tilt ?? pos?.tilt ?? 0,
+          ));
     if (reducedMotion) {
       await _controller!.moveCamera(update);
     } else {

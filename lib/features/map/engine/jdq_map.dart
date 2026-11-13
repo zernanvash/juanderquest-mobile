@@ -80,7 +80,8 @@ abstract class JdqMap {
   void Function(LatLng point)? onTapEmpty;
   VoidCallback? onCameraIdle;
   Future<void> setStyle(String style);
-  Future<void> easeTo(LatLng point, double zoom, {bool reducedMotion = false});
+  Future<void> easeTo(LatLng point, double zoom,
+      {double? bearing, double? tilt, bool reducedMotion = false});
   Future<void> resetOrientation();
   Future<void> fitBounds(
       LatLng southWest, LatLng northEast, EdgeInsets padding);
@@ -113,12 +114,12 @@ class FakeJdqMap extends JdqMap {
 
   @override
   Future<void> easeTo(LatLng point, double zoom,
-      {bool reducedMotion = false}) async {
+      {double? bearing, double? tilt, bool reducedMotion = false}) async {
     camera = JdqCamera(
         center: point,
         zoom: zoom,
-        bearing: camera.bearing,
-        tilt: camera.tilt,
+        bearing: bearing ?? camera.bearing,
+        tilt: tilt ?? camera.tilt,
         southWest: camera.southWest,
         northEast: camera.northEast,
         size: camera.size);

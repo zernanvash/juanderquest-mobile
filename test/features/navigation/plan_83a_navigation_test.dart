@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
@@ -13,6 +14,7 @@ import 'package:juanderquest_app/features/navigation/screens/navigation_screen.d
 import 'package:juanderquest_app/features/navigation/widgets/detour_sheet.dart';
 import 'package:juanderquest_app/features/navigation/widgets/origin_picker_sheet.dart';
 import 'package:juanderquest_app/features/navigation/widgets/route_deck.dart';
+import 'package:juanderquest_app/features/navigation/widgets/safety_disclaimer_sheet.dart';
 import 'package:juanderquest_app/features/navigation/widgets/steps_sheet.dart';
 import 'package:juanderquest_app/features/trail/models/trail_models.dart';
 import 'package:juanderquest_app/features/trail/services/trails_api.dart';
@@ -206,6 +208,10 @@ class _TestNavNotifier extends NavigationNotifier {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
   const target = NavTarget(
     name: 'Patar Beach',
     lat: 16.2,
@@ -266,7 +272,8 @@ void main() {
       expect(overlay.degraded, isFalse);
     });
 
-    test('RouteOverlay generates numbered trail stops when trail is active', () {
+    test('RouteOverlay generates numbered trail stops when trail is active',
+        () {
       const state = NavigationState(
         origin: NavOrigin(
           name: 'Lingayen Capitol',
@@ -340,7 +347,8 @@ void main() {
   });
 
   group('Plan 83a: NavigationScreen & WP-4 UI Widget Tests', () {
-    testWidgets('Renders JdqMapCanvas with FakeJdqMap, route deck and action bar',
+    testWidgets(
+        'Renders JdqMapCanvas with FakeJdqMap, route deck and action bar',
         (tester) async {
       final fakeMap = FakeJdqMap();
       final fakeTrailsApi = _FakeTrailsApi();
@@ -415,18 +423,23 @@ void main() {
 
       // RouteDeck cards rendered
       expect(find.byType(RouteDeck), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_card_direct_route')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('nav_card_direct_route')), findsOneWidget);
       expect(find.text('DIRECT ROUTE'), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_card_trail_trail-lingayen-gulf')), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav_card_trail_trail-lingayen-gulf')),
+          findsOneWidget);
 
       // Pinned Action Bar
-      expect(find.byKey(const ValueKey('nav_steps_bar_button')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('nav_steps_bar_button')), findsOneWidget);
       expect(find.byKey(const ValueKey('nav_start_adventure')), findsOneWidget);
 
-      // Tapping START ADVENTURE triggers coming soon snackbar
+      // Tapping START ADVENTURE triggers safety disclaimer
       await tester.tap(find.byKey(const ValueKey('nav_start_adventure')));
-      await tester.pump();
-      expect(find.textContaining('Live turn-by-turn navigation is coming next'), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.byType(SafetyDisclaimerSheet), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('nav_safety_close')));
+      await tester.pumpAndSettle();
 
       // Tapping STEPS bar button opens StepsSheet
       await tester.tap(find.byKey(const ValueKey('nav_steps_bar_button')));
@@ -447,7 +460,8 @@ void main() {
       expect(find.byType(StepsSheet), findsNothing);
     });
 
-    testWidgets('RouteDeck renders direct route and trail cards', (tester) async {
+    testWidgets('RouteDeck renders direct route and trail cards',
+        (tester) async {
       final fakeTrailsApi = _FakeTrailsApi();
       const initialState = NavigationState(
         origin: NavOrigin(
@@ -478,7 +492,8 @@ void main() {
         ),
       );
 
-      expect(find.byKey(const ValueKey('nav_card_direct_route')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('nav_card_direct_route')), findsOneWidget);
     });
 
     testWidgets('OriginPickerSheet shows GPS and gateway hubs', (tester) async {

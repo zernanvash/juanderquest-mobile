@@ -9,6 +9,7 @@ import '../../map/engine/jdq_map.dart';
 import '../../trail/models/trail_models.dart';
 import '../../trail/services/trails_api.dart';
 import '../models/route_model.dart';
+import '../utils/route_geometry.dart';
 
 /// Default fallback coordinate: Lingayen Provincial Capitol, Pangasinan
 const LatLng kDefaultOrigin = LatLng(16.0218, 120.2319);
@@ -49,6 +50,15 @@ class NavigationState {
   final String? error;
   final int? activeStepIndex;
   final bool isDirectRoute;
+  final bool isAdventureActive;
+  final bool isCameraFollowing;
+  final bool isRerouting;
+  final Position? currentPosition;
+  final bool isCheckingIn;
+  final bool hasArrivedDirect;
+  final bool isTrailCompleted;
+  final int? trailCompletionReward;
+  final double? distanceToManeuverM;
 
   const NavigationState({
     this.origin = NavOrigin.defaultLingayen,
@@ -67,9 +77,65 @@ class NavigationState {
     this.error,
     this.activeStepIndex,
     this.isDirectRoute = true,
+    this.isAdventureActive = false,
+    this.isCameraFollowing = true,
+    this.isRerouting = false,
+    this.currentPosition,
+    this.isCheckingIn = false,
+    this.hasArrivedDirect = false,
+    this.isTrailCompleted = false,
+    this.trailCompletionReward,
+    this.distanceToManeuverM,
   });
 
   LatLng get effectiveOriginPoint => userLocation ?? origin.point;
+
+  TrailStop? get nextUncheckedStop {
+    if (selectedTrail == null || selectedTrail!.stops.isEmpty) return null;
+    for (final s in selectedTrail!.stops) {
+      if (!s.checkedIn) return s;
+    }
+    return null;
+  }
+
+  int get currentStopNumber {
+    final next = nextUncheckedStop;
+    if (next != null) return next.position;
+    return selectedTrail?.stops.length ?? 0;
+  }
+
+  int get totalTrailStops => selectedTrail?.stops.length ?? 0;
+
+  bool get isWithinCheckinRadius {
+    final next = nextUncheckedStop;
+    final pos = currentPosition;
+    if (next == null || pos == null) return false;
+    final dist = Geolocator.distanceBetween(
+      pos.latitude,
+      pos.longitude,
+      next.lat,
+      next.lng,
+    );
+    return dist <= next.checkinRadiusM + 30.0;
+  }
+
+  double get currentSpeedMs => currentPosition?.speed ?? 0.0;
+
+  RouteManeuver? get currentManeuver {
+    final mList = route?.maneuvers;
+    if (mList == null || mList.isEmpty) return null;
+    final idx = activeStepIndex ?? 0;
+    if (idx >= 0 && idx < mList.length) return mList[idx];
+    return mList.first;
+  }
+
+  List<RouteManeuver> get upcomingManeuvers {
+    final mList = route?.maneuvers;
+    if (mList == null || mList.isEmpty) return const [];
+    final idx = (activeStepIndex ?? 0) + 1;
+    if (idx < mList.length) return mList.sublist(idx);
+    return const [];
+  }
 
   NavigationState copyWith({
     NavOrigin? origin,
@@ -88,11 +154,19 @@ class NavigationState {
     String? Function()? error,
     int? Function()? activeStepIndex,
     bool? isDirectRoute,
+    bool? isAdventureActive,
+    bool? isCameraFollowing,
+    bool? isRerouting,
+    Position? Function()? currentPosition,
+    bool? isCheckingIn,
+    bool? hasArrivedDirect,
+    bool? isTrailCompleted,
+    int? Function()? trailCompletionReward,
+    double? Function()? distanceToManeuverM,
   }) {
     return NavigationState(
       origin: origin ?? this.origin,
-      userLocation:
-          userLocation != null ? userLocation() : this.userLocation,
+      userLocation: userLocation != null ? userLocation() : this.userLocation,
       destination: destination ?? this.destination,
       costing: costing ?? this.costing,
       avoidCongested: avoidCongested ?? this.avoidCongested,
@@ -109,6 +183,20 @@ class NavigationState {
       activeStepIndex:
           activeStepIndex != null ? activeStepIndex() : this.activeStepIndex,
       isDirectRoute: isDirectRoute ?? this.isDirectRoute,
+      isAdventureActive: isAdventureActive ?? this.isAdventureActive,
+      isCameraFollowing: isCameraFollowing ?? this.isCameraFollowing,
+      isRerouting: isRerouting ?? this.isRerouting,
+      currentPosition:
+          currentPosition != null ? currentPosition() : this.currentPosition,
+      isCheckingIn: isCheckingIn ?? this.isCheckingIn,
+      hasArrivedDirect: hasArrivedDirect ?? this.hasArrivedDirect,
+      isTrailCompleted: isTrailCompleted ?? this.isTrailCompleted,
+      trailCompletionReward: trailCompletionReward != null
+          ? trailCompletionReward()
+          : this.trailCompletionReward,
+      distanceToManeuverM: distanceToManeuverM != null
+          ? distanceToManeuverM()
+          : this.distanceToManeuverM,
     );
   }
 
@@ -130,9 +218,8 @@ class NavigationState {
         points.add(JdqRoutePoint(
           point: stop.point,
           label: '${stop.position}',
-          kind: stop.checkedIn
-              ? JdqRoutePointKind.done
-              : JdqRoutePointKind.stop,
+          kind:
+              stop.checkedIn ? JdqRoutePointKind.done : JdqRoutePointKind.stop,
         ));
       }
     } else {
@@ -152,8 +239,8 @@ class NavigationState {
       ));
     }
 
-    final isTrailOrQuiet =
-        selectedTrail != null || (avoidCongested && route!.summary.hasCrowdDiversion);
+    final isTrailOrQuiet = selectedTrail != null ||
+        (avoidCongested && route!.summary.hasCrowdDiversion);
 
     return JdqRouteOverlay(
       line: route!.coordinates,
@@ -169,6 +256,8 @@ class NavigationState {
 class NavigationNotifier extends StateNotifier<NavigationState> {
   final ApiClient _apiClient;
   final TrailsApi _trailsApi;
+  int _consecutiveOffRouteFixes = 0;
+  DateTime? _lastRerouteTime;
 
   NavigationNotifier({
     required ApiClient apiClient,
@@ -191,7 +280,8 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   }
 
   /// Acquire GPS position from device
-  Future<void> acquireCurrentLocation() async => _acquireLocation(silent: false);
+  Future<void> acquireCurrentLocation() async =>
+      _acquireLocation(silent: false);
 
   Future<void> _acquireLocation({bool silent = false}) async {
     if (!silent) {
@@ -275,12 +365,15 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
       // Check if we have intermediate 'via' stops (trail stops or detours)
       final viaPoints = <Map<String, dynamic>>[];
-      if (state.selectedTrail != null && state.selectedTrail!.stops.isNotEmpty) {
+      if (state.selectedTrail != null &&
+          state.selectedTrail!.stops.isNotEmpty) {
         for (final stop in state.selectedTrail!.stops) {
-          viaPoints.add({
-            'lat': stop.lat,
-            'lng': stop.lng,
-          });
+          if (!state.isAdventureActive || !stop.checkedIn) {
+            viaPoints.add({
+              'lat': stop.lat,
+              'lng': stop.lng,
+            });
+          }
         }
       } else if (state.selectedDetours.isNotEmpty) {
         for (final detour in state.selectedDetours) {
@@ -299,7 +392,10 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
           '/routes',
           // The server's body: start/end objects (not "lat,lng" strings).
           data: {
-            'start': {'lat': originCoord.latitude, 'lng': originCoord.longitude},
+            'start': {
+              'lat': originCoord.latitude,
+              'lng': originCoord.longitude
+            },
             'end': {'lat': dest.lat, 'lng': dest.lng},
             'costing': state.costing.key,
             'avoid_congested': state.avoidCongested,
@@ -526,6 +622,227 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   /// Focus active maneuver step
   void setActiveStep(int? index) {
     state = state.copyWith(activeStepIndex: () => index);
+  }
+
+  /// Start active adventure live guidance
+  void startAdventure() {
+    _consecutiveOffRouteFixes = 0;
+    _lastRerouteTime = null;
+    state = state.copyWith(
+      isAdventureActive: true,
+      isCameraFollowing: true,
+      activeStepIndex: () => 0,
+      hasArrivedDirect: false,
+      isTrailCompleted: false,
+      isRerouting: false,
+    );
+  }
+
+  /// End active adventure live guidance
+  void endAdventure() {
+    _consecutiveOffRouteFixes = 0;
+    _lastRerouteTime = null;
+    state = state.copyWith(
+      isAdventureActive: false,
+      isCameraFollowing: true,
+      isRerouting: false,
+      hasArrivedDirect: false,
+    );
+  }
+
+  /// Toggle or update camera follow state
+  void setCameraFollowing(bool follow) {
+    state = state.copyWith(isCameraFollowing: follow);
+  }
+
+  /// Live GPS position update from Geolocator stream
+  void updatePosition(Position position) {
+    final gpsPoint = LatLng(position.latitude, position.longitude);
+    state = state.copyWith(
+      currentPosition: () => position,
+      userLocation: () => gpsPoint,
+    );
+
+    final route = state.route;
+    if (route == null) return;
+
+    // 1. Maneuver waypoint distance and step advancement
+    final waypoints = RouteGeometry.computeManeuverWaypoints(
+      route.coordinates,
+      route.maneuvers,
+    );
+
+    final curIdx = state.activeStepIndex ?? 0;
+    if (waypoints.isNotEmpty && curIdx < waypoints.length) {
+      final distToTurn = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        waypoints[curIdx].latitude,
+        waypoints[curIdx].longitude,
+      );
+
+      // Within 35 m of maneuver point, advance step!
+      if (distToTurn <= 35.0 && curIdx + 1 < route.maneuvers.length) {
+        final nextIdx = curIdx + 1;
+        final nextDist = nextIdx < waypoints.length
+            ? Geolocator.distanceBetween(
+                position.latitude,
+                position.longitude,
+                waypoints[nextIdx].latitude,
+                waypoints[nextIdx].longitude,
+              )
+            : 0.0;
+        state = state.copyWith(
+          activeStepIndex: () => nextIdx,
+          distanceToManeuverM: () => nextDist,
+        );
+      } else {
+        state = state.copyWith(
+          distanceToManeuverM: () => distToTurn,
+        );
+      }
+    }
+
+    // 2. Off-route detection (more than 250 m off route polyline for 2 fixes in a row)
+    if (route.coordinates.length >= 2) {
+      final offDist = RouteGeometry.distanceToPolylineMeters(
+        gpsPoint,
+        route.coordinates,
+      );
+      if (offDist > 250.0) {
+        _consecutiveOffRouteFixes++;
+        if (_consecutiveOffRouteFixes >= 2) {
+          final now = DateTime.now();
+          if (_lastRerouteTime == null ||
+              now.difference(_lastRerouteTime!) >=
+                  const Duration(seconds: 20)) {
+            _lastRerouteTime = now;
+            _consecutiveOffRouteFixes = 0;
+            state = state.copyWith(isRerouting: true);
+            rerouteFromCurrentLocation();
+          }
+        }
+      } else {
+        _consecutiveOffRouteFixes = 0;
+        if (state.isRerouting) {
+          state = state.copyWith(isRerouting: false);
+        }
+      }
+    }
+
+    // 3. Direct route arrival check (within 40 m of destination)
+    if (state.isDirectRoute) {
+      final distToDest = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        state.destination.lat,
+        state.destination.lng,
+      );
+      if (distToDest <= 40.0 && !state.hasArrivedDirect) {
+        state = state.copyWith(hasArrivedDirect: true);
+      }
+    }
+  }
+
+  /// Recalculate route from current GPS coordinates through remaining stops
+  Future<void> rerouteFromCurrentLocation() async {
+    final pos = state.currentPosition;
+    if (pos == null) return;
+    final gpsPoint = LatLng(pos.latitude, pos.longitude);
+    state = state.copyWith(
+      userLocation: () => gpsPoint,
+      isRerouting: true,
+    );
+    await fetchRoute();
+    state = state.copyWith(
+      isRerouting: false,
+      activeStepIndex: () => 0,
+    );
+  }
+
+  /// Check in at current trail stop
+  Future<void> checkInCurrentStop() async {
+    final trail = state.selectedTrail;
+    final stop = state.nextUncheckedStop;
+    final pos = state.currentPosition;
+    if (trail == null || stop == null || pos == null) return;
+    if (pos.speed > 3.0) return;
+
+    state = state.copyWith(isCheckingIn: true, error: () => null);
+
+    try {
+      final response = await _trailsApi.checkInTrailStop(
+        trail.id,
+        stop.position,
+        lat: pos.latitude,
+        lng: pos.longitude,
+        accuracyM: pos.accuracy,
+      );
+
+      final updatedStops = trail.stops.map((s) {
+        if (s.position == stop.position) {
+          return TrailStop(
+            position: s.position,
+            spotId: s.spotId,
+            name: s.name,
+            municipality: s.municipality,
+            category: s.category,
+            lat: s.lat,
+            lng: s.lng,
+            narration: s.narration,
+            arriveOffsetMin: s.arriveOffsetMin,
+            dwellMin: s.dwellMin,
+            legMinutes: s.legMinutes,
+            legKm: s.legKm,
+            checkinRadiusM: s.checkinRadiusM,
+            checkedIn: true,
+            distanceM: (response['distance_m'] as num?)?.toDouble(),
+            accuracyM: (response['accuracy_m'] as num?)?.toDouble(),
+          );
+        }
+        return s;
+      }).toList();
+
+      final allDone = updatedStops.every((s) => s.checkedIn);
+      // The server puts the reward in `completion` (null if this trail was
+      // already completed before).
+      final completion = response['completion'];
+      final reward = completion is Map
+          ? (completion['reward_points'] as num?)?.toInt()
+          : null;
+
+      final updatedTrail = TrailDetail(
+        id: trail.id,
+        slug: trail.slug,
+        title: trail.title,
+        tagline: trail.tagline,
+        tier: trail.tier,
+        theme: trail.theme,
+        municipalities: trail.municipalities,
+        stopCount: trail.stopCount,
+        totalMinutes: trail.totalMinutes,
+        totalKm: trail.totalKm,
+        unlockRule: trail.unlockRule,
+        availableUntil: trail.availableUntil,
+        isUnlocked: true,
+        rewardPoints: trail.rewardPoints,
+        intro: trail.intro,
+        stops: updatedStops,
+        preview: trail.preview,
+      );
+
+      state = state.copyWith(
+        selectedTrail: () => updatedTrail,
+        isCheckingIn: false,
+        isTrailCompleted: allDone,
+        trailCompletionReward: () => allDone ? reward : null,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isCheckingIn: false,
+        error: () => TrailsApi.extractErrorMessage(e),
+      );
+    }
   }
 }
 
