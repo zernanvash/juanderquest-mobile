@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../trail/models/trail_models.dart';
 import '../models/route_model.dart';
@@ -47,6 +48,19 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
   late final PageController _pageController;
   int _centredPage = 0;
   Timer? _debounceTimer;
+  bool _isCollapsed = false;
+  bool _didInitCollapse = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInitCollapse) {
+      _didInitCollapse = true;
+      if (MediaQuery.sizeOf(context).height < 360) {
+        _isCollapsed = true;
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -190,7 +204,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
     if (lockedTrail != null) {
       return _formatTrailDuration(lockedTrail.totalMinutes);
     }
-    if (widget.navState.isLoadingRoute && route == null) {
+    if (widget.navState.isLoadingRoute) {
       return 'FINDING ROUTE…';
     }
     if (route == null) {
@@ -205,6 +219,51 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
     }
     final mins = (route.summary.durationSeconds / 60).round();
     return '${_formatDuration(mins)} · ${_formatKm(route.summary.distanceKm)} KM';
+  }
+
+  Widget _buildEtaHeadlineWidget(
+    BuildContext context,
+    RouteModel? route,
+    NearbyTrail? lockedTrail,
+    bool isShort,
+  ) {
+    final baseStyle = (isShort
+            ? PixelType.title(context, color: PixelPalette.ink)
+            : PixelType.display(context, color: PixelPalette.ink))
+        .copyWith(fontWeight: FontWeight.bold);
+
+    final showSplitDirect = lockedTrail == null &&
+        !widget.navState.isLoadingRoute &&
+        route != null &&
+        !route.isStraightLineFallback &&
+        widget.navState.selectedTrail == null;
+
+    if (showSplitDirect) {
+      final mins = (route.summary.durationSeconds / 60).round();
+      return Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: _formatDuration(mins), style: baseStyle),
+            TextSpan(
+              text: ' · ${_formatKm(route.summary.distanceKm)} KM',
+              style: baseStyle.copyWith(
+                fontWeight: FontWeight.normal,
+                color: PixelPalette.slate,
+              ),
+            ),
+          ],
+        ),
+        key: const ValueKey('nav_eta_big'),
+        maxLines: 1,
+      );
+    }
+
+    return Text(
+      _etaHeadline(route, lockedTrail),
+      key: const ValueKey('nav_eta_big'),
+      style: baseStyle,
+      maxLines: 1,
+    );
   }
 
   String _etaSubtitle(RouteModel? route, NearbyTrail? lockedTrail) {
@@ -245,7 +304,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
     final baseCardHeight = isShort ? 78.0 : 104.0;
     final cardHeight =
         (baseCardHeight * textScale.clamp(1.0, 1.42)).clamp(baseCardHeight, 148.0);
-    final modeHeight = isShort ? 38.0 : 44.0;
+    final modeHeight = isShort ? 44.0 : 52.0;
     final actionHeight = isShort ? 48.0 : 56.0;
 
     final String goLabel;
@@ -263,109 +322,298 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
       goTap = (route == null || navState.isFindingGps) ? null : widget.onGo;
     }
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: PixelPalette.paper,
-        border: Border(
-          top: BorderSide(color: PixelPalette.ink, width: 2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: PixelPalette.white,
-            offset: Offset(0, 2),
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onVerticalDragEnd: (details) {
+        final v = details.primaryVelocity ?? 0;
+        if (v > 120 && !_isCollapsed) {
+          setState(() => _isCollapsed = true);
+        } else if (v < -120 && _isCollapsed) {
+          setState(() => _isCollapsed = false);
+        }
+      },
+      child: Container(
+        decoration: const BoxDecoration(
+          color: PixelPalette.paper,
+          border: Border(
+            top: BorderSide(color: PixelPalette.ink, width: 2),
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(12, isShort ? 6 : 12, 12, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (hasNonServerError) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "Couldn't load this. Try again.",
-                        style: PixelType.body(
-                          context,
-                          color: PixelPalette.red,
-                        ).copyWith(fontWeight: FontWeight.bold),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+          boxShadow: [
+            BoxShadow(
+              color: PixelPalette.white,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(12, isShort ? 4 : 6, 12, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 32x4 dp ink sheet handle
+                GestureDetector(
+                  key: const ValueKey('nav_sheet_handle'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _isCollapsed = !_isCollapsed),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2, bottom: 6),
+                    child: Center(
+                      child: Container(
+                        width: 32,
+                        height: 4,
+                        color: PixelPalette.ink,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    _PixelRectButton(
-                      key: const ValueKey('nav_retry'),
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      bg: PixelPalette.sun,
-                      onTap: widget.onRetry,
-                      child: Text(
-                        'RETRY',
-                        style: PixelType.body(
-                          context,
-                          color: PixelPalette.ink,
-                        ).copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ] else ...[
-                // Big ETA
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _etaHeadline(route, lockedTrail),
-                    key: const ValueKey('nav_eta_big'),
-                    style: (isShort
-                            ? PixelType.title(context, color: PixelPalette.ink)
-                            : PixelType.display(context,
-                                color: PixelPalette.ink))
-                        .copyWith(fontWeight: FontWeight.bold),
-                    maxLines: 1,
                   ),
                 ),
-                SizedBox(height: isShort ? 2 : 4),
-                // Sub line + CHANGE
+                if (hasNonServerError) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Couldn't load this. Try again.",
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.red,
+                          ).copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _PixelRectButton(
+                        key: const ValueKey('nav_retry'),
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        bg: PixelPalette.sun,
+                        onTap: widget.onRetry,
+                        child: Text(
+                          'RETRY',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.ink,
+                          ).copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  // Big ETA with 16 dp pixel clock
+                  Row(
+                    children: [
+                      const NavPixelIcon(NavPixelArt.clock, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: _buildEtaHeadlineWidget(
+                            context,
+                            route,
+                            lockedTrail,
+                            isShort,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isShort ? 2 : 4),
+                  // Sub line + CHANGE
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _etaSubtitle(route, lockedTrail),
+                          key: const ValueKey('nav_eta_sub'),
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        key: const ValueKey('nav_change_origin'),
+                        onTap: widget.onChangeOrigin,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 36),
+                          child: Center(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                'CHANGE',
+                                style: PixelType.small(
+                                  context,
+                                  color: PixelPalette.ink,
+                                ).copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (!_isCollapsed) ...[
+                  SizedBox(height: isShort ? 4 : 6),
+
+                  // 4 Mode buttons with pixel icons + sunken selected bevel
+                  Row(
+                    children: [
+                      for (var i = 0; i < TravelCosting.values.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 6),
+                        Expanded(
+                          child: _ModeButton(
+                            key: ValueKey(
+                                'nav_costing_${TravelCosting.values[i].key}'),
+                            costing: TravelCosting.values[i],
+                            selected:
+                                navState.costing == TravelCosting.values[i],
+                            height: modeHeight,
+                            onTap: () =>
+                                widget.onSelectCosting(TravelCosting.values[i]),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  SizedBox(height: isShort ? 4 : 6),
+
+                  // Swipeable Route Carousel
+                  SizedBox(
+                    height: cardHeight,
+                    child: PageView.builder(
+                      key: const ValueKey('nav_route_carousel'),
+                      controller: _pageController,
+                      itemCount: cardCount,
+                      onPageChanged: (p) => _onPageChanged(p, sortedTrails),
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          final detourCount = navState.selectedDetours.length;
+                          final meta = detourCount > 0
+                              ? '$detourCount DETOUR${detourCount > 1 ? 'S' : ''}'
+                              : 'FASTEST';
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: _DirectCarouselCard(
+                              key: const ValueKey('nav_route_direct'),
+                              meta: meta,
+                              picked: navState.selectedTrail == null,
+                              showThumb: !isShort,
+                              onTap: () {
+                                if (_centredPage != 0) {
+                                  _jumpToCard(0);
+                                } else if (navState.selectedTrail != null) {
+                                  widget.onSelectDirect();
+                                }
+                              },
+                            ),
+                          );
+                        }
+
+                        final trailIdx = index - 1;
+                        if (trailIdx < sortedTrails.length) {
+                          final t = sortedTrails[trailIdx];
+                          final isPicked = navState.selectedTrail?.id == t.id;
+                          final isCentredLocked =
+                              !t.isUnlocked && _centredPage == index;
+                          final stopPoints = isPicked &&
+                                  navState.selectedTrail != null &&
+                                  navState.selectedTrail!.stops.isNotEmpty
+                              ? navState.selectedTrail!.stops
+                                  .map((s) => (s.lat, s.lng))
+                                  .toList()
+                              : null;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: _TrailCarouselCard(
+                              key: ValueKey('nav_route_trail_${t.id}'),
+                              trail: t,
+                              picked: isPicked,
+                              centredLocked: isCentredLocked,
+                              showThumb: !isShort,
+                              durationLabel:
+                                  _formatTrailDuration(t.totalMinutes),
+                              kmLabel: '${_formatKm(t.totalKm)} KM',
+                              stopPoints: stopPoints,
+                              onTap: () {
+                                if (_centredPage != index) {
+                                  _jumpToCard(index);
+                                } else {
+                                  widget.onInspectTrail(t);
+                                }
+                              },
+                            ),
+                          );
+                        }
+
+                        // Ghost card (loading / error / empty)
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: _GhostCarouselCard(
+                            isLoading: navState.isLoadingTrails,
+                            error: navState.trailsError,
+                            onRetry: widget.onRetryTrails ?? widget.onRetry,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  SizedBox(height: isShort ? 3 : 6),
+                  // Page squares indicator
+                  _PageSquares(
+                    key: const ValueKey('nav_route_dots'),
+                    count: cardCount,
+                    current: _centredPage.clamp(0, math.max(0, cardCount - 1)),
+                  ),
+                ],
+                SizedBox(height: isShort ? 4 : 6),
+
+                // Actions row: STEPS + GO / START TRAIL / CHOOSE / UNLOCK
                 Row(
                   children: [
-                    Expanded(
-                      child: Text(
-                        _etaSubtitle(route, lockedTrail),
-                        key: const ValueKey('nav_eta_sub'),
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
+                    _PixelRectButton(
+                      key: const ValueKey('nav_steps_button'),
+                      width: 104,
+                      height: actionHeight,
+                      bg: PixelPalette.paper,
+                      onTap: widget.onOpenSteps,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'STEPS',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.ink,
+                          ).copyWith(fontWeight: FontWeight.bold),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    GestureDetector(
-                      key: const ValueKey('nav_change_origin'),
-                      onTap: widget.onChangeOrigin,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 36),
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              'CHANGE',
-                              style: PixelType.small(
-                                context,
-                                color: PixelPalette.ink,
-                              ).copyWith(
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
+                    Expanded(
+                      child: _PixelRectButton(
+                        key: const ValueKey('nav_start_adventure'),
+                        height: actionHeight,
+                        bg: PixelPalette.green,
+                        onTap: goTap,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            goLabel,
+                            style: PixelType.title(
+                              context,
+                              color: PixelPalette.paper,
+                            ).copyWith(fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -373,160 +621,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
                   ],
                 ),
               ],
-              SizedBox(height: isShort ? 4 : 6),
-
-              // 4 Mode buttons
-              Row(
-                children: [
-                  for (var i = 0; i < TravelCosting.values.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 6),
-                    Expanded(
-                      child: _ModeButton(
-                        key: ValueKey(
-                            'nav_costing_${TravelCosting.values[i].key}'),
-                        label: TravelCosting.values[i].label,
-                        selected: navState.costing == TravelCosting.values[i],
-                        height: modeHeight,
-                        onTap: () =>
-                            widget.onSelectCosting(TravelCosting.values[i]),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              SizedBox(height: isShort ? 4 : 6),
-
-              // Swipeable Route Carousel
-              SizedBox(
-                height: cardHeight,
-                child: PageView.builder(
-                  key: const ValueKey('nav_route_carousel'),
-                  controller: _pageController,
-                  itemCount: cardCount,
-                  onPageChanged: (p) => _onPageChanged(p, sortedTrails),
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      final detourCount = navState.selectedDetours.length;
-                      final meta = detourCount > 0
-                          ? '$detourCount DETOUR${detourCount > 1 ? 'S' : ''}'
-                          : 'FASTEST';
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: _DirectCarouselCard(
-                          key: const ValueKey('nav_route_direct'),
-                          meta: meta,
-                          picked: navState.selectedTrail == null,
-                          showThumb: !isShort,
-                          onTap: () {
-                            if (_centredPage != 0) {
-                              _jumpToCard(0);
-                            } else if (navState.selectedTrail != null) {
-                              widget.onSelectDirect();
-                            }
-                          },
-                        ),
-                      );
-                    }
-
-                    final trailIdx = index - 1;
-                    if (trailIdx < sortedTrails.length) {
-                      final t = sortedTrails[trailIdx];
-                      final isPicked = navState.selectedTrail?.id == t.id;
-                      final isCentredLocked =
-                          !t.isUnlocked && _centredPage == index;
-                      final stopPoints = isPicked &&
-                              navState.selectedTrail != null &&
-                              navState.selectedTrail!.stops.isNotEmpty
-                          ? navState.selectedTrail!.stops
-                              .map((s) => (s.lat, s.lng))
-                              .toList()
-                          : null;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: _TrailCarouselCard(
-                          key: ValueKey('nav_route_trail_${t.id}'),
-                          trail: t,
-                          picked: isPicked,
-                          centredLocked: isCentredLocked,
-                          showThumb: !isShort,
-                          durationLabel: _formatTrailDuration(t.totalMinutes),
-                          kmLabel: '${_formatKm(t.totalKm)} KM',
-                          stopPoints: stopPoints,
-                          onTap: () {
-                            if (_centredPage != index) {
-                              _jumpToCard(index);
-                            } else {
-                              widget.onInspectTrail(t);
-                            }
-                          },
-                        ),
-                      );
-                    }
-
-                    // Ghost card (loading / error / empty)
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: _GhostCarouselCard(
-                        isLoading: navState.isLoadingTrails,
-                        error: navState.trailsError,
-                        onRetry: widget.onRetryTrails ?? widget.onRetry,
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              SizedBox(height: isShort ? 3 : 6),
-              // Page squares indicator
-              _PageSquares(
-                key: const ValueKey('nav_route_dots'),
-                count: cardCount,
-                current: _centredPage.clamp(0, math.max(0, cardCount - 1)),
-              ),
-              SizedBox(height: isShort ? 4 : 6),
-
-              // Actions row: STEPS + GO / START TRAIL / CHOOSE / UNLOCK
-              Row(
-                children: [
-                  _PixelRectButton(
-                    key: const ValueKey('nav_steps_button'),
-                    width: 104,
-                    height: actionHeight,
-                    bg: PixelPalette.paper,
-                    onTap: widget.onOpenSteps,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'STEPS',
-                        style: PixelType.body(
-                          context,
-                          color: PixelPalette.ink,
-                        ).copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _PixelRectButton(
-                      key: const ValueKey('nav_start_adventure'),
-                      height: actionHeight,
-                      bg: PixelPalette.green,
-                      onTap: goTap,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          goLabel,
-                          style: PixelType.title(
-                            context,
-                            color: PixelPalette.paper,
-                          ).copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1010,18 +1105,25 @@ class _PageSquares extends StatelessWidget {
 }
 
 class _ModeButton extends StatelessWidget {
-  final String label;
+  final TravelCosting costing;
   final bool selected;
   final double height;
   final VoidCallback onTap;
 
   const _ModeButton({
     super.key,
-    required this.label,
+    required this.costing,
     required this.selected,
     required this.height,
     required this.onTap,
   });
+
+  PixelArt get _icon => switch (costing) {
+        TravelCosting.auto => NavPixelArt.modeCar,
+        TravelCosting.motorcycle => NavPixelArt.modeMoto,
+        TravelCosting.bicycle => NavPixelArt.modeBike,
+        TravelCosting.pedestrian => NavPixelArt.modeWalk,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -1030,24 +1132,38 @@ class _ModeButton extends StatelessWidget {
       child: Semantics(
         button: true,
         selected: selected,
-        label: label,
+        label: costing.label,
         child: Container(
           height: height,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
           decoration: BoxDecoration(
             color: selected ? PixelPalette.sun : PixelPalette.paper,
-            border: Border.all(color: PixelPalette.ink, width: 2),
+            border: selected
+                ? const Border(
+                    top: BorderSide(color: PixelPalette.ink, width: 3),
+                    left: BorderSide(color: PixelPalette.ink, width: 3),
+                    right: BorderSide(color: PixelPalette.sunLight, width: 2),
+                    bottom: BorderSide(color: PixelPalette.sunLight, width: 2),
+                  )
+                : Border.all(color: PixelPalette.ink, width: 2),
           ),
           alignment: Alignment.center,
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              style: PixelType.body(
-                context,
-                color: PixelPalette.ink,
-              ).copyWith(fontWeight: FontWeight.bold),
-              maxLines: 1,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NavPixelIcon(_icon, size: 16),
+                const SizedBox(height: 2),
+                Text(
+                  costing.label,
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.ink,
+                  ).copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                ),
+              ],
             ),
           ),
         ),

@@ -56,6 +56,26 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   StreamSubscription<Position>? _positionSubscription;
   JdqRouteOverlay? _lastOverlay;
   WakelockService? _wakelockService;
+  Timer? _pulseTimer;
+  bool _pulseFrame = false;
+
+  void _syncPulseTimer(BuildContext context, NavigationState navState) {
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final isMoving = navState.isAdventureActive && navState.currentSpeedMs > 0.3;
+    final shouldPulse = !reduce && (!navState.isAdventureActive || isMoving);
+    if (shouldPulse) {
+      _pulseTimer ??= Timer.periodic(const Duration(milliseconds: 500), (_) {
+        if (!mounted) return;
+        setState(() => _pulseFrame = !_pulseFrame);
+      });
+    } else {
+      _pulseTimer?.cancel();
+      _pulseTimer = null;
+      if (_pulseFrame) {
+        _pulseFrame = false;
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -122,6 +142,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pulseTimer?.cancel();
+    _pulseTimer = null;
     _positionSubscription?.cancel();
     _positionSubscription = null;
     _wakelockService?.disable();
@@ -364,10 +386,16 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   @override
   Widget build(BuildContext context) {
     final navState = ref.watch(navigationProvider(widget.destination));
+    _syncPulseTimer(context, navState);
     final notifier = ref.read(navigationProvider(widget.destination).notifier);
     final route = navState.route;
     final originPoint = navState.effectiveOriginPoint;
-    final overlay = navState.routeOverlay;
+    final overlay = navState.buildRouteOverlay(
+      startPulsed: !navState.isAdventureActive && _pulseFrame,
+      puckPulsed: navState.isAdventureActive &&
+          navState.currentSpeedMs > 0.3 &&
+          _pulseFrame,
+    );
 
     _syncOverlay(overlay);
 
@@ -433,6 +461,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                     right: 0,
                     child: RoutePreviewTopBar(
                       toLabel: widget.destination.name,
+                      isTrail: navState.selectedTrail != null,
                       onBack: canPop
                           ? () => Navigator.of(context).maybePop()
                           : null,

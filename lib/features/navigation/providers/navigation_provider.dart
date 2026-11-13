@@ -253,8 +253,13 @@ class NavigationState {
     );
   }
 
-  /// Builds vector route overlay for JdqMap (Plan 83 WP-2 / 83d)
-  JdqRouteOverlay? get routeOverlay {
+  /// Builds vector route overlay for JdqMap (Plan 83 WP-2 / 83d / 83e)
+  JdqRouteOverlay? get routeOverlay => buildRouteOverlay();
+
+  JdqRouteOverlay? buildRouteOverlay({
+    bool startPulsed = false,
+    bool puckPulsed = false,
+  }) {
     if (route == null || route!.coordinates.isEmpty) return null;
 
     final points = <JdqRoutePoint>[];
@@ -264,10 +269,12 @@ class NavigationState {
         point: effectiveOriginPoint,
         label: 'A',
         kind: JdqRoutePointKind.start,
+        isPulsed: startPulsed,
       ));
     }
 
     // If trail is active: draw stops 1..N (no end marker on top of last shield)
+    final nextStopPos = nextUncheckedStop?.position;
     if (selectedTrail != null && selectedTrail!.stops.isNotEmpty) {
       for (final stop in selectedTrail!.stops) {
         points.add(JdqRoutePoint(
@@ -275,6 +282,7 @@ class NavigationState {
           label: '${stop.position}',
           kind:
               stop.checkedIn ? JdqRoutePointKind.done : JdqRoutePointKind.stop,
+          isPulsed: !stop.checkedIn && stop.position == nextStopPos,
         ));
       }
     } else {
@@ -303,6 +311,7 @@ class NavigationState {
         bearing: currentPosition!.speed > 1.0 && currentPosition!.heading >= 0
             ? currentPosition!.heading
             : 0.0,
+        isPulsed: puckPulsed,
       ));
     }
 
@@ -318,7 +327,7 @@ class NavigationState {
     return JdqRouteOverlay(
       line: activeLine,
       points: points,
-      degraded: route!.isStraightLineFallback,
+      degraded: route!.isStraightLineFallback || isLoadingRoute,
       color: isTrailOrQuiet
           ? const Color(0xFF2D6A4F) // Forest emerald
           : const Color(0xFF0284C7), // Sky route blue
