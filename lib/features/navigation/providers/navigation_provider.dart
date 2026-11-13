@@ -50,6 +50,7 @@ class NavigationState {
   final List<DetourArea> availableDetours;
   final bool isLoadingRoute;
   final bool isLoadingTrails;
+  final String? trailsError;
   final bool isLocating;
   final bool isFindingGps;
   final String? error;
@@ -84,6 +85,7 @@ class NavigationState {
     this.availableDetours = const [],
     this.isLoadingRoute = false,
     this.isLoadingTrails = false,
+    this.trailsError,
     this.isLocating = false,
     this.isFindingGps = false,
     this.error,
@@ -176,6 +178,7 @@ class NavigationState {
     List<DetourArea>? availableDetours,
     bool? isLoadingRoute,
     bool? isLoadingTrails,
+    String? Function()? trailsError,
     bool? isLocating,
     bool? isFindingGps,
     String? Function()? error,
@@ -211,6 +214,7 @@ class NavigationState {
       availableDetours: availableDetours ?? this.availableDetours,
       isLoadingRoute: isLoadingRoute ?? this.isLoadingRoute,
       isLoadingTrails: isLoadingTrails ?? this.isLoadingTrails,
+      trailsError: trailsError != null ? trailsError() : this.trailsError,
       isLocating: isLocating ?? this.isLocating,
       isFindingGps: isFindingGps ?? this.isFindingGps,
       error: error != null ? error() : this.error,
@@ -623,28 +627,33 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
   /// Fetch nearby published trails and corridor detours
   Future<void> fetchNearbyTrails() async {
-    state = state.copyWith(isLoadingTrails: true);
+    state = state.copyWith(isLoadingTrails: true, trailsError: () => null);
     try {
       final dest = state.destination;
-      final trailsFuture = _trailsApi.fetchTrailsNear(
-        lat: dest.lat,
-        lng: dest.lng,
-      );
+      String? loadError;
+      final trailsFuture = _trailsApi
+          .fetchTrailsNear(
+            lat: dest.lat,
+            lng: dest.lng,
+          )
+          .catchError((Object e) {
+            loadError = TrailsApi.extractErrorMessage(e);
+            return <NearbyTrail>[];
+          });
 
-      final tripPlanFuture = _trailsApi.planTrip(
-        start: state.effectiveOriginPoint,
-        end: dest.point,
-        costing: state.costing.key,
-        avoidCongested: state.avoidCongested,
-      );
+      final tripPlanFuture = _trailsApi
+          .planTrip(
+            start: state.effectiveOriginPoint,
+            end: dest.point,
+            costing: state.costing.key,
+            avoidCongested: state.avoidCongested,
+          )
+          .catchError((_) => const TripPlan(
+                baselineRoute: RouteModel.empty(),
+                detourAreas: [],
+              ));
 
-      final results = await Future.wait([
-        trailsFuture.catchError((_) => <NearbyTrail>[]),
-        tripPlanFuture.catchError((_) => const TripPlan(
-              baselineRoute: RouteModel.empty(),
-              detourAreas: [],
-            )),
-      ]);
+      final results = await Future.wait([trailsFuture, tripPlanFuture]);
 
       final trails = results[0] as List<NearbyTrail>;
       final plan = results[1] as TripPlan;
@@ -653,10 +662,14 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         nearbyTrails: trails,
         availableDetours: plan.detourAreas,
         isLoadingTrails: false,
+        trailsError: () => loadError,
       );
     } catch (e) {
       debugPrint('[Navigation] Note loading trails/detours: $e');
-      state = state.copyWith(isLoadingTrails: false);
+      state = state.copyWith(
+        isLoadingTrails: false,
+        trailsError: () => TrailsApi.extractErrorMessage(e),
+      );
     }
   }
 

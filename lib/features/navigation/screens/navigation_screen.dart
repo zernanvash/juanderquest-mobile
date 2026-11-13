@@ -52,7 +52,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     with WidgetsBindingObserver {
   late final JdqMap _nativeMap;
   late final Future<String> _style;
-  bool _hasInitialFitted = false;
+  RouteModel? _lastFittedRoute;
   StreamSubscription<Position>? _positionSubscription;
   JdqRouteOverlay? _lastOverlay;
   WakelockService? _wakelockService;
@@ -371,12 +371,20 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
 
     _syncOverlay(overlay);
 
-    // Auto-fit bounds on first successful route load
-    if (route != null && !_hasInitialFitted) {
+    // Auto-fit bounds in preview whenever the selected route changes
+    if (route != null &&
+        !navState.isAdventureActive &&
+        !identical(route, _lastFittedRoute) &&
+        route.coordinates.isNotEmpty) {
+      final fittedTarget = route;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && route.coordinates.isNotEmpty) {
-          _fitRouteBounds(route, originPoint);
-          setState(() => _hasInitialFitted = true);
+        if (mounted &&
+            !ref
+                .read(navigationProvider(widget.destination))
+                .isAdventureActive &&
+            !identical(_lastFittedRoute, fittedTarget)) {
+          _lastFittedRoute = fittedTarget;
+          _fitRouteBounds(fittedTarget, originPoint);
         }
       });
     }
@@ -474,6 +482,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                       },
                       onGo: () => unawaited(_handleStartAdventure()),
                       onRetry: () => notifier.fetchRoute(),
+                      onRetryTrails: () => notifier.fetchNearbyTrails(),
                     ),
                   ),
                 ] else ...[
