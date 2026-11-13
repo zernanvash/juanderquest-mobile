@@ -262,5 +262,16 @@
   "source_url": null,
   "changes": "Synthesized with tool/audio/make_sfx.py (triangle and sine plucks, bells, filtered noise; no samples)",
   "fetched": "2026-11-13"
+ },
+ {
+  "file": "lib/features/navigation/widgets/ph_outline.g.dart",
+  "kind": "map",
+  "title": "Philippines coastline (Natural Earth 1:50m Admin 0 - Countries)",
+  "author": "Natural Earth",
+  "license": "Public domain",
+  "license_url": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "source_url": "https://www.naturalearthdata.com/downloads/50m-cultural-vectors/",
+  "changes": "Philippines only; islands over about 250 km2; coordinates rounded to 3 decimals",
+  "fetched": "2026-11-13"
  }
 ]
