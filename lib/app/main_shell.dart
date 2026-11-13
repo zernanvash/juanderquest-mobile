@@ -34,7 +34,7 @@ class MainShell extends ConsumerStatefulWidget {
     '/dashboard',
     '/explore',
     '/map',
-    '/shop',
+    '/quests',
     '/profile',
   };
 
@@ -155,8 +155,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                         icon: DesignerArt.navExplore,
                       ),
                       PixelHotbarItem(
-                        label: 'Shop',
-                        icon: DesignerArt.navShop,
+                        label: 'Quests',
+                        icon: DesignerArt.questMarker,
                       ),
                       PixelHotbarItem(
                         label: 'Profile',

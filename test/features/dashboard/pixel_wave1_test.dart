@@ -509,8 +509,8 @@ void main() {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/shop',
-                  builder: (_, __) => const _BranchProbe('SHOP PAGE'),
+                  path: '/quests',
+                  builder: (_, __) => const _BranchProbe('QUESTS PAGE'),
                 ),
               ],
             ),
@@ -550,9 +550,9 @@ void main() {
       tester.getSemantics(find.bySemanticsLabel('Map')),
       containsSemantics(isSelected: true),
     );
-    await tester.tap(find.bySemanticsLabel('Shop'));
+    await tester.tap(find.bySemanticsLabel('Quests'));
     await tester.pump();
-    expect(find.text('SHOP PAGE'), findsOneWidget);
+    expect(find.text('QUESTS PAGE'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Profile'));
     await tester.pump();
     expect(find.text('PROFILE PAGE'), findsOneWidget);

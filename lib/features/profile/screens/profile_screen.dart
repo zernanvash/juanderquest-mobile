@@ -190,6 +190,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         SizedBox(height: grid.px(3)),
                         _actionButtons(context, grid, isMine, earnedBadges, savedSpots),
+                        if (isMine) ...[
+                          SizedBox(height: grid.px(2)),
+                          Semantics(
+                            button: true,
+                            label: 'Open Shop',
+                            child: GestureDetector(
+                              key: const ValueKey('profile_shop'),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => context.push('/shop'),
+                              child: PixelPanel(
+                                style: PixelBoxStyle.parchment,
+                                child: Row(
+                                  children: [
+                                    const PixelMicro(PixelMicroArt.coin,
+                                        scale: 2),
+                                    SizedBox(width: grid.px(2)),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Shop',
+                                              style: PixelType.title(context)),
+                                          Text(
+                                            'Cosmetics & merchant vouchers ›',
+                                            style: PixelType.small(context,
+                                                color: PixelPalette.slate),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                         SizedBox(height: grid.px(4)),
                         _postedDestinations(
                           context,
