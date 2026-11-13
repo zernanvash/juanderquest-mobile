@@ -9,6 +9,7 @@ import '../../map/engine/jdq_map.dart';
 import '../../trail/models/trail_models.dart';
 import '../../trail/services/trails_api.dart';
 import '../models/route_model.dart';
+import '../services/location_stream_service.dart';
 import '../utils/route_geometry.dart';
 
 /// Default fallback coordinate: Lingayen Provincial Capitol, Pangasinan
@@ -47,6 +48,7 @@ class NavigationState {
   final bool isLoadingRoute;
   final bool isLoadingTrails;
   final bool isLocating;
+  final bool isFindingGps;
   final String? error;
   final int? activeStepIndex;
   final bool isDirectRoute;
@@ -74,6 +76,7 @@ class NavigationState {
     this.isLoadingRoute = false,
     this.isLoadingTrails = false,
     this.isLocating = false,
+    this.isFindingGps = false,
     this.error,
     this.activeStepIndex,
     this.isDirectRoute = true,
@@ -89,6 +92,14 @@ class NavigationState {
   });
 
   LatLng get effectiveOriginPoint => userLocation ?? origin.point;
+
+  LatLng get effectiveEndPoint {
+    final stops = selectedTrail?.stops;
+    if (stops != null && stops.isNotEmpty) {
+      return stops.last.point;
+    }
+    return destination.point;
+  }
 
   TrailStop? get nextUncheckedStop {
     if (selectedTrail == null || selectedTrail!.stops.isEmpty) return null;
@@ -151,6 +162,7 @@ class NavigationState {
     bool? isLoadingRoute,
     bool? isLoadingTrails,
     bool? isLocating,
+    bool? isFindingGps,
     String? Function()? error,
     int? Function()? activeStepIndex,
     bool? isDirectRoute,
@@ -179,6 +191,7 @@ class NavigationState {
       isLoadingRoute: isLoadingRoute ?? this.isLoadingRoute,
       isLoadingTrails: isLoadingTrails ?? this.isLoadingTrails,
       isLocating: isLocating ?? this.isLocating,
+      isFindingGps: isFindingGps ?? this.isFindingGps,
       error: error != null ? error() : this.error,
       activeStepIndex:
           activeStepIndex != null ? activeStepIndex() : this.activeStepIndex,
@@ -200,19 +213,21 @@ class NavigationState {
     );
   }
 
-  /// Builds vector route overlay for JdqMap (Plan 83 WP-2)
+  /// Builds vector route overlay for JdqMap (Plan 83 WP-2 / 83d)
   JdqRouteOverlay? get routeOverlay {
     if (route == null || route!.coordinates.isEmpty) return null;
 
     final points = <JdqRoutePoint>[];
-    // Start point A
-    points.add(JdqRoutePoint(
-      point: effectiveOriginPoint,
-      label: 'A',
-      kind: JdqRoutePointKind.start,
-    ));
+    if (!isAdventureActive) {
+      // Start point dot (only in preview, not drawn while driving)
+      points.add(JdqRoutePoint(
+        point: effectiveOriginPoint,
+        label: 'A',
+        kind: JdqRoutePointKind.start,
+      ));
+    }
 
-    // If trail is active
+    // If trail is active: draw stops 1..N (no end marker on top of last shield)
     if (selectedTrail != null && selectedTrail!.stops.isNotEmpty) {
       for (final stop in selectedTrail!.stops) {
         points.add(JdqRoutePoint(
@@ -239,6 +254,17 @@ class NavigationState {
       ));
     }
 
+    if (isAdventureActive && currentPosition != null) {
+      points.add(JdqRoutePoint(
+        point: LatLng(currentPosition!.latitude, currentPosition!.longitude),
+        label: 'puck',
+        kind: JdqRoutePointKind.puck,
+        bearing: currentPosition!.speed > 1.0 && currentPosition!.heading >= 0
+            ? currentPosition!.heading
+            : 0.0,
+      ));
+    }
+
     final isTrailOrQuiet = selectedTrail != null ||
         (avoidCongested && route!.summary.hasCrowdDiversion);
 
@@ -249,6 +275,7 @@ class NavigationState {
       color: isTrailOrQuiet
           ? const Color(0xFF2D6A4F) // Forest emerald
           : const Color(0xFF0284C7), // Sky route blue
+      fitBounds: !isAdventureActive,
     );
   }
 }
@@ -258,6 +285,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   final TrailsApi _trailsApi;
   int _consecutiveOffRouteFixes = 0;
   DateTime? _lastRerouteTime;
+  List<LatLng> _cachedManeuverWaypoints = const [];
 
   NavigationNotifier({
     required ApiClient apiClient,
@@ -330,7 +358,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
       final gpsPoint = LatLng(position.latitude, position.longitude);
       final newOrigin = NavOrigin(
-        name: 'My GPS Location',
+        name: 'My Location',
         point: gpsPoint,
         isGps: true,
       );
@@ -355,19 +383,62 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     }
   }
 
+  /// Acquire GPS fix (max 15s) and re-fetch route before entering driving view (Bug A1)
+  Future<bool> acquireStartFixAndFetchRoute(
+    LocationStreamService locationService,
+  ) async {
+    state = state.copyWith(isFindingGps: true, error: () => null);
+    try {
+      final pos = await locationService.getCurrentPosition(
+        timeLimit: locationService.gpsAcquireTimeout,
+      );
+      if (pos == null) {
+        state = state.copyWith(
+          isFindingGps: false,
+          error: () =>
+              "Couldn't find your location. Go outside or turn on GPS.",
+        );
+        return false;
+      }
+
+      final gpsPoint = LatLng(pos.latitude, pos.longitude);
+      state = state.copyWith(
+        origin: NavOrigin(
+          name: 'My Location',
+          point: gpsPoint,
+          isGps: true,
+        ),
+        userLocation: () => gpsPoint,
+        currentPosition: () => pos,
+      );
+
+      await fetchRoute();
+      state = state.copyWith(isFindingGps: false);
+      return true;
+    } catch (_) {
+      state = state.copyWith(
+        isFindingGps: false,
+        error: () => "Couldn't find your location. Go outside or turn on GPS.",
+      );
+      return false;
+    }
+  }
+
   /// Fetch Sovereign route from POST /api/v1/routes or GET /api/v1/routes
   Future<void> fetchRoute() async {
     state = state.copyWith(isLoadingRoute: true, error: () => null);
 
     try {
       final originCoord = state.effectiveOriginPoint;
-      final dest = state.destination;
+      final endCoord = state.effectiveEndPoint;
 
-      // Check if we have intermediate 'via' stops (trail stops or detours)
+      // Check if we have intermediate 'via' stops (trail stops before last, or detours)
       final viaPoints = <Map<String, dynamic>>[];
       if (state.selectedTrail != null &&
           state.selectedTrail!.stops.isNotEmpty) {
-        for (final stop in state.selectedTrail!.stops) {
+        final stops = state.selectedTrail!.stops;
+        for (int i = 0; i < stops.length - 1; i++) {
+          final stop = stops[i];
           if (!state.isAdventureActive || !stop.checkedIn) {
             viaPoints.add({
               'lat': stop.lat,
@@ -396,7 +467,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
               'lat': originCoord.latitude,
               'lng': originCoord.longitude
             },
-            'end': {'lat': dest.lat, 'lng': dest.lng},
+            'end': {'lat': endCoord.latitude, 'lng': endCoord.longitude},
             'costing': state.costing.key,
             'avoid_congested': state.avoidCongested,
             'via': viaPoints,
@@ -410,8 +481,8 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
           queryParameters: {
             'start_lat': originCoord.latitude,
             'start_lng': originCoord.longitude,
-            'end_lat': dest.lat,
-            'end_lng': dest.lng,
+            'end_lat': endCoord.latitude,
+            'end_lng': endCoord.longitude,
             'costing': state.costing.key,
             'avoid_congested': state.avoidCongested,
           },
@@ -420,6 +491,10 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       }
 
       final routeModel = RouteModel.fromJson(responseData);
+      _cachedManeuverWaypoints = RouteGeometry.computeManeuverWaypoints(
+        routeModel.coordinates,
+        routeModel.maneuvers,
+      );
 
       state = state.copyWith(
         route: () => routeModel,
@@ -430,7 +505,11 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       // If backend fails, build a degraded straight-line fallback (never crash)
       final fallbackRoute = _buildStraightLineFallback(
         state.effectiveOriginPoint,
-        LatLng(state.destination.lat, state.destination.lng),
+        state.effectiveEndPoint,
+      );
+      _cachedManeuverWaypoints = RouteGeometry.computeManeuverWaypoints(
+        fallbackRoute.coordinates,
+        fallbackRoute.maneuvers,
       );
       state = state.copyWith(
         route: () => fallbackRoute,
@@ -666,11 +745,13 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     final route = state.route;
     if (route == null) return;
 
-    // 1. Maneuver waypoint distance and step advancement
-    final waypoints = RouteGeometry.computeManeuverWaypoints(
-      route.coordinates,
-      route.maneuvers,
-    );
+    // 1. Maneuver waypoint distance and step advancement (Bug A8: cached once per route)
+    final waypoints = _cachedManeuverWaypoints.isNotEmpty
+        ? _cachedManeuverWaypoints
+        : (_cachedManeuverWaypoints = RouteGeometry.computeManeuverWaypoints(
+            route.coordinates,
+            route.maneuvers,
+          ));
 
     final curIdx = state.activeStepIndex ?? 0;
     if (waypoints.isNotEmpty && curIdx < waypoints.length) {

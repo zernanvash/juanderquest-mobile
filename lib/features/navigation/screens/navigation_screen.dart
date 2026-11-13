@@ -132,7 +132,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   Future<void> _handleStartAdventure() async {
     final navState = ref.read(navigationProvider(widget.destination));
     final notifier = ref.read(navigationProvider(widget.destination).notifier);
-    if (navState.route == null) return;
+    if (navState.route == null || navState.isFindingGps) return;
 
     final accepted =
         await SafetyDisclaimerSheet.ensureSafetyAcknowledged(context);
@@ -154,10 +154,38 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
         }
         return;
       }
+    } else if (hasPermission == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Location permission is required for live navigation.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Bug A1 (§4 rule 1): wait for a GPS fix, set origin, re-fetch route from there
+    final acquired = await notifier.acquireStartFixAndFetchRoute(locationService);
+    if (!acquired || !mounted) {
+      if (mounted) {
+        final err = ref.read(navigationProvider(widget.destination)).error;
+        if (err != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(err)),
+          );
+        }
+      }
+      return;
     }
 
     await ref.read(wakelockServiceProvider).enable();
     notifier.startAdventure();
+
+    final freshState = ref.read(navigationProvider(widget.destination));
+    final startPos = freshState.currentPosition;
+    final startPoint = freshState.effectiveOriginPoint;
 
     await _positionSubscription?.cancel();
     _positionSubscription = locationService.getPositionStream().listen((pos) {
@@ -168,7 +196,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
         unawaited(_nativeMap.easeTo(
           LatLng(pos.latitude, pos.longitude),
           16.5,
-          bearing: pos.speed > 1.0 ? pos.heading : null,
+          bearing: pos.speed > 1.0 && pos.heading >= 0 ? pos.heading : null,
           tilt: 45.0,
         ));
       }
@@ -176,8 +204,14 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
       debugPrint('[Navigation] Location stream error: $err');
     });
 
-    final startPoint = navState.effectiveOriginPoint;
-    unawaited(_nativeMap.easeTo(startPoint, 16.5, tilt: 45.0));
+    unawaited(_nativeMap.easeTo(
+      startPoint,
+      16.5,
+      bearing: startPos != null && startPos.speed > 1.0 && startPos.heading >= 0
+          ? startPos.heading
+          : null,
+      tilt: 45.0,
+    ));
   }
 
   Future<void> _resumeLiveNavigation() async {
