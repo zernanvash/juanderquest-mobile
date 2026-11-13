@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
+import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
+import 'package:juanderquest_app/features/map/engine/jdq_map_canvas.dart';
+import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
 import 'package:juanderquest_app/features/quests/builder/builder_models.dart';
 import 'package:juanderquest_app/features/quests/builder/widgets/location_fence_map_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 // Phone test 2026-11-01: scrolling the builder page over a task map moved the
 // pin. The map is now locked until "Move pin" is tapped.
 void main() {
   testWidgets('dragging over the locked map scrolls the page, not the pin',
       (tester) async {
+    final fakeMap = FakeJdqMap();
     final changes = <GeoFence>[];
     await tester.pumpWidget(ProviderScope(
+      overrides: [
+        jdqMapFactoryProvider.overrideWithValue(() => fakeMap),
+        mapStyleProvider.overrideWith((ref) async => '{}'),
+      ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
         home: Scaffold(
@@ -27,7 +35,9 @@ void main() {
         ),
       ),
     ));
-    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(fakeMap.focus, isNotNull);
 
     await tester.drag(
         find.byType(LocationFenceMapPicker), const Offset(0, -200));
@@ -47,8 +57,12 @@ void main() {
     expect(find.text('Done'), findsOneWidget);
     final ignore = tester.widget<IgnorePointer>(find
         .ancestor(
-            of: find.byType(FlutterMap), matching: find.byType(IgnorePointer))
+            of: find.byType(JdqMapCanvas), matching: find.byType(IgnorePointer))
         .first);
     expect(ignore.ignoring, isFalse);
+
+    await fakeMap.easeTo(const LatLng(16.2050, 120.0410), 16,
+        reducedMotion: true);
+    expect(changes.last.lat, closeTo(16.2050, 1e-6));
   });
 }
