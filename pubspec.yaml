@@ -38,6 +38,7 @@ dependencies:
   qr_flutter: ^4.1.0
   flame: ^1.38.2
   wakelock_plus: ^1.2.8
+  audioplayers: ^6.1.0
   flutter_tts: ^4.0.0
 
 
@@ -54,6 +55,8 @@ flutter:
     - assets/images/
     - assets/licenses/
     - assets/ar_sprites/
+    - assets/audio/sfx/
+    - assets/audio/music/
   shaders:
     - shaders/dither_bg.frag
   fonts:

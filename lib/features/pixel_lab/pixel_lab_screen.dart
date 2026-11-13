@@ -21,6 +21,7 @@ import '../spots/providers/spot_discovery_provider.dart';
 import '../spots/theater/theater_backdrop.dart';
 import 'home_options.dart';
 import 'rpg_feel_section.dart';
+import 'sound_lab_section.dart';
 import 'tutorial_preview.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
@@ -90,6 +91,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           SizedBox(height: grid.px(3)),
                           _readableText(context, grid, settings),
                           SizedBox(height: grid.px(3)),
+                          _section(context, 'Sound lab (84 sample)',
+                              const SoundLabSection()),
                           _section(context, 'RPG feel (75k)',
                               const RpgFeelSection()),
                           SizedBox(height: grid.px(3)),

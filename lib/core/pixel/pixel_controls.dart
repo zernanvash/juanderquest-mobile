@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'generated/pixel_palette.g.dart';
+import '../audio/game_audio.dart';
 import 'pixel_art.dart';
 import 'pixel_box.dart';
 import 'pixel_grid.dart';
@@ -13,6 +14,7 @@ import 'pixel_text.dart';
 
 void pixelTick(BuildContext context) {
   if (PixelScope.of(context).haptics) HapticFeedback.selectionClick();
+  if (GameAudio.instance.buttonSounds.value) GameAudio.instance.playSfx('tap', vary: true);
 }
 
 enum PixelButtonVariant { primary, secondary, danger, ghost }
