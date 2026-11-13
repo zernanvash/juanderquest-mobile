@@ -309,11 +309,13 @@ class _TodaysPulsePanel extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Text(
-                'TODAY\'S PULSE',
-                style: PixelType.title(context, color: PixelPalette.paper),
+              Expanded(
+                child: Text(
+                  'TODAY\'S PULSE',
+                  style: PixelType.title(context, color: PixelPalette.paper),
+                ),
               ),
-              const Spacer(),
+              SizedBox(width: grid.px(1)),
               const PixelMicro(PixelMicroArt.sparkle, scale: 2),
             ],
           ),
@@ -439,14 +441,16 @@ class _TodaysPulsePanel extends ConsumerWidget {
               ),
             ),
             SizedBox(width: grid.px(1)),
-            PixelButton(
-              key: actionKey,
-              label: actionLabel,
-              variant: isPrimary
-                  ? PixelButtonVariant.primary
-                  : PixelButtonVariant.secondary,
-              loading: loading,
-              onPressed: onAction,
+            Flexible(
+              child: PixelButton(
+                key: actionKey,
+                label: actionLabel,
+                variant: isPrimary
+                    ? PixelButtonVariant.primary
+                    : PixelButtonVariant.secondary,
+                loading: loading,
+                onPressed: onAction,
+              ),
             ),
           ],
         ),

@@ -399,7 +399,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       children: [
                         const PixelMicro(PixelMicroArt.sparkle, scale: 2),
                         SizedBox(width: grid.px(1)),
-                        Text('Badges', style: PixelType.title(context)),
+                        Flexible(
+                          child: Text('Badges', style: PixelType.title(context)),
+                        ),
                       ],
                     ),
                     SizedBox(height: grid.px(1)),
@@ -432,7 +434,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         children: [
                           const PixelMicro(PixelMicroArt.coin, scale: 2),
                           SizedBox(width: grid.px(1)),
-                          Text('Saved', style: PixelType.title(context)),
+                          Flexible(
+                            child: Text('Saved', style: PixelType.title(context)),
+                          ),
                         ],
                       ),
                       SizedBox(height: grid.px(1)),
