@@ -319,6 +319,27 @@ class _FakeTrailsApi extends Fake implements TrailsApi {
   }
 }
 
+class _TestNavNotifier83b extends NavigationNotifier {
+  final Duration? fetchDelay;
+
+  _TestNavNotifier83b({
+    required super.apiClient,
+    required super.trailsApi,
+    required super.initialDestination,
+    this.fetchDelay,
+  });
+
+  @override
+  Future<void> initNavigation() async {}
+
+  @override
+  Future<void> fetchRoute() async {
+    if (fetchDelay != null) {
+      await Future<void>.delayed(fetchDelay!);
+    }
+  }
+}
+
 class _InertAuthNotifier extends AuthNotifier {
   _InertAuthNotifier(super.apiClient, super.refreshNotifier, UserModel? user) {
     state = AuthState(user: user, token: user != null ? 'test-token' : null);
@@ -592,8 +613,10 @@ void main() {
       final fakeTrailsApi = _FakeTrailsApi();
       final fakeWakelock = FakeWakelockService();
       final locationController = StreamController<Position>.broadcast();
-      final fakeLocation =
-          FakeLocationStreamService(stream: locationController.stream);
+      final fakeLocation = FakeLocationStreamService(
+        stream: locationController.stream,
+        currentFix: _buildPosition(lat: 16.0210, lng: 120.2350),
+      );
 
       const initialState = NavigationState(
         origin: NavOrigin(
@@ -615,7 +638,7 @@ void main() {
             wakelockServiceProvider.overrideWithValue(fakeWakelock),
             locationStreamServiceProvider.overrideWithValue(fakeLocation),
             navigationProvider(target).overrideWith(
-              (ref) => NavigationNotifier(
+              (ref) => _TestNavNotifier83b(
                 apiClient: ref.watch(apiClientProvider),
                 trailsApi: fakeTrailsApi,
                 initialDestination: target,
@@ -654,8 +677,10 @@ void main() {
       final fakeTrailsApi = _FakeTrailsApi();
       final fakeWakelock = FakeWakelockService();
       final locationController = StreamController<Position>.broadcast();
-      final fakeLocation =
-          FakeLocationStreamService(stream: locationController.stream);
+      final fakeLocation = FakeLocationStreamService(
+        stream: locationController.stream,
+        currentFix: _buildPosition(lat: 16.0210, lng: 120.2350),
+      );
 
       const initialState = NavigationState(
         origin: NavOrigin(
@@ -677,7 +702,7 @@ void main() {
             wakelockServiceProvider.overrideWithValue(fakeWakelock),
             locationStreamServiceProvider.overrideWithValue(fakeLocation),
             navigationProvider(target).overrideWith(
-              (ref) => NavigationNotifier(
+              (ref) => _TestNavNotifier83b(
                 apiClient: ref.watch(apiClientProvider),
                 trailsApi: fakeTrailsApi,
                 initialDestination: target,
@@ -722,8 +747,10 @@ void main() {
       final fakeTrailsApi = _FakeTrailsApi();
       final fakeWakelock = FakeWakelockService();
       final locationController = StreamController<Position>.broadcast();
-      final fakeLocation =
-          FakeLocationStreamService(stream: locationController.stream);
+      final fakeLocation = FakeLocationStreamService(
+        stream: locationController.stream,
+        currentFix: _buildPosition(lat: 16.0210, lng: 120.2350),
+      );
 
       const initialState = NavigationState(
         origin: NavOrigin(
@@ -737,10 +764,11 @@ void main() {
       );
 
       final mockApi = _createMockApiClient();
-      final notifier = NavigationNotifier(
+      final notifier = _TestNavNotifier83b(
         apiClient: mockApi,
         trailsApi: fakeTrailsApi,
         initialDestination: target,
+        fetchDelay: const Duration(milliseconds: 50),
       )..state = initialState;
 
       await tester.pumpWidget(
@@ -796,8 +824,10 @@ void main() {
       fakeTrailsApi.starterUnlocked = true;
       final fakeWakelock = FakeWakelockService();
       final locationController = StreamController<Position>.broadcast();
-      final fakeLocation =
-          FakeLocationStreamService(stream: locationController.stream);
+      final fakeLocation = FakeLocationStreamService(
+        stream: locationController.stream,
+        currentFix: _buildPosition(lat: 16.0210, lng: 120.2350),
+      );
 
       final starterDetail =
           await fakeTrailsApi.fetchTrail('trail-free-starter');
@@ -823,7 +853,7 @@ void main() {
             wakelockServiceProvider.overrideWithValue(fakeWakelock),
             locationStreamServiceProvider.overrideWithValue(fakeLocation),
             navigationProvider(target).overrideWith(
-              (ref) => NavigationNotifier(
+              (ref) => _TestNavNotifier83b(
                 apiClient: ref.watch(apiClientProvider),
                 trailsApi: fakeTrailsApi,
                 initialDestination: target,
@@ -877,8 +907,10 @@ void main() {
       fakeTrailsApi.starterUnlocked = true;
       final fakeWakelock = FakeWakelockService();
       final locationController = StreamController<Position>.broadcast();
-      final fakeLocation =
-          FakeLocationStreamService(stream: locationController.stream);
+      final fakeLocation = FakeLocationStreamService(
+        stream: locationController.stream,
+        currentFix: _buildPosition(lat: 16.0210, lng: 120.2350),
+      );
 
       final starterDetail =
           await fakeTrailsApi.fetchTrail('trail-free-starter');
@@ -904,7 +936,7 @@ void main() {
             wakelockServiceProvider.overrideWithValue(fakeWakelock),
             locationStreamServiceProvider.overrideWithValue(fakeLocation),
             navigationProvider(target).overrideWith(
-              (ref) => NavigationNotifier(
+              (ref) => _TestNavNotifier83b(
                 apiClient: ref.watch(apiClientProvider),
                 trailsApi: fakeTrailsApi,
                 initialDestination: target,
@@ -930,7 +962,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Button is disabled and shows safety warning
-      expect(find.text('Park first to check in'), findsOneWidget);
+      expect(find.text('PARK FIRST TO CHECK IN'), findsOneWidget);
 
       await locationController.close();
     });
@@ -941,8 +973,10 @@ void main() {
       final fakeTrailsApi = _FakeTrailsApi();
       final fakeWakelock = FakeWakelockService();
       final locationController = StreamController<Position>.broadcast();
-      final fakeLocation =
-          FakeLocationStreamService(stream: locationController.stream);
+      final fakeLocation = FakeLocationStreamService(
+        stream: locationController.stream,
+        currentFix: _buildPosition(lat: 16.0210, lng: 120.2350),
+      );
 
       const initialState = NavigationState(
         origin: NavOrigin(
@@ -964,7 +998,7 @@ void main() {
             wakelockServiceProvider.overrideWithValue(fakeWakelock),
             locationStreamServiceProvider.overrideWithValue(fakeLocation),
             navigationProvider(target).overrideWith(
-              (ref) => NavigationNotifier(
+              (ref) => _TestNavNotifier83b(
                 apiClient: ref.watch(apiClientProvider),
                 trailsApi: fakeTrailsApi,
                 initialDestination: target,

@@ -38,8 +38,15 @@ class TrailsApi {
       }
       return ApiFailure.from(e).message;
     }
+    if (e is Error || e is FormatException) {
+      return "Couldn't load this. Try again.";
+    }
     final s = e.toString();
-    return s.startsWith('Exception: ') ? s.substring('Exception: '.length) : s;
+    if (s.startsWith('Exception: ')) {
+      final msg = s.substring('Exception: '.length).trim();
+      if (msg.isNotEmpty) return msg;
+    }
+    return "Couldn't load this. Try again.";
   }
 
   Future<List<NearbyTrail>> fetchTrailsNear({

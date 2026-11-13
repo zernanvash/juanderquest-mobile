@@ -310,10 +310,27 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                   else if (_error != null)
                     Padding(
                       padding: EdgeInsets.only(bottom: grid.px(2)),
-                      child: Text(
-                        _error!,
-                        style: PixelType.body(context,
-                            color: PixelPalette.redDeep),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            _error!,
+                            style: PixelType.body(context,
+                                color: PixelPalette.redDeep),
+                          ),
+                          if (_detail == null) ...[
+                            SizedBox(height: grid.px(1)),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: PixelButton(
+                                key: const ValueKey('trail_offer_retry'),
+                                label: 'RETRY',
+                                variant: PixelButtonVariant.secondary,
+                                onPressed: _loadDetail,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     )
                   else if (_detail != null) ...[

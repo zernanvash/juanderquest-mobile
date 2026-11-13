@@ -58,7 +58,10 @@ import 'package:juanderquest_app/core/services/push_service.dart';
 import 'package:juanderquest_app/features/about/screens/about_screen.dart';
 import 'package:juanderquest_app/features/navigation/models/route_model.dart';
 import 'package:juanderquest_app/features/navigation/screens/navigation_screen.dart';
+import 'package:juanderquest_app/features/navigation/providers/navigation_provider.dart';
+import 'package:juanderquest_app/features/navigation/widgets/adventure_arrive_overlay.dart';
 import 'package:juanderquest_app/features/navigation/widgets/adventure_bottom_bar.dart';
+import 'package:juanderquest_app/features/navigation/widgets/route_preview_sheet.dart';
 import 'package:juanderquest_app/features/navigation/widgets/adventure_top_banner.dart';
 import 'package:juanderquest_app/features/trail/models/trail_models.dart';
 import 'package:juanderquest_app/features/ar_experience/core/ar_hunt.dart';
@@ -1251,6 +1254,242 @@ void main() {
                   onEnd: () {},
                 ),
               ),
+            ),
+          ),
+          size,
+          2.0,
+        );
+      });
+
+      testWidgets(
+          '83d RoutePreviewSheet (4 trails) does not overflow at ${size.width.toInt()}x${size.height.toInt()} with 2x text',
+          (tester) async {
+        const dest = NavTarget(
+          name: 'Patar White Beach Destination Resort',
+          lat: 16.3,
+          lng: 119.8,
+          address: 'Bolinao, Pangasinan',
+        );
+        const navState = NavigationState(
+          destination: dest,
+          route: RouteModel(
+            summary: RouteSummary(
+              distanceKm: 18.5,
+              durationSeconds: 1200,
+              durationFormatted: '20 min',
+              costing: TravelCosting.auto,
+              hasCrowdDiversion: false,
+              engine: 'valhalla',
+            ),
+            coordinates: [],
+            maneuvers: [
+              RouteManeuver(
+                instruction: 'Head north',
+                distanceMeters: 200,
+                timeSeconds: 30,
+              ),
+            ],
+          ),
+          nearbyTrails: [
+            NearbyTrail(
+              id: 't1',
+              slug: 't1',
+              title: 'Lingayen Historic Coastal Walk',
+              tagline: '',
+              tier: TrailTier.starter,
+              theme: 'heritage',
+              municipalities: ['Lingayen'],
+              stopCount: 3,
+              totalMinutes: 45,
+              totalKm: 5.0,
+              nearestKm: 1.2,
+              unlockRule: UnlockRule(type: 'free'),
+              isUnlocked: true,
+              rewardPoints: 50,
+              passesHere: true,
+            ),
+            NearbyTrail(
+              id: 't2',
+              slug: 't2',
+              title: 'Dagupan Bangus Culinary Trail',
+              tagline: '',
+              tier: TrailTier.signature,
+              theme: 'food',
+              municipalities: ['Dagupan'],
+              stopCount: 4,
+              totalMinutes: 60,
+              totalKm: 8.0,
+              nearestKm: 2.0,
+              unlockRule: UnlockRule(type: 'points', pricePoints: 100),
+              isUnlocked: false,
+              rewardPoints: 100,
+              passesHere: false,
+            ),
+            NearbyTrail(
+              id: 't3',
+              slug: 't3',
+              title: 'Bolinao Lighthouse Sunset Loop',
+              tagline: '',
+              tier: TrailTier.signature,
+              theme: 'nature',
+              municipalities: ['Bolinao'],
+              stopCount: 3,
+              totalMinutes: 50,
+              totalKm: 12.0,
+              nearestKm: 3.0,
+              unlockRule: UnlockRule(type: 'points', pricePoints: 150),
+              isUnlocked: false,
+              rewardPoints: 150,
+              passesHere: false,
+            ),
+            NearbyTrail(
+              id: 't4',
+              slug: 't4',
+              title: 'Extra Fourth Trail',
+              tagline: '',
+              tier: TrailTier.starter,
+              theme: 'culture',
+              municipalities: ['San Carlos'],
+              stopCount: 2,
+              totalMinutes: 25,
+              totalKm: 3.0,
+              nearestKm: 4.0,
+              unlockRule: UnlockRule(type: 'free'),
+              isUnlocked: false,
+              rewardPoints: 40,
+              passesHere: false,
+            ),
+          ],
+        );
+
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: RoutePreviewSheet(
+                navState: navState,
+                onSelectCosting: (_) {},
+                onChangeOrigin: () {},
+                onSelectDirect: () {},
+                onSelectTrail: (_) {},
+                onInspectTrail: (_) {},
+                onOpenSteps: () {},
+                onGo: () {},
+                onRetry: () {},
+              ),
+            ),
+          ),
+          size,
+          2.0,
+        );
+      });
+
+      testWidgets(
+          '83d AdventureTopBanner + BottomBar (60-char stop & street) does not overflow at ${size.width.toInt()}x${size.height.toInt()} with 2x text',
+          (tester) async {
+        const longName =
+            'Very Long Heritage Landmark Stop Name Along Capitol Boulevard';
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: AdventureTopBanner(
+                      currentManeuver: const RouteManeuver(
+                        instruction: 'Turn right onto $longName',
+                        distanceMeters: 4500,
+                        timeSeconds: 300,
+                        streetName: longName,
+                      ),
+                      distanceToManeuverM: 300,
+                      upcomingManeuvers: const [
+                        RouteManeuver(
+                          instruction: 'Continue straight onto Coastal Highway',
+                          distanceMeters: 1200,
+                          timeSeconds: 90,
+                        ),
+                      ],
+                      onOpenSteps: () {},
+                    ),
+                  ),
+                ),
+                AdventureBottomBar(
+                  summary: const RouteSummary(
+                    distanceKm: 18.5,
+                    durationSeconds: 1200,
+                    durationFormatted: '20 min',
+                    costing: TravelCosting.auto,
+                    hasCrowdDiversion: false,
+                    engine: 'valhalla',
+                  ),
+                  selectedTrail: const TrailDetail(
+                    id: 't-1',
+                    slug: 'trail-1',
+                    title: 'Heritage Trail',
+                    tagline: 'Coastal historic monuments',
+                    tier: TrailTier.starter,
+                    theme: 'history',
+                    intro: 'Heritage walk',
+                    rewardPoints: 50,
+                    totalMinutes: 60,
+                    totalKm: 10.0,
+                    stopCount: 3,
+                    municipalities: ['Lingayen'],
+                    unlockRule: UnlockRule(type: 'free'),
+                    isUnlocked: true,
+                    stops: [],
+                    preview: [],
+                  ),
+                  nextStop: const TrailStop(
+                    position: 2,
+                    spotId: 's-2',
+                    name: longName,
+                    municipality: 'Lingayen',
+                    category: 'history',
+                    lat: 16.03,
+                    lng: 120.24,
+                    narration: '',
+                    arriveOffsetMin: 20,
+                    dwellMin: 15,
+                    legMinutes: 10,
+                    legKm: 3.0,
+                    checkinRadiusM: 50.0,
+                    checkedIn: false,
+                  ),
+                  totalStops: 3,
+                  currentStopNumber: 2,
+                  distanceToStopMeters: 450,
+                  onCheckIn: () {},
+                  onOpenSteps: () {},
+                  onEnd: () {},
+                ),
+              ],
+            ),
+          ),
+          size,
+          2.0,
+        );
+      });
+
+      testWidgets(
+          '83d AdventureArriveOverlay (check-in & complete) does not overflow at ${size.width.toInt()}x${size.height.toInt()} with 2x text',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: AdventureArriveOverlay(
+              isTrailCompleted: true,
+              trailTitle: 'Coastal Heritage & Bangus Culinary Loop Trail',
+              trailRewardPoints: 150,
+              destinationName: 'Patar Beach',
+              onContinueCheckIn: () {},
+              onDone: () {},
             ),
           ),
           size,
