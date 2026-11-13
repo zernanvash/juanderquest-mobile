@@ -416,18 +416,24 @@ void main() {
       expect(find.text('TO'), findsOneWidget);
       expect(find.text('Patar Beach'), findsOneWidget);
       expect(find.byType(RoutePreviewSheet), findsOneWidget);
-      expect(find.text('CHANGE'), findsOneWidget);
-
-      // Route modes and route rows rendered
-      expect(find.text('DRIVE'), findsOneWidget);
-      expect(find.text('MOTO'), findsOneWidget);
-      expect(find.text('BIKE'), findsOneWidget);
-      expect(find.text('WALK'), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav_start_adventure')), findsOneWidget);
       expect(
           find.byKey(const ValueKey('nav_route_direct')), findsOneWidget);
       expect(find.text('DIRECT ROUTE'), findsOneWidget);
       expect(find.byKey(const ValueKey('nav_route_trail_trail-lingayen-gulf')),
           findsOneWidget);
+
+      // Open the Option B panel to reveal modes, origin CHANGE, and STEPS
+      await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CHANGE'), findsOneWidget);
+
+      // Route modes rendered
+      expect(find.text('DRIVE'), findsOneWidget);
+      expect(find.text('MOTO'), findsOneWidget);
+      expect(find.text('BIKE'), findsOneWidget);
+      expect(find.text('WALK'), findsOneWidget);
 
       // Pinned Action Bar
       expect(
@@ -435,6 +441,7 @@ void main() {
       expect(find.byKey(const ValueKey('nav_start_adventure')), findsOneWidget);
 
       // Tapping STEPS bar button opens StepsSheet
+      await tester.ensureVisible(find.byKey(const ValueKey('nav_steps_button')));
       await tester.tap(find.byKey(const ValueKey('nav_steps_button')));
       await tester.pumpAndSettle();
       expect(find.byType(StepsSheet), findsOneWidget);

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -94,8 +95,8 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
     if (n <= maxPoints) {
       final out = <double>[];
       for (final c in coords) {
-        out.add(c.lng);
-        out.add(c.lat);
+        out.add(c.longitude);
+        out.add(c.latitude);
       }
       return out;
     }
@@ -103,11 +104,11 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
     final step = (n - 1) / (maxPoints - 1);
     for (var i = 0; i < maxPoints - 1; i++) {
       final c = coords[(i * step).round()];
-      out.add(c.lng);
-      out.add(c.lat);
+      out.add(c.longitude);
+      out.add(c.latitude);
     }
-    out.add(coords.last.lng);
-    out.add(coords.last.lat);
+    out.add(coords.last.longitude);
+    out.add(coords.last.latitude);
     return out;
   }
 
@@ -465,10 +466,8 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
     final directRoutePoints = _cachedDirectRoute.isNotEmpty
         ? _cachedDirectRoute
         : <double>[
-            if (navState.origin.lat != null && navState.origin.lng != null) ...[
-              navState.origin.lng!,
-              navState.origin.lat!,
-            ],
+            navState.origin.point.longitude,
+            navState.origin.point.latitude,
             navState.destination.lng,
             navState.destination.lat,
           ];
@@ -875,6 +874,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                       ),
                     ),
                 ],
+              ),
             ),
           ),
         ),
@@ -1028,17 +1028,25 @@ class _TrailCarouselCard extends StatelessWidget {
               _buildLeftTile(),
               const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      trail.title.toUpperCase(),
-                      style: PixelType.body(context, color: PixelPalette.ink)
-                          .copyWith(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            trail.title.toUpperCase(),
+                            style:
+                                PixelType.body(context, color: PixelPalette.ink)
+                                    .copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
@@ -1113,19 +1121,22 @@ class _TrailCarouselCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (trail.rewardPoints > 0) ...[
-                          const SizedBox(width: 4),
-                          _CardChip(
-                            label: '+${trail.rewardPoints} PTS',
-                            bg: PixelPalette.sunLight,
-                            fg: PixelPalette.ink,
-                          ),
+                          if (trail.rewardPoints > 0) ...[
+                            const SizedBox(width: 4),
+                            _CardChip(
+                              label: '+${trail.rewardPoints} PTS',
+                              bg: PixelPalette.sunLight,
+                              fg: PixelPalette.ink,
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
+            ),
+          ),
             ],
           ),
         ),
@@ -1387,7 +1398,6 @@ class _ModeButton extends StatelessWidget {
 }
 
 class _PixelRectButton extends StatelessWidget {
-  final double? width;
   final double height;
   final EdgeInsetsGeometry? padding;
   final Color bg;
@@ -1396,7 +1406,6 @@ class _PixelRectButton extends StatelessWidget {
 
   const _PixelRectButton({
     super.key,
-    this.width,
     required this.height,
     this.padding,
     required this.bg,
@@ -1411,7 +1420,6 @@ class _PixelRectButton extends StatelessWidget {
       child: Opacity(
         opacity: onTap == null ? 0.6 : 1.0,
         child: Container(
-          width: width,
           height: height,
           padding: padding,
           alignment: Alignment.center,

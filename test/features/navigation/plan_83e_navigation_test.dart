@@ -237,6 +237,10 @@ void main() {
         ),
       );
 
+      // Open the panel so nav_eta_sub is visible
+      await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
+      await tester.pumpAndSettle();
+
       final carousel = find.byKey(const ValueKey('nav_route_carousel'));
       // Swipe quickly across 3 cards before 350ms passes
       await tester.drag(carousel, const Offset(-300, 0));
@@ -304,6 +308,10 @@ void main() {
           ),
         ),
       );
+
+      // Open the panel so nav_eta_sub is visible
+      await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
+      await tester.pumpAndSettle();
 
       final carousel = find.byKey(const ValueKey('nav_route_carousel'));
       // Swipe to locked free trail (index 1)
@@ -429,6 +437,10 @@ void main() {
           ),
         ),
       );
+      // Open the panel so nav_eta_sub is visible
+      await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
+      await tester.pumpAndSettle();
+
       final carousel = find.byKey(const ValueKey('nav_route_carousel'));
       await tester.drag(carousel, const Offset(-500, 0));
       await tester.pumpAndSettle();
@@ -476,6 +488,9 @@ void main() {
       );
 
       expect(find.text('1 / 13'), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav_start_adventure')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
+      await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('nav_steps_button')), findsOneWidget);
       expect(find.byKey(const ValueKey('nav_start_adventure')), findsOneWidget);
     });
