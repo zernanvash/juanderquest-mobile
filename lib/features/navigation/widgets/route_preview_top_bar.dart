@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_text.dart';
+import 'nav_pixel_art.dart';
 
 class RoutePreviewTopBar extends StatelessWidget {
   final String toLabel;
   final VoidCallback? onBack;
+  final bool isTrail;
 
   const RoutePreviewTopBar({
     super.key,
     required this.toLabel,
     this.onBack,
+    this.isTrail = false,
   });
 
   @override
@@ -71,6 +74,11 @@ class RoutePreviewTopBar extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
+                    NavPixelIcon(
+                      isTrail ? NavPixelArt.flagGold : NavPixelArt.pinRed,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
                     Text(
                       'TO',
                       style: PixelType.body(

@@ -154,9 +154,11 @@ Future<Uint8List?> rasterizeRoutePointMarker({
   required String label,
   required JdqRoutePointKind kind,
   required double dpr,
+  bool isPulsed = false,
 }) async {
   try {
-    const double sizeDp = 24.0;
+    final double sizeDp =
+        (kind == JdqRoutePointKind.stop && isPulsed) ? 28.0 : 24.0;
     final double sizePx = (sizeDp * dpr).roundToDouble();
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -191,13 +193,25 @@ Future<Uint8List?> rasterizeRoutePointMarker({
     }
 
     if (kind == JdqRoutePointKind.puck) {
-      final side = (28.0 * dpr).roundToDouble();
+      final baseSide = (28.0 * dpr).roundToDouble();
+      final side = isPulsed ? (32.0 * dpr).roundToDouble() : baseSide;
+      final offset = (side - baseSide) / 2;
+      if (isPulsed) {
+        final ringPaint = Paint()
+          ..color = const Color(0xFF0D1B2A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(2.0, 2.0 * dpr);
+        canvas.drawRect(
+          Rect.fromLTWH(dpr, dpr, side - dpr * 2, side - dpr * 2),
+          ringPaint,
+        );
+      }
       final cx = side / 2;
-      final pad = 2.0 * dpr;
+      final pad = 2.0 * dpr + offset;
       final outer = ui.Path()
         ..moveTo(cx, pad)
         ..lineTo(side - pad, side - pad)
-        ..lineTo(cx, side - 6.0 * dpr)
+        ..lineTo(cx, side - 6.0 * dpr - offset)
         ..lineTo(pad, side - pad)
         ..close();
       canvas.drawPath(
@@ -212,7 +226,7 @@ Future<Uint8List?> rasterizeRoutePointMarker({
       final inner = ui.Path()
         ..moveTo(cx, pad + 3.0 * dpr)
         ..lineTo(side - pad - 3.0 * dpr, side - pad - 2.0 * dpr)
-        ..lineTo(cx, side - 8.0 * dpr)
+        ..lineTo(cx, side - 8.0 * dpr - offset)
         ..lineTo(pad + 3.0 * dpr, side - pad - 2.0 * dpr)
         ..close();
       canvas.drawPath(inner, Paint()..color = bg);
@@ -222,21 +236,37 @@ Future<Uint8List?> rasterizeRoutePointMarker({
       return bytes?.buffer.asUint8List();
     }
 
-    // Owner 2026-11-10: "i dont like the look of the A and B with textbox
-    // background ... simpler, i dont want the A and B text either". Start and
-    // end are plain square dots with a cream edge: blue = start, red with a
-    // cream centre = destination. No letters.
-    if (kind == JdqRoutePointKind.start || kind == JdqRoutePointKind.end) {
-      final end = kind == JdqRoutePointKind.end;
-      final side = ((end ? 16.0 : 12.0) * dpr).roundToDouble();
+    if (kind == JdqRoutePointKind.end) {
+      // Pixel red pin sprite (20x24 dp)
+      final w = (20.0 * dpr).roundToDouble();
+      final h = (24.0 * dpr).roundToDouble();
+      final p = (2.0 * dpr).roundToDouble();
+      final inkPaint = Paint()..color = const Color(0xFF0D1B2A);
+      final redPaint = Paint()..color = bg;
+      final creamPaint = Paint()..color = const Color(0xFFFFF8E1);
+      // Ink outline
+      canvas.drawRect(Rect.fromLTWH(p, 0, w - 2 * p, p * 7), inkPaint);
+      canvas.drawRect(Rect.fromLTWH(0, p, w, p * 5), inkPaint);
+      canvas.drawRect(Rect.fromLTWH(p * 2, p * 7, w - 4 * p, p * 2), inkPaint);
+      canvas.drawRect(Rect.fromLTWH(p * 3, p * 9, w - 6 * p, p * 2), inkPaint);
+      canvas.drawRect(Rect.fromLTWH(p * 4, p * 11, w - 8 * p, p), inkPaint);
+      // Red body
+      canvas.drawRect(Rect.fromLTWH(p, p, w - 2 * p, p * 5), redPaint);
+      canvas.drawRect(Rect.fromLTWH(p * 2, p * 6, w - 4 * p, p * 2), redPaint);
+      canvas.drawRect(Rect.fromLTWH(p * 3, p * 8, w - 6 * p, p * 2), redPaint);
+      canvas.drawRect(Rect.fromLTWH(p * 4, p * 10, w - 8 * p, p), redPaint);
+      // Cream center dot
+      canvas.drawRect(Rect.fromLTWH(p * 3.5, p * 2.5, p * 3, p * 3), creamPaint);
+      final img = await recorder.endRecording().toImage(w.round(), h.round());
+      final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+      return bytes?.buffer.asUint8List();
+    }
+
+    if (kind == JdqRoutePointKind.start) {
+      final side = ((isPulsed ? 16.0 : 12.0) * dpr).roundToDouble();
       final edge = math.max(1.0, (2.0 * dpr).roundToDouble());
       canvas.drawRect(Rect.fromLTWH(0, 0, side, side), Paint()..color = const Color(0xFFFFF8E1));
       canvas.drawRect(Rect.fromLTWH(edge, edge, side - edge * 2, side - edge * 2), Paint()..color = bg);
-      if (end) {
-        final dot = (4.0 * dpr).roundToDouble();
-        canvas.drawRect(
-            Rect.fromLTWH((side - dot) / 2, (side - dot) / 2, dot, dot), Paint()..color = const Color(0xFFFFF8E1));
-      }
       final img = await recorder.endRecording().toImage(side.round(), side.round());
       final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
       return bytes?.buffer.asUint8List();
@@ -533,18 +563,22 @@ class MapLibreJdqMap extends JdqMap {
         final dpr = WidgetsBinding.instance.platformDispatcher.views.firstOrNull?.devicePixelRatio ?? 2.0;
 
         for (final pt in overlay.points) {
-          final key = '${pt.label}|${pt.kind.name}|${dpr.toStringAsFixed(1)}';
+          final key =
+              '${pt.label}|${pt.kind.name}|${pt.isPulsed}|${dpr.toStringAsFixed(1)}';
+          final imgName =
+              'jdq-route-point-${pt.label}-${pt.kind.name}${pt.isPulsed ? '-p' : ''}';
           var bytes = _routeMarkerBitmapCache[key];
           if (bytes == null) {
             bytes = await rasterizeRoutePointMarker(
               label: pt.label,
               kind: pt.kind,
               dpr: dpr,
+              isPulsed: pt.isPulsed,
             );
             if (bytes != null) _routeMarkerBitmapCache[key] = bytes;
           }
           if (bytes != null) {
-            await c.addImage('jdq-route-point-${pt.label}-${pt.kind.name}', bytes);
+            await c.addImage(imgName, bytes);
           }
         }
 
@@ -578,7 +612,8 @@ class MapLibreJdqMap extends JdqMap {
                 'label': pt.label,
                 'pointKind': pt.kind.name,
                 'bearing': pt.bearing ?? 0.0,
-                'icon': 'jdq-route-point-${pt.label}-${pt.kind.name}',
+                'icon':
+                    'jdq-route-point-${pt.label}-${pt.kind.name}${pt.isPulsed ? '-p' : ''}',
               },
               'geometry': {
                 'type': 'Point',
@@ -845,10 +880,10 @@ class MapLibreJdqMap extends JdqMap {
         'jdq-route-overlay',
         'jdq-route-casing',
         const gl.LineLayerProperties(
-          lineColor: '#3E1F0A',
-          lineWidth: 8.0,
-          lineCap: 'round',
-          lineJoin: 'round',
+          lineColor: '#0D1B2A',
+          lineWidth: 10.0,
+          lineCap: 'square',
+          lineJoin: 'miter',
         ),
         filter: ['==', 'kind', 'line'],
       );
@@ -857,9 +892,9 @@ class MapLibreJdqMap extends JdqMap {
         'jdq-route-line',
         const gl.LineLayerProperties(
           lineColor: ['get', 'color'],
-          lineWidth: 4.5,
-          lineCap: 'round',
-          lineJoin: 'round',
+          lineWidth: 6.0,
+          lineCap: 'square',
+          lineJoin: 'miter',
         ),
         filter: [
           'all',
@@ -872,9 +907,9 @@ class MapLibreJdqMap extends JdqMap {
         'jdq-route-line-dashed',
         const gl.LineLayerProperties(
           lineColor: ['get', 'color'],
-          lineWidth: 4.5,
-          lineCap: 'round',
-          lineJoin: 'round',
+          lineWidth: 6.0,
+          lineCap: 'square',
+          lineJoin: 'miter',
           lineDasharray: [2.0, 2.0],
         ),
         filter: [

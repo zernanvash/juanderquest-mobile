@@ -52,10 +52,33 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     with WidgetsBindingObserver {
   late final JdqMap _nativeMap;
   late final Future<String> _style;
-  bool _hasInitialFitted = false;
+  RouteModel? _lastFittedRoute;
   StreamSubscription<Position>? _positionSubscription;
   JdqRouteOverlay? _lastOverlay;
   WakelockService? _wakelockService;
+  Timer? _pulseTimer;
+  bool _pulseFrame = false;
+
+  void _syncPulseTimer(BuildContext context, NavigationState navState) {
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final isMoving = navState.isAdventureActive && navState.currentSpeedMs > 0.3;
+    final needsRecenterBlink =
+        navState.isAdventureActive && !navState.isCameraFollowing;
+    final shouldPulse =
+        !reduce && (!navState.isAdventureActive || isMoving || needsRecenterBlink);
+    if (shouldPulse) {
+      _pulseTimer ??= Timer.periodic(const Duration(milliseconds: 500), (_) {
+        if (!mounted) return;
+        setState(() => _pulseFrame = !_pulseFrame);
+      });
+    } else {
+      _pulseTimer?.cancel();
+      _pulseTimer = null;
+      if (_pulseFrame) {
+        _pulseFrame = false;
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -122,6 +145,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pulseTimer?.cancel();
+    _pulseTimer = null;
     _positionSubscription?.cancel();
     _positionSubscription = null;
     _wakelockService?.disable();
@@ -364,19 +389,33 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   @override
   Widget build(BuildContext context) {
     final navState = ref.watch(navigationProvider(widget.destination));
+    _syncPulseTimer(context, navState);
     final notifier = ref.read(navigationProvider(widget.destination).notifier);
     final route = navState.route;
     final originPoint = navState.effectiveOriginPoint;
-    final overlay = navState.routeOverlay;
+    final overlay = navState.buildRouteOverlay(
+      startPulsed: !navState.isAdventureActive && _pulseFrame,
+      puckPulsed: navState.isAdventureActive &&
+          navState.currentSpeedMs > 0.3 &&
+          _pulseFrame,
+    );
 
     _syncOverlay(overlay);
 
-    // Auto-fit bounds on first successful route load
-    if (route != null && !_hasInitialFitted) {
+    // Auto-fit bounds in preview whenever the selected route changes
+    if (route != null &&
+        !navState.isAdventureActive &&
+        !identical(route, _lastFittedRoute) &&
+        route.coordinates.isNotEmpty) {
+      final fittedTarget = route;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && route.coordinates.isNotEmpty) {
-          _fitRouteBounds(route, originPoint);
-          setState(() => _hasInitialFitted = true);
+        if (mounted &&
+            !ref
+                .read(navigationProvider(widget.destination))
+                .isAdventureActive &&
+            !identical(_lastFittedRoute, fittedTarget)) {
+          _lastFittedRoute = fittedTarget;
+          _fitRouteBounds(fittedTarget, originPoint);
         }
       });
     }
@@ -425,6 +464,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                     right: 0,
                     child: RoutePreviewTopBar(
                       toLabel: widget.destination.name,
+                      isTrail: navState.selectedTrail != null,
                       onBack: canPop
                           ? () => Navigator.of(context).maybePop()
                           : null,
@@ -474,6 +514,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                       },
                       onGo: () => unawaited(_handleStartAdventure()),
                       onRetry: () => notifier.fetchRoute(),
+                      onRetryTrails: () => notifier.fetchNearbyTrails(),
                     ),
                   ),
                 ] else ...[
@@ -605,6 +646,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                                     label: 'CTR',
                                     semanticLabel: 'Re-centre map',
                                     isHighlighted: !navState.isCameraFollowing,
+                                    blinkDim: !navState.isCameraFollowing &&
+                                        _pulseFrame,
                                     onTap: () {
                                       notifier.setCameraFollowing(true);
                                       if (navState.currentPosition != null) {
@@ -681,12 +724,17 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                       child: AdventureArriveOverlay(
                         checkedInStop: navState.lastCheckedInStop,
                         nextStop: navState.nextUncheckedStop,
+                        stops: navState.selectedTrail?.stops ?? const [],
                         totalStops: navState.totalTrailStops,
                         isTrailCompleted: navState.isTrailCompleted,
                         trailTitle: navState.selectedTrail?.title,
                         trailRewardPoints: navState.trailCompletionReward,
                         hasArrivedDirect: navState.hasArrivedDirect,
                         destinationName: widget.destination.name,
+                        tripMinutes: route != null
+                            ? (route.summary.durationSeconds / 60).ceil()
+                            : null,
+                        tripKm: route?.summary.distanceKm,
                         onContinueCheckIn: () =>
                             unawaited(notifier.continueAfterCheckIn()),
                         onDone: () {
@@ -715,7 +763,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   }
 
   Widget _speedBox(BuildContext context, double speedMs) {
-    final kmh = (speedMs * 3.6).round().clamp(0, 999);
+    final rawKmh = speedMs * 3.6;
+    final kmh = rawKmh < 1.0 ? 0 : rawKmh.round().clamp(0, 999);
     return Container(
       key: const ValueKey('nav_speed_box'),
       width: 56,
@@ -759,8 +808,12 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     required String label,
     required String semanticLabel,
     required bool isHighlighted,
+    bool blinkDim = false,
     required VoidCallback onTap,
   }) {
+    final bgColor = !isHighlighted
+        ? PixelPalette.cream
+        : (blinkDim ? PixelPalette.sunLight : PixelPalette.sun);
     return Semantics(
       button: true,
       label: semanticLabel,
@@ -771,7 +824,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: isHighlighted ? PixelPalette.gold : PixelPalette.cream,
+            color: bgColor,
             border: const Border.fromBorderSide(
               BorderSide(color: PixelPalette.ink, width: 2),
             ),

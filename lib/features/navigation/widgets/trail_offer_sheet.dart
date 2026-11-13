@@ -9,6 +9,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../trail/models/trail_models.dart';
 import '../../trail/services/trails_api.dart';
+import 'nav_pixel_art.dart';
 import 'trail_route_thumbnail.dart';
 
 class TrailOfferSheet extends ConsumerStatefulWidget {
@@ -154,49 +155,68 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Top Cover Strip
-            Container(
-              height: 48,
-              decoration: const BoxDecoration(
-                color: PixelPalette.woodNight,
-                border: Border(
-                  bottom: BorderSide(color: PixelPalette.woodDeep, width: 2),
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: grid.px(2),
-                    top: grid.px(1),
-                    child: Row(
-                      children: [
-                        PixelChip(
-                          isHiyas ? 'HIYAS TRAIL' : 'STARTER TRAIL',
-                          style:
-                              isHiyas ? PixelBoxStyle.gold : PixelBoxStyle.wood,
-                        ),
-                        if (widget.trail.passesHere) ...[
-                          SizedBox(width: grid.px(1)),
-                          const PixelChip(
-                            'PASSES HERE',
-                            style: PixelBoxStyle.parchment,
+            // Top Cover Strip (120 dp with cover image, or 48 dp wood strip)
+            Builder(
+              builder: (context) {
+                final coverUrl = widget.trail.coverImageUrl;
+                final hasCover = coverUrl != null && coverUrl.isNotEmpty;
+                return Container(
+                  height: hasCover ? 120 : 48,
+                  decoration: const BoxDecoration(
+                    color: PixelPalette.woodNight,
+                    border: Border(
+                      bottom: BorderSide(color: PixelPalette.ink, width: 2),
+                    ),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (hasCover)
+                        Image.network(
+                          coverUrl,
+                          fit: BoxFit.cover,
+                          filterQuality: FilterQuality.none,
+                          errorBuilder: (_, __, ___) => const ColoredBox(
+                            color: PixelPalette.woodNight,
                           ),
-                        ],
-                      ],
-                    ),
+                        ),
+                      Positioned(
+                        left: grid.px(2),
+                        bottom: hasCover ? grid.px(1.5) : null,
+                        top: hasCover ? null : grid.px(1),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PixelChip(
+                              isHiyas ? 'HIYAS TRAIL' : 'STARTER TRAIL',
+                              style: isHiyas
+                                  ? PixelBoxStyle.gold
+                                  : PixelBoxStyle.wood,
+                            ),
+                            if (widget.trail.passesHere) ...[
+                              SizedBox(width: grid.px(1)),
+                              const PixelChip(
+                                'PASSES HERE',
+                                style: PixelBoxStyle.parchment,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: grid.px(1),
+                        right: grid.px(2),
+                        child: PixelButton(
+                          key: const ValueKey('trail_offer_close'),
+                          label: 'X',
+                          variant: PixelButtonVariant.secondary,
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                    ],
                   ),
-                  Positioned(
-                    top: grid.px(1),
-                    right: grid.px(2),
-                    child: PixelButton(
-                      key: const ValueKey('trail_offer_close'),
-                      label: 'X',
-                      variant: PixelButtonVariant.secondary,
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
 
             Expanded(
@@ -229,6 +249,9 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                const NavPixelIcon(NavPixelArt.flagGold,
+                                    size: 16),
+                                const SizedBox(height: 4),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
@@ -253,6 +276,8 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                const NavPixelIcon(NavPixelArt.clock, size: 16),
+                                const SizedBox(height: 4),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
@@ -277,6 +302,8 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                const NavPixelIcon(NavPixelArt.coin, size: 16),
+                                const SizedBox(height: 4),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
@@ -361,50 +388,69 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                             color: PixelPalette.woodDeep),
                       ),
                       SizedBox(height: grid.px(1)),
-                      for (final stop in _detail!.stops) ...[
-                        PixelPanel(
-                          style: stop.checkedIn
-                              ? PixelBoxStyle.wood
-                              : PixelBoxStyle.parchment,
-                          child: Row(
-                            children: [
-                              PixelChip(
-                                '${stop.position}',
-                                style: PixelBoxStyle.gold,
-                              ),
-                              SizedBox(width: grid.px(2)),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      stop.name.toUpperCase(),
-                                      style: PixelType.body(
-                                        context,
-                                        color: stop.checkedIn
-                                            ? PixelPalette.paper
-                                            : PixelPalette.woodDeep,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${stop.municipality} · Stay ${formatMinutes(stop.dwellMin)}',
-                                      style: PixelType.small(
-                                        context,
-                                        color: stop.checkedIn
-                                            ? PixelPalette.parchment
-                                            : PixelPalette.woodMid,
-                                      ),
-                                    ),
-                                  ],
+                      for (var idx = 0;
+                          idx < _detail!.stops.length;
+                          idx++) ...[
+                        Builder(builder: (context) {
+                          final stop = _detail!.stops[idx];
+                          return PixelPanel(
+                            style: stop.checkedIn
+                                ? PixelBoxStyle.wood
+                                : PixelBoxStyle.parchment,
+                            child: Row(
+                              children: [
+                                PixelChip(
+                                  '${stop.position}',
+                                  style: PixelBoxStyle.gold,
                                 ),
+                                SizedBox(width: grid.px(2)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        stop.name.toUpperCase(),
+                                        style: PixelType.body(
+                                          context,
+                                          color: stop.checkedIn
+                                              ? PixelPalette.paper
+                                              : PixelPalette.woodDeep,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${stop.municipality} · Stay ${formatMinutes(stop.dwellMin)}',
+                                        style: PixelType.small(
+                                          context,
+                                          color: stop.checkedIn
+                                              ? PixelPalette.parchment
+                                              : PixelPalette.woodMid,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (stop.checkedIn)
+                                  const PixelChip('CHECKED IN',
+                                      style: PixelBoxStyle.gold),
+                              ],
+                            ),
+                          );
+                        }),
+                        if (idx < _detail!.stops.length - 1)
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 20),
+                              child: SizedBox(
+                                width: 2,
+                                height: 10,
+                                child: ColoredBox(color: PixelPalette.ink),
                               ),
-                              if (stop.checkedIn)
-                                const PixelChip('CHECKED IN',
-                                    style: PixelBoxStyle.gold),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: grid.px(1)),
+                            ),
+                          )
+                        else
+                          SizedBox(height: grid.px(1)),
                       ],
                     ]
                     // Preview Grid (Locked)
@@ -420,7 +466,7 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                           style: PixelBoxStyle.parchment,
                           child: Row(
                             children: [
-                              PixelChip(isFree ? '•' : '?',
+                              const PixelChip('?',
                                   style: PixelBoxStyle.wood),
                               SizedBox(width: grid.px(2)),
                               Expanded(

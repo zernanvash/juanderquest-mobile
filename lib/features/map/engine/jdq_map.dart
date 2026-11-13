@@ -44,11 +44,13 @@ class JdqRoutePoint {
     required this.label,
     required this.kind,
     this.bearing,
+    this.isPulsed = false,
   });
   final LatLng point;
   final String label;
   final JdqRoutePointKind kind;
   final double? bearing;
+  final bool isPulsed;
 }
 
 class JdqRouteOverlay {

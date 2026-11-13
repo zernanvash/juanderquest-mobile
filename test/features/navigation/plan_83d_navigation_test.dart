@@ -532,10 +532,17 @@ void main() {
       );
 
       expect(find.text('DIRECT ROUTE'), findsOneWidget);
-      expect(find.text('TRAIL ONE'), findsOneWidget);
-      expect(find.text('TRAIL TWO'), findsOneWidget);
-      // Scrollable 3-row viewport hides the 4th trail until scrolled
+      expect(find.byKey(const ValueKey('nav_route_carousel')), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav_route_dots')), findsOneWidget);
+      // Offscreen carousel cards are hidden until swiped
       expect(find.text('TRAIL FOUR HIDDEN'), findsNothing);
+
+      await tester.drag(
+        find.byKey(const ValueKey('nav_route_carousel')),
+        const Offset(-500, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('TRAIL ONE'), findsOneWidget);
     });
 
     testWidgets('TrailOfferSheet shows USE THIS TRAIL and gold stop chips',
@@ -688,7 +695,10 @@ void main() {
         ),
       );
       final deco = recenterContainer.decoration as BoxDecoration;
-      expect(deco.color, equals(PixelPalette.gold));
+      expect(
+        deco.color,
+        anyOf(PixelPalette.sun, PixelPalette.sunLight, PixelPalette.gold),
+      );
     });
 
     testWidgets(
@@ -762,6 +772,7 @@ void main() {
           ),
         ),
       );
+      await tester.pump(const Duration(milliseconds: 550));
       expect(find.text('TRAIL COMPLETE!'), findsOneWidget);
       expect(find.text('+150 PTS'), findsOneWidget);
 
