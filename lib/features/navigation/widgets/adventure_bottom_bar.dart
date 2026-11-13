@@ -136,21 +136,68 @@ class AdventureBottomBar extends StatelessWidget {
                 SizedBox(height: grid.px(1)),
               ],
 
-              // Check-in CTA button (when near stop on a trail)
+              // Check-in CTA button (64dp gold when near stop on a trail)
               if (isTrail &&
                   !isTrailCompleted &&
                   isWithinCheckinRadius &&
                   nextStop != null) ...[
-                PixelButton(
+                InkWell(
                   key: const ValueKey('nav_check_in_button'),
-                  label: isMovingTooFast
-                      ? 'PARK FIRST TO CHECK IN'
-                      : "YOU'RE HERE! CHECK IN",
-                  variant: isMovingTooFast
-                      ? PixelButtonVariant.secondary
-                      : PixelButtonVariant.primary,
-                  onPressed:
+                  onTap:
                       (isMovingTooFast || isCheckingIn) ? null : onCheckIn,
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 64),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isMovingTooFast
+                          ? PixelPalette.parchment
+                          : PixelPalette.gold,
+                      border: const Border.fromBorderSide(
+                        BorderSide(color: PixelPalette.ink, width: 2),
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: PixelPalette.ink,
+                          offset: Offset(3, 3),
+                          blurRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          isMovingTooFast
+                              ? 'PARK FIRST TO CHECK IN'
+                              : "YOU'RE HERE! CHECK IN",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: PixelType.title(
+                            context,
+                            color: PixelPalette.ink,
+                          ),
+                        ),
+                        if (!isMovingTooFast)
+                          Text(
+                            isCheckingIn
+                                ? 'CHECKING IN…'
+                                : 'CHECK IN TO CONTINUE',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.woodDeep,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
                 SizedBox(height: grid.px(1)),
               ],

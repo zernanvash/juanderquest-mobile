@@ -21,6 +21,7 @@ import '../models/route_model.dart';
 import '../providers/navigation_provider.dart';
 import '../services/location_stream_service.dart';
 import '../services/wakelock_service.dart';
+import '../widgets/adventure_arrive_overlay.dart';
 import '../widgets/adventure_bottom_bar.dart';
 import '../widgets/adventure_top_banner.dart';
 import '../widgets/detour_sheet.dart';
@@ -671,6 +672,31 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                       ],
                     ),
                   ),
+
+                  // Centred Check-In / Arrival / Completion Overlay Card
+                  if (navState.lastCheckedInStop != null ||
+                      navState.isTrailCompleted ||
+                      navState.hasArrivedDirect)
+                    Positioned.fill(
+                      child: AdventureArriveOverlay(
+                        checkedInStop: navState.lastCheckedInStop,
+                        nextStop: navState.nextUncheckedStop,
+                        totalStops: navState.totalTrailStops,
+                        isTrailCompleted: navState.isTrailCompleted,
+                        trailTitle: navState.selectedTrail?.title,
+                        trailRewardPoints: navState.trailCompletionReward,
+                        hasArrivedDirect: navState.hasArrivedDirect,
+                        destinationName: widget.destination.name,
+                        onContinueCheckIn: () =>
+                            unawaited(notifier.continueAfterCheckIn()),
+                        onDone: () {
+                          _stopLiveNavigation(keepAdventureState: false);
+                          if (canPop) {
+                            Navigator.of(context).maybePop();
+                          }
+                        },
+                      ),
+                    ),
                 ],
               ],
             ),

@@ -60,6 +60,7 @@ class NavigationState {
   final bool hasArrivedDirect;
   final bool isTrailCompleted;
   final int? trailCompletionReward;
+  final TrailStop? lastCheckedInStop;
   final double? distanceToManeuverM;
   final LatLng? snappedPuckPosition;
   final List<LatLng>? trimmedPolyline;
@@ -93,6 +94,7 @@ class NavigationState {
     this.hasArrivedDirect = false,
     this.isTrailCompleted = false,
     this.trailCompletionReward,
+    this.lastCheckedInStop,
     this.distanceToManeuverM,
     this.snappedPuckPosition,
     this.trimmedPolyline,
@@ -184,6 +186,7 @@ class NavigationState {
     bool? hasArrivedDirect,
     bool? isTrailCompleted,
     int? Function()? trailCompletionReward,
+    TrailStop? Function()? lastCheckedInStop,
     double? Function()? distanceToManeuverM,
     LatLng? Function()? snappedPuckPosition,
     List<LatLng>? Function()? trimmedPolyline,
@@ -222,6 +225,9 @@ class NavigationState {
       trailCompletionReward: trailCompletionReward != null
           ? trailCompletionReward()
           : this.trailCompletionReward,
+      lastCheckedInStop: lastCheckedInStop != null
+          ? lastCheckedInStop()
+          : this.lastCheckedInStop,
       distanceToManeuverM: distanceToManeuverM != null
           ? distanceToManeuverM()
           : this.distanceToManeuverM,
@@ -772,6 +778,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       activeStepIndex: () => 0,
       hasArrivedDirect: false,
       isTrailCompleted: false,
+      lastCheckedInStop: () => null,
       isRerouting: false,
       snappedPuckPosition: () => null,
       trimmedPolyline: () => null,
@@ -790,6 +797,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       isCameraFollowing: true,
       isRerouting: false,
       hasArrivedDirect: false,
+      lastCheckedInStop: () => null,
       snappedPuckPosition: () => null,
       trimmedPolyline: () => null,
       remainingDistanceMeters: () => null,
@@ -1029,6 +1037,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         isCheckingIn: false,
         isTrailCompleted: allDone,
         trailCompletionReward: () => allDone ? reward : null,
+        lastCheckedInStop: () => allDone ? null : stop,
       );
     } catch (e) {
       state = state.copyWith(
@@ -1036,6 +1045,13 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         error: () => TrailsApi.extractErrorMessage(e),
       );
     }
+  }
+
+  /// Dismisses the stop check-in card and re-fetches the route from the
+  /// current position through the remaining stops.
+  Future<void> continueAfterCheckIn() async {
+    state = state.copyWith(lastCheckedInStop: () => null);
+    await rerouteFromCurrentLocation();
   }
 }
 
