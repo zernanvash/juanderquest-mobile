@@ -50,6 +50,66 @@ void main() {
     }
   }
 
+  // Owner 2026-11-13 picked B: "add a hint swipe so user know its a carousel".
+  Future<void> pumpB(WidgetTester tester, {bool reduceMotion = false}) async {
+    const size = Size(320, 568);
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.pixel,
+      home: MediaQuery(
+        data: MediaQueryData(
+            size: size,
+            textScaler: const TextScaler.linear(2),
+            disableAnimations: reduceMotion),
+        child: const NavPanelPreview(layout: NavPanelLayout.woodCard),
+      ),
+    ));
+  }
+
+  double carouselOffset(WidgetTester tester) => tester
+      .widget<PageView>(find.byKey(const ValueKey('nav_panel_carousel')))
+      .controller!
+      .offset;
+
+  testWidgets('B nudges the carousel once, then rests on the first card',
+      (tester) async {
+    await pumpB(tester);
+    await tester.pump(const Duration(milliseconds: 1000));
+    expect(carouselOffset(tester), greaterThan(0));
+    await tester.pumpAndSettle();
+    expect(carouselOffset(tester), 0);
+    // The next card peeks in at the right edge.
+    expect(find.text('HERITAGE TRAIL'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('B skips the nudge when the phone asks for less motion',
+      (tester) async {
+    await pumpB(tester, reduceMotion: true);
+    await tester.pump(const Duration(milliseconds: 1000));
+    expect(carouselOffset(tester), 0);
+  });
+
+  testWidgets('B arrows page the carousel and fade at the ends',
+      (tester) async {
+    await pumpB(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('8 MIN · 6.9 KM'), findsWidgets);
+    await tester.tap(find.byKey(const ValueKey('nav_panel_next')));
+    await tester.pumpAndSettle();
+    expect(find.text('5 HR 51 MIN'), findsWidgets);
+    // Last card: next does nothing; previous goes back.
+    await tester.tap(find.byKey(const ValueKey('nav_panel_next')));
+    await tester.pumpAndSettle();
+    expect(find.text('5 HR 51 MIN'), findsWidgets);
+    await tester.tap(find.byKey(const ValueKey('nav_panel_prev')));
+    await tester.pumpAndSettle();
+    expect(find.text('8 MIN · 6.9 KM'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   test(
       'thumbnail window contains the whole route and keeps some coast around it',
       () {

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/pixel/generated/pixel_palette.g.dart';
@@ -97,8 +99,14 @@ class NavPanelPreview extends StatefulWidget {
   State<NavPanelPreview> createState() => _NavPanelPreviewState();
 }
 
-class _NavPanelPreviewState extends State<NavPanelPreview> {
-  final _pages = PageController();
+class _NavPanelPreviewState extends State<NavPanelPreview>
+    with SingleTickerProviderStateMixin {
+  // B (owner's pick, 2026-11-13: "add a hint swipe so user know its a
+  // carousel"): the next card peeks in at the right edge.
+  late final _pages = PageController(
+      viewportFraction: widget.layout == NavPanelLayout.woodCard ? 0.86 : 1);
+  // One short stepped nudge (slide 40 px and back) the first time B shows.
+  late final AnimationController _nudge;
   int _route = 0;
   int _mode = 0;
   late double _height = _min;
@@ -114,8 +122,44 @@ class _NavPanelPreviewState extends State<NavPanelPreview> {
         NavPanelLayout.peek => 316,
       };
 
+  bool _nudgeDecided = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nudge = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1400))
+      ..addListener(_applyNudge);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_nudgeDecided) return;
+    _nudgeDecided = true;
+    if (widget.layout == NavPanelLayout.woodCard &&
+        !MediaQuery.disableAnimationsOf(context)) {
+      _nudge.forward();
+    }
+  }
+
+  void _applyNudge() {
+    if (!_pages.hasClients) return;
+    // Wait half the time, then out and back in 6 pixel steps.
+    final t = ((_nudge.value - 0.5) / 0.5).clamp(0.0, 1.0);
+    final stepped = (t * 6).floor() / 6;
+    _pages.jumpTo(40 * math.sin(math.pi * stepped));
+  }
+
+  void _stopNudge() {
+    if (!_nudge.isAnimating) return;
+    _nudge.stop();
+    if (_pages.hasClients) _pages.jumpTo(0);
+  }
+
   @override
   void dispose() {
+    _nudge.dispose();
     _pages.dispose();
     super.dispose();
   }
@@ -251,19 +295,62 @@ class _NavPanelPreviewState extends State<NavPanelPreview> {
           {required double height, required double thumb, bool wide = false}) =>
       SizedBox(
         height: height,
-        child: PageView(
-          key: const ValueKey('nav_panel_carousel'),
-          controller: _pages,
-          onPageChanged: (i) => setState(() => _route = i),
-          children: [
-            for (final r in _routes)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: _routeCard(r, thumb: thumb, wide: wide),
-              ),
-          ],
+        child: Listener(
+          onPointerDown: (_) => _stopNudge(),
+          child: PageView(
+            key: const ValueKey('nav_panel_carousel'),
+            controller: _pages,
+            padEnds: widget.layout != NavPanelLayout.woodCard,
+            onPageChanged: (i) => setState(() => _route = i),
+            children: [
+              for (final r in _routes)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: _routeCard(r, thumb: thumb, wide: wide),
+                ),
+            ],
+          ),
         ),
       );
+
+  /// B: arrows either side of the dots. Tap to page; the arrow at an end fades.
+  Widget _swipeRow() {
+    Widget arrow(bool back) {
+      final enabled = back ? _route > 0 : _route < _routes.length - 1;
+      const icon = NavPixelIcon(NavPixelArt.arrowRightSmall, size: 16);
+      return Semantics(
+        button: true,
+        label: back ? 'Previous route' : 'Next route',
+        child: GestureDetector(
+          key: ValueKey(back ? 'nav_panel_prev' : 'nav_panel_next'),
+          behavior: HitTestBehavior.opaque,
+          onTap: enabled
+              ? () {
+                  _stopNudge();
+                  _pages.animateToPage(_route + (back ? -1 : 1),
+                      duration: const Duration(milliseconds: 160),
+                      curve: const _Stepped(4));
+                }
+              : null,
+          child: SizedBox(
+            width: 44,
+            height: 32,
+            child: Center(
+              child: Opacity(
+                opacity: enabled ? 1 : 0.25,
+                child: back ? Transform.flip(flipX: true, child: icon) : icon,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [arrow(true), _dots(), arrow(false)],
+    );
+  }
 
   Widget _dots() => Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -339,7 +426,7 @@ class _NavPanelPreviewState extends State<NavPanelPreview> {
           ),
           const SizedBox(height: 6),
           _carousel(height: 72, thumb: 72),
-          _dots(),
+          _swipeRow(),
           _go(width: double.infinity, height: 48),
           const SizedBox(height: 8),
           _modes(),
@@ -462,4 +549,13 @@ class _NavPanelPreviewState extends State<NavPanelPreview> {
       ),
     );
   }
+}
+
+/// Pixel-style motion: jumps in [steps] equal steps instead of gliding.
+class _Stepped extends Curve {
+  const _Stepped(this.steps);
+  final int steps;
+
+  @override
+  double transformInternal(double t) => (t * steps).ceil() / steps;
 }
