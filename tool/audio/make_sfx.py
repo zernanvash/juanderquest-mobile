@@ -1,8 +1,10 @@
-"""Plan 84 sample: synthesize 8-bit sound effects and one chiptune loop.
+"""Plan 84 sample: synthesize the app's sound effects.
 
-Original work (no samples, no third-party audio): square / triangle / noise
-oscillators with pitch slides and decay envelopes, in the style of sfxr.
-Usage: python make_sfx.py <out_dir>   -> <out_dir>/sfx/*.wav, <out_dir>/music/*.wav
+Original work (no samples, no third-party audio). Owner 2026-11-13: "foresty
+vibes, jazzy chords ... mystical 8-bit, not arcade video games". So: soft
+triangle/sine plucks (kalimba-like), wooden knocks, water drops, bird chirps,
+jazz voicings (maj9, m9, 13, 6/9) and a short echo. No harsh square leads.
+Usage: python make_sfx.py <out_dir>   -> <out_dir>/sfx/*.wav
 """
 import sys
 import wave
@@ -16,36 +18,92 @@ rng = np.random.default_rng(84)
 
 def note(name):
     names = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
-    semis = names[name[0]] + (1 if "#" in name else 0) + 12 * (int(name[-1]) + 1)
+    acc = 1 if "#" in name else (-1 if "b" in name[1:] else 0)
+    semis = names[name[0]] + acc + 12 * (int(name[-1]) + 1)
     return 440.0 * 2 ** ((semis - 69) / 12)
 
 
-def osc(kind, f0, dur, f1=None, duty=0.5):
+def t_axis(dur):
+    return np.arange(int(SR * dur)) / SR
+
+
+def sine(f0, dur, f1=None):
     n = int(SR * dur)
     f = np.linspace(f0, f1 if f1 else f0, n)
-    ph = np.cumsum(f) / SR
-    fr = ph - np.floor(ph)
-    if kind == "sq":
-        return np.where(fr < duty, 1.0, -1.0)
-    if kind == "tri":
-        return 4 * np.abs(fr - 0.5) - 1
-    if kind == "noise":
-        step = max(1, int(SR / max(f0, 1)))
-        return np.repeat(rng.uniform(-1, 1, n // step + 1), step)[:n]
-    raise ValueError(kind)
+    return np.sin(2 * np.pi * np.cumsum(f) / SR)
 
 
-def env(x, attack=0.002, decay=6.0, hold=0.0):
+def tri(f0, dur):
+    ph = f0 * t_axis(dur)
+    return 4 * np.abs(ph - np.floor(ph) - 0.5) - 1
+
+
+def lowpass(x, cutoff):
+    a = 1 - np.exp(-2 * np.pi * cutoff / SR)
+    y = np.empty_like(x)
+    acc = 0.0
+    for i, v in enumerate(x):
+        acc += a * (v - acc)
+        y[i] = acc
+    return y
+
+
+def fade(x, attack=0.003, release=0.006):
     n = len(x)
-    t = np.arange(n) / SR
-    e = np.minimum(1, t / attack) * np.exp(-decay * np.maximum(0, t - hold))
-    tail = min(n, int(SR * 0.004))
-    e[-tail:] *= np.linspace(1, 0, tail)
-    return x * e
+    a, r = min(n, int(SR * attack)), min(n, int(SR * release))
+    x = x.copy()
+    x[:a] *= np.linspace(0, 1, a)
+    x[-r:] *= np.linspace(1, 0, r)
+    return x
 
 
-def tone(kind, f0, dur, f1=None, vol=0.5, decay=6.0, duty=0.5, hold=0.0):
-    return env(osc(kind, f0, dur, f1, duty), decay=decay, hold=hold) * vol
+def pluck(name_or_f, dur=0.5, vol=0.5, decay=7.0, bright=0.25):
+    """Kalimba-like: triangle body + a quieter octave and twelfth that die faster."""
+    f = note(name_or_f) if isinstance(name_or_f, str) else name_or_f
+    t = t_axis(dur)
+    x = tri(f, dur) * np.exp(-decay * t)
+    x += bright * sine(2 * f, dur) * np.exp(-decay * 2.2 * t)
+    x += bright * 0.5 * sine(3 * f, dur) * np.exp(-decay * 3.5 * t)
+    return fade(x) * vol
+
+
+def bell(name, dur=0.7, vol=0.4, decay=5.0):
+    """Soft glassy bell: sine with an inharmonic partial."""
+    f = note(name)
+    t = t_axis(dur)
+    x = sine(f, dur) * np.exp(-decay * t) + 0.3 * sine(f * 2.76, dur) * np.exp(-decay * 2.5 * t)
+    return fade(x) * vol
+
+
+def wood(f=520, vol=0.6, dur=0.06):
+    """Wooden knock: a fast pitch drop plus a tiny filtered click."""
+    t = t_axis(dur)
+    body = sine(f, dur, f * 0.55) * np.exp(-70 * t)
+    click = lowpass(rng.uniform(-1, 1, len(t)), 2500) * np.exp(-220 * t)
+    return fade(body + 0.5 * click, attack=0.001) * vol
+
+
+def rustle(dur=0.14, vol=0.35, cutoff=2200):
+    """Leaves: filtered noise with a soft swell."""
+    t = t_axis(dur)
+    x = lowpass(rng.uniform(-1, 1, len(t)), cutoff)
+    return fade(x * np.sin(np.pi * t / dur) ** 2, 0.01, 0.02) * vol * 2.5
+
+
+def drop(f0=700, f1=1500, dur=0.07, vol=0.5):
+    """Water drop: quick upward sine."""
+    t = t_axis(dur)
+    return fade(sine(f0, dur, f1) * np.exp(-28 * t)) * vol
+
+
+def chirp(f0=2600, f1=3600, dur=0.045, vol=0.28):
+    """Small bird chirp."""
+    t = t_axis(dur)
+    return fade(sine(f0, dur, f1) * np.sin(np.pi * t / dur)) * vol
+
+
+def rest(dur):
+    return np.zeros(int(SR * dur))
 
 
 def seq(*parts):
@@ -53,132 +111,93 @@ def seq(*parts):
 
 
 def mix(*parts):
-    n = max(len(p) for p in parts)
-    out = np.zeros(n)
+    out = np.zeros(max(len(p) for p in parts))
     for p in parts:
         out[: len(p)] += p
     return out
-
-
-def rest(dur):
-    return np.zeros(int(SR * dur))
 
 
 def at(x, t):
     return seq(rest(t), x)
 
 
-def arp(notes, each, kind="sq", vol=0.4, decay=10.0, duty=0.25):
-    return seq(*[tone(kind, note(n), each, vol=vol, decay=decay, duty=duty) for n in notes])
+def echo(x, delay=0.13, feedback=0.32, repeats=3):
+    """A short forest echo."""
+    d = int(SR * delay)
+    out = np.zeros(len(x) + d * repeats)
+    for k in range(repeats + 1):
+        out[k * d : k * d + len(x)] += x * feedback**k
+    return out
 
+
+def strum(names, gap=0.022, dur=0.9, vol=0.26, decay=4.0):
+    return mix(*[at(pluck(n, dur, vol, decay), i * gap) for i, n in enumerate(names)])
+
+
+def run(names, each=0.075, dur=0.45, vol=0.34, decay=7.0):
+    return mix(*[at(pluck(n, dur, vol, decay), i * each) for i, n in enumerate(names)])
+
+
+CMAJ9 = ["C4", "E4", "G4", "B4", "D5"]
+DM9 = ["D4", "F4", "A4", "C5", "E5"]
+G13 = ["G3", "F4", "B4", "E5"]
+C69 = ["C4", "E4", "A4", "D5", "G5"]
+FMAJ7 = ["F4", "A4", "C5", "E5"]
+AM9 = ["A4", "C5", "E5", "G5", "B5"]
 
 SFX = {
-    # UI
-    "tap": tone("sq", 740, 0.045, 620, vol=0.35, decay=45, duty=0.25),
-    "back": tone("sq", 440, 0.08, 300, vol=0.35, decay=28, duty=0.25),
-    "toggle_on": arp(["E5", "A5"], 0.05, vol=0.35, decay=30),
-    "toggle_off": arp(["A5", "E5"], 0.05, vol=0.35, decay=30),
-    "tab": tone("tri", 880, 0.05, vol=0.5, decay=40),
-    "sheet_open": tone("tri", 300, 0.11, 620, vol=0.45, decay=14),
-    "error": seq(tone("sq", 196, 0.09, 185, vol=0.4, decay=8), rest(0.03), tone("sq", 175, 0.14, 160, vol=0.4, decay=8)),
-    # Rewards
-    "coin": seq(tone("sq", note("B5"), 0.06, vol=0.38, decay=10), tone("sq", note("E6"), 0.32, vol=0.38, decay=9)),
-    "stamp": mix(tone("noise", 900, 0.09, vol=0.6, decay=30), tone("sq", 160, 0.14, 70, vol=0.55, decay=18)),
-    "unlock": mix(arp(["C5", "E5", "G5", "C6", "E6", "G6"], 0.045, kind="tri", vol=0.5, decay=14),
-                  at(tone("sq", note("C7"), 0.35, vol=0.18, decay=7, duty=0.125), 0.27)),
-    "quest_complete": mix(
-        seq(arp(["C5", "E5", "G5"], 0.11, vol=0.36, decay=7), tone("sq", note("C6"), 0.7, vol=0.36, decay=3.5, duty=0.25)),
-        seq(arp(["C4", "G4", "C4"], 0.11, kind="tri", vol=0.45, decay=6), tone("tri", note("C4"), 0.7, vol=0.45, decay=3.5)),
-        at(tone("sq", note("E6"), 0.6, vol=0.18, decay=4, duty=0.25), 0.33)),
-    "level_up": mix(
-        seq(arp(["C5", "E5", "G5", "C6", "E6", "G6"], 0.07, vol=0.34, decay=9),
-            tone("sq", note("C7"), 0.8, vol=0.3, decay=3, duty=0.25)),
-        at(mix(tone("tri", note("C5"), 0.8, vol=0.4, decay=3), tone("tri", note("G5"), 0.8, vol=0.3, decay=3)), 0.42)),
-    # Navigation
-    "go": arp(["G4", "C5", "E5", "G5"], 0.055, vol=0.36, decay=14),
-    "turn_chime": seq(tone("tri", note("E5"), 0.16, vol=0.55, decay=7), tone("tri", note("A5"), 0.3, vol=0.55, decay=6)),
-    "reroute": seq(tone("tri", note("A5"), 0.1, vol=0.5, decay=10), tone("tri", note("F5"), 0.1, vol=0.5, decay=10),
-                   tone("tri", note("D5"), 0.2, vol=0.5, decay=8)),
-    "checkin": mix(arp(["G5", "B5", "D6"], 0.08, vol=0.36, decay=9),
-                   at(tone("tri", note("G6"), 0.45, vol=0.4, decay=5), 0.24)),
-    "trail_complete": mix(
-        seq(arp(["G4", "C5", "E5", "G5", "E5", "G5"], 0.1, vol=0.34, decay=7),
-            tone("sq", note("C6"), 0.9, vol=0.34, decay=2.8, duty=0.25)),
-        seq(arp(["C3", "C3", "G3", "G3", "A3", "B3"], 0.1, kind="tri", vol=0.5, decay=6),
-            tone("tri", note("C4"), 0.9, vol=0.5, decay=2.8))),
-    # AR games
-    "ar_hit": mix(tone("noise", 2500, 0.07, vol=0.45, decay=35), tone("sq", 620, 0.12, 200, vol=0.4, decay=16, duty=0.25)),
-    "ar_miss": tone("sq", 300, 0.2, 140, vol=0.3, decay=8),
-    "ar_countdown": tone("sq", 880, 0.1, vol=0.35, decay=12, duty=0.25),
-    "ar_win": arp(["C5", "E5", "G5", "C6", "G5", "C6"], 0.08, vol=0.36, decay=7),
-    "ar_lose": arp(["G4", "E4", "D4", "C4"], 0.13, vol=0.34, decay=6, duty=0.5),
-    # Social / map
-    "cheer": seq(tone("sq", 600, 0.05, 900, vol=0.32, decay=14, duty=0.25), rest(0.02),
-                 tone("sq", 700, 0.05, 1050, vol=0.32, decay=14, duty=0.25), rest(0.02),
-                 tone("sq", 800, 0.09, 1300, vol=0.32, decay=10, duty=0.25)),
-    "pin_select": tone("tri", 660, 0.06, 880, vol=0.5, decay=22),
+    # UI: wood, water and single soft plucks
+    "tap": wood(540, 0.55),
+    "back": seq(wood(430, 0.5), rest(0.015), wood(330, 0.45)),
+    "toggle_on": mix(pluck("D5", 0.2, 0.4, 14), at(pluck("A5", 0.3, 0.4, 11), 0.06)),
+    "toggle_off": mix(pluck("A5", 0.2, 0.4, 14), at(pluck("D5", 0.3, 0.4, 11), 0.06)),
+    "tab": echo(pluck("G5", 0.18, 0.36, 16), 0.09, 0.25, 2),
+    "sheet_open": mix(rustle(0.16, 0.3), at(pluck("E5", 0.25, 0.28, 12), 0.07)),
+    "error": mix(pluck("E3", 0.3, 0.5, 10, 0.1), at(pluck("F3", 0.38, 0.5, 9, 0.1), 0.11)),
+    # Rewards: jazz voicings, kalimba and bells
+    "coin": echo(mix(pluck("E6", 0.3, 0.34, 10), at(pluck("B6", 0.4, 0.3, 9), 0.055)), 0.11, 0.3, 2),
+    "stamp": mix(wood(240, 0.75, 0.09), at(bell("G5", 0.5, 0.26, 7), 0.03)),
+    "unlock": echo(mix(run(DM9, 0.07), at(bell("A5", 0.8, 0.3, 4), 0.36)), 0.14, 0.3, 2),
+    "quest_complete": echo(mix(run(FMAJ7, 0.085, 0.5), at(strum(CMAJ9, 0.028, 1.2), 0.4),
+                               at(bell("D6", 1.0, 0.2, 3.5), 0.52)), 0.16, 0.28, 2),
+    "level_up": echo(mix(strum(DM9, 0.02, 0.5, 0.24, 6), at(strum(G13, 0.02, 0.5, 0.26, 6), 0.3),
+                         at(strum(C69, 0.03, 1.3, 0.26, 3.2), 0.6), at(bell("G6", 1.0, 0.16, 3.5), 0.78)), 0.17, 0.28, 2),
+    # Navigation: clear bells that cut through road noise without being sharp
+    "go": mix(pluck("G4", 0.3, 0.4, 9), at(pluck("D5", 0.4, 0.4, 8), 0.08), at(strum(["G4", "A4", "D5"], 0.02, 0.6, 0.2), 0.16)),
+    "turn_chime": echo(seq(bell("E5", 0.2, 0.5, 6), bell("G5", 0.5, 0.5, 4.5)), 0.15, 0.25, 2),
+    "reroute": echo(seq(bell("A5", 0.13, 0.42, 9), bell("F5", 0.13, 0.42, 9), bell("D5", 0.4, 0.42, 5)), 0.14, 0.25, 2),
+    "checkin": echo(mix(run(AM9, 0.07), at(bell("E6", 0.8, 0.26, 4), 0.36)), 0.14, 0.3, 2),
+    "trail_complete": echo(mix(run(DM9, 0.09, 0.5), at(strum(G13, 0.025, 0.6, 0.27, 5), 0.5),
+                               at(strum(C69, 0.035, 1.5, 0.27, 2.8), 0.86), at(run(["E6", "G6", "D7"], 0.11, 0.9, 0.16, 4), 1.05)),
+                           0.18, 0.3, 2),
+    # AR games: woodblocks, whooshes, small arpeggios
+    "ar_hit": mix(wood(700, 0.6, 0.05), at(pluck("A5", 0.22, 0.34, 14), 0.01)),
+    "ar_miss": rustle(0.22, 0.3, 1200),
+    "ar_countdown": wood(820, 0.55, 0.05),
+    "ar_win": echo(run(["C5", "E5", "G5", "B5", "D6"], 0.065, 0.5, 0.32, 6), 0.13, 0.28, 2),
+    "ar_lose": run(["D5", "C5", "Ab4", "F4"], 0.14, 0.5, 0.32, 6),
+    # Map & plaza: water drop and birds
+    "pin_select": echo(drop(), 0.08, 0.22, 2),
+    "cheer": seq(chirp(2500, 3300), rest(0.03), chirp(2800, 3700), rest(0.03), chirp(3000, 4200, 0.07)),
 }
 
 
-def explore_loop(bpm=104):
-    """8 bars, C major: C - Am - F - G twice. Lead square, triangle bass, noise hat."""
-    beat = 60.0 / bpm
-    e = beat / 2
-    lead = [
-        "E5 G5 C6 G5 E5 G5 A5 G5", "E5 A5 C6 A5 E5 A5 G5 E5",
-        "F5 A5 C6 A5 F5 A5 G5 F5", "D5 G5 B5 G5 D5 G5 A5 B5",
-        "C6 G5 E5 G5 C6 D6 E6 D6", "C6 A5 E5 A5 C6 A5 G5 E5",
-        "F5 A5 C6 F6 E6 C6 A5 F5", "G5 B5 D6 B5 G5 D5 G5 -",
-    ]
-    bass = ["C3", "A2", "F2", "G2", "C3", "A2", "F2", "G2"]
-    total = int(SR * beat * 4 * 8)
-    out = np.zeros(total + SR)
-    for bar, line in enumerate(lead):
-        for i, nm in enumerate(line.split()):
-            if nm == "-":
-                continue
-            s = int(SR * (bar * 4 * beat + i * e))
-            x = tone("sq", note(nm), e * 0.95, vol=0.2, decay=5, duty=0.25)
-            out[s : s + len(x)] += x
-        for q in range(4):
-            s = int(SR * (bar * 4 * beat + q * beat))
-            f = note(bass[bar]) * (1 if q % 2 == 0 else 1.5)
-            x = tone("tri", f, beat * 0.9, vol=0.42, decay=3)
-            out[s : s + len(x)] += x
-        for h in range(8):
-            s = int(SR * (bar * 4 * beat + h * e))
-            x = tone("noise", 6000 if h % 2 else 3000, 0.03, vol=0.1 if h % 2 else 0.16, decay=60)
-            out[s : s + len(x)] += x
-    out[: SR] += out[total : total + SR]  # wrap the tail so the loop has no click
-    return out[:total]
-
-
-def write(path, x, bits=16):
-    x = np.tanh(x * 1.1)
+def write(path, x):
+    x = np.tanh(x * 1.15)
     with wave.open(str(path), "wb") as w:
         w.setnchannels(1)
         w.setframerate(SR)
-        if bits == 16:
-            w.setsampwidth(2)
-            w.writeframes((x * 32000).astype("<i2").tobytes())
-        else:
-            w.setsampwidth(1)
-            w.writeframes((x * 120 + 128).astype("u1").tobytes())
+        w.setsampwidth(2)
+        w.writeframes((x * 32000).astype("<i2").tobytes())
 
 
 if __name__ == "__main__":
-    out = Path(sys.argv[1])
-    (out / "sfx").mkdir(parents=True, exist_ok=True)
-    (out / "music").mkdir(parents=True, exist_ok=True)
+    out = Path(sys.argv[1]) / "sfx"
+    out.mkdir(parents=True, exist_ok=True)
     total = 0
     for name, x in SFX.items():
-        p = out / "sfx" / f"{name}.wav"
+        p = out / f"{name}.wav"
         write(p, x)
         total += p.stat().st_size
-        print(f"{name:16s} {len(x) / SR:5.2f}s {p.stat().st_size / 1024:6.1f} KB")
-    p = out / "music" / "explore_loop.wav"
-    m = explore_loop()
-    write(p, m, bits=8)
-    total += p.stat().st_size
-    print(f"{'explore_loop':16s} {len(m) / SR:5.2f}s {p.stat().st_size / 1024:6.1f} KB")
+        print(f"{name:16s} {len(x) / SR:5.2f}s {p.stat().st_size / 1024:6.1f} KB  peak {np.abs(x).max():.2f}")
     print(f"total {total / 1024:.0f} KB, {len(SFX)} effects")

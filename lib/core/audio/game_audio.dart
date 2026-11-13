@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 
 /// Plan 84 sample (owner 2026-11-13: "give me sample ... in the pixel lab so
 /// we can test it on buttons and other stuff"). Plays the synthesized effects
-/// and one music loop. Off by default; the Pixel lab turns it on.
+/// (no music yet: the owner is choosing it). Off by default; the Pixel lab turns it on.
 class GameAudio {
   GameAudio._();
   static final GameAudio instance = GameAudio._();
@@ -21,12 +21,9 @@ class GameAudio {
   /// When true, every pixel button press plays `tap` (see `pixelTick`).
   final buttonSounds = ValueNotifier<bool>(false);
   final sfxVolume = ValueNotifier<double>(0.8);
-  final musicVolume = ValueNotifier<double>(0.5);
-  final musicPlaying = ValueNotifier<bool>(false);
 
   final _pool = <AudioPlayer>[];
   int _next = 0;
-  AudioPlayer? _music;
   final _rng = math.Random();
   final _lastPlayed = <String, int>{};
 
@@ -61,37 +58,11 @@ class GameAudio {
     }
   }
 
-  Future<void> toggleMusic() async {
-    try {
-      if (musicPlaying.value) {
-        await _music?.stop();
-        musicPlaying.value = false;
-        return;
-      }
-      final m = _music ??= AudioPlayer();
-      await m.setReleaseMode(ReleaseMode.loop);
-      await m.setVolume(musicVolume.value);
-      await m.play(AssetSource('audio/music/explore_loop.wav'));
-      musicPlaying.value = true;
-    } catch (_) {
-      musicPlaying.value = false;
-    }
-  }
-
-  Future<void> setMusicVolume(double v) async {
-    musicVolume.value = v;
-    try {
-      await _music?.setVolume(v);
-    } catch (_) {}
-  }
-
   Future<void> stopAll() async {
     try {
-      await _music?.stop();
       for (final p in _pool) {
         await p.stop();
       }
     } catch (_) {}
-    musicPlaying.value = false;
   }
 }

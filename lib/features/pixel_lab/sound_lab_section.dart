@@ -66,7 +66,7 @@ class _SoundLabSectionState extends State<SoundLabSection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'All sounds here were made by script (square, triangle and noise waves). Nothing is downloaded.',
+          'Forest style: soft plucks, bells, wood, water and birds, with jazz chords. All made by script; nothing is downloaded.',
           style: PixelType.small(context, color: PixelPalette.slate),
         ),
         SizedBox(height: grid.px(3)),
@@ -106,19 +106,6 @@ class _SoundLabSectionState extends State<SoundLabSection> {
           ),
           SizedBox(height: grid.px(3)),
         ],
-        Text('MUSIC', style: PixelType.body(context)),
-        SizedBox(height: grid.px(1)),
-        ValueListenableBuilder<bool>(
-          valueListenable: _audio.musicPlaying,
-          builder: (context, playing, _) => PixelButton(
-            key: const ValueKey('lab_music_toggle'),
-            label: playing ? 'Stop "Explore" loop' : 'Play "Explore" loop (18 s)',
-            variant: playing ? PixelButtonVariant.danger : PixelButtonVariant.primary,
-            onPressed: _audio.toggleMusic,
-          ),
-        ),
-        SizedBox(height: grid.px(2)),
-        _stepper('Music volume', _audio.musicVolume, _audio.setMusicVolume, 'lab_music_volume'),
       ],
     );
   }
