@@ -760,10 +760,38 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   }
 
   /// Select a chosen trail (from TrailOfferSheet)
+  static NearbyTrail _asUnlocked(NearbyTrail t) => NearbyTrail(
+        id: t.id,
+        slug: t.slug,
+        title: t.title,
+        tagline: t.tagline,
+        tier: t.tier,
+        theme: t.theme,
+        municipalities: t.municipalities,
+        stopCount: t.stopCount,
+        totalMinutes: t.totalMinutes,
+        totalKm: t.totalKm,
+        unlockRule: t.unlockRule,
+        availableUntil: t.availableUntil,
+        isUnlocked: true,
+        rewardPoints: t.rewardPoints,
+        coverImageUrl: t.coverImageUrl,
+        passesHere: t.passesHere,
+        nearestKm: t.nearestKm,
+      );
+
   void selectTrail(TrailDetail trail) {
     state = state.copyWith(
       selectedTrail: () => trail,
       isDirectRoute: false,
+      // A trail unlocked in the offer sheet must stop looking locked in the
+      // carousel, or its button keeps saying CHOOSE TRAIL instead of START.
+      nearbyTrails: trail.isUnlocked
+          ? [
+              for (final t in state.nearbyTrails)
+                t.id == trail.id && !t.isUnlocked ? _asUnlocked(t) : t,
+            ]
+          : null,
     );
     fetchRoute();
   }
