@@ -54,12 +54,6 @@ class _AdventureArriveOverlayState extends State<AdventureArriveOverlay> {
   int _lastTargetReward = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _syncCountUp();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncCountUp();

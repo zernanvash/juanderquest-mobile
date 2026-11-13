@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:juanderquest_app/features/map/engine/jdq_map.dart';
 import 'package:juanderquest_app/features/map/engine/maplibre_jdq_map.dart';
+import 'package:juanderquest_app/features/navigation/widgets/trail_offer_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -2393,6 +2395,178 @@ void main() {
           clampScale: false,
         );
       });
+    });
+
+    group('Plan 83e: 2.0x Text Scale Navigation Polish Overflow Gates', () {
+      const target = NavTarget(
+        name: 'Patar Beach Long Destination Title',
+        lat: 16.3228,
+        lng: 119.7844,
+        address: 'Bolinao, Pangasinan',
+      );
+      const sampleRoute = RouteModel(
+        coordinates: [LatLng(16.0218, 120.2319), LatLng(16.3228, 119.7844)],
+        summary: RouteSummary(
+          distanceKm: 48.2,
+          durationSeconds: 3120,
+          durationFormatted: '52 mins',
+          costing: TravelCosting.auto,
+          hasCrowdDiversion: false,
+          engine: 'valhalla',
+        ),
+        maneuvers: [
+          RouteManeuver(
+            instruction: 'Turn right onto Romulo Highway',
+            distanceMeters: 300,
+            timeSeconds: 40,
+            streetName: 'Romulo Highway',
+          ),
+        ],
+      );
+      final twelveTrails40Char = List.generate(
+        12,
+        (i) => NearbyTrail(
+          id: 't-$i',
+          slug: 't-$i',
+          title: 'Very Long Forty Character Trail Title $i',
+          tagline: 'Explore scenic towns',
+          tier: i.isEven ? TrailTier.starter : TrailTier.signature,
+          theme: 'heritage',
+          municipalities: const ['Lingayen'],
+          stopCount: 4,
+          totalMinutes: 351,
+          totalKm: 61.4,
+          unlockRule: UnlockRule(
+            type: i.isEven ? 'free' : 'points',
+            pricePoints: i.isEven ? 0 : 150,
+          ),
+          isUnlocked: i == 0,
+          rewardPoints: 50,
+          passesHere: i == 0,
+          nearestKm: i.toDouble(),
+        ),
+      );
+
+      for (final size in [const Size(320, 568), const Size(568, 320)]) {
+        final label = size.width < size.height ? 'portrait' : 'landscape';
+
+        testWidgets(
+            '83e RoutePreviewSheet 12 trails + 40-char title does not overflow in $label at 2.0x text',
+            (tester) async {
+          await testScreenOverflow(
+            tester,
+            Scaffold(
+              body: Align(
+                alignment: Alignment.bottomCenter,
+                child: RoutePreviewSheet(
+                  navState: NavigationState(
+                    destination: target,
+                    route: sampleRoute,
+                    nearbyTrails: twelveTrails40Char,
+                  ),
+                  onSelectCosting: (_) {},
+                  onChangeOrigin: () {},
+                  onSelectDirect: () {},
+                  onSelectTrail: (_) {},
+                  onInspectTrail: (_) {},
+                  onOpenSteps: () {},
+                  onGo: () {},
+                  onRetry: () {},
+                ),
+              ),
+            ),
+            size,
+            2.0,
+            clampScale: false,
+          );
+        });
+
+        testWidgets(
+            '83e Arrive cards (CHECKED IN / TRAIL COMPLETE / ARRIVED) do not overflow in $label at 2.0x text',
+            (tester) async {
+          const stop1 = TrailStop(
+            position: 1,
+            spotId: 's1',
+            name: 'Capitol Building',
+            municipality: 'Lingayen',
+            category: 'Heritage',
+            lat: 16.0218,
+            lng: 120.2319,
+            arriveOffsetMin: 10,
+            dwellMin: 15,
+            legMinutes: 10,
+            legKm: 4.0,
+            checkinRadiusM: 60,
+            checkedIn: true,
+            narration: 'Stop 1',
+          );
+          await testScreenOverflow(
+            tester,
+            Scaffold(
+              body: AdventureArriveOverlay(
+                checkedInStop: stop1,
+                stops: const [stop1],
+                totalStops: 2,
+                destinationName: target.name,
+                onContinueCheckIn: () {},
+                onDone: () {},
+              ),
+            ),
+            size,
+            2.0,
+            clampScale: false,
+          );
+          await testScreenOverflow(
+            tester,
+            Scaffold(
+              body: AdventureArriveOverlay(
+                isTrailCompleted: true,
+                trailTitle: 'Very Long Forty Character Trail Title 1',
+                trailRewardPoints: 150,
+                destinationName: target.name,
+                onContinueCheckIn: () {},
+                onDone: () {},
+              ),
+            ),
+            size,
+            2.0,
+            clampScale: false,
+          );
+          await testScreenOverflow(
+            tester,
+            Scaffold(
+              body: AdventureArriveOverlay(
+                hasArrivedDirect: true,
+                destinationName: target.name,
+                tripMinutes: 52,
+                tripKm: 48.2,
+                onContinueCheckIn: () {},
+                onDone: () {},
+              ),
+            ),
+            size,
+            2.0,
+            clampScale: false,
+          );
+        });
+
+        testWidgets(
+            '83e TrailOfferSheet does not overflow in $label at 2.0x text',
+            (tester) async {
+          await testScreenOverflow(
+            tester,
+            Scaffold(
+              body: TrailOfferSheet(
+                trail: twelveTrails40Char.first,
+                onChoose: (_) {},
+              ),
+            ),
+            size,
+            2.0,
+            clampScale: false,
+          );
+        });
+      }
     });
   });
 }

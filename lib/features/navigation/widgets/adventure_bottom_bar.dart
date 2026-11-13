@@ -71,12 +71,6 @@ class _AdventureBottomBarState extends State<AdventureBottomBar> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _syncBlinkTimer();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncBlinkTimer();

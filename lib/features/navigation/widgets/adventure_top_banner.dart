@@ -41,12 +41,6 @@ class _AdventureTopBannerState extends State<AdventureTopBanner> {
   int _dots = 1;
 
   @override
-  void initState() {
-    super.initState();
-    _syncTimer();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncTimer();

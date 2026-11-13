@@ -974,12 +974,6 @@ class _GhostCarouselCardState extends State<_GhostCarouselCard> {
   int _dots = 1;
 
   @override
-  void initState() {
-    super.initState();
-    _syncTimer();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncTimer();

@@ -810,8 +810,8 @@ void main() {
       await tester.pump();
 
       // Shows recharting badge
-      expect(find.text('RECHARTING PATH…'), findsOneWidget);
-      await tester.pumpAndSettle();
+      expect(find.textContaining('RECHARTING PATH'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
 
       await locationController.close();
     });
@@ -877,7 +877,8 @@ void main() {
         speed: 1.0,
         accuracy: 15.0,
       ));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
 
       // Check-in button appears
       expect(find.byKey(const ValueKey('nav_check_in_button')), findsOneWidget);
@@ -885,7 +886,8 @@ void main() {
 
       // Tap check-in
       await tester.tap(find.byKey(const ValueKey('nav_check_in_button')));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 550));
 
       // Verify strict check-in payload sent to API: exactly {lat, lng, accuracy_m}
       expect(fakeTrailsApi.lastCheckinTrailId, equals('trail-free-starter'));
