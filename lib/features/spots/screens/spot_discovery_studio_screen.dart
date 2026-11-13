@@ -3,13 +3,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/config/map_config.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -22,6 +22,9 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/base_tile_layer.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../map/engine/jdq_map.dart';
+import '../../map/engine/jdq_map_canvas.dart';
+import '../../map/engine/maplibre_jdq_map.dart';
 import '../models/spot_model.dart';
 import '../utils/exif_gps.dart';
 import '../utils/spot_location_handoff.dart';
@@ -53,7 +56,8 @@ class _SpotDiscoveryStudioScreenState
   late StudioPin _pin;
   SpotLocationSource _source = SpotLocationSource.fallbackAnchor;
   int _session = 0; // bumps on "Add another spot" to start a fresh composer
-  final _mapController = MapController();
+  late final JdqMap _map;
+  late final Future<String> _style;
   Timer? _panTimer;
   Timer? _saveTimer;
   bool _locating = false;
@@ -66,6 +70,11 @@ class _SpotDiscoveryStudioScreenState
   @override
   void initState() {
     super.initState();
+    _map = ref.read(jdqMapFactoryProvider)();
+    _style = ref.read(mapStyleProvider.future);
+    _map.onCameraIdle = _onCameraIdle;
+    _map.onTapEmpty = (point) =>
+        unawaited(_map.easeTo(point, _map.camera.zoom, reducedMotion: true));
     final route = widget.routePin;
     if (route != null) {
       // Tier 1: render at once.
@@ -88,13 +97,20 @@ class _SpotDiscoveryStudioScreenState
     _initial = initial;
     _pin = initial.pin;
     _source = initial.source;
+    unawaited(
+      _map.easeTo(
+        LatLng(initial.pin.lat, initial.pin.lng),
+        initial.pin.zoom,
+        reducedMotion: true,
+      ),
+    );
   }
 
   @override
   void dispose() {
     _panTimer?.cancel();
     _saveTimer?.cancel();
-    _mapController.dispose();
+    _map.dispose();
     super.dispose();
   }
 
@@ -105,23 +121,26 @@ class _SpotDiscoveryStudioScreenState
       _source = source;
     });
     if (moveMap) {
-      try {
-        _mapController.move(LatLng(lat, lng), zoom ?? _pin.zoom);
-      } catch (_) {
-        // The map is not laid out yet; it opens on the new pin.
-      }
+      unawaited(
+        _map.easeTo(LatLng(lat, lng), zoom ?? _pin.zoom, reducedMotion: true),
+      );
     }
     _scheduleSave();
   }
 
-  void _onMapMoved(MapCamera camera, bool hasGesture) {
-    if (!hasGesture) return;
+  void _onCameraIdle() {
+    final cam = _map.camera;
+    if ((cam.center.latitude - _pin.lat).abs() < 1e-6 &&
+        (cam.center.longitude - _pin.lng).abs() < 1e-6 &&
+        (cam.zoom - _pin.zoom).abs() < 1e-3) {
+      return;
+    }
     _panTimer?.cancel();
     _panTimer = Timer(const Duration(milliseconds: 450), () {
       if (!mounted) return;
-      _movePin(camera.center.latitude, camera.center.longitude,
+      _movePin(cam.center.latitude, cam.center.longitude,
           SpotLocationSource.mapCrosshair,
-          moveMap: false, zoom: camera.zoom);
+          moveMap: false, zoom: cam.zoom);
     });
   }
 
@@ -298,22 +317,19 @@ class _SpotDiscoveryStudioScreenState
       SizedBox(
         height: _mapHeight,
         child: Stack(children: [
-          FlutterMap(
+          Builder(
             key: const ValueKey('studio_map'),
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: LatLng(initial.pin.lat, initial.pin.lng),
-              initialZoom: initial.pin.zoom,
-              minZoom: 8,
-              maxZoom: 19,
-              onPositionChanged: _onMapMoved,
-              onTap: (_, point) =>
-                  _mapController.move(point, _mapController.camera.zoom),
-            ),
-            children: [
-              buildBaseTileLayer(satellite: satelliteOn(ref)),
-              if (satelliteOn(ref)) const SatelliteAttribution(),
-            ],
+            builder: (context) {
+              final sat = satelliteOn(ref);
+              unawaited(_map.setSatellite(sat));
+              return JdqMapCanvas(
+                map: _map,
+                style: _style,
+                extraAttribution: sat ? MapConfig.satelliteAttribution : null,
+                fallback: const ColoredBox(color: PixelPalette.paperDim),
+                onFallback: () {},
+              );
+            },
           ),
           // The pin stays in the centre; the map moves under it.
           const IgnorePointer(
