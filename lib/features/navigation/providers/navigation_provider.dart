@@ -1015,6 +1015,11 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       isRerouting: false,
       activeStepIndex: () => 0,
     );
+    // A new route restarts at step 0: forget which turns were announced, or
+    // the voice stays silent for every step number it has already spoken.
+    _spokenCues.removeWhere((k) => k.startsWith('step_'));
+    final first = state.route?.maneuvers.firstOrNull;
+    if (first != null) _speakOnce('step_0_start', first.instruction);
   }
 
   /// Check in at current trail stop

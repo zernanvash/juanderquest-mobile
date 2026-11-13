@@ -407,6 +407,29 @@ void main() {
       notifier2.updatePosition(_pos(lat: 16.0310, lng: 120.2700));
       expect(voice.spoken.any((s) => s.contains('arrived')), isTrue);
     });
+
+    // Orchestrator review: after a reroute the steps restart at 0, so the
+    // first instruction must be spoken again (it was silently skipped).
+    test('voice announces the first turn again after a reroute', () async {
+      final voice = FakeVoiceGuide();
+      final notifier = _TestNavNotifier83d(
+        apiClient: ApiClient(),
+        trailsApi: _FakeTrailsApi83d(),
+        voiceGuide: voice,
+        initialDestination: target,
+        initialState: const NavigationState(
+          destination: target,
+          route: sampleRoute,
+          isDirectRoute: true,
+        ),
+      );
+      notifier.startAdventure();
+      notifier.updatePosition(_pos(lat: 16.0200, lng: 120.2300));
+      final before = voice.spoken.length;
+      await notifier.rerouteFromCurrentLocation();
+      expect(voice.spoken.length, before + 1);
+      expect(voice.spoken.last, contains('Head east'));
+    });
   });
 
   group('Plan 83d: Preview, Driving & Arrive Widget Tests', () {
