@@ -38,6 +38,7 @@ dependencies:
   qr_flutter: ^4.1.0
   flame: ^1.38.2
   wakelock_plus: ^1.2.8
+  flutter_tts: ^4.0.0
 
 
 dev_dependencies:

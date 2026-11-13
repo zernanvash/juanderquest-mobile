@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,6 +12,7 @@ import '../../trail/models/trail_models.dart';
 import '../../trail/services/trails_api.dart';
 import '../models/route_model.dart';
 import '../services/location_stream_service.dart';
+import '../services/voice_guide.dart';
 import '../utils/route_geometry.dart';
 
 /// Default fallback coordinate: Lingayen Provincial Capitol, Pangasinan
@@ -323,17 +326,21 @@ class NavigationState {
 class NavigationNotifier extends StateNotifier<NavigationState> {
   final ApiClient _apiClient;
   final TrailsApi _trailsApi;
+  final VoiceGuide? _voiceGuide;
   int _consecutiveOffRouteFixes = 0;
   DateTime? _lastRerouteTime;
   DateTime? _lastPolylineTrimTime;
   List<LatLng> _cachedManeuverWaypoints = const [];
+  final Set<String> _spokenCues = {};
 
   NavigationNotifier({
     required ApiClient apiClient,
     TrailsApi? trailsApi,
+    VoiceGuide? voiceGuide,
     required NavTarget initialDestination,
   })  : _apiClient = apiClient,
         _trailsApi = trailsApi ?? TrailsApi(apiClient),
+        _voiceGuide = voiceGuide,
         super(NavigationState(
           origin: NavOrigin.defaultLingayen,
           destination: initialDestination,
@@ -343,9 +350,22 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
   /// Initialization: Acquire initial GPS (or default) and load route + trails
   Future<void> initNavigation() async {
+    await _voiceGuide?.init();
+    if (_voiceGuide != null) {
+      state = state.copyWith(isVoiceMuted: _voiceGuide!.isMuted);
+    }
     await _acquireLocation(silent: true);
     await fetchRoute();
     await fetchNearbyTrails();
+  }
+
+  void _speakOnce(String cueKey, String phrase) {
+    if (!state.isAdventureActive || state.isVoiceMuted || _voiceGuide == null) {
+      return;
+    }
+    if (_spokenCues.add(cueKey)) {
+      unawaited(_voiceGuide!.speak(phrase));
+    }
   }
 
   /// Acquire GPS position from device
@@ -772,6 +792,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     _consecutiveOffRouteFixes = 0;
     _lastRerouteTime = null;
     _lastPolylineTrimTime = null;
+    _spokenCues.clear();
     state = state.copyWith(
       isAdventureActive: true,
       isCameraFollowing: true,
@@ -785,6 +806,10 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       remainingDistanceMeters: () => null,
       remainingDurationSeconds: () => null,
     );
+    final route = state.route;
+    if (route != null && route.maneuvers.isNotEmpty) {
+      _speakOnce('step_0_start', route.maneuvers.first.instruction);
+    }
   }
 
   /// End active adventure live guidance
@@ -792,6 +817,8 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     _consecutiveOffRouteFixes = 0;
     _lastRerouteTime = null;
     _lastPolylineTrimTime = null;
+    _spokenCues.clear();
+    unawaited(_voiceGuide?.stop());
     state = state.copyWith(
       isAdventureActive: false,
       isCameraFollowing: true,
@@ -814,10 +841,11 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   void setVoiceMuted(bool muted) {
     if (state.isVoiceMuted == muted) return;
     state = state.copyWith(isVoiceMuted: muted);
+    unawaited(_voiceGuide?.setMuted(muted));
   }
 
   void toggleVoiceMuted() {
-    state = state.copyWith(isVoiceMuted: !state.isVoiceMuted);
+    setVoiceMuted(!state.isVoiceMuted);
   }
 
   /// Live GPS position update from Geolocator stream
@@ -897,10 +925,24 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
           activeStepIndex: () => nextIdx,
           distanceToManeuverM: () => nextDist,
         );
+        if (nextIdx < route.maneuvers.length) {
+          _speakOnce(
+            'step_${nextIdx}_start',
+            route.maneuvers[nextIdx].instruction,
+          );
+        }
       } else {
         state = state.copyWith(
           distanceToManeuverM: () => distToTurn,
         );
+        if (curIdx < route.maneuvers.length) {
+          final instr = route.maneuvers[curIdx].instruction;
+          if (distToTurn <= 40.0) {
+            _speakOnce('step_${curIdx}_40', 'Now, $instr');
+          } else if (distToTurn <= 300.0) {
+            _speakOnce('step_${curIdx}_300', 'In 300 meters, $instr');
+          }
+        }
       }
     }
 
@@ -920,6 +962,10 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
             _lastRerouteTime = now;
             _consecutiveOffRouteFixes = 0;
             state = state.copyWith(isRerouting: true);
+            _speakOnce(
+              'reroute_${now.millisecondsSinceEpoch}',
+              'Recalculating route',
+            );
             rerouteFromCurrentLocation();
           }
         }
@@ -941,7 +987,17 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       );
       if (distToDest <= 40.0 && !state.hasArrivedDirect) {
         state = state.copyWith(hasArrivedDirect: true);
+        _speakOnce(
+          'arrive_direct',
+          'You have arrived at ${state.destination.name}',
+        );
       }
+    } else if (state.isWithinCheckinRadius && state.nextUncheckedStop != null) {
+      final stop = state.nextUncheckedStop!;
+      _speakOnce(
+        'stop_checkin_${stop.position}',
+        'Arrived at stop ${stop.position}, ${stop.name}',
+      );
     }
   }
 
@@ -1061,9 +1117,11 @@ final navigationProvider = StateNotifierProvider.autoDispose
   (ref, destination) {
     final apiClient = ref.watch(apiClientProvider);
     final trailsApi = ref.watch(trailsApiProvider);
+    final voiceGuide = ref.watch(voiceGuideProvider);
     return NavigationNotifier(
       apiClient: apiClient,
       trailsApi: trailsApi,
+      voiceGuide: voiceGuide,
       initialDestination: destination,
     );
   },
