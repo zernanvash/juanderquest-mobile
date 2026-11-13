@@ -61,6 +61,11 @@ class NavigationState {
   final bool isTrailCompleted;
   final int? trailCompletionReward;
   final double? distanceToManeuverM;
+  final LatLng? snappedPuckPosition;
+  final List<LatLng>? trimmedPolyline;
+  final double? remainingDistanceMeters;
+  final int? remainingDurationSeconds;
+  final bool isVoiceMuted;
 
   const NavigationState({
     this.origin = NavOrigin.defaultLingayen,
@@ -89,6 +94,11 @@ class NavigationState {
     this.isTrailCompleted = false,
     this.trailCompletionReward,
     this.distanceToManeuverM,
+    this.snappedPuckPosition,
+    this.trimmedPolyline,
+    this.remainingDistanceMeters,
+    this.remainingDurationSeconds,
+    this.isVoiceMuted = false,
   });
 
   LatLng get effectiveOriginPoint => userLocation ?? origin.point;
@@ -175,6 +185,11 @@ class NavigationState {
     bool? isTrailCompleted,
     int? Function()? trailCompletionReward,
     double? Function()? distanceToManeuverM,
+    LatLng? Function()? snappedPuckPosition,
+    List<LatLng>? Function()? trimmedPolyline,
+    double? Function()? remainingDistanceMeters,
+    int? Function()? remainingDurationSeconds,
+    bool? isVoiceMuted,
   }) {
     return NavigationState(
       origin: origin ?? this.origin,
@@ -210,6 +225,18 @@ class NavigationState {
       distanceToManeuverM: distanceToManeuverM != null
           ? distanceToManeuverM()
           : this.distanceToManeuverM,
+      snappedPuckPosition: snappedPuckPosition != null
+          ? snappedPuckPosition()
+          : this.snappedPuckPosition,
+      trimmedPolyline:
+          trimmedPolyline != null ? trimmedPolyline() : this.trimmedPolyline,
+      remainingDistanceMeters: remainingDistanceMeters != null
+          ? remainingDistanceMeters()
+          : this.remainingDistanceMeters,
+      remainingDurationSeconds: remainingDurationSeconds != null
+          ? remainingDurationSeconds()
+          : this.remainingDurationSeconds,
+      isVoiceMuted: isVoiceMuted ?? this.isVoiceMuted,
     );
   }
 
@@ -256,7 +283,8 @@ class NavigationState {
 
     if (isAdventureActive && currentPosition != null) {
       points.add(JdqRoutePoint(
-        point: LatLng(currentPosition!.latitude, currentPosition!.longitude),
+        point: snappedPuckPosition ??
+            LatLng(currentPosition!.latitude, currentPosition!.longitude),
         label: 'puck',
         kind: JdqRoutePointKind.puck,
         bearing: currentPosition!.speed > 1.0 && currentPosition!.heading >= 0
@@ -268,8 +296,14 @@ class NavigationState {
     final isTrailOrQuiet = selectedTrail != null ||
         (avoidCongested && route!.summary.hasCrowdDiversion);
 
+    final activeLine = (isAdventureActive &&
+            trimmedPolyline != null &&
+            trimmedPolyline!.length >= 2)
+        ? trimmedPolyline!
+        : route!.coordinates;
+
     return JdqRouteOverlay(
-      line: route!.coordinates,
+      line: activeLine,
       points: points,
       degraded: route!.isStraightLineFallback,
       color: isTrailOrQuiet
@@ -285,6 +319,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   final TrailsApi _trailsApi;
   int _consecutiveOffRouteFixes = 0;
   DateTime? _lastRerouteTime;
+  DateTime? _lastPolylineTrimTime;
   List<LatLng> _cachedManeuverWaypoints = const [];
 
   NavigationNotifier({
@@ -495,10 +530,14 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         routeModel.coordinates,
         routeModel.maneuvers,
       );
+      _lastPolylineTrimTime = null;
 
       state = state.copyWith(
         route: () => routeModel,
         isLoadingRoute: false,
+        trimmedPolyline: () => null,
+        remainingDistanceMeters: () => null,
+        remainingDurationSeconds: () => null,
       );
     } catch (e) {
       debugPrint('[Navigation] Routing error: $e');
@@ -511,10 +550,14 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
         fallbackRoute.coordinates,
         fallbackRoute.maneuvers,
       );
+      _lastPolylineTrimTime = null;
       state = state.copyWith(
         route: () => fallbackRoute,
         isLoadingRoute: false,
-        error: () => 'Sovereign routing unavailable. Showing direct estimate.',
+        trimmedPolyline: () => null,
+        remainingDistanceMeters: () => null,
+        remainingDurationSeconds: () => null,
+        error: () => 'Routing estimate only — road guidance unavailable.',
       );
     }
   }
@@ -722,6 +765,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   void startAdventure() {
     _consecutiveOffRouteFixes = 0;
     _lastRerouteTime = null;
+    _lastPolylineTrimTime = null;
     state = state.copyWith(
       isAdventureActive: true,
       isCameraFollowing: true,
@@ -729,6 +773,10 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       hasArrivedDirect: false,
       isTrailCompleted: false,
       isRerouting: false,
+      snappedPuckPosition: () => null,
+      trimmedPolyline: () => null,
+      remainingDistanceMeters: () => null,
+      remainingDurationSeconds: () => null,
     );
   }
 
@@ -736,11 +784,16 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   void endAdventure() {
     _consecutiveOffRouteFixes = 0;
     _lastRerouteTime = null;
+    _lastPolylineTrimTime = null;
     state = state.copyWith(
       isAdventureActive: false,
       isCameraFollowing: true,
       isRerouting: false,
       hasArrivedDirect: false,
+      snappedPuckPosition: () => null,
+      trimmedPolyline: () => null,
+      remainingDistanceMeters: () => null,
+      remainingDurationSeconds: () => null,
     );
   }
 
@@ -749,15 +802,59 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     state = state.copyWith(isCameraFollowing: follow);
   }
 
+  /// Toggle or set voice mute state
+  void setVoiceMuted(bool muted) {
+    if (state.isVoiceMuted == muted) return;
+    state = state.copyWith(isVoiceMuted: muted);
+  }
+
+  void toggleVoiceMuted() {
+    state = state.copyWith(isVoiceMuted: !state.isVoiceMuted);
+  }
+
   /// Live GPS position update from Geolocator stream
   void updatePosition(Position position) {
     final gpsPoint = LatLng(position.latitude, position.longitude);
+    final route = state.route;
+
+    LatLng? snappedPuck = gpsPoint;
+    List<LatLng>? nextTrimmed = state.trimmedPolyline;
+    double? nextRemDist = state.remainingDistanceMeters;
+    int? nextRemSec = state.remainingDurationSeconds;
+
+    if (route != null && route.coordinates.length >= 2) {
+      final snap = RouteGeometry.snapToPolyline(
+        gpsPoint,
+        route.coordinates,
+        maxSnapMeters: 30.0,
+      );
+      snappedPuck = snap.snapped ? snap.snappedPoint : gpsPoint;
+      nextRemDist = snap.remainingMeters;
+      final totalMeters = route.summary.distanceKm * 1000.0;
+      nextRemSec = RouteGeometry.remainingDurationSeconds(
+        snap.remainingMeters,
+        totalMeters > 0 ? totalMeters : snap.remainingMeters,
+        route.summary.durationSeconds,
+      );
+
+      final now = DateTime.now();
+      if (_lastPolylineTrimTime == null ||
+          now.difference(_lastPolylineTrimTime!) >=
+              const Duration(seconds: 1)) {
+        _lastPolylineTrimTime = now;
+        nextTrimmed = snap.remainingPolyline;
+      }
+    }
+
     state = state.copyWith(
       currentPosition: () => position,
       userLocation: () => gpsPoint,
+      snappedPuckPosition: () => snappedPuck,
+      trimmedPolyline: () => nextTrimmed,
+      remainingDistanceMeters: () => nextRemDist,
+      remainingDurationSeconds: () => nextRemSec,
     );
 
-    final route = state.route;
     if (route == null) return;
 
     // 1. Maneuver waypoint distance and step advancement (Bug A8: cached once per route)

@@ -20,6 +20,10 @@ class AdventureBottomBar extends StatelessWidget {
   final bool hasArrivedDirect;
   final bool isTrailCompleted;
   final int trailRewardPoints;
+  final double? remainingDistanceMeters;
+  final int? remainingDurationSeconds;
+  final double? distanceToStopMeters;
+  final bool isDegraded;
   final VoidCallback onCheckIn;
   final VoidCallback onOpenSteps;
   final VoidCallback onEnd;
@@ -37,6 +41,10 @@ class AdventureBottomBar extends StatelessWidget {
     this.hasArrivedDirect = false,
     this.isTrailCompleted = false,
     this.trailRewardPoints = 0,
+    this.remainingDistanceMeters,
+    this.remainingDurationSeconds,
+    this.distanceToStopMeters,
+    this.isDegraded = false,
     required this.onCheckIn,
     required this.onOpenSteps,
     required this.onEnd,
@@ -44,141 +52,174 @@ class AdventureBottomBar extends StatelessWidget {
 
   bool get isMovingTooFast => currentSpeedMs > 3.0;
 
+  String _formatArriveTime(int secondsFromNow) {
+    final eta = DateTime.now().add(Duration(seconds: secondsFromNow));
+    final hour24 = eta.hour;
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final min = eta.minute.toString().padLeft(2, '0');
+    final amPm = hour24 >= 12 ? 'PM' : 'AM';
+    return '$hour12:$min $amPm';
+  }
+
+  String _formatMeters(double meters) {
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)} KM';
+    }
+    return '${meters.round()} M';
+  }
+
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     final isTrail = selectedTrail != null;
 
-    return PixelPanel(
-      style: PixelBoxStyle.parchment,
-      padding: 1,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Arrival / Completion Banner
-          if (hasArrivedDirect) ...[
-            PixelPanel(
-              style: PixelBoxStyle.gold,
-              padding: 1,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "YOU'VE ARRIVED!",
-                    style: PixelType.title(
-                      context,
-                      color: PixelPalette.woodDeep,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: grid.px(1)),
-          ] else if (isTrail && isTrailCompleted) ...[
-            PixelPanel(
-              style: PixelBoxStyle.gold,
-              padding: 1,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    trailRewardPoints > 0
-                        ? 'TRAIL COMPLETED! +$trailRewardPoints PTS'
-                        : 'TRAIL COMPLETED!',
-                    style: PixelType.title(
-                      context,
-                      color: PixelPalette.woodDeep,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: grid.px(1)),
-          ] else if (isTrail && nextStop != null) ...[
-            // STOP K OF N
-            Row(
-              children: [
-                PixelChip(
-                  'STOP $currentStopNumber OF $totalStops',
-                  style: PixelBoxStyle.wood,
-                ),
-                SizedBox(width: grid.px(1)),
-                Expanded(
-                  child: Text(
-                    nextStop!.name.toUpperCase(),
-                    style: PixelType.body(
-                      context,
-                      color: PixelPalette.woodDeep,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: grid.px(1)),
-          ],
+    final remMeters = remainingDistanceMeters ?? (summary.distanceKm * 1000.0);
+    final remKm = remMeters / 1000.0;
+    final remSec = remainingDurationSeconds ?? summary.durationSeconds;
+    final remMins = (remSec / 60).ceil().clamp(0, 9999);
+    final arriveText = 'ARRIVE ${_formatArriveTime(remSec)}';
+    final subLine = isDegraded
+        ? 'ESTIMATE · ${remKm.toStringAsFixed(0)} KM'
+        : '$remMins MIN · ${remKm.toStringAsFixed(1)} KM';
 
-          // Check-in CTA button (when near stop on a trail)
-          if (isTrail &&
-              !isTrailCompleted &&
-              isWithinCheckinRadius &&
-              nextStop != null) ...[
-            PixelButton(
-              key: const ValueKey('nav_check_in_button'),
-              label: isMovingTooFast
-                  ? 'Park first to check in'
-                  : "YOU'RE HERE! CHECK IN",
-              variant: isMovingTooFast
-                  ? PixelButtonVariant.secondary
-                  : PixelButtonVariant.primary,
-              onPressed: (isMovingTooFast || isCheckingIn) ? null : onCheckIn,
-            ),
-            SizedBox(height: grid.px(1)),
-          ],
-
-          // Telemetry and Action Row
-          Row(
+    return Container(
+      decoration: const BoxDecoration(
+        color: PixelPalette.paper,
+        border: Border(
+          top: BorderSide(color: PixelPalette.ink, width: 2),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: grid.px(2),
+            vertical: grid.px(2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+              // Trail stop strip (when on a trail)
+              if (isTrail && !isTrailCompleted && nextStop != null) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      '${summary.durationFormatted.toUpperCase()} · ${summary.distanceKm.toStringAsFixed(1)} KM',
-                      style: PixelType.title(
-                        context,
-                        color: PixelPalette.woodDeep,
+                    PixelChip(
+                      'STOP $currentStopNumber OF $totalStops',
+                      style: PixelBoxStyle.gold,
+                    ),
+                    SizedBox(width: grid.px(1)),
+                    Expanded(
+                      child: Text(
+                        nextStop!.name.toUpperCase(),
+                        style: PixelType.body(
+                          context,
+                          color: PixelPalette.ink,
+                        ).copyWith(fontWeight: FontWeight.w700),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      'ACTIVE ADVENTURE',
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.woodMid,
+                    if (distanceToStopMeters != null) ...[
+                      SizedBox(width: grid.px(1)),
+                      Text(
+                        _formatMeters(distanceToStopMeters!),
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
-              ),
-              PixelButton(
-                key: const ValueKey('nav_adventure_steps'),
-                label: 'STEPS',
-                variant: PixelButtonVariant.secondary,
-                onPressed: onOpenSteps,
-              ),
-              SizedBox(width: grid.px(1)),
-              PixelButton(
-                key: const ValueKey('nav_end_adventure'),
-                label: 'END',
-                variant: PixelButtonVariant.secondary,
-                onPressed: onEnd,
+                SizedBox(height: grid.px(1)),
+              ],
+
+              // Check-in CTA button (when near stop on a trail)
+              if (isTrail &&
+                  !isTrailCompleted &&
+                  isWithinCheckinRadius &&
+                  nextStop != null) ...[
+                PixelButton(
+                  key: const ValueKey('nav_check_in_button'),
+                  label: isMovingTooFast
+                      ? 'PARK FIRST TO CHECK IN'
+                      : "YOU'RE HERE! CHECK IN",
+                  variant: isMovingTooFast
+                      ? PixelButtonVariant.secondary
+                      : PixelButtonVariant.primary,
+                  onPressed:
+                      (isMovingTooFast || isCheckingIn) ? null : onCheckIn,
+                ),
+                SizedBox(height: grid.px(1)),
+              ],
+
+              // Telemetry and END button Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          arriveText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: PixelType.title(
+                            context,
+                            color: PixelPalette.ink,
+                          ),
+                        ),
+                        Text(
+                          subLine,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: grid.px(2)),
+                  InkWell(
+                    key: const ValueKey('nav_end_adventure'),
+                    onTap: onEnd,
+                    child: Container(
+                      width: 88,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        color: PixelPalette.red,
+                        border: Border.fromBorderSide(
+                          BorderSide(color: PixelPalette.ink, width: 2),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: PixelPalette.ink,
+                            offset: Offset(3, 3),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'END',
+                        style: PixelType.body(
+                          context,
+                          color: PixelPalette.cream,
+                        ).copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
