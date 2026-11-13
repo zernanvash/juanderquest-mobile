@@ -11,9 +11,8 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../trail/models/trail_models.dart';
 import '../models/route_model.dart';
 import '../providers/navigation_provider.dart';
-import 'maneuver_arrow_art.dart';
 import 'nav_pixel_art.dart';
-import 'trail_route_thumbnail.dart';
+import 'route_map_thumbnail.dart';
 
 class RoutePreviewSheet extends StatefulWidget {
   final NavigationState navState;
@@ -56,6 +55,33 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
   double _height = 0;
   double _snapFrom = 0;
   double _snapTo = 0;
+  List<LatLng>? _lastRouteCoordsRef;
+  List<double> _thinnedRoute = const [];
+  List<double> _cachedDirectRoute = const [];
+
+  static List<double> _thinCoords(List<LatLng> coords,
+      {int maxPoints = 200}) {
+    if (coords.isEmpty) return const [];
+    final n = coords.length;
+    if (n <= maxPoints) {
+      final out = <double>[];
+      for (final c in coords) {
+        out.add(c.lng);
+        out.add(c.lat);
+      }
+      return out;
+    }
+    final out = <double>[];
+    final step = (n - 1) / (maxPoints - 1);
+    for (var i = 0; i < maxPoints - 1; i++) {
+      final c = coords[(i * step).round()];
+      out.add(c.lng);
+      out.add(c.lat);
+    }
+    out.add(coords.last.lng);
+    out.add(coords.last.lat);
+    return out;
+  }
 
   @override
   void initState() {
@@ -327,6 +353,24 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
     final navState = widget.navState;
     final route = navState.route;
     final trail = navState.selectedTrail;
+    if (!identical(route?.coordinates, _lastRouteCoordsRef)) {
+      _lastRouteCoordsRef = route?.coordinates;
+      _thinnedRoute =
+          route != null ? _thinCoords(route.coordinates) : const [];
+      if (trail == null && _thinnedRoute.isNotEmpty) {
+        _cachedDirectRoute = _thinnedRoute;
+      }
+    }
+    final directRoutePoints = _cachedDirectRoute.isNotEmpty
+        ? _cachedDirectRoute
+        : <double>[
+            if (navState.origin.lat != null && navState.origin.lng != null) ...[
+              navState.origin.lng!,
+              navState.origin.lat!,
+            ],
+            navState.destination.lng,
+            navState.destination.lat,
+          ];
     final sortedTrails = _sortedTrails(navState);
     final lockedTrail = _centredLockedTrail(sortedTrails);
     final hasNonServerError =
@@ -511,6 +555,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                       itemCount: cardCount,
                       onPageChanged: (p) => _onPageChanged(p, sortedTrails),
                       itemBuilder: (context, index) {
+                        final thumbSize = isShort ? 48.0 : 68.0;
                         if (index == 0) {
                           final detourCount = navState.selectedDetours.length;
                           final meta = detourCount > 0
@@ -522,7 +567,8 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                               key: const ValueKey('nav_route_direct'),
                               meta: meta,
                               picked: navState.selectedTrail == null,
-                              showThumb: !isShort,
+                              thumbSize: thumbSize,
+                              routePoints: directRoutePoints,
                               onTap: () {
                                 if (_centredPage != 0) {
                                   _jumpToCard(0);
@@ -540,13 +586,18 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                           final isPicked = navState.selectedTrail?.id == t.id;
                           final isCentredLocked =
                               !t.isUnlocked && _centredPage == index;
-                          final stopPoints = isPicked &&
+                          final flatStops = isPicked &&
                                   navState.selectedTrail != null &&
                                   navState.selectedTrail!.stops.isNotEmpty
-                              ? navState.selectedTrail!.stops
-                                  .map((s) => (s.lat, s.lng))
-                                  .toList()
-                              : null;
+                              ? <double>[
+                                  for (final s in navState.selectedTrail!.stops)
+                                    ...[s.lng, s.lat],
+                                ]
+                              : const <double>[];
+                          final trailRoutePoints =
+                              isPicked && _thinnedRoute.isNotEmpty
+                                  ? _thinnedRoute
+                                  : flatStops;
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: _TrailCarouselCard(
@@ -554,11 +605,12 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                               trail: t,
                               picked: isPicked,
                               centredLocked: isCentredLocked,
-                              showThumb: !isShort,
+                              thumbSize: thumbSize,
                               durationLabel:
                                   _formatTrailDuration(t.totalMinutes),
                               kmLabel: '${_formatKm(t.totalKm)} KM',
-                              stopPoints: stopPoints,
+                              routePoints: trailRoutePoints,
+                              stopPoints: flatStops,
                               onTap: () {
                                 if (_centredPage != index) {
                                   _jumpToCard(index);
@@ -722,14 +774,16 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
 class _DirectCarouselCard extends StatelessWidget {
   final String meta;
   final bool picked;
-  final bool showThumb;
+  final double thumbSize;
+  final List<double> routePoints;
   final VoidCallback onTap;
 
   const _DirectCarouselCard({
     super.key,
     required this.meta,
     required this.picked,
-    required this.showThumb,
+    required this.thumbSize,
+    required this.routePoints,
     required this.onTap,
   });
 
@@ -754,19 +808,15 @@ class _DirectCarouselCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (showThumb) ...[
-                Container(
-                  width: 72,
-                  height: 72,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: PixelPalette.paper,
-                    border: Border.all(color: PixelPalette.ink, width: 2),
-                  ),
-                  child: const NavPixelIcon(ManeuverArrowArt.straight, size: 32),
+              SizedBox(
+                width: thumbSize,
+                height: thumbSize,
+                child: RouteMapThumbnail(
+                  route: routePoints,
+                  lineColor: PixelPalette.blueBright,
                 ),
-                const SizedBox(width: 10),
-              ],
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -806,10 +856,11 @@ class _TrailCarouselCard extends StatelessWidget {
   final NearbyTrail trail;
   final bool picked;
   final bool centredLocked;
-  final bool showThumb;
+  final double thumbSize;
   final String durationLabel;
   final String kmLabel;
-  final List<(double, double)>? stopPoints;
+  final List<double> routePoints;
+  final List<double> stopPoints;
   final VoidCallback onTap;
 
   const _TrailCarouselCard({
@@ -817,54 +868,23 @@ class _TrailCarouselCard extends StatelessWidget {
     required this.trail,
     required this.picked,
     required this.centredLocked,
-    required this.showThumb,
+    required this.thumbSize,
     required this.durationLabel,
     required this.kmLabel,
-    this.stopPoints,
+    required this.routePoints,
+    required this.stopPoints,
     required this.onTap,
   });
 
   Widget _buildLeftTile() {
-    if (stopPoints != null && stopPoints!.isNotEmpty) {
-      return Container(
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          border: Border.all(color: PixelPalette.ink, width: 2),
-        ),
-        child: TrailRouteThumbnail(points: stopPoints!, height: 68),
-      );
-    }
-    final cover = trail.coverImageUrl;
-    if (cover != null && cover.isNotEmpty) {
-      return Container(
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          color: PixelPalette.parchment,
-          border: Border.all(color: PixelPalette.ink, width: 2),
-        ),
-        child: Image.network(
-          cover,
-          width: 68,
-          height: 68,
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.none,
-          errorBuilder: (_, __, ___) => const Center(
-            child: NavPixelIcon(NavPixelArt.questionTile, size: 32),
-          ),
-        ),
-      );
-    }
-    return Container(
-      width: 72,
-      height: 72,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: PixelPalette.paper,
-        border: Border.all(color: PixelPalette.ink, width: 2),
+    return SizedBox(
+      width: thumbSize,
+      height: thumbSize,
+      child: RouteMapThumbnail(
+        route: routePoints,
+        stops: stopPoints,
+        lineColor: PixelPalette.greenBright,
       ),
-      child: const NavPixelIcon(NavPixelArt.questionTile, size: 32),
     );
   }
 
@@ -893,10 +913,8 @@ class _TrailCarouselCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (showThumb) ...[
-                _buildLeftTile(),
-                const SizedBox(width: 8),
-              ],
+              _buildLeftTile(),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
