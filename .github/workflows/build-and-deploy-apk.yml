@@ -31,6 +31,8 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned (2026-11-14): 3.50 needs Gradle 9.3.1; the app is built and tested on 3.44.4.
+          flutter-version: 3.44.4
           cache: true
       - name: Install dependencies
         run: flutter pub get
@@ -55,6 +57,8 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned (2026-11-14): 3.50 needs Gradle 9.3.1; the app is built and tested on 3.44.4.
+          flutter-version: 3.44.4
           cache: true
       - name: Resolve release metadata
         id: release
