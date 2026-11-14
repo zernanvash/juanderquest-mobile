@@ -428,6 +428,180 @@ void main() {
       },
     );
   }
+
+  testWidgets('Review: streak row has no GO & single Pista\'y Dayat in May', (
+    tester,
+  ) async {
+    final mayFests = verifiedPangasinanFestivalsForYear(2026)
+        .where((e) => e.title.contains("Pista'y Dayat"))
+        .toList();
+    expect(mayFests.length, 1);
+    expect(mayFests.first.startDate.month, 5);
+
+    await tester.pumpWidget(
+      _wrapPixel(
+        overrides: [
+          homeDailyProvider.overrideWith((ref) async {
+            return const HomeDailyState(
+              stamps: 10,
+              missions: [],
+              claimedDays: 1,
+              date: '2026-11-14',
+              claimToday: true,
+              streak: 1,
+            );
+          }),
+          homeFestivalEntriesProvider.overrideWith((ref, year) => const []),
+          choiceOverviewProvider.overrideWith((ref) async {
+            return const ChoiceOverview(
+              current: null,
+              nextOpensAt: null,
+              nextClosesAt: null,
+              nextTheme: null,
+              previous: null,
+              notice: null,
+              votingEnabled: false,
+            );
+          }),
+        ],
+        child: HomeAdventureCalendar(initialDate: DateTime(2026, 11, 14)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Daily Stamp Streak Day'), findsOneWidget);
+    expect(find.text('GO >'), findsNothing);
+  });
+
+  testWidgets('Review: NEXT EVENT from Dec 20 jumps to a January entry', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrapPixel(
+        overrides: [
+          homeDailyProvider.overrideWith((ref) async {
+            return const HomeDailyState(
+              stamps: 0,
+              missions: [],
+              claimedDays: 0,
+              streak: 0,
+            );
+          }),
+          homeFestivalEntriesProvider.overrideWith((ref, year) => const []),
+          homeCalendarEntriesProvider.overrideWith((ref, year) {
+            if (year == 2027) {
+              return [
+                HomeCalendarEntry(
+                  id: 'jan-2027-vote',
+                  title: 'New Year JuanChoice',
+                  shortBadge: 'VOTE',
+                  kind: CalendarEntryKind.voting,
+                  startDate: DateTime(2027, 1, 5),
+                  endDate: DateTime(2027, 1, 7),
+                  route: '/choice',
+                ),
+              ];
+            }
+            return const [];
+          }),
+        ],
+        child: HomeAdventureCalendar(initialDate: DateTime(2026, 12, 20)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home_calendar_next_event')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('home_calendar_next_event')));
+    await tester.pump();
+
+    expect(find.text('New Year JuanChoice'), findsOneWidget);
+    expect(find.text('ALMANAC · JAN 2027'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Review: agenda title/buttons have fontSize >= 11 and hit size >= 44x32',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrapPixel(
+          overrides: [
+            homeDailyProvider.overrideWith((ref) async {
+              return const HomeDailyState(
+                stamps: 0,
+                missions: [],
+                claimedDays: 0,
+                streak: 0,
+              );
+            }),
+            homeFestivalEntriesProvider.overrideWith((ref, year) => const []),
+            homeCalendarEntriesProvider.overrideWith((ref, year) {
+              return [
+                HomeCalendarEntry(
+                  id: 'camp-nov-14',
+                  title: 'Lingayen Bay Quest',
+                  shortBadge: 'EVENT',
+                  kind: CalendarEntryKind.campaign,
+                  startDate: DateTime(2026, 11, 14),
+                  endDate: DateTime(2026, 11, 14),
+                  route: '/quests/campaigns/1',
+                ),
+              ];
+            }),
+          ],
+          child: Column(
+            children: [
+              const HomeCommandGrid(
+                activeQuestsCount: 1,
+                savedCount: 1,
+                nearbyQuizCount: 0,
+              ),
+              HomeAdventureCalendar(initialDate: DateTime(2026, 11, 14)),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final agendaTitle = tester.widget<Text>(find.text('Lingayen Bay Quest'));
+      expect((agendaTitle.style?.fontSize ?? 0) >= 11, isTrue);
+
+      for (final key in const [
+        ValueKey('home_calendar_prev'),
+        ValueKey('home_calendar_next'),
+        ValueKey('home_calendar_mode_toggle'),
+      ]) {
+        final boxSize = tester.getSize(find.byKey(key));
+        expect(boxSize.width >= 44, isTrue, reason: '$key width < 44');
+        expect(boxSize.height >= 32, isTrue, reason: '$key height < 32');
+      }
+
+      final goBtn = tester.getSize(find.text('GO >').first);
+      expect(goBtn.height > 0, isTrue);
+      // Verify GO > button text font size >= 11 and ancestor GestureDetector >= 44x32
+      final goText = tester.widget<Text>(find.text('GO >'));
+      expect((goText.style?.fontSize ?? 0) >= 11, isTrue);
+      final goGesture = find.ancestor(
+        of: find.text('GO >'),
+        matching: find.byType(GestureDetector),
+      );
+      final goGestureSize = tester.getSize(goGesture.first);
+      expect(goGestureSize.width >= 44, isTrue);
+      expect(goGestureSize.height >= 32, isTrue);
+
+      // Verify calendar filter chip ('VOTE') and grid category chip ('PLAY') hit size >= 44x32
+      for (final chipLabel in const ['VOTE', 'PLAY']) {
+        final chipGesture = find.ancestor(
+          of: find.text(chipLabel),
+          matching: find.byType(GestureDetector),
+        );
+        final chipSize = tester.getSize(chipGesture.first);
+        expect(chipSize.width >= 44, isTrue, reason: '$chipLabel width < 44');
+        expect(chipSize.height >= 32, isTrue, reason: '$chipLabel height < 32');
+      }
+    },
+  );
 }
 
 class _SeededCampaignNotifier extends StateNotifier<CampaignState>
