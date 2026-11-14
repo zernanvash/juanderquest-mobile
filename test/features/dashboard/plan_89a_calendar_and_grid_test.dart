@@ -104,11 +104,11 @@ void main() {
         }),
         campaignProvider.overrideWithProvider(
           StateNotifierProvider<CampaignNotifier, CampaignState>((ref) {
-            final state = CampaignState(
+            const state = CampaignState(
               hasLoaded: true,
               campaigns: [
                 // Demo fallback ID -> must be skipped
-                const CampaignModel(
+                CampaignModel(
                   id: 'bangus-festival-2026',
                   hostId: 'h',
                   hostName: 'LGU',
@@ -132,7 +132,7 @@ void main() {
                   createdAt: '2026-01-01T00:00:00Z',
                 ),
                 // Missing real start_date (fell back to createdAt) -> skipped
-                const CampaignModel(
+                CampaignModel(
                   id: 'undated-1',
                   hostId: 'h',
                   hostName: 'LGU',
@@ -156,7 +156,7 @@ void main() {
                   createdAt: '2026-10-01T00:00:00Z',
                 ),
                 // Real dated live campaign -> included
-                const CampaignModel(
+                CampaignModel(
                   id: 'live-coastal-1',
                   hostId: 'h',
                   hostName: 'LGU',
@@ -436,7 +436,4 @@ class _SeededCampaignNotifier extends StateNotifier<CampaignState>
 
   @override
   Future<void> fetchCampaigns({bool forceRefresh = false}) async {}
-
-  @override
-  Future<CampaignModel?> getCampaign(String id) async => null;
 }

@@ -204,7 +204,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 14,
                     height: 14,
                     child: FittedBox(
@@ -304,8 +304,8 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
           ),
           SizedBox(height: grid.px(1)),
           // Day of week header
-          Row(
-            children: const [
+          const Row(
+            children: [
               _DowLabel('M'),
               _DowLabel('T'),
               _DowLabel('W'),

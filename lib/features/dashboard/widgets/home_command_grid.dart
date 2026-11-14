@@ -92,8 +92,8 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         category: CommandTileCategory.play,
         route: '/quests',
       ),
-      _CommandTileSpec(
-        key: const ValueKey('home_tile_route'),
+      const _CommandTileSpec(
+        key: ValueKey('home_tile_route'),
         label: 'ROUTE',
         icon: NavPixelArt.modeCar,
         badge: 'GO',

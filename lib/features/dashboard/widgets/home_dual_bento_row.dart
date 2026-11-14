@@ -203,7 +203,7 @@ class _MissionBentoBox extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 14,
                     height: 14,
                     child: FittedBox(
