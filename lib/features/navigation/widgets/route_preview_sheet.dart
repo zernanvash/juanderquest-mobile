@@ -697,10 +697,13 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                                     ...[s.lng, s.lat],
                                 ]
                               : const <double>[];
-                          final trailRoutePoints =
-                              isPicked && _thinnedRoute.isNotEmpty
-                                  ? _thinnedRoute
-                                  : flatStops;
+                          // Until the trail's own route arrives, navState.route is
+                          // still the direct one; don't draw it on the trail card.
+                          final trailRoutePoints = isPicked &&
+                                  _thinnedRoute.isNotEmpty &&
+                                  !identical(_thinnedRoute, _cachedDirectRoute)
+                              ? _thinnedRoute
+                              : flatStops;
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: _TrailCarouselCard(

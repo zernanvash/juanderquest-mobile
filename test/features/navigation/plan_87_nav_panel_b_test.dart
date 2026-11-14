@@ -384,6 +384,39 @@ void main() {
       expect(trailThumb.route.length, lessThanOrEqualTo(400));
       expect(trailThumb.route, isNotEmpty);
       expect(trailThumb.stops, [120.33, 16.04, 120.34, 16.06]);
+
+      // Orchestrator review: picking a trail keeps the old direct route in
+      // navState until the trail route loads; the trail card must not draw it.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(
+        wrapSheet(
+          navState: NavigationState(
+            destination: target,
+            route: sampleRoute,
+            nearbyTrails: [makeTrail('t1')],
+          ),
+          disableAnimations: true,
+        ),
+      );
+      await tester.pumpWidget(
+        wrapSheet(
+          navState: NavigationState(
+            destination: target,
+            route: sampleRoute,
+            nearbyTrails: [makeTrail('t1')],
+            selectedTrail: selectedTrail,
+          ),
+          disableAnimations: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final pendingThumb = tester.widget<RouteMapThumbnail>(
+        find.descendant(
+          of: find.byKey(const ValueKey('nav_route_trail_t1')),
+          matching: find.byType(RouteMapThumbnail),
+        ),
+      );
+      expect(pendingThumb.route, [120.33, 16.04, 120.34, 16.06]);
     });
   });
 }
