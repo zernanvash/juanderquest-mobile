@@ -11,6 +11,7 @@ import 'package:juanderquest_app/features/quests/builder/builder_models.dart';
 import 'package:juanderquest_app/features/quests/builder/quest_builder_repository.dart';
 import 'package:juanderquest_app/features/quests/builder/widgets/quest_traveler_preview_card.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
+import 'package:juanderquest_app/features/quests/pixel/saved_quests.dart';
 import 'package:juanderquest_app/features/quests/providers/campaign_provider.dart';
 import 'package:juanderquest_app/features/quests/providers/quest_provider.dart';
 import 'package:juanderquest_app/features/quests/screens/qr_sheet_screen.dart';
@@ -564,6 +565,7 @@ void main() {
           campaignProvider.overrideWith((ref) => _StubCampaignNotifier(client, const CampaignState())),
           submissionProvider.overrideWith((ref) => _StubSubmissionNotifier(client, SubmissionState())),
           authProvider.overrideWith((ref) => _InertAuthNotifier(client, ref.watch(authRefreshProvider.notifier), _testUser)),
+          savedQuestsProvider.overrideWith((ref) => SavedQuestsNotifier(_FakeSavedStorage([realQuest.id, testQuest.id]))),
           showTestContentProvider.overrideWith((ref) => false),
         ],
       ));
@@ -592,13 +594,14 @@ void main() {
           campaignProvider.overrideWith((ref) => _StubCampaignNotifier(client, const CampaignState())),
           submissionProvider.overrideWith((ref) => _StubSubmissionNotifier(client, SubmissionState())),
           authProvider.overrideWith((ref) => _InertAuthNotifier(client, ref.watch(authRefreshProvider.notifier), _testUser)),
+          savedQuestsProvider.overrideWith((ref) => SavedQuestsNotifier(_FakeSavedStorage([realQuest.id, testQuest.id]))),
           showTestContentProvider.overrideWith((ref) => true),
         ],
       ));
       await tester.pumpAndSettle();
 
-      // Segment header confirms 2 visible quests
-      expect(find.text('Quests · 2'), findsOneWidget);
+      // Section header confirms 2 visible quests
+      expect(find.text('Saved (2)'), findsOneWidget);
 
       // Scroll down so the second card is built in the ListView
       await tester.drag(find.byType(ListView), const Offset(0, -400));
@@ -608,4 +611,15 @@ void main() {
       expect(find.text('Automated Test Quest'), findsOneWidget);
     });
   });
+}
+
+class _FakeSavedStorage implements SavedQuestsStorage {
+  _FakeSavedStorage(this.ids);
+  final List<String> ids;
+
+  @override
+  Future<List<String>> read() async => ids;
+
+  @override
+  Future<void> write(List<String> values) async {}
 }
