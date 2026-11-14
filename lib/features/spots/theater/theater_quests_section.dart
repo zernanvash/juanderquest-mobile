@@ -167,7 +167,7 @@ class _TheaterQuestsSectionState extends ConsumerState<TheaterQuestsSection> {
               PixelButton(
                 key: const ValueKey('spot_create_quest_button'),
                 label: 'Create a quest here',
-                variant: PixelButtonVariant.gold,
+                variant: PixelButtonVariant.primary,
                 expand: true,
                 onPressed: () => context.push(
                   '/explore/${widget.spot.slug}/quests/new',

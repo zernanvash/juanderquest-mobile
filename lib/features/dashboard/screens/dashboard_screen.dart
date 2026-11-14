@@ -204,7 +204,6 @@ class _TodaysPulsePanel extends ConsumerWidget {
     final claimState = ref.watch(homeDailyClaimProvider);
     final qotdAsync = ref.watch(homeQotdProvider);
     final questsState = ref.watch(questProvider);
-    final savedIds = ref.watch(savedQuestsProvider);
     final submissionsState = ref.watch(submissionProvider);
 
     final quests = withoutTestContent(

@@ -23,7 +23,6 @@ import 'package:juanderquest_app/features/quests/screens/quest_builder_screen.da
 import 'package:juanderquest_app/features/quests/screens/quest_detail_screen.dart';
 import 'package:juanderquest_app/features/quests/screens/quest_list_screen.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
-import 'package:juanderquest_app/features/submissions/models/submission_model.dart';
 import 'package:juanderquest_app/features/submissions/providers/submission_provider.dart';
 
 class _Auth extends AuthNotifier {
