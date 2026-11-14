@@ -12,6 +12,8 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../cultural_quizzes/models/cultural_quiz_model.dart';
+import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
 import '../theater/theater_about_section.dart';
@@ -284,6 +286,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         TheaterQuestsSection(spot: spot),
                         const SizedBox(height: 28),
 
+                        // Chapter 1c: CULTURAL QUIZZES HERE
+                        _SpotCulturalQuizzesSection(spotId: spot.id),
+
                         // Chapter 2: ABOUT
                         TheaterAboutSection(spot: spot),
                         const SizedBox(height: 28),
@@ -418,6 +423,95 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpotCulturalQuizzesSection extends ConsumerWidget {
+  const _SpotCulturalQuizzesSection({required this.spotId});
+
+  final String spotId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quizzes = ref.watch(spotQuizzesProvider(spotId)).valueOrNull;
+    if (quizzes == null || quizzes.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final grid = PixelGrid.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 28),
+      child: Column(
+        key: const ValueKey('spot_cultural_quizzes_section'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CULTURAL QUIZZES HERE',
+            style: PixelType.title(context, color: PixelPalette.ink),
+          ),
+          SizedBox(height: grid.px(2)),
+          for (final SpotQuizSummaryModel quiz in quizzes) ...[
+            GestureDetector(
+              onTap: () => context.push('/cultural-quizzes/${quiz.quizId}'),
+              child: PixelPanel(
+                style: PixelBoxStyle.parchment,
+                padding: 2,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            quiz.title,
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.ink,
+                            ),
+                          ),
+                          SizedBox(height: grid.px(1)),
+                          Wrap(
+                            spacing: grid.px(1),
+                            runSpacing: grid.px(1),
+                            children: [
+                              PixelChip(
+                                quiz.language.toUpperCase(),
+                                style: PixelBoxStyle.stone,
+                                textColor: PixelPalette.white,
+                              ),
+                              PixelChip(
+                                quiz.isCompleted
+                                    ? 'DONE'
+                                    : '+${quiz.xpReward} XP',
+                                style: quiz.isCompleted
+                                    ? PixelBoxStyle.stone
+                                    : PixelBoxStyle.gold,
+                                textColor: quiz.isCompleted
+                                    ? PixelPalette.white
+                                    : PixelPalette.ink,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: grid.px(1)),
+                    Text(
+                      '›',
+                      style: PixelType.title(
+                        context,
+                        color: PixelPalette.woodMid,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: grid.px(1)),
+          ],
         ],
       ),
     );

@@ -22,6 +22,8 @@ import '../../../core/pixel/pixel_theme.dart';
 import '../../../core/widgets/satellite_toggle.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
+import '../../cultural_quizzes/widgets/nearby_quiz_radar_banner.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/models/quest_model.dart';
@@ -95,6 +97,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
         if (pos != null && mounted) {
           setState(() => _userLocation = LatLng(pos.latitude, pos.longitude));
           _nativeMap.setMyLocation(true);
+          unawaited(
+            ref.read(quizRadarProvider.notifier).checkWithLocation(
+                  lat: pos.latitude,
+                  lng: pos.longitude,
+                  origin: 'gps',
+                ),
+          );
         }
       }
     } catch (_) {}
@@ -461,6 +470,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
       if (!mounted) return;
       final location = LatLng(position.latitude, position.longitude);
       setState(() => _userLocation = location);
+      unawaited(
+        ref.read(quizRadarProvider.notifier).checkWithLocation(
+              lat: position.latitude,
+              lng: position.longitude,
+              origin: 'gps',
+            ),
+      );
       final camera = _camera;
       _nativeMap.setMyLocation(true);
       _move(
@@ -681,6 +697,15 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     ],
                   ),
                 ),
+              ),
+
+            // Nearby Quiz Radar unlock banner
+            if (!_pinPlacementActive)
+              const Positioned(
+                top: 12,
+                left: 12,
+                right: 72,
+                child: NearbyQuizRadarBanner(),
               ),
 
             // Top-Right Floating Map Tool Controls

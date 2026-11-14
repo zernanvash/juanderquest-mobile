@@ -250,6 +250,7 @@ class NearbyQuizInvitationModel {
   final String description;
   final int radiusMeters;
   final int distanceMeters;
+  final bool inRange;
   final int xpReward;
   final int timeLimitMinutes;
   final String language;
@@ -264,13 +265,16 @@ class NearbyQuizInvitationModel {
     required this.description,
     required this.radiusMeters,
     required this.distanceMeters,
+    bool? inRange,
     required this.xpReward,
     required this.timeLimitMinutes,
     required this.language,
     required this.isCompleted,
-  });
+  }) : inRange = inRange ?? (distanceMeters <= radiusMeters);
 
   factory NearbyQuizInvitationModel.fromJson(Map<String, dynamic> json) {
+    final radius = (json['radius_meters'] as num?)?.toInt() ?? 200;
+    final distance = (json['distance_meters'] as num?)?.toInt() ?? 0;
     return NearbyQuizInvitationModel(
       quizId: json['quiz_id'] as String? ?? '',
       destinationId: json['destination_id'] as String? ?? '',
@@ -278,10 +282,40 @@ class NearbyQuizInvitationModel {
       municipality: json['municipality'] as String? ?? '',
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      radiusMeters: (json['radius_meters'] as num?)?.toInt() ?? 200,
-      distanceMeters: (json['distance_meters'] as num?)?.toInt() ?? 0,
+      radiusMeters: radius,
+      distanceMeters: distance,
+      inRange: json['in_range'] as bool? ?? (distance <= radius),
       xpReward: (json['xp_reward'] as num?)?.toInt() ?? 25,
       timeLimitMinutes: (json['time_limit_minutes'] as num?)?.toInt() ?? 30,
+      language: json['language'] as String? ?? 'en',
+      isCompleted: json['is_completed'] as bool? ?? false,
+    );
+  }
+}
+
+class SpotQuizSummaryModel {
+  final String quizId;
+  final String title;
+  final int xpReward;
+  final int radiusMeters;
+  final String language;
+  final bool isCompleted;
+
+  const SpotQuizSummaryModel({
+    required this.quizId,
+    required this.title,
+    required this.xpReward,
+    required this.radiusMeters,
+    required this.language,
+    this.isCompleted = false,
+  });
+
+  factory SpotQuizSummaryModel.fromJson(Map<String, dynamic> json) {
+    return SpotQuizSummaryModel(
+      quizId: json['quiz_id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      xpReward: (json['xp_reward'] as num?)?.toInt() ?? 25,
+      radiusMeters: (json['radius_meters'] as num?)?.toInt() ?? 200,
       language: json['language'] as String? ?? 'en',
       isCompleted: json['is_completed'] as bool? ?? false,
     );

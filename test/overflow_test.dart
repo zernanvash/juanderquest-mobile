@@ -38,6 +38,8 @@ import 'package:juanderquest_app/features/profile/screens/badges_screen.dart';
 import 'package:juanderquest_app/features/vote/screens/vote_screen.dart';
 import 'package:juanderquest_app/features/map/screens/map_view_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
+import 'package:juanderquest_app/features/cultural_quizzes/screens/nearby_quizzes_screen.dart';
+import 'package:juanderquest_app/features/cultural_quizzes/widgets/nearby_quiz_radar_banner.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_explore_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_search_screen.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
@@ -2643,4 +2645,132 @@ void main() {
       }
     });
   });
+
+  group('Plan 91a Cultural Quiz Radar & Hub zero-overflow', () {
+    const sampleRadarState = QuizRadarState(
+      origin: 'Lingayen Capitol Anchor (16.0209, 120.2317)',
+      items: [
+        NearbyQuizInvitationModel(
+          quizId: 'q-ready-1',
+          destinationId: 'dest-1',
+          destinationName: 'Pangasinan Provincial Capitol',
+          municipality: 'Lingayen',
+          title: 'Capitol Heritage & Architecture Challenge',
+          description: 'Explore Lingayen heritage.',
+          radiusMeters: 250,
+          distanceMeters: 64,
+          inRange: true,
+          xpReward: 75,
+          timeLimitMinutes: 5,
+          language: 'en',
+          isCompleted: false,
+        ),
+        NearbyQuizInvitationModel(
+          quizId: 'q-walk-1',
+          destinationId: 'dest-2',
+          destinationName: 'Lingayen Beach Boardwalk',
+          municipality: 'Lingayen',
+          title: 'Gulf Breeze & WW2 Landing Quiz',
+          description: 'Walk closer to unlock.',
+          radiusMeters: 200,
+          distanceMeters: 420,
+          inRange: false,
+          xpReward: 60,
+          timeLimitMinutes: 5,
+          language: 'en',
+          isCompleted: false,
+        ),
+        NearbyQuizInvitationModel(
+          quizId: 'q-done-1',
+          destinationId: 'dest-3',
+          destinationName: 'Urduja House Museum',
+          municipality: 'Lingayen',
+          title: 'Princess Urduja Folklore Trivia',
+          description: 'Completed earlier.',
+          radiusMeters: 250,
+          distanceMeters: 90,
+          inRange: true,
+          xpReward: 50,
+          timeLimitMinutes: 5,
+          language: 'en',
+          isCompleted: true,
+        ),
+      ],
+    );
+
+    for (final entry in {
+      'portrait_320x568': const Size(320, 568),
+      'landscape_568x320': const Size(568, 320),
+    }.entries) {
+      testWidgets('NearbyQuizzesScreen 2.0x textScale ${entry.key}', (
+        tester,
+      ) async {
+        await tester.binding.setSurfaceSize(entry.value);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              quizRadarProvider.overrideWith(
+                (ref) => _FixedQuizRadarNotifier(ref, sampleRadarState),
+              ),
+            ],
+            child: MaterialApp(
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(2.0)),
+                child: child!,
+              ),
+              home: const NearbyQuizzesScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('NearbyQuizRadarBanner 2.0x textScale ${entry.key}', (
+        tester,
+      ) async {
+        await tester.binding.setSurfaceSize(entry.value);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              quizRadarProvider.overrideWith(
+                (ref) => _FixedQuizRadarNotifier(ref, sampleRadarState),
+              ),
+            ],
+            child: MaterialApp(
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(2.0)),
+                child: child!,
+              ),
+              home: const Scaffold(
+                body: Padding(
+                  padding: EdgeInsets.all(8),
+                  child: NearbyQuizRadarBanner(),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
+}
+
+class _FixedQuizRadarNotifier extends QuizRadarNotifier {
+  _FixedQuizRadarNotifier(super.ref, QuizRadarState initial) {
+    state = initial;
+  }
+
+  @override
+  Future<void> refreshFromHome({bool force = false}) async {}
 }

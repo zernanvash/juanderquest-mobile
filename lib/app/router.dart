@@ -32,6 +32,7 @@ import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
 import '../features/juanchoice/screens/juanchoice_screen.dart';
 import '../features/shop/screens/shop_screen.dart';
+import '../features/cultural_quizzes/screens/nearby_quizzes_screen.dart';
 import '../features/spots/screens/spot_explore_screen.dart';
 import '../features/spots/screens/spot_search_screen.dart';
 import '../features/spots/screens/spot_detail_screen.dart';
@@ -481,6 +482,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const ArDiagnosticsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/cultural-quizzes',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const NearbyQuizzesScreen(),
         ),
       ),
       GoRoute(

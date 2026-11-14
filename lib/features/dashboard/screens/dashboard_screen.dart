@@ -15,6 +15,8 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
+import '../../cultural_quizzes/widgets/nearby_quiz_radar_banner.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/models/quest_model.dart';
 import '../../quests/pixel/saved_quests.dart';
@@ -24,7 +26,6 @@ import '../../spots/providers/hidden_gem_provider.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/screens/interests_screen.dart';
 import '../../submissions/providers/submission_provider.dart';
-import '../data/home_events.dart';
 import '../home_tips.dart';
 import '../providers/home_daily_provider.dart';
 import '../providers/home_dashboard_providers.dart';
@@ -57,6 +58,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(spotDiscoveryProvider.notifier).load();
       ref.read(questProvider.notifier).fetchQuests();
       ref.read(campaignProvider.notifier).fetchCampaigns();
+      ref.read(quizRadarProvider.notifier).refreshFromHome();
       InterestsPrompt.maybeShow(context, ref);
     });
   }
@@ -70,6 +72,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(spotDiscoveryProvider.notifier).load(refresh: true),
       ref.read(questProvider.notifier).fetchQuests(),
       ref.read(campaignProvider.notifier).fetchCampaigns(forceRefresh: true),
+      ref.read(quizRadarProvider.notifier).refreshFromHome(force: true),
     ]);
     ref.invalidate(homeQotdProvider);
     ref.invalidate(homeNearbyQuizProvider);
@@ -175,6 +178,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           grid.px(8) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
+                          if (ref.watch(
+                            quizRadarProvider.select((s) => s.showBanner),
+                          )) ...[
+                            const NearbyQuizRadarBanner(),
+                            SizedBox(height: grid.px(3)),
+                          ],
                           // BAND 1: CONDENSED HERO, PURSE & NUMBERS
                           KeyedSubtree(
                             key: tipsKeys.hero,
@@ -202,10 +211,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             child: HomeCommandGrid(
                               activeQuestsCount: inProgress.length,
                               savedCount: savedIds.length,
-                              nearbyQuizCount: nearbyQuizzes?.items.length ?? 0,
+                              nearbyQuizCount: ref.watch(
+                                    quizRadarProvider
+                                        .select((s) => s.inRangeIncomplete),
+                                  ).isNotEmpty
+                                  ? ref
+                                      .watch(
+                                        quizRadarProvider
+                                            .select((s) => s.inRangeIncomplete),
+                                      )
+                                      .length
+                                  : (nearbyQuizzes?.items.length ?? 0),
                               voteLive: voteLive,
                               onOpenQuizzes: () =>
-                                  _showQuizzesFiestasSheet(context, ref),
+                                  context.push('/cultural-quizzes'),
                             ),
                           ),
                           SizedBox(height: grid.px(3)),
@@ -375,128 +394,6 @@ void _showQotdSheet(
               ),
             );
           },
-        );
-      },
-    );
-  }
-
-void _showQuizzesFiestasSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final grid = PixelGrid.of(ctx);
-        final quizzesAsync = ref.watch(homeNearbyQuizProvider);
-        final events = ref.watch(homeEventsProvider);
-
-        return SafeArea(
-          child: Container(
-            margin: EdgeInsets.all(grid.px(2)),
-            child: PixelPanel(
-              style: PixelBoxStyle.wood,
-              padding: 2,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'QUIZZES & FIESTAS',
-                            style: PixelType.title(
-                              ctx,
-                              color: PixelPalette.paper,
-                            ),
-                          ),
-                        ),
-                        PixelIconButton(
-                          icon: DesignerArt.heartUnliked,
-                          semanticLabel: 'Close',
-                          onPressed: () => Navigator.of(ctx).pop(),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: grid.px(2)),
-                    Text(
-                      'Cultural Quizzes',
-                      style: PixelType.body(ctx, color: PixelPalette.sunLight)
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    SizedBox(height: grid.px(1)),
-                    quizzesAsync.when(
-                      loading: () => const Text('Looking for nearby quizzes...'),
-                      error: (_, __) =>
-                          const Text('Quizzes currently unavailable.'),
-                      data: (quizzes) => quizzes.items.isEmpty
-                          ? Text(
-                              'No quizzes ${quizzes.originLabel.toLowerCase()} right now.',
-                              style: PixelType.small(ctx,
-                                  color: PixelPalette.cream),
-                            )
-                          : Column(
-                              children: [
-                                for (final quiz in quizzes.items) ...[
-                                  SizedBox(height: grid.px(1)),
-                                  PixelTappableSlot(
-                                    onTap: () {
-                                      Navigator.of(ctx).pop();
-                                      context.push(
-                                          '/cultural-quizzes/${quiz.quizId}');
-                                    },
-                                    child: Text(
-                                      quiz.title,
-                                      style: PixelType.small(ctx,
-                                          color: PixelPalette.ink),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                    ),
-                    SizedBox(height: grid.px(3)),
-                    Text(
-                      'Upcoming Festivals',
-                      style: PixelType.body(ctx, color: PixelPalette.sunLight)
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    SizedBox(height: grid.px(1)),
-                    for (final event in events.take(3)) ...[
-                      SizedBox(height: grid.px(1)),
-                      PixelPanel(
-                        style: PixelBoxStyle.parchment,
-                        padding: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              event.title,
-                              style:
-                                  PixelType.small(ctx, color: PixelPalette.ink)
-                                      .copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            Text(
-                              event.municipality,
-                              style: PixelType.small(ctx,
-                                  color: PixelPalette.slate),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    SizedBox(height: grid.px(3)),
-                    PixelButton(
-                      label: 'DONE',
-                      expand: true,
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
         );
       },
     );

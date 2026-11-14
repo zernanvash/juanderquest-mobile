@@ -273,6 +273,7 @@ GoRouter _appRouter() => GoRouter(
           '/map/add-spot',
           '/saved',
           '/history',
+          '/cultural-quizzes',
         ])
           GoRoute(path: path, builder: (_, __) => _RouteProbe(path)),
       ],
@@ -352,12 +353,7 @@ void main() {
     await tapAndCheck(const ValueKey('home_tile_add_spot'), '/map/add-spot');
     await tapAndCheck(const ValueKey('home_tile_saved'), '/saved');
     await tapAndCheck(const ValueKey('home_tile_history'), '/history');
-
-    // QUIZZES tile opens the Quizzes & Fiestas bottom sheet
-    await _pumpRouter(tester);
-    await tester.tap(find.byKey(const ValueKey('home_tile_quizzes')));
-    await tester.pumpAndSettle();
-    expect(find.text('QUIZZES & FIESTAS'), findsOneWidget);
+    await tapAndCheck(const ValueKey('home_tile_quizzes'), '/cultural-quizzes');
   });
 
   testWidgets(
