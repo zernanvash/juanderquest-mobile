@@ -18,6 +18,7 @@ import '../theater/theater_about_section.dart';
 import '../theater/theater_backdrop.dart';
 import '../theater/theater_nearby_section.dart';
 import '../theater/theater_overview_section.dart';
+import '../theater/theater_quests_section.dart';
 import '../theater/theater_panel.dart';
 import '../theater/theater_still_photo.dart';
 import '../studio/pixel/studio_icons.dart';
@@ -277,6 +278,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           isAuthor: isAuthor,
                           onPlayQuest: _playQuest,
                         ),
+                        const SizedBox(height: 28),
+
+                        // Chapter 1b: QUESTS HERE
+                        TheaterQuestsSection(spot: spot),
                         const SizedBox(height: 28),
 
                         // Chapter 2: ABOUT
