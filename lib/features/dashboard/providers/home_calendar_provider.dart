@@ -35,7 +35,7 @@ final homeCalendarEntriesProvider =
       entries.add(
         HomeCalendarEntry(
           id: 'vote-current-${current.id}',
-          title: current.title,
+          title: 'JuanChoice: ${current.theme}',
           shortBadge: choice.isCampaignOpen(current) ? 'LIVE VOTE' : 'VOTE',
           kind: CalendarEntryKind.voting,
           startDate: current.opensAt.toLocal(),

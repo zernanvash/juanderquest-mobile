@@ -213,10 +213,14 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                     ),
                   ),
                   const SizedBox(width: 5),
-                  Text(
-                    'ALMANAC · $monthLabel',
-                    style: PixelType.small(context, color: PixelPalette.sun)
-                        .copyWith(fontWeight: FontWeight.w700),
+                  Flexible(
+                    child: Text(
+                      'ALMANAC · $monthLabel',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.small(context, color: PixelPalette.sun)
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ],
               ),
