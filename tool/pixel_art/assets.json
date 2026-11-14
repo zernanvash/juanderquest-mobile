@@ -11,9 +11,11 @@
     {"name": "juanChoice",            "file": "assets/icons/juanchoice.png"},
     {"name": "juanChoiceHover",       "file": "assets/icons/juanchoice-hover.png"},
     {"name": "navExplore",            "file": "assets/icons/nav-explore.png"},
+    {"name": "navProfile",            "file": "assets/icons/jdq-profile.png"},
     {"name": "navSettings",           "file": "assets/icons/nav-settings.png"},
     {"name": "navShop",               "file": "assets/icons/nav-shop.png"},
     {"name": "notifBell",             "file": "assets/icons/notif.png"},
+    {"name": "plazaTrophy",           "file": "assets/icons/plaza.png"},
     {"name": "questMarker",           "file": "assets/icons/quest-marker.png"},
     {"name": "search",                "file": "assets/icons/search.png"},
     {"name": "juanIdle",              "file": "assets/mascot/__juan-idle.png",                "frameWidth": 64, "frameCount": 8, "fps": 8, "trim": true}
