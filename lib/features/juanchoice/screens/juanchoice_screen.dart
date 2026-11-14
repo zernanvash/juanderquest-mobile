@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/audio/game_audio.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -11,6 +14,8 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
+import '../pixel/juanchoice_pixel_art.dart';
+import '../pixel/juanchoice_theme_spec.dart';
 import '../utils/juanchoice_dates.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/juanchoice_provider.dart';
@@ -474,12 +479,46 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
     }
   }
 
-  Future<void> _confirm(String candidateId, String name, int version) async {
+  Future<void> _confirm(
+    String candidateId,
+    String name,
+    int version,
+    JuanChoiceThemeSpec themeSpec,
+  ) async {
     final accepted = await showPixelDialog<bool>(
       context: context,
       title: 'Confirm JuanChoice vote',
       message:
           'Vote for $name? This free promotional vote gives the same participation reward regardless of the winner. No mJDQ is spent.',
+      content: Builder(
+        builder: (dialogContext) {
+          final grid = PixelGrid.of(dialogContext);
+          return Padding(
+            padding: EdgeInsets.only(top: grid.px(2)),
+            child: Wrap(
+              spacing: grid.px(1),
+              runSpacing: grid.px(1),
+              children: [
+                PixelChip(
+                  themeSpec.badgeLabel,
+                  style: PixelBoxStyle.gold,
+                  icon: themeSpec.emblem,
+                  iconScale: 2,
+                ),
+                const PixelChip(
+                  '+25 CIVIC XP',
+                  style: PixelBoxStyle.green,
+                  textColor: PixelPalette.white,
+                ),
+                const PixelChip(
+                  '+1 STAMP · 0 mJDQ',
+                  style: PixelBoxStyle.parchment,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
       actions: [
         PixelButton(
           label: 'Cancel',
@@ -503,10 +542,20 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
   @override
   Widget build(BuildContext context) {
     _scrollToFocusOnce();
+    ref.listen<ChoiceVoteState>(choiceVoteProvider, (previous, next) {
+      if (previous?.receipt == null && next.receipt != null) {
+        if (GameAudio.instance.buttonSounds.value) {
+          GameAudio.instance.playSfx('stamp');
+        }
+      }
+    });
     final detail = ref.watch(choiceDetailProvider(widget.campaignId));
     final overview = ref.watch(choiceOverviewProvider).asData?.value;
     final vote = ref.watch(choiceVoteProvider);
     final authenticated = ref.watch(authProvider).isAuthenticated;
+    final screenTheme = detail.asData?.value != null
+        ? JuanChoiceThemeSpec.fromTheme(detail.asData!.value.campaign.theme)
+        : JuanChoiceThemeSpec.spotlight;
     return Theme(
       data: AppTheme.pixel,
       child: Builder(
@@ -516,8 +565,8 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
           return Scaffold(
             backgroundColor: PixelPalette.paper,
             body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
+              top: screenTheme.ditherTop,
+              bottom: screenTheme.ditherBottom,
               child: Column(
                 children: [
                   PixelAppBar(
@@ -606,41 +655,153 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
     dynamic vote,
     bool authenticated,
   ) {
+    final themeSpec = JuanChoiceThemeSpec.fromTheme(data.campaign.theme);
+    final bool isOpen = overview?.isCampaignOpen(data.campaign) == true;
+    final bool tallyHidden = data.campaign.tallyHidden == true;
+    final int totalVotes = tallyHidden
+        ? 0
+        : (data.standings as List).fold<int>(
+            0,
+            (int sum, dynamic s) => sum + ((s.votes as int?) ?? 0),
+          );
+    final int maxVotes = tallyHidden
+        ? 0
+        : (data.standings as List).fold<int>(0, (int m, dynamic s) {
+            final int v = (s.votes as int?) ?? 0;
+            return v > m ? v : m;
+          });
+    final String? myCandidateId =
+        vote.receipt?.candidateId ?? data.ballot?.candidateId;
+    String? mySpotName;
+    if (myCandidateId != null) {
+      for (final s in data.standings as List) {
+        if (s.candidateId == myCandidateId) {
+          mySpotName = s.spotName as String?;
+          break;
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         PixelPanel(
           key: const ValueKey('choice_week_header'),
-          style: PixelBoxStyle.wood,
+          style: themeSpec.headerStyle,
           // Full width: a short theme left the panel narrower than the page.
           child: SizedBox(
             width: double.infinity,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Wrap(
+                  spacing: grid.px(1),
+                  runSpacing: grid.px(1),
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    PixelSprite(themeSpec.emblem, scale: 2),
+                    PixelChip(
+                      themeSpec.badgeLabel,
+                      style: PixelBoxStyle.gold,
+                      textColor: PixelPalette.ink,
+                    ),
+                    PixelChip(
+                      isOpen ? 'LIVE BALLOT' : 'CLOSED',
+                      style: isOpen ? PixelBoxStyle.green : PixelBoxStyle.stone,
+                      textColor: PixelPalette.white,
+                    ),
+                  ],
+                ),
+                SizedBox(height: grid.px(2)),
                 Text(
                   data.campaign.theme,
-                  style: PixelType.title(context, color: PixelPalette.paper),
+                  style: PixelType.title(
+                    context,
+                    color: themeSpec.headerTitleColor,
+                  ),
                 ),
                 SizedBox(height: grid.px(1)),
                 Text(
-                  '${data.campaign.region} · ${overview?.isCampaignOpen(data.campaign) == true ? 'Voting open' : data.campaign.status}',
-                  style: PixelType.body(context, color: PixelPalette.cream),
+                  '${data.campaign.region} · ${isOpen ? 'Voting open' : data.campaign.status}',
+                  style: PixelType.body(
+                    context,
+                    color: themeSpec.headerBodyColor,
+                  ),
                 ),
                 Text(
                   'Voting ends ${choiceVotingEnds(data.campaign.closesAt)}',
-                  style: PixelType.body(context, color: PixelPalette.cream),
+                  style: PixelType.body(
+                    context,
+                    color: themeSpec.headerBodyColor,
+                  ),
+                ),
+                SizedBox(height: grid.px(2)),
+                Wrap(
+                  spacing: grid.px(1),
+                  runSpacing: grid.px(1),
+                  children: const [
+                    PixelChip(
+                      '+25 CIVIC XP',
+                      style: PixelBoxStyle.green,
+                      textColor: PixelPalette.white,
+                    ),
+                    PixelChip(
+                      '+1 STAMP · FREE',
+                      style: PixelBoxStyle.parchment,
+                      textColor: PixelPalette.ink,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
         SizedBox(height: grid.px(3)),
-        if (data.ballot != null)
-          Text(
-            'Your ballot: version ${data.ballot!.version}',
-            style: PixelType.body(context),
+        if (data.ballot != null || vote.receipt != null) ...[
+          PixelPanel(
+            key: const ValueKey('choice_ballot_banner'),
+            style: PixelBoxStyle.green,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const PixelSprite(JuanChoicePixelArt.stampSeal, scale: 2),
+                SizedBox(width: grid.px(2)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (mySpotName != null)
+                        Text(
+                          mySpotName,
+                          style: PixelType.title(
+                            context,
+                            color: PixelPalette.white,
+                          ),
+                        ),
+                      if (data.ballot != null)
+                        Text(
+                          'Your ballot: version ${data.ballot!.version}',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.cream,
+                          ),
+                        ),
+                      if (vote.receipt != null)
+                        Text(
+                          'Ballot recorded. Participation reward per round: +25 Civic XP and +1 stamp; 0 mJDQ issued.',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.cream,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+          SizedBox(height: grid.px(2)),
+        ],
         if (authenticated && data.eligibility?.reason == 'ACCOUNT_TOO_NEW')
           Text(
             'Voting unlocks after ${data.eligibility!.eligibleAt?.toLocal() ?? 'your account is 72 hours old'} or after one approved destination visit.',
@@ -648,22 +809,17 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
           ),
         if (authenticated &&
             data.eligibility == null &&
-            overview?.isCampaignOpen(data.campaign) == true)
+            isOpen)
           Text(
             'Voting eligibility could not be confirmed. Pull to retry.',
             style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-        if (vote.receipt != null)
-          Text(
-            'Ballot recorded. Participation reward per round: +25 Civic XP and +1 stamp; 0 mJDQ issued.',
-            style: PixelType.body(context, color: PixelPalette.greenDark),
           ),
         if (vote.error != null)
           Text(
             vote.error!,
             style: PixelType.body(context, color: PixelPalette.redDeep),
           ),
-        if (!authenticated && overview?.isCampaignOpen(data.campaign) == true)
+        if (!authenticated && isOpen)
           PixelButton(
             key: const ValueKey('choice_sign_in'),
             label: 'Sign in to vote',
@@ -671,58 +827,132 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
             onPressed: () => context.go(
                 '/?redirect=${Uri.encodeComponent('/choice/${widget.campaignId}')}'),
           ),
-        if (data.campaign.tallyHidden)
+        if (tallyHidden)
           Text(
             key: const ValueKey('choice_tally_hidden'),
             'Final hours: vote counts are hidden until the round closes. You can still vote or change your vote.',
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
         SizedBox(height: grid.px(2)),
-        for (final standing in data.standings) ...[
-          PixelPanel(
-            key: standing.candidateId == widget.focusCandidateId
-                ? _focusKey
-                : ValueKey('choice_candidate_${standing.candidateId}'),
-            style: standing.candidateId == widget.focusCandidateId
-                ? PixelBoxStyle.gold
-                : PixelBoxStyle.parchment,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  standing.spotName,
-                  maxLines: 2,
-                  style: PixelType.title(context),
+        for (final entry in (data.standings as List).asMap().entries) ...[
+          Builder(
+            builder: (context) {
+              final int index = entry.key;
+              final dynamic standing = entry.value;
+              final int? votes = standing.votes as int?;
+              final bool isMyVote = myCandidateId == standing.candidateId;
+              final bool isFocused =
+                  standing.candidateId == widget.focusCandidateId;
+              final bool isLeader =
+                  !tallyHidden && maxVotes > 0 && votes == maxVotes;
+              final bool isFirstRank = !tallyHidden && index == 0 && maxVotes > 0;
+              final PixelBoxStyle cardStyle = isFocused || isMyVote
+                  ? PixelBoxStyle.gold.copyWith(
+                      fill: PixelPalette.cream,
+                      outline: PixelPalette.goldDeep,
+                    )
+                  : PixelBoxStyle.parchment;
+              final int sharePct = (!tallyHidden && votes != null && totalVotes > 0)
+                  ? ((votes * 100) / totalVotes).round()
+                  : 0;
+
+              return PixelPanel(
+                key: isFocused
+                    ? _focusKey
+                    : ValueKey('choice_candidate_${standing.candidateId}'),
+                style: cardStyle,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!tallyHidden || isMyVote) ...[
+                      Wrap(
+                        spacing: grid.px(1),
+                        runSpacing: grid.px(1),
+                        children: [
+                          if (!tallyHidden)
+                            PixelChip(
+                              '#${index + 1}',
+                              style: isFirstRank
+                                  ? PixelBoxStyle.gold
+                                  : PixelBoxStyle.stone,
+                              icon: isFirstRank ? DesignerArt.plazaTrophy : null,
+                              iconScale: 2,
+                              textColor: isFirstRank
+                                  ? PixelPalette.ink
+                                  : PixelPalette.white,
+                            ),
+                          if (isMyVote)
+                            const PixelChip(
+                              'YOUR VOTE',
+                              style: PixelBoxStyle.green,
+                              icon: JuanChoicePixelArt.stampSeal,
+                              iconScale: 2,
+                              textColor: PixelPalette.white,
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: grid.px(1)),
+                    ],
+                    Text(
+                      standing.spotName,
+                      maxLines: 2,
+                      style: PixelType.title(context),
+                    ),
+                    SizedBox(height: grid.px(1)),
+                    PixelStatRow(
+                      'Provisional votes',
+                      tallyHidden || votes == null ? 'Hidden' : '$votes',
+                      style: PixelType.body(context),
+                      labelColor: PixelPalette.slate,
+                      valueColor: PixelPalette.gold,
+                    ),
+                    if (!tallyHidden && votes != null) ...[
+                      SizedBox(height: grid.px(1)),
+                      PixelProgressBar(
+                        value: totalVotes > 0 ? votes / totalVotes : 0.0,
+                        segments: 10,
+                        color: isLeader
+                            ? themeSpec.leadBarColor
+                            : themeSpec.barColor,
+                        height: 4,
+                        showTipGlint: isLeader || isMyVote,
+                      ),
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        '$sharePct% share',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                    ],
+                    if (authenticated &&
+                        overview?.current?.id == data.campaign.id &&
+                        isOpen &&
+                        data.eligibility?.canVoteNow == true) ...[
+                      SizedBox(height: grid.px(2)),
+                      PixelButton(
+                        label: vote.pending
+                            ? 'Submitting'
+                            : data.ballot == null
+                                ? 'Vote for this place'
+                                : 'Change vote',
+                        expand: true,
+                        loading: vote.pending,
+                        onPressed: vote.pending
+                            ? null
+                            : () => _confirm(
+                                  standing.candidateId,
+                                  standing.spotName,
+                                  data.ballot?.version ?? 0,
+                                  themeSpec,
+                                ),
+                      ),
+                    ],
+                  ],
                 ),
-                SizedBox(height: grid.px(1)),
-                PixelStatRow(
-                  'Provisional votes',
-                  standing.votes == null ? 'Hidden' : '${standing.votes}',
-                  style: PixelType.body(context),
-                  labelColor: PixelPalette.slate,
-                  valueColor: PixelPalette.gold,
-                ),
-                if (authenticated &&
-                    overview?.current?.id == data.campaign.id &&
-                    overview?.isCampaignOpen(data.campaign) == true &&
-                    data.eligibility?.canVoteNow == true) ...[
-                  SizedBox(height: grid.px(2)),
-                  PixelButton(
-                    label: vote.pending
-                        ? 'Submitting'
-                        : data.ballot == null
-                            ? 'Vote for this place'
-                            : 'Change vote',
-                    expand: true,
-                    loading: vote.pending,
-                    onPressed: vote.pending
-                        ? null
-                        : () => _confirm(standing.candidateId,
-                            standing.spotName, data.ballot?.version ?? 0),
-                  ),
-                ],
-              ],
-            ),
+              );
+            },
           ),
           SizedBox(height: grid.px(2)),
         ],
@@ -731,7 +961,7 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
             'Voting is temporarily unavailable.',
             style: PixelType.body(context, color: PixelPalette.slate),
           )
-        else if (!overview.isCampaignOpen(data.campaign))
+        else if (!isOpen)
           Text(
             'Voting is closed or not yet open. No ballot can be queued offline.',
             style: PixelType.body(context, color: PixelPalette.slate),
