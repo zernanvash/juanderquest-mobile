@@ -389,12 +389,14 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                                   ).copyWith(fontWeight: FontWeight.w700),
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              _MiniCalButton(
-                                label: 'GO >',
-                                active: true,
-                                onTap: () => _go(context, item.route),
-                              ),
+                              if (item.route.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                _MiniCalButton(
+                                  label: 'GO >',
+                                  active: true,
+                                  onTap: () => _go(context, item.route),
+                                ),
+                              ],
                             ],
                           ),
                         ),

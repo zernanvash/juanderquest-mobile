@@ -108,7 +108,7 @@ final homeCalendarEntriesProvider =
           kind: CalendarEntryKind.stampStreak,
           startDate: d,
           endDate: d,
-          route: '/dashboard',
+          route: '',
         ),
       );
     }
