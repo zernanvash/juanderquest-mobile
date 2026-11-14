@@ -150,14 +150,32 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Community Choice',
-            style: PixelType.title(context, color: PixelPalette.paper),
+          Row(
+            children: [
+              const PixelSprite(DesignerArt.juanChoice, scale: 2),
+              SizedBox(width: grid.px(2)),
+              Expanded(
+                child: Text(
+                  'Community Choice',
+                  style: PixelType.title(context, color: PixelPalette.paper),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: grid.px(1)),
           Text(
             'Community spotlight votes are free and separate from governance voting.',
             style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(1),
+            runSpacing: grid.px(1),
+            children: const [
+              PixelChip('FREE BALLOT', style: PixelBoxStyle.parchment),
+              PixelChip('+25 CIVIC XP', style: PixelBoxStyle.gold),
+              PixelChip('+1 STAMP', style: PixelBoxStyle.parchment),
+            ],
           ),
         ],
       ),
@@ -165,40 +183,81 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
   }
 
   Widget _overview(BuildContext context, PixelGrid grid, dynamic data) {
+    final current = data.current;
+    final currentSpec =
+        current != null ? JuanChoiceThemeSpec.fromTheme(current.theme) : null;
+    final previous = data.previous;
+    final int prevTotal = previous == null
+        ? 0
+        : previous.standings.fold<int>(
+            0,
+            (int sum, dynamic s) => sum + ((s.votes as int?) ?? 0),
+          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (data.current != null)
+        if (current != null && currentSpec != null)
           GestureDetector(
             key: const ValueKey('choice_current'),
-            onTap: () => context.push('/choice/${data.current!.id}'),
+            onTap: () => context.push('/choice/${current.id}'),
             child: PixelPanel(
               style: PixelBoxStyle.parchment,
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Wrap(
+                    spacing: grid.px(1),
+                    runSpacing: grid.px(1),
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      PixelSprite(currentSpec.emblem, scale: 2),
+                      PixelChip(
+                        currentSpec.badgeLabel,
+                        style: currentSpec.headerStyle,
+                        textColor: currentSpec.headerTitleColor,
+                      ),
+                      const PixelChip(
+                        'LIVE BALLOT',
+                        style: PixelBoxStyle.green,
+                        textColor: PixelPalette.paper,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: grid.px(1)),
+                  Text(current.theme, style: PixelType.title(context)),
+                  SizedBox(height: grid.px(1)),
+                  Text(
+                    'Voting ends ${choiceVotingEnds(current.closesAt)}',
+                    style: PixelType.body(
+                      context,
+                      color: PixelPalette.slate,
+                    ),
+                  ),
+                  SizedBox(height: grid.px(2)),
+                  PixelPanel(
+                    style: PixelBoxStyle.gold,
+                    padding: 1,
+                    child: Row(
                       children: [
-                        Text(data.current!.theme,
-                            style: PixelType.title(context)),
-                        SizedBox(height: grid.px(1)),
+                        Expanded(
+                          child: Text(
+                            'OPEN BALLOT',
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.ink,
+                            ),
+                          ),
+                        ),
                         Text(
-                          'Voting ends ${choiceVotingEnds(data.current!.closesAt)}',
-                          style: PixelType.body(
+                          '›',
+                          style: PixelType.title(
                             context,
-                            color: PixelPalette.slate,
+                            color: PixelPalette.ink,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(width: grid.px(2)),
-                  Text('>',
-                      style: PixelType.title(
-                        context,
-                        color: PixelPalette.woodMid,
-                      )),
                 ],
               ),
             ),
@@ -258,15 +317,38 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                 ),
                 SizedBox(height: grid.px(1)),
                 for (final standing in data.previous!.standings) ...[
-                  PixelStatRow(
-                    '${data.previous!.coWinnerIds.contains(standing.candidateId) ? '* ' : ''}${standing.spotName}',
-                    '${standing.votes ?? 0} votes',
-                    style: PixelType.body(context),
-                    labelColor: data.previous!.coWinnerIds
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (data.previous!.coWinnerIds
+                          .contains(standing.candidateId)) ...[
+                        const PixelSprite(DesignerArt.plazaTrophy, scale: 2),
+                        SizedBox(width: grid.px(1)),
+                      ],
+                      Expanded(
+                        child: PixelStatRow(
+                          '${data.previous!.coWinnerIds.contains(standing.candidateId) ? '* ' : ''}${standing.spotName}',
+                          '${standing.votes ?? 0} votes',
+                          style: PixelType.body(context),
+                          labelColor: data.previous!.coWinnerIds
+                                  .contains(standing.candidateId)
+                              ? PixelPalette.greenDark
+                              : PixelPalette.ink,
+                          valueColor: PixelPalette.gold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: grid.px(1)),
+                  PixelProgressBar(
+                    value: prevTotal > 0
+                        ? ((standing.votes ?? 0) / prevTotal).clamp(0.0, 1.0)
+                        : 0.0,
+                    color: data.previous!.coWinnerIds
                             .contains(standing.candidateId)
-                        ? PixelPalette.greenDark
-                        : PixelPalette.ink,
-                    valueColor: PixelPalette.gold,
+                        ? PixelPalette.sun
+                        : PixelPalette.green,
+                    height: 4,
                   ),
                   SizedBox(height: grid.px(1)),
                 ],
@@ -306,6 +388,16 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
               '{sun:${summary.nextMilestone! - summary.currentStreak}} more official round(s) to next badge',
               style: PixelType.body(context, color: PixelPalette.slate),
             ),
+            if (summary.nextMilestone! > 0) ...[
+              SizedBox(height: grid.px(1)),
+              PixelProgressBar(
+                value: (summary.currentStreak / summary.nextMilestone!)
+                    .clamp(0.0, 1.0),
+                color: PixelPalette.sun,
+                showTipGlint: true,
+                height: 4,
+              ),
+            ],
           ],
           SizedBox(height: grid.px(1)),
           PixelText.rich(
@@ -314,11 +406,22 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
           ),
           if (summary.challenges.isNotEmpty) ...[
             SizedBox(height: grid.px(2)),
-            for (final challenge in summary.challenges.take(2))
+            for (final challenge in summary.challenges.take(2)) ...[
               Text(
                 '${challenge.complete ? 'Done' : 'Next'}: ${challenge.title}: ${challenge.progress}/${challenge.target}',
                 style: PixelType.body(context),
               ),
+              SizedBox(height: grid.px(1)),
+              PixelProgressBar(
+                value: challenge.target > 0
+                    ? (challenge.progress / challenge.target).clamp(0.0, 1.0)
+                    : 1.0,
+                color:
+                    challenge.complete ? PixelPalette.green : PixelPalette.sun,
+                height: 3,
+              ),
+              SizedBox(height: grid.px(1)),
+            ],
           ],
         ],
       ),
