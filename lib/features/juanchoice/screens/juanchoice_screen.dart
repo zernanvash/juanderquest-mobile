@@ -626,12 +626,14 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
         PixelButton(
           label: 'Cancel',
           variant: PixelButtonVariant.secondary,
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: true).pop(false),
         ),
         PixelButton(
           key: const ValueKey('choice_confirm_vote'),
           label: 'Confirm vote',
-          onPressed: () => Navigator.of(context).pop(true),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: true).pop(true),
         ),
       ],
     );

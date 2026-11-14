@@ -41,12 +41,12 @@ Future<bool> showConnectWalletPromptDialog(BuildContext context,
       PixelButton(
         label: 'Not now',
         variant: PixelButtonVariant.secondary,
-        onPressed: () => Navigator.of(context).pop(false),
+        onPressed: () => Navigator.of(context, rootNavigator: true).pop(false),
       ),
       PixelButton(
         key: const ValueKey('connect_wallet_prompt_yes'),
         label: 'Connect wallet',
-        onPressed: () => Navigator.of(context).pop(true),
+        onPressed: () => Navigator.of(context, rootNavigator: true).pop(true),
       ),
     ],
   );
