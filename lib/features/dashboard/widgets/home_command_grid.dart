@@ -284,19 +284,26 @@ class _CatChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 26),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: active ? PixelPalette.sun : PixelPalette.wood,
-          border: Border.all(color: PixelPalette.ink, width: 1),
-        ),
-        child: Text(
-          label,
-          style: PixelType.small(
-            context,
-            color: active ? PixelPalette.ink : PixelPalette.cream,
-          ).copyWith(fontWeight: FontWeight.w700),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 32),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 26),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: active ? PixelPalette.sun : PixelPalette.wood,
+              border: Border.all(color: PixelPalette.ink, width: 1),
+            ),
+            child: Text(
+              label,
+              style: PixelType.small(
+                context,
+                color: active ? PixelPalette.ink : PixelPalette.cream,
+              ).copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
         ),
       ),
     );

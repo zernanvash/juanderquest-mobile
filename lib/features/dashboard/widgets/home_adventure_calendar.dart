@@ -646,23 +646,30 @@ class _MiniCalButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 28, minWidth: 28),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          color: active ? PixelPalette.sun : PixelPalette.greenDark,
-          border: Border.all(
-            color: active ? PixelPalette.ink : PixelPalette.greenMid,
-            width: 1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 32),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 28, minWidth: 28),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: BoxDecoration(
+              color: active ? PixelPalette.sun : PixelPalette.greenDark,
+              border: Border.all(
+                color: active ? PixelPalette.ink : PixelPalette.greenMid,
+                width: 1,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: PixelType.small(
+                context,
+                color: active ? PixelPalette.ink : PixelPalette.cream,
+              ).copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: PixelType.small(
-            context,
-            color: active ? PixelPalette.ink : PixelPalette.cream,
-          ).copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -685,22 +692,29 @@ class _FilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 24),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: active ? PixelPalette.sun : PixelPalette.greenDark,
-          border: Border.all(
-            color: active ? PixelPalette.ink : PixelPalette.greenMid,
-            width: 1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 32),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: active ? PixelPalette.sun : PixelPalette.greenDark,
+              border: Border.all(
+                color: active ? PixelPalette.ink : PixelPalette.greenMid,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              label,
+              style: PixelType.small(
+                context,
+                color: active ? PixelPalette.ink : PixelPalette.cream,
+              ).copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: PixelType.small(
-            context,
-            color: active ? PixelPalette.ink : PixelPalette.cream,
-          ).copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );
