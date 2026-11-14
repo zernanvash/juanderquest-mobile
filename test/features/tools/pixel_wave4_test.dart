@@ -894,10 +894,13 @@ void main() {
       expect(find.text('TO'), findsOneWidget);
       expect(find.text('Patar Beach'), findsOneWidget);
       expect(find.text('DIRECT ROUTE'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('MOTO'));
       await tester.pump();
       expect(fixture.costings, greaterThanOrEqualTo(1));
 
+      await tester.ensureVisible(find.text('CHANGE'));
       await tester.tap(find.text('CHANGE'));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('nav_anti_crowd')));

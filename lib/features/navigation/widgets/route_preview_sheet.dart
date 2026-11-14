@@ -3,16 +3,43 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
+import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../trail/models/trail_models.dart';
 import '../models/route_model.dart';
 import '../providers/navigation_provider.dart';
-import 'maneuver_arrow_art.dart';
 import 'nav_pixel_art.dart';
-import 'trail_route_thumbnail.dart';
+import 'route_map_thumbnail.dart';
+
+class NavCarouselHintPrefs {
+  static const key = 'nav_carousel_hint_seen_v1';
+  static const _storage = FlutterSecureStorage();
+
+  static Future<bool> seen() async {
+    try {
+      return await _storage.read(key: key) == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> markSeen() async {
+    try {
+      await _storage.write(key: key, value: 'true');
+    } catch (_) {}
+  }
+
+  static Future<void> reset() async {
+    try {
+      await _storage.delete(key: key);
+    } catch (_) {}
+  }
+}
 
 class RoutePreviewSheet extends StatefulWidget {
   final NavigationState navState;
@@ -44,22 +71,45 @@ class RoutePreviewSheet extends StatefulWidget {
   State<RoutePreviewSheet> createState() => _RoutePreviewSheetState();
 }
 
-class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
+class _RoutePreviewSheetState extends State<RoutePreviewSheet>
+    with TickerProviderStateMixin {
   late final PageController _pageController;
+  late final AnimationController _snapController;
+  late final AnimationController _nudgeController;
   int _centredPage = 0;
   Timer? _debounceTimer;
-  bool _isCollapsed = false;
-  bool _didInitCollapse = false;
+  bool _isOpen = false;
+  bool _isDragging = false;
+  bool _nudgeDecided = false;
+  double _height = 0;
+  double _snapFrom = 0;
+  double _snapTo = 0;
+  List<LatLng>? _lastRouteCoordsRef;
+  List<double> _thinnedRoute = const [];
+  List<double> _cachedDirectRoute = const [];
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_didInitCollapse) {
-      _didInitCollapse = true;
-      if (MediaQuery.sizeOf(context).height < 360) {
-        _isCollapsed = true;
+  static List<double> _thinCoords(List<LatLng> coords,
+      {int maxPoints = 200}) {
+    if (coords.isEmpty) return const [];
+    final n = coords.length;
+    if (n <= maxPoints) {
+      final out = <double>[];
+      for (final c in coords) {
+        out.add(c.longitude);
+        out.add(c.latitude);
       }
+      return out;
     }
+    final out = <double>[];
+    final step = (n - 1) / (maxPoints - 1);
+    for (var i = 0; i < maxPoints - 1; i++) {
+      final c = coords[(i * step).round()];
+      out.add(c.longitude);
+      out.add(c.latitude);
+    }
+    out.add(coords.last.longitude);
+    out.add(coords.last.latitude);
+    return out;
   }
 
   @override
@@ -71,6 +121,58 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
       viewportFraction: 0.86,
       initialPage: initial,
     );
+    _snapController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 160),
+    )..addListener(() {
+        final t = const _Stepped(4).transform(_snapController.value);
+        setState(() {
+          _height = _snapFrom + (_snapTo - _snapFrom) * t;
+        });
+      });
+    _nudgeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..addListener(_applyNudge);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_nudgeDecided) return;
+    _nudgeDecided = true;
+    if (!MediaQuery.disableAnimationsOf(context)) {
+      unawaited(_maybeStartNudge());
+    }
+  }
+
+  Future<void> _maybeStartNudge() async {
+    final seen = await NavCarouselHintPrefs.seen();
+    if (!mounted || seen) return;
+    final trails = _sortedTrails(widget.navState);
+    final hasGhost = widget.navState.isLoadingTrails ||
+        widget.navState.trailsError != null ||
+        trails.isEmpty;
+    final count = 1 + trails.length + (hasGhost ? 1 : 0);
+    if (count <= 1) return;
+    await NavCarouselHintPrefs.markSeen();
+    if (!mounted) return;
+    _nudgeController.forward();
+  }
+
+  void _applyNudge() {
+    if (!_pageController.hasClients) return;
+    final t = ((_nudgeController.value - 0.5) / 0.5).clamp(0.0, 1.0);
+    final stepped = (t * 6).floor() / 6;
+    _pageController.jumpTo(40 * math.sin(math.pi * stepped));
+  }
+
+  void _stopNudge() {
+    if (!_nudgeController.isAnimating) return;
+    _nudgeController.stop();
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(_centredPage);
+    }
   }
 
   @override
@@ -100,8 +202,41 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _snapController.dispose();
+    _nudgeController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _animateTo(double target,
+      {required bool open, required bool disableAnimations}) {
+    _isOpen = open;
+    if (disableAnimations) {
+      _snapController.stop();
+      setState(() => _height = target);
+      return;
+    }
+    _snapFrom = _height;
+    _snapTo = target;
+    _snapController.forward(from: 0);
+  }
+
+  void _drag(DragUpdateDetails d, double minH, double maxH) {
+    _snapController.stop();
+    _isDragging = true;
+    setState(() {
+      _height = (_height - d.delta.dy).clamp(minH, maxH);
+      _isOpen = _height > (minH + maxH) / 2;
+    });
+  }
+
+  void _dragEnd(
+      DragEndDetails d, double minH, double maxH, bool disableAnimations) {
+    _isDragging = false;
+    final v = d.primaryVelocity ?? 0;
+    final up = v.abs() > 300 ? v < 0 : _height > (minH + maxH) / 2;
+    _animateTo(up ? maxH : minH,
+        open: up, disableAnimations: disableAnimations);
   }
 
   List<NearbyTrail> _sortedTrails(NavigationState state) {
@@ -152,9 +287,38 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
       _pageController.animateToPage(
         index,
         duration: const Duration(milliseconds: 160),
-        curve: Curves.linear,
+        curve: const _Stepped(4),
       );
     }
+  }
+
+  Widget _carouselArrow(bool back, int cardCount) {
+    final enabled = back ? _centredPage > 0 : _centredPage < cardCount - 1;
+    const icon = NavPixelIcon(NavPixelArt.arrowRightSmall, size: 16);
+    return Semantics(
+      button: true,
+      label: back ? 'Previous route' : 'Next route',
+      child: GestureDetector(
+        key: ValueKey(back ? 'nav_route_prev' : 'nav_route_next'),
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled
+            ? () {
+                _stopNudge();
+                _jumpToCard(_centredPage + (back ? -1 : 1));
+              }
+            : null,
+        child: SizedBox(
+          width: 44,
+          height: 32,
+          child: Center(
+            child: Opacity(
+              opacity: enabled ? 1.0 : 0.25,
+              child: back ? Transform.flip(flipX: true, child: icon) : icon,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   NearbyTrail? _centredLockedTrail(List<NearbyTrail> trails) {
@@ -228,8 +392,8 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
     bool isShort,
   ) {
     final baseStyle = (isShort
-            ? PixelType.title(context, color: PixelPalette.ink)
-            : PixelType.display(context, color: PixelPalette.ink))
+            ? PixelType.body(context, color: PixelPalette.paper)
+            : PixelType.title(context, color: PixelPalette.paper))
         .copyWith(fontWeight: FontWeight.bold);
 
     final showSplitDirect = lockedTrail == null &&
@@ -248,7 +412,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
               text: ' · ${_formatKm(route.summary.distanceKm)} KM',
               style: baseStyle.copyWith(
                 fontWeight: FontWeight.normal,
-                color: PixelPalette.slate,
+                color: PixelPalette.parchment,
               ),
             ),
           ],
@@ -291,6 +455,22 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
     final navState = widget.navState;
     final route = navState.route;
     final trail = navState.selectedTrail;
+    if (!identical(route?.coordinates, _lastRouteCoordsRef)) {
+      _lastRouteCoordsRef = route?.coordinates;
+      _thinnedRoute =
+          route != null ? _thinCoords(route.coordinates) : const [];
+      if (trail == null && _thinnedRoute.isNotEmpty) {
+        _cachedDirectRoute = _thinnedRoute;
+      }
+    }
+    final directRoutePoints = _cachedDirectRoute.isNotEmpty
+        ? _cachedDirectRoute
+        : <double>[
+            navState.origin.point.longitude,
+            navState.origin.point.latitude,
+            navState.destination.lng,
+            navState.destination.lat,
+          ];
     final sortedTrails = _sortedTrails(navState);
     final lockedTrail = _centredLockedTrail(sortedTrails);
     final hasNonServerError =
@@ -301,11 +481,49 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
         sortedTrails.isEmpty;
     final cardCount = 1 + sortedTrails.length + (hasGhostCard ? 1 : 0);
 
-    final baseCardHeight = isShort ? 78.0 : 104.0;
-    final cardHeight =
-        (baseCardHeight * textScale.clamp(1.0, 1.42)).clamp(baseCardHeight, 148.0);
+    final baseCardHeight = isShort ? 64.0 : 88.0;
+    final cardHeight = isShort
+        ? 64.0
+        : (baseCardHeight * textScale.clamp(1.0, 1.42))
+            .clamp(baseCardHeight, 124.0);
+    final woodBarHeight = isShort ? 34.0 : 40.0;
+    const swipeHeight = 32.0;
     final modeHeight = isShort ? 44.0 : 52.0;
-    final actionHeight = isShort ? 48.0 : 56.0;
+    final actionHeight = isShort ? 44.0 : 52.0;
+    final topPad = isShort ? 4.0 : 6.0;
+    const bottomPad = 6.0;
+    final gap = isShort ? 4.0 : 6.0;
+    final screenHeight = media.size.height;
+    final bottomInset = media.padding.bottom;
+    final errorExtra = hasNonServerError ? 48.0 : 0.0;
+    final minHeight = 2.0 +
+        topPad +
+        woodBarHeight +
+        gap +
+        errorExtra +
+        cardHeight +
+        swipeHeight +
+        actionHeight +
+        bottomPad +
+        bottomInset;
+    final openExtrasHeight = gap +
+        modeHeight +
+        gap +
+        40.0 +
+        gap +
+        (isShort ? 40.0 : 44.0) +
+        (textScale > 1.3 ? 12.0 : 0.0);
+    final rawMaxHeight = minHeight + openExtrasHeight;
+    final maxHeight = math.max(
+      minHeight,
+      math.min(rawMaxHeight, screenHeight * 0.6),
+    );
+    if (!_isDragging && !_snapController.isAnimating) {
+      _height = _isOpen ? maxHeight : minHeight;
+    }
+    final currentHeight = _height.clamp(minHeight, maxHeight);
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    final showOpenBody = currentHeight > minHeight + 12;
 
     final String goLabel;
     final VoidCallback? goTap;
@@ -322,181 +540,125 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
       goTap = (route == null || navState.isFindingGps) ? null : widget.onGo;
     }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onVerticalDragEnd: (details) {
-        final v = details.primaryVelocity ?? 0;
-        if (v > 120 && !_isCollapsed) {
-          setState(() => _isCollapsed = true);
-        } else if (v < -120 && _isCollapsed) {
-          setState(() => _isCollapsed = false);
-        }
-      },
-      child: Container(
-        decoration: const BoxDecoration(
-          color: PixelPalette.paper,
-          border: Border(
-            top: BorderSide(color: PixelPalette.ink, width: 2),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: PixelPalette.white,
-              offset: Offset(0, 2),
+    return SizedBox(
+      height: currentHeight,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragUpdate: (d) => _drag(d, minHeight, maxHeight),
+        onVerticalDragEnd: (d) =>
+            _dragEnd(d, minHeight, maxHeight, disableAnimations),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: PixelPalette.paper,
+            border: Border(
+              top: BorderSide(color: PixelPalette.ink, width: 2),
             ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(12, isShort ? 4 : 6, 12, 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 32x4 dp ink sheet handle
-                GestureDetector(
-                  key: const ValueKey('nav_sheet_handle'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _isCollapsed = !_isCollapsed),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 2, bottom: 6),
-                    child: Center(
-                      child: Container(
-                        width: 32,
-                        height: 4,
-                        color: PixelPalette.ink,
-                      ),
-                    ),
-                  ),
-                ),
-                if (hasNonServerError) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Couldn't load this. Try again.",
-                          style: PixelType.body(
-                            context,
-                            color: PixelPalette.red,
-                          ).copyWith(fontWeight: FontWeight.bold),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _PixelRectButton(
-                        key: const ValueKey('nav_retry'),
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        bg: PixelPalette.sun,
-                        onTap: widget.onRetry,
-                        child: Text(
-                          'RETRY',
-                          style: PixelType.body(
-                            context,
-                            color: PixelPalette.ink,
-                          ).copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  // Big ETA with 16 dp pixel clock
-                  Row(
-                    children: [
-                      const NavPixelIcon(NavPixelArt.clock, size: 16),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: _buildEtaHeadlineWidget(
-                            context,
-                            route,
-                            lockedTrail,
-                            isShort,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: isShort ? 2 : 4),
-                  // Sub line + CHANGE
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _etaSubtitle(route, lockedTrail),
-                          key: const ValueKey('nav_eta_sub'),
-                          style: PixelType.small(
-                            context,
-                            color: PixelPalette.slate,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        key: const ValueKey('nav_change_origin'),
-                        onTap: widget.onChangeOrigin,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 36),
-                          child: Center(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              child: Text(
-                                'CHANGE',
-                                style: PixelType.small(
-                                  context,
-                                  color: PixelPalette.ink,
-                                ).copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
-                                ),
+            boxShadow: [
+              BoxShadow(
+                color: PixelPalette.white,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(12, topPad, 12, bottomPad),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Slim wood title bar: clock + nav_eta_big + handle
+                  SizedBox(
+                    height: woodBarHeight,
+                    child: PixelPanel(
+                      style: PixelBoxStyle.wood,
+                      padding: 2,
+                      child: Row(
+                        children: [
+                          const NavPixelIcon(NavPixelArt.clock, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: _buildEtaHeadlineWidget(
+                                context,
+                                route,
+                                lockedTrail,
+                                isShort,
                               ),
                             ),
                           ),
-                        ),
+                          GestureDetector(
+                            key: const ValueKey('nav_sheet_handle'),
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _animateTo(
+                              _isOpen ? minHeight : maxHeight,
+                              open: !_isOpen,
+                              disableAnimations: disableAnimations,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 6),
+                              child: Container(
+                                width: 28,
+                                height: 4,
+                                color: PixelPalette.woodLight,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ],
-                if (!_isCollapsed) ...[
-                  SizedBox(height: isShort ? 4 : 6),
-
-                  // 4 Mode buttons with pixel icons + sunken selected bevel
-                  Row(
-                    children: [
-                      for (var i = 0; i < TravelCosting.values.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 6),
+                  SizedBox(height: gap),
+                  if (hasNonServerError) ...[
+                    Row(
+                      children: [
                         Expanded(
-                          child: _ModeButton(
-                            key: ValueKey(
-                                'nav_costing_${TravelCosting.values[i].key}'),
-                            costing: TravelCosting.values[i],
-                            selected:
-                                navState.costing == TravelCosting.values[i],
-                            height: modeHeight,
-                            onTap: () =>
-                                widget.onSelectCosting(TravelCosting.values[i]),
+                          child: Text(
+                            "Couldn't load this. Try again.",
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.red,
+                            ).copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _PixelRectButton(
+                          key: const ValueKey('nav_retry'),
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          bg: PixelPalette.sun,
+                          onTap: widget.onRetry,
+                          child: Text(
+                            'RETRY',
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.ink,
+                            ).copyWith(fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                  SizedBox(height: isShort ? 4 : 6),
+                    ),
+                    SizedBox(height: gap),
+                  ],
 
-                  // Swipeable Route Carousel
+                  // Swipeable Route Carousel (always visible in Option B)
                   SizedBox(
                     height: cardHeight,
-                    child: PageView.builder(
-                      key: const ValueKey('nav_route_carousel'),
-                      controller: _pageController,
-                      itemCount: cardCount,
-                      onPageChanged: (p) => _onPageChanged(p, sortedTrails),
-                      itemBuilder: (context, index) {
+                    child: Listener(
+                      onPointerDown: (_) => _stopNudge(),
+                      child: PageView.builder(
+                        key: const ValueKey('nav_route_carousel'),
+                        controller: _pageController,
+                        padEnds: false,
+                        itemCount: cardCount,
+                        onPageChanged: (p) => _onPageChanged(p, sortedTrails),
+                        itemBuilder: (context, index) {
+                        final thumbSize = isShort ? 48.0 : 68.0;
                         if (index == 0) {
                           final detourCount = navState.selectedDetours.length;
                           final meta = detourCount > 0
@@ -508,7 +670,8 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
                               key: const ValueKey('nav_route_direct'),
                               meta: meta,
                               picked: navState.selectedTrail == null,
-                              showThumb: !isShort,
+                              thumbSize: thumbSize,
+                              routePoints: directRoutePoints,
                               onTap: () {
                                 if (_centredPage != 0) {
                                   _jumpToCard(0);
@@ -526,13 +689,21 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
                           final isPicked = navState.selectedTrail?.id == t.id;
                           final isCentredLocked =
                               !t.isUnlocked && _centredPage == index;
-                          final stopPoints = isPicked &&
+                          final flatStops = isPicked &&
                                   navState.selectedTrail != null &&
                                   navState.selectedTrail!.stops.isNotEmpty
-                              ? navState.selectedTrail!.stops
-                                  .map((s) => (s.lat, s.lng))
-                                  .toList()
-                              : null;
+                              ? <double>[
+                                  for (final s in navState.selectedTrail!.stops)
+                                    ...[s.lng, s.lat],
+                                ]
+                              : const <double>[];
+                          // Until the trail's own route arrives, navState.route is
+                          // still the direct one; don't draw it on the trail card.
+                          final trailRoutePoints = isPicked &&
+                                  _thinnedRoute.isNotEmpty &&
+                                  !identical(_thinnedRoute, _cachedDirectRoute)
+                              ? _thinnedRoute
+                              : flatStops;
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: _TrailCarouselCard(
@@ -540,11 +711,12 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
                               trail: t,
                               picked: isPicked,
                               centredLocked: isCentredLocked,
-                              showThumb: !isShort,
+                              thumbSize: thumbSize,
                               durationLabel:
                                   _formatTrailDuration(t.totalMinutes),
                               kmLabel: '${_formatKm(t.totalKm)} KM',
-                              stopPoints: stopPoints,
+                              routePoints: trailRoutePoints,
+                              stopPoints: flatStops,
                               onTap: () {
                                 if (_centredPage != index) {
                                   _jumpToCard(index);
@@ -566,61 +738,146 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
                           ),
                         );
                       },
-                    ),
-                  ),
-
-                  SizedBox(height: isShort ? 3 : 6),
-                  // Page squares indicator
-                  _PageSquares(
-                    key: const ValueKey('nav_route_dots'),
-                    count: cardCount,
-                    current: _centredPage.clamp(0, math.max(0, cardCount - 1)),
-                  ),
-                ],
-                SizedBox(height: isShort ? 4 : 6),
-
-                // Actions row: STEPS + GO / START TRAIL / CHOOSE / UNLOCK
-                Row(
-                  children: [
-                    _PixelRectButton(
-                      key: const ValueKey('nav_steps_button'),
-                      width: 104,
-                      height: actionHeight,
-                      bg: PixelPalette.paper,
-                      onTap: widget.onOpenSteps,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          'STEPS',
-                          style: PixelType.body(
-                            context,
-                            color: PixelPalette.ink,
-                          ).copyWith(fontWeight: FontWeight.bold),
-                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                  ),
+
+                  // Swipe row (arrows flanking page squares)
+                  SizedBox(
+                    height: swipeHeight,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _carouselArrow(true, cardCount),
+                        Flexible(
+                          child: _PageSquares(
+                            key: const ValueKey('nav_route_dots'),
+                            count: cardCount,
+                            current: _centredPage.clamp(
+                                0, math.max(0, cardCount - 1)),
+                          ),
+                        ),
+                        _carouselArrow(false, cardCount),
+                      ],
+                    ),
+                  ),
+
+                  // Pinned full-width GO / START TRAIL / CHOOSE TRAIL / UNLOCK
+                  _PixelRectButton(
+                    key: const ValueKey('nav_start_adventure'),
+                    height: actionHeight,
+                    bg: PixelPalette.green,
+                    onTap: goTap,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        goLabel,
+                        style: PixelType.title(
+                          context,
+                          color: PixelPalette.paper,
+                        ).copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+
+                  if (showOpenBody)
                     Expanded(
-                      child: _PixelRectButton(
-                        key: const ValueKey('nav_start_adventure'),
-                        height: actionHeight,
-                        bg: PixelPalette.green,
-                        onTap: goTap,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            goLabel,
-                            style: PixelType.title(
-                              context,
-                              color: PixelPalette.paper,
-                            ).copyWith(fontWeight: FontWeight.bold),
+                      child: ClipRect(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(height: gap),
+                              // 4 Mode buttons
+                              Row(
+                                children: [
+                                  for (var i = 0;
+                                      i < TravelCosting.values.length;
+                                      i++) ...[
+                                    if (i > 0) const SizedBox(width: 6),
+                                    Expanded(
+                                      child: _ModeButton(
+                                        key: ValueKey(
+                                            'nav_costing_${TravelCosting.values[i].key}'),
+                                        costing: TravelCosting.values[i],
+                                        selected: navState.costing ==
+                                            TravelCosting.values[i],
+                                        height: modeHeight,
+                                        onTap: () => widget.onSelectCosting(
+                                            TravelCosting.values[i]),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              SizedBox(height: gap),
+                              // Origin line + CHANGE
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _etaSubtitle(route, lockedTrail),
+                                      key: const ValueKey('nav_eta_sub'),
+                                      style: PixelType.small(
+                                        context,
+                                        color: PixelPalette.slate,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    key: const ValueKey('nav_change_origin'),
+                                    onTap: widget.onChangeOrigin,
+                                    child: ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(minHeight: 36),
+                                      child: Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8),
+                                          child: Text(
+                                            'CHANGE',
+                                            style: PixelType.small(
+                                              context,
+                                              color: PixelPalette.ink,
+                                            ).copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: gap),
+                              _PixelRectButton(
+                                key: const ValueKey('nav_steps_button'),
+                                height: isShort ? 40 : 44,
+                                bg: PixelPalette.paper,
+                                onTap: widget.onOpenSteps,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'STEPS',
+                                    style: PixelType.body(
+                                      context,
+                                      color: PixelPalette.ink,
+                                    ).copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -632,14 +889,16 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
 class _DirectCarouselCard extends StatelessWidget {
   final String meta;
   final bool picked;
-  final bool showThumb;
+  final double thumbSize;
+  final List<double> routePoints;
   final VoidCallback onTap;
 
   const _DirectCarouselCard({
     super.key,
     required this.meta,
     required this.picked,
-    required this.showThumb,
+    required this.thumbSize,
+    required this.routePoints,
     required this.onTap,
   });
 
@@ -664,19 +923,15 @@ class _DirectCarouselCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (showThumb) ...[
-                Container(
-                  width: 72,
-                  height: 72,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: PixelPalette.paper,
-                    border: Border.all(color: PixelPalette.ink, width: 2),
-                  ),
-                  child: const NavPixelIcon(ManeuverArrowArt.straight, size: 32),
+              SizedBox(
+                width: thumbSize,
+                height: thumbSize,
+                child: RouteMapThumbnail(
+                  route: routePoints,
+                  lineColor: PixelPalette.blueBright,
                 ),
-                const SizedBox(width: 10),
-              ],
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -716,10 +971,11 @@ class _TrailCarouselCard extends StatelessWidget {
   final NearbyTrail trail;
   final bool picked;
   final bool centredLocked;
-  final bool showThumb;
+  final double thumbSize;
   final String durationLabel;
   final String kmLabel;
-  final List<(double, double)>? stopPoints;
+  final List<double> routePoints;
+  final List<double> stopPoints;
   final VoidCallback onTap;
 
   const _TrailCarouselCard({
@@ -727,54 +983,23 @@ class _TrailCarouselCard extends StatelessWidget {
     required this.trail,
     required this.picked,
     required this.centredLocked,
-    required this.showThumb,
+    required this.thumbSize,
     required this.durationLabel,
     required this.kmLabel,
-    this.stopPoints,
+    required this.routePoints,
+    required this.stopPoints,
     required this.onTap,
   });
 
   Widget _buildLeftTile() {
-    if (stopPoints != null && stopPoints!.isNotEmpty) {
-      return Container(
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          border: Border.all(color: PixelPalette.ink, width: 2),
-        ),
-        child: TrailRouteThumbnail(points: stopPoints!, height: 68),
-      );
-    }
-    final cover = trail.coverImageUrl;
-    if (cover != null && cover.isNotEmpty) {
-      return Container(
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          color: PixelPalette.parchment,
-          border: Border.all(color: PixelPalette.ink, width: 2),
-        ),
-        child: Image.network(
-          cover,
-          width: 68,
-          height: 68,
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.none,
-          errorBuilder: (_, __, ___) => const Center(
-            child: NavPixelIcon(NavPixelArt.questionTile, size: 32),
-          ),
-        ),
-      );
-    }
-    return Container(
-      width: 72,
-      height: 72,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: PixelPalette.paper,
-        border: Border.all(color: PixelPalette.ink, width: 2),
+    return SizedBox(
+      width: thumbSize,
+      height: thumbSize,
+      child: RouteMapThumbnail(
+        route: routePoints,
+        stops: stopPoints,
+        lineColor: PixelPalette.greenBright,
       ),
-      child: const NavPixelIcon(NavPixelArt.questionTile, size: 32),
     );
   }
 
@@ -803,22 +1028,28 @@ class _TrailCarouselCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (showThumb) ...[
-                _buildLeftTile(),
-                const SizedBox(width: 8),
-              ],
+              _buildLeftTile(),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      trail.title.toUpperCase(),
-                      style: PixelType.body(context, color: PixelPalette.ink)
-                          .copyWith(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            trail.title.toUpperCase(),
+                            style:
+                                PixelType.body(context, color: PixelPalette.ink)
+                                    .copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
@@ -893,19 +1124,22 @@ class _TrailCarouselCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (trail.rewardPoints > 0) ...[
-                          const SizedBox(width: 4),
-                          _CardChip(
-                            label: '+${trail.rewardPoints} PTS',
-                            bg: PixelPalette.sunLight,
-                            fg: PixelPalette.ink,
-                          ),
+                          if (trail.rewardPoints > 0) ...[
+                            const SizedBox(width: 4),
+                            _CardChip(
+                              label: '+${trail.rewardPoints} PTS',
+                              bg: PixelPalette.sunLight,
+                              fg: PixelPalette.ink,
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
+            ),
+          ),
             ],
           ),
         ),
@@ -1167,7 +1401,6 @@ class _ModeButton extends StatelessWidget {
 }
 
 class _PixelRectButton extends StatelessWidget {
-  final double? width;
   final double height;
   final EdgeInsetsGeometry? padding;
   final Color bg;
@@ -1176,7 +1409,6 @@ class _PixelRectButton extends StatelessWidget {
 
   const _PixelRectButton({
     super.key,
-    this.width,
     required this.height,
     this.padding,
     required this.bg,
@@ -1191,7 +1423,6 @@ class _PixelRectButton extends StatelessWidget {
       child: Opacity(
         opacity: onTap == null ? 0.6 : 1.0,
         child: Container(
-          width: width,
           height: height,
           padding: padding,
           alignment: Alignment.center,
@@ -1210,4 +1441,12 @@ class _PixelRectButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Stepped extends Curve {
+  const _Stepped(this.steps);
+  final int steps;
+
+  @override
+  double transformInternal(double t) => (t * steps).ceil() / steps;
 }

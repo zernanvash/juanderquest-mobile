@@ -201,8 +201,10 @@ void main() {
       expect(find.text('TO'), findsOneWidget);
       expect(find.text('Patar Beach'), findsOneWidget);
       expect(find.byKey(const ValueKey('nav_start_adventure')), findsOneWidget);
-      expect(find.byKey(const ValueKey('nav_steps_button')), findsOneWidget);
       expect(find.widgetWithText(PixelButton, 'Hide'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('nav_steps_button')), findsOneWidget);
     });
 
     testWidgets(

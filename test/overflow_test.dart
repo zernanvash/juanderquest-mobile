@@ -2573,6 +2573,73 @@ void main() {
             clampScale: false,
           );
         });
+
+        testWidgets(
+            '87 RoutePreviewSheet closed + open does not overflow in $label at 2.0x text and GO stays visible',
+            (tester) async {
+          const dest = NavTarget(
+            name: 'Patar White Beach Destination Resort',
+            lat: 16.3,
+            lng: 119.8,
+            address: 'Bolinao, Pangasinan',
+          );
+          final navState = NavigationState(
+            destination: dest,
+            route: const RouteModel(
+              summary: RouteSummary(
+                distanceKm: 18.5,
+                durationSeconds: 1200,
+                durationFormatted: '20 min',
+                costing: TravelCosting.auto,
+                hasCrowdDiversion: false,
+                engine: 'valhalla',
+              ),
+              coordinates: [],
+              maneuvers: [
+                RouteManeuver(
+                  instruction: 'Head north',
+                  distanceMeters: 200,
+                  timeSeconds: 30,
+                ),
+              ],
+            ),
+            nearbyTrails: twelveTrails40Char,
+          );
+
+          await testScreenOverflow(
+            tester,
+            Scaffold(
+              body: Align(
+                alignment: Alignment.bottomCenter,
+                child: RoutePreviewSheet(
+                  navState: navState,
+                  onSelectCosting: (_) {},
+                  onChangeOrigin: () {},
+                  onSelectDirect: () {},
+                  onSelectTrail: (_) {},
+                  onInspectTrail: (_) {},
+                  onOpenSteps: () {},
+                  onGo: () {},
+                  onRetry: () {},
+                ),
+              ),
+            ),
+            size,
+            2.0,
+            clampScale: false,
+          );
+
+          final goFinder = find.byKey(const ValueKey('nav_start_adventure'));
+          expect(goFinder, findsOneWidget);
+          expect(tester.getRect(goFinder).bottom, lessThanOrEqualTo(size.height));
+
+          // Open the panel and verify no overflow and GO remains visible
+          await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(goFinder, findsOneWidget);
+          expect(tester.getRect(goFinder).bottom, lessThanOrEqualTo(size.height));
+        });
       }
     });
   });
