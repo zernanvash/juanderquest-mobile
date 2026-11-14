@@ -967,12 +967,14 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (!tallyHidden || isMyVote) ...[
+                    // Ranks only mean something once a vote is in; at 0 the
+                    // API order is just candidate id.
+                    if ((!tallyHidden && maxVotes > 0) || isMyVote) ...[
                       Wrap(
                         spacing: grid.px(1),
                         runSpacing: grid.px(1),
                         children: [
-                          if (!tallyHidden)
+                          if (!tallyHidden && maxVotes > 0)
                             PixelChip(
                               '#${index + 1}',
                               style: isFirstRank

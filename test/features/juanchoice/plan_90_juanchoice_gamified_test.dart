@@ -241,6 +241,38 @@ void main() {
     expect(find.byType(PixelProgressBar), findsNWidgets(2));
   });
 
+  testWidgets('no rank badges before the first vote (API order is only id)',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authProvider.overrideWith((ref) => _SignedInAuthNotifier()),
+          choiceOverviewProvider.overrideWith((ref) async => makeOverview()),
+          choiceDetailProvider('camp-coastal').overrideWith(
+            (ref) async => ChoiceDetail(
+              campaign: openCampaign,
+              standings: const [
+                ChoiceStanding(candidateId: 'cand-1', spotName: 'Patar Beach', votes: 0),
+                ChoiceStanding(candidateId: 'cand-2', spotName: 'Cabongaoan', votes: 0),
+              ],
+              ballot: null,
+              eligibility: const ChoiceEligibility(
+                eligible: true, reason: null, eligibleAt: null, canVoteNow: true),
+            ),
+          ),
+        ],
+        child: const MaterialApp(
+          home: JuanChoiceDetailScreen(campaignId: 'camp-coastal'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('#1'), findsNothing);
+    expect(find.text('#2'), findsNothing);
+    expect(find.text('Vote for this place'), findsNWidgets(2));
+  });
+
   testWidgets(
       'hidden tally hides rank badges, % share, and progress bars while keeping YOUR VOTE and vote button',
       (tester) async {
