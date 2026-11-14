@@ -917,6 +917,25 @@ void main() {
           tester, const DashboardScreen(), const Size(568, 320), 1.4);
     });
 
+    for (final size in [const Size(320, 568), const Size(568, 320)]) {
+      testWidgets(
+          'DashboardScreen week & month modes do not overflow at ${size.width}x${size.height} 2x text',
+          (tester) async {
+        await testScreenOverflow(tester, const DashboardScreen(), size, 2.0);
+        await tester.drag(find.byType(ListView), const Offset(0, -800));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('home_calendar_mode_toggle')),
+        );
+        await tester.tap(
+          find.byKey(const ValueKey('home_calendar_mode_toggle')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('WK'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('SpotExploreScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(

@@ -127,15 +127,15 @@ void main() {
     expect(find.text('Polygon Amoy testnet · not real money'), findsOneWidget);
   });
 
-  testWidgets('DashboardScreen shows Testnet chip on wallet tile', (tester) async {
+  testWidgets('DashboardScreen renders Concept B command grid and almanac', (tester) async {
     await pumpAtSize(
       tester,
       const DashboardScreen(),
       const Size(390, 844),
       1.0,
     );
-    expect(find.byKey(const ValueKey('home_menu_wallet')), findsOneWidget);
-    expect(find.text('Testnet'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_command_grid')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
   });
 
   testWidgets('ProfileScreen exposes Shop card', (tester) async {
