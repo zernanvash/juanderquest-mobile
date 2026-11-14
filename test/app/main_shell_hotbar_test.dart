@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/app/main_shell.dart';
 
 // Owner 2026-11-04: the nav bar only on the main pages, not on a spot page.
-// Plan 85d: tabs are Home · Explore · Map · Quests · Profile; Shop opens from
-// Home and Profile as a pushed page without the bar.
+// Plan 88: tabs are Home · Explore · Map · Shop · Profile; /quests opens
+// without the bar as My quests.
 void main() {
   test('hotbar shows on the five tab pages', () {
     for (final p in [
@@ -11,17 +11,17 @@ void main() {
       '/dashboard',
       '/explore',
       '/map',
-      '/quests',
+      '/shop',
       '/profile',
-      '/quests/',
+      '/shop/',
     ]) {
       expect(MainShell.showsHotbar(p), isTrue, reason: p);
     }
   });
 
-  test('hotbar hides on Shop, JuanChoice and detail pages', () {
+  test('hotbar hides on Quests, JuanChoice and detail pages', () {
     for (final p in [
-      '/shop',
+      '/quests',
       '/choice',
       '/explore/spot-1',
       '/quests/q1',
