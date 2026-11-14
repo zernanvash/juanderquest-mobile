@@ -160,7 +160,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                       ),
                       PixelHotbarItem(
                         label: 'Profile',
-                        icon: PlaceholderArt.profile,
+                        icon: DesignerArt.navProfile,
                       ),
                     ],
                   ),

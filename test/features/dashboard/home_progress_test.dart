@@ -467,6 +467,18 @@ GoRouter _router() => GoRouter(
           builder: (_, __) => const _RouteProbe('/plaza'),
         ),
         GoRoute(
+          path: '/navigate',
+          builder: (_, __) => const _RouteProbe('/navigate'),
+        ),
+        GoRoute(
+          path: '/map/add-spot',
+          builder: (_, __) => const _RouteProbe('/map/add-spot'),
+        ),
+        GoRoute(
+          path: '/saved',
+          builder: (_, __) => const _RouteProbe('/saved'),
+        ),
+        GoRoute(
           path: '/history',
           builder: (_, __) => const _RouteProbe('/history'),
         ),
@@ -580,28 +592,37 @@ void main() {
       );
     });
 
-    testWidgets('Today\'s Pulse renders 3 action rows', (tester) async {
+    testWidgets('Concept B renders command grid, dual bento, and almanac',
+        (tester) async {
       await _pump(tester);
-      expect(find.byKey(const ValueKey('home_todays_pulse')), findsOneWidget);
-      expect(find.byKey(const ValueKey('pulse_row_daily_stamp')), findsOneWidget);
-      expect(find.byKey(const ValueKey('pulse_row_qotd')), findsOneWidget);
-      expect(find.byKey(const ValueKey('pulse_row_active_quest')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_command_grid')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_bento_mission')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_gem_pill')), findsOneWidget);
+      expect(find.text('Hundred Islands Eco Trek'), findsOneWidget);
+      expect(find.text('STAMP 0/7'), findsOneWidget);
+      expect(find.text('QOTD +5 mJDQ'), findsOneWidget);
 
-      expect(find.text('DAILY STAMP: +5 READY'), findsOneWidget);
-      expect(find.text('QUESTION OF THE DAY'), findsOneWidget);
-      expect(find.text('ACTIVE: Hundred Islands Eco Trek'), findsOneWidget);
+      await tester.drag(find.byType(ListView), const Offset(0, -800));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('home_calendar_panel')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Active Quest button continues to quest detail', (tester) async {
       await _pump(tester);
       await _tapRoute(
         tester,
-        find.byKey(const ValueKey('home_active_quest_continue')),
+        find.byKey(const ValueKey('home_mission_continue_button')),
         '/quests/q1',
       );
     });
 
-    testWidgets('Daily check-in claims reward and opens calendar', (tester) async {
+    testWidgets('Daily check-in claims reward and shows claimed state',
+        (tester) async {
       final fake = _FakeApi(
         claim: {
           'balance': 10,
@@ -619,24 +640,24 @@ void main() {
         },
       );
       await _pump(tester, overrides: _overrides(api: fake));
-      await tester.tap(find.byKey(const ValueKey('home_daily_claim')));
+      await tester.tap(find.byKey(const ValueKey('home_daily_claim_button')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(fake.calls['/me/daily/claim'], 1);
-      expect(find.text('STAMP CLAIMED · DAY 1'), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_daily_details')), findsOneWidget);
-
-      // Open calendar sheet
-      await tester.tap(find.byKey(const ValueKey('home_daily_details')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('7-DAY PASSPORT STAMPS'), findsOneWidget);
+      expect(find.text('CLAIMED'), findsOneWidget);
+      expect(find.text('Streak: 5d'), findsOneWidget);
+      await tester.drag(find.byType(ListView), const Offset(0, -800));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('home_calendar_panel')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('QOTD sheet opens and submits answer', (tester) async {
       await _pump(tester);
-      await tester.tap(find.byKey(const ValueKey('home_qotd_answer')));
+      await tester.tap(find.byKey(const ValueKey('home_qotd_pill')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -654,30 +675,32 @@ void main() {
       expect(find.text('Manaoag is home to the Minor Basilica.'), findsOneWidget);
     });
 
-    testWidgets('Explorer Menu 2×3 launcher grid renders all 6 destinations',
+    testWidgets('Command Grid 4×2 launcher renders all 8 destinations',
         (tester) async {
       await _pump(tester);
-      expect(find.byKey(const ValueKey('home_explorer_menu')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_command_grid')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_menu_choice')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_menu_plaza')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_menu_quizzes_fiestas')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_menu_history')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_menu_wallet')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_route')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_vote')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_plaza')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_quizzes')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_add_spot')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_saved')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_history')), findsOneWidget);
 
       await _tapRoute(tester, find.byKey(const ValueKey('home_menu_quests')), '/quests');
       await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_menu_choice')), '/choice/camp-1');
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_route')), '/navigate');
       await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_menu_plaza')), '/plaza');
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_vote')), '/choice');
       await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_menu_history')), '/history');
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_plaza')), '/plaza');
       await _pump(tester);
-      await _tapRoute(
-        tester,
-        find.byKey(const ValueKey('home_menu_wallet')),
-        '/wallet/connect',
-      );
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_add_spot')), '/map/add-spot');
+      await _pump(tester);
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_saved')), '/saved');
+      await _pump(tester);
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_history')), '/history');
     });
 
     testWidgets('Notifications button opens notifications route', (tester) async {
@@ -693,7 +716,7 @@ void main() {
         (tester) async {
       final fake = _FakeApi(qotd: _qotdJson(), answer: _answerJson());
       await _pump(tester, overrides: _overrides(api: fake, realQotd: true));
-      await tester.tap(find.byKey(const ValueKey('home_qotd_answer')));
+      await tester.tap(find.byKey(const ValueKey('home_qotd_pill')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -718,7 +741,8 @@ void main() {
           qotd: const AsyncValue.data(_emptyQotd),
         ),
       );
-      expect(find.text('No question today.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
+      expect(find.text('QOTD +5 mJDQ'), findsOneWidget);
 
       await _pump(
         tester,
@@ -726,8 +750,10 @@ void main() {
           qotd: AsyncValue.error(Exception('qotd down'), StackTrace.empty),
         ),
       );
-      expect(find.text('Question of the Day is unavailable.'), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_qotd_retry')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('home_qotd_pill')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
     });
 
     testWidgets('daily claim empty and error states', (tester) async {
@@ -737,7 +763,8 @@ void main() {
           daily: const HomeDailyState(stamps: 0, missions: []),
         ),
       );
-      expect(find.text('No daily missions today.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
+      expect(find.text('STAMP 0/7'), findsOneWidget);
 
       await _pump(
         tester,
@@ -745,8 +772,8 @@ void main() {
           dailyState: AsyncValue.error(Exception('daily down'), StackTrace.empty),
         ),
       );
-      expect(find.text('Daily missions unavailable.'), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_daily_retry')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
+      expect(find.text('STAMP 0/7'), findsOneWidget);
     });
 
     testWidgets('test quests stay off Home unless Developer mode shows them',
@@ -800,11 +827,11 @@ void main() {
         (tester) async {
       // 1. Active voting campaign
       await _pump(tester);
-      expect(find.text('Voting now: Bangus Festival Spotlight'), findsOneWidget);
+      expect(find.text('LIVE'), findsOneWidget);
       await _tapRoute(
         tester,
-        find.byKey(const ValueKey('home_menu_choice')),
-        '/choice/camp-1',
+        find.byKey(const ValueKey('home_tile_vote')),
+        '/choice',
       );
 
       // 2. Closed / previous results state
@@ -829,10 +856,10 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Last results: Week 44'), findsOneWidget);
+      expect(find.text('SOON'), findsOneWidget);
       await _tapRoute(
         tester,
-        find.byKey(const ValueKey('home_menu_choice')),
+        find.byKey(const ValueKey('home_tile_vote')),
         '/choice',
       );
 
@@ -843,7 +870,7 @@ void main() {
           choiceOverview: AsyncValue.error(Exception('choice down'), StackTrace.empty),
         ),
       );
-      expect(find.text('JuanChoice is unavailable.'), findsOneWidget);
+      expect(find.text('SOON'), findsOneWidget);
     });
   });
 }
