@@ -20,8 +20,10 @@ import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/models/quest_model.dart';
+import '../../quests/pixel/saved_quests.dart';
 import '../../quests/providers/campaign_provider.dart';
 import '../../quests/providers/quest_provider.dart';
+import '../providers/home_recommended_quest_provider.dart';
 import '../../spots/providers/hidden_gem_provider.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/screens/interests_screen.dart';
@@ -202,6 +204,7 @@ class _TodaysPulsePanel extends ConsumerWidget {
     final claimState = ref.watch(homeDailyClaimProvider);
     final qotdAsync = ref.watch(homeQotdProvider);
     final questsState = ref.watch(questProvider);
+    final savedIds = ref.watch(savedQuestsProvider);
     final submissionsState = ref.watch(submissionProvider);
 
     final quests = withoutTestContent(
@@ -211,6 +214,8 @@ class _TodaysPulsePanel extends ConsumerWidget {
     );
     final inProgress = _inProgressQuests(quests, submissionsState);
     final activeQuest = inProgress.isNotEmpty ? inProgress.first : null;
+    final recommended =
+        activeQuest == null ? ref.watch(homeRecommendedQuestProvider) : null;
 
     final daily = claimState.latest ?? dailyAsync.valueOrNull;
     final isClaimed = daily?.claimToday == true;
@@ -365,28 +370,39 @@ class _TodaysPulsePanel extends ConsumerWidget {
           ),
           SizedBox(height: grid.px(1)),
 
-          // 3. Active Quest Row
+          // 3. Active or Recommended Quest Row
           _pulseCard(
             context,
             grid,
             key: const ValueKey('pulse_row_active_quest'),
             iconWidget: const PixelSprite(DesignerArt.questMarker, scale: 2),
+            badgeLabel: activeQuest == null ? recommended?.reason : null,
             title: activeQuest != null
                 ? 'ACTIVE: ${activeQuest.title}'
-                : 'NEXT MISSION: ${daily?.nextMission?.title ?? 'Explore Pangasinan'}',
+                : (recommended != null
+                    ? recommended.quest.title
+                    : 'Find a destination to start a quest'),
             subtitle: activeQuest != null
                 ? 'Step ${activeQuest.steps.where((s) => s.isVerified).length} of ${activeQuest.steps.length} verified'
-                : 'Pick a quest to start earning XP & rewards',
-            actionLabel: activeQuest != null ? 'CONTINUE ›' : 'QUEST LOG ›',
+                : (recommended != null
+                    ? recommended.quest.locationName
+                    : 'Browse Pangasinan spots on Explore'),
+            actionLabel: activeQuest != null
+                ? 'CONTINUE ›'
+                : (recommended != null ? 'VIEW QUEST ›' : 'EXPLORE ›'),
             actionKey: activeQuest != null
                 ? const ValueKey('home_active_quest_continue')
-                : const ValueKey('home_active_quest_explore'),
+                : (recommended != null
+                    ? const ValueKey('home_recommended_quest_view')
+                    : const ValueKey('home_active_quest_explore')),
             isPrimary: false,
             onAction: () {
               if (activeQuest != null) {
                 context.push('/quests/${activeQuest.id}');
+              } else if (recommended != null) {
+                context.push('/quests/${recommended.quest.id}');
               } else {
-                context.push('/quests');
+                context.go('/explore');
               }
             },
           ),
@@ -406,6 +422,7 @@ class _TodaysPulsePanel extends ConsumerWidget {
     required Key actionKey,
     required bool isPrimary,
     required VoidCallback onAction,
+    String? badgeLabel,
     bool loading = false,
   }) {
     return PixelPanel(
@@ -425,6 +442,14 @@ class _TodaysPulsePanel extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  if (badgeLabel != null) ...[
+                    PixelChip(
+                      badgeLabel,
+                      style: PixelBoxStyle.gold,
+                      textColor: PixelPalette.ink,
+                    ),
+                    const SizedBox(height: 2),
+                  ],
                   Text(
                     title,
                     maxLines: 1,
@@ -688,6 +713,7 @@ class _ExplorerMenuGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final grid = PixelGrid.of(context);
     final questsState = ref.watch(questProvider);
+    final savedIds = ref.watch(savedQuestsProvider);
     final submissionsState = ref.watch(submissionProvider);
     final user = ref.watch(authProvider).user;
     final nearbyQuizzes = ref.watch(homeNearbyQuizProvider).valueOrNull;
@@ -775,7 +801,7 @@ class _ExplorerMenuGrid extends ConsumerWidget {
                     icon: const PixelSprite(DesignerArt.questMarker, scale: 2),
                     title: 'QUEST LOG',
                     subtitle:
-                        '${quests.length} Quests · ${inProgress.length} Active',
+                        '${inProgress.length} active · ${quests.isNotEmpty ? quests.where((q) => savedIds.contains(q.id)).length : savedIds.length} saved',
                     onTap: () => context.push('/quests'),
                   ),
                 ),
