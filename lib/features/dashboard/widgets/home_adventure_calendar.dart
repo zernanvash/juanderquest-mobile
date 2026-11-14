@@ -165,7 +165,18 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final entries = ref.watch(homeCalendarEntriesProvider(_viewMonth.year));
+    final primaryEntries =
+        ref.watch(homeCalendarEntriesProvider(_viewMonth.year));
+    final adjacentYear = _viewMonth.month == 1
+        ? _viewMonth.year - 1
+        : (_viewMonth.month == 12 ? _viewMonth.year + 1 : null);
+    final entries = <HomeCalendarEntry>[
+      ...primaryEntries,
+      if (adjacentYear != null) ...[
+        for (final e in ref.watch(homeCalendarEntriesProvider(adjacentYear)))
+          if (!primaryEntries.any((p) => p.id == e.id)) e,
+      ],
+    ];
     final filtered = entries.where(_matchesFilter).toList();
 
     final monthFestivals = filtered
