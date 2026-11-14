@@ -230,6 +230,43 @@ void main() {
     expect(find.text('SIGN IN TO VOTE'), findsNothing);
   });
 
+  test('hidden tally: null votes and tally_hidden parse instead of throwing', () {
+    final standing = ChoiceStanding.fromJson(const {
+      'candidate_id': 'candidate-id', 'spot_name': 'Hidden Cove', 'votes': null});
+    expect(standing.votes, isNull);
+    final hidden = ChoiceCampaign.fromJson({
+      'id': 'campaign-id', 'theme': 'Local activities', 'region': 'Pangasinan',
+      'status': 'scheduled', 'opens_at': '2026-11-08T16:00:00.000Z',
+      'closes_at': '2026-11-15T16:00:00.000Z', 'tally_hidden': true});
+    expect(hidden.tallyHidden, isTrue);
+    expect(ChoiceCampaign.fromJson({
+      'id': 'campaign-id', 'theme': 'Local activities', 'region': 'Pangasinan',
+      'status': 'scheduled', 'opens_at': '2026-11-08T16:00:00.000Z',
+      'closes_at': '2026-11-15T16:00:00.000Z'}).tallyHidden, isFalse);
+  });
+
+  testWidgets('hidden tally: ballot still loads, counts read Hidden, vote stays', (tester) async {
+    final hidden = ChoiceCampaign(id: campaign.id, theme: campaign.theme,
+      region: campaign.region, status: 'scheduled', opensAt: campaign.opensAt,
+      closesAt: campaign.closesAt, tallyHidden: true);
+    await tester.pumpWidget(ProviderScope(overrides: [
+      authProvider.overrideWith((ref) => _SignedInAuthNotifier()),
+      choiceOverviewProvider.overrideWith((ref) async => overview()),
+      choiceDetailProvider('campaign-id').overrideWith((ref) async => ChoiceDetail(
+        campaign: hidden,
+        standings: [ChoiceStanding.fromJson(const {
+          'candidate_id': 'candidate-id', 'spot_name': 'Hidden Cove', 'votes': null})],
+        ballot: null,
+        eligibility: const ChoiceEligibility(eligible: true, reason: null,
+          eligibleAt: null, canVoteNow: true))),
+    ], child: const MaterialApp(home: JuanChoiceDetailScreen(campaignId: 'campaign-id'))));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('choice_tally_hidden')), findsOneWidget);
+    expect(find.textContaining('Hidden', findRichText: true), findsWidgets);
+    expect(find.textContaining('null', findRichText: true), findsNothing);
+    expect(find.text('Vote for this place'), findsOneWidget);
+  });
+
   for (final size in [const Size(320, 568), const Size(568, 320)]) {
     testWidgets('campaign detail has no overflow at $size and 2x text', (tester) async {
       tester.view.physicalSize = size;

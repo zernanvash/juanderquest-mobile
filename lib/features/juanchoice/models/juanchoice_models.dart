@@ -1,14 +1,18 @@
 class ChoiceCampaign {
   const ChoiceCampaign({required this.id, required this.theme, required this.region,
-    required this.status, required this.opensAt, required this.closesAt});
+    required this.status, required this.opensAt, required this.closesAt,
+    this.tallyHidden = false});
   final String id, theme, region, status;
   final DateTime opensAt, closesAt;
+  /// Plan 65 D8: in a round's final hours the API hides every vote count.
+  final bool tallyHidden;
 
   factory ChoiceCampaign.fromJson(Map<String, dynamic> json) => ChoiceCampaign(
     id: json['id'] as String, theme: json['theme'] as String,
     region: json['region'] as String, status: json['status'] as String,
     opensAt: DateTime.parse(json['opens_at'] as String),
-    closesAt: DateTime.parse(json['closes_at'] as String));
+    closesAt: DateTime.parse(json['closes_at'] as String),
+    tallyHidden: json['tally_hidden'] == true);
 
   bool get isOpen => (status == 'voting' || status == 'scheduled') && DateTime.now().isBefore(closesAt) &&
       !DateTime.now().isBefore(opensAt);
@@ -75,11 +79,12 @@ class ChoicePreviousResult {
 class ChoiceStanding {
   const ChoiceStanding({required this.candidateId, required this.spotName, required this.votes});
   final String candidateId, spotName;
-  final int votes;
+  /// Null while the round hides its tally (final hours before closing).
+  final int? votes;
   factory ChoiceStanding.fromJson(Map<String, dynamic> json) => ChoiceStanding(
     candidateId: json['candidate_id'] as String,
     spotName: (json['spot_name'] as String?) ?? 'Destination',
-    votes: (json['votes'] as num).toInt());
+    votes: (json['votes'] as num?)?.toInt());
 }
 
 class ChoiceBallot {

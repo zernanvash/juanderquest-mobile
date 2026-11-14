@@ -255,7 +255,7 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                 for (final standing in data.previous!.standings) ...[
                   PixelStatRow(
                     '${data.previous!.coWinnerIds.contains(standing.candidateId) ? '* ' : ''}${standing.spotName}',
-                    '${standing.votes} votes',
+                    '${standing.votes ?? 0} votes',
                     style: PixelType.body(context),
                     labelColor: data.previous!.coWinnerIds
                             .contains(standing.candidateId)
@@ -671,6 +671,12 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
             onPressed: () => context.go(
                 '/?redirect=${Uri.encodeComponent('/choice/${widget.campaignId}')}'),
           ),
+        if (data.campaign.tallyHidden)
+          Text(
+            key: const ValueKey('choice_tally_hidden'),
+            'Final hours: vote counts are hidden until the round closes. You can still vote or change your vote.',
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
         SizedBox(height: grid.px(2)),
         for (final standing in data.standings) ...[
           PixelPanel(
@@ -691,7 +697,7 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                 SizedBox(height: grid.px(1)),
                 PixelStatRow(
                   'Provisional votes',
-                  '${standing.votes}',
+                  standing.votes == null ? 'Hidden' : '${standing.votes}',
                   style: PixelType.body(context),
                   labelColor: PixelPalette.slate,
                   valueColor: PixelPalette.gold,
