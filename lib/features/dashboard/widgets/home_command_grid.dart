@@ -296,7 +296,7 @@ class _CatChip extends StatelessWidget {
           style: PixelType.small(
             context,
             color: active ? PixelPalette.ink : PixelPalette.cream,
-          ).copyWith(fontSize: 9, fontWeight: FontWeight.w700),
+          ).copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -344,23 +344,31 @@ class _MenuIconTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    spec.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: PixelType.small(context, color: PixelPalette.ink)
-                        .copyWith(fontSize: 10, fontWeight: FontWeight.w700),
-                  ),
-                  if (spec.subtitle != null) ...[
-                    const SizedBox(height: 1),
-                    Text(
-                      spec.subtitle!,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      spec.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
-                      style: PixelType.small(context, color: PixelPalette.slate)
-                          .copyWith(fontSize: 8),
+                      style: PixelType.small(context, color: PixelPalette.ink)
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  if (spec.subtitle != null) ...[
+                    const SizedBox(height: 1),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        spec.subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
                     ),
                   ],
                 ],
@@ -384,7 +392,7 @@ class _MenuIconTile extends StatelessWidget {
                     color: spec.badgeLive
                         ? PixelPalette.white
                         : PixelPalette.ink,
-                  ).copyWith(fontSize: 8, fontWeight: FontWeight.w700),
+                  ).copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ),

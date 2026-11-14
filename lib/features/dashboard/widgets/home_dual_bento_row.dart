@@ -227,7 +227,7 @@ class _MissionBentoBox extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: PixelType.small(context, color: PixelPalette.ink)
-                            .copyWith(fontSize: 8, fontWeight: FontWeight.w700),
+                            .copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -249,16 +249,14 @@ class _MissionBentoBox extends StatelessWidget {
                       : '+${quest.rewardPoints} mJDQ',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: PixelType.small(context, color: PixelPalette.greenLight)
-                      .copyWith(fontSize: 9),
+                  style: PixelType.small(context, color: PixelPalette.greenLight),
                 ),
               ] else ...[
                 Text(
                   'Find a destination to start a quest',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: PixelType.small(context, color: PixelPalette.cream)
-                      .copyWith(fontSize: 10),
+                  style: PixelType.small(context, color: PixelPalette.cream),
                 ),
               ],
             ],
@@ -344,7 +342,7 @@ class _StampBentoBox extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: PixelType.small(context, color: PixelPalette.sun)
-                          .copyWith(fontSize: 10, fontWeight: FontWeight.w700),
+                          .copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -355,7 +353,7 @@ class _StampBentoBox extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: PixelType.small(context, color: PixelPalette.cream)
-                    .copyWith(fontSize: 10, fontWeight: FontWeight.w700),
+                    .copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 4),
               Row(
@@ -435,7 +433,7 @@ class _MicroPillButton extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: PixelType.small(context, color: PixelPalette.woodDeep)
-                    .copyWith(fontSize: 10, fontWeight: FontWeight.w700),
+                    .copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           ],

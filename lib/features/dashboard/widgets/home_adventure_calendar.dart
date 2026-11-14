@@ -264,7 +264,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: PixelType.small(context, color: PixelPalette.blueLight)
-                    .copyWith(fontSize: 9, fontWeight: FontWeight.w700),
+                    .copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -341,7 +341,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                           style: PixelType.small(
                             context,
                             color: PixelPalette.greenLight,
-                          ).copyWith(fontSize: 10),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -374,10 +374,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                                   style: PixelType.small(
                                     context,
                                     color: PixelPalette.ink,
-                                  ).copyWith(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  ).copyWith(fontWeight: FontWeight.w700),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -389,10 +386,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                                   style: PixelType.small(
                                     context,
                                     color: PixelPalette.cream,
-                                  ).copyWith(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  ).copyWith(fontWeight: FontWeight.w700),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -417,10 +411,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                             style: PixelType.small(
                               context,
                               color: PixelPalette.sun,
-                            ).copyWith(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            ).copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
                     ],
@@ -530,11 +521,14 @@ class _DowLabel extends StatelessWidget {
             maxScaleFactor: 1.3,
           ),
         ),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: PixelType.small(context, color: PixelPalette.greenLight)
-              .copyWith(fontSize: 9, fontWeight: FontWeight.w700),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: PixelType.small(context, color: PixelPalette.greenLight)
+                .copyWith(fontWeight: FontWeight.w700),
+          ),
         ),
       ),
     );
@@ -585,17 +579,20 @@ class _DayCell extends StatelessWidget {
                   maxScaleFactor: 1.3,
                 ),
               ),
-              child: Text(
-                '${day.day}',
-                maxLines: 1,
-                style: PixelType.small(
-                  context,
-                  color: isSelected
-                      ? PixelPalette.sun
-                      : (inCurrentMonth
-                          ? PixelPalette.cream
-                          : PixelPalette.greenMid),
-                ).copyWith(fontSize: 10, fontWeight: FontWeight.w700),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${day.day}',
+                  maxLines: 1,
+                  style: PixelType.small(
+                    context,
+                    color: isSelected
+                        ? PixelPalette.sun
+                        : (inCurrentMonth
+                            ? PixelPalette.cream
+                            : PixelPalette.greenMid),
+                  ).copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
             Row(
@@ -665,7 +662,7 @@ class _MiniCalButton extends StatelessWidget {
           style: PixelType.small(
             context,
             color: active ? PixelPalette.ink : PixelPalette.cream,
-          ).copyWith(fontSize: 9, fontWeight: FontWeight.w700),
+          ).copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -703,7 +700,7 @@ class _FilterChip extends StatelessWidget {
           style: PixelType.small(
             context,
             color: active ? PixelPalette.ink : PixelPalette.cream,
-          ).copyWith(fontSize: 9, fontWeight: FontWeight.w700),
+          ).copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );
