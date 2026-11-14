@@ -106,12 +106,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     isTab: true,
                     actions: [
                       Tooltip(
+                        message: 'Search',
+                        child: PixelIconButton(
+                          key: const ValueKey('home_appbar_search'),
+                          icon: DesignerArt.search,
+                          semanticLabel: 'Search',
+                          iconHeight: 36,
+                          onPressed: () => context.push('/search'),
+                        ),
+                      ),
+                      Tooltip(
                         message: 'Notifications',
                         child: PixelIconButton(
                           icon: DesignerArt.notifBell,
                           semanticLabel: 'Notifications',
                           iconHeight: 36,
                           onPressed: () => context.go('/notifications'),
+                        ),
+                      ),
+                      Tooltip(
+                        message: 'Settings',
+                        child: PixelIconButton(
+                          key: const ValueKey('home_appbar_settings'),
+                          icon: DesignerArt.navSettings,
+                          semanticLabel: 'Settings',
+                          iconHeight: 36,
+                          onPressed: () => context.push('/settings'),
                         ),
                       ),
                     ],
