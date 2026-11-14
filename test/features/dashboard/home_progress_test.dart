@@ -784,7 +784,7 @@ void main() {
       );
       final state = QuestState(quests: [_quests.first, testQuest], isLoading: false);
       await _pump(tester, overrides: _overrides(quests: state));
-      expect(find.text('1 Quests · 1 Active'), findsOneWidget);
+      expect(find.text('1 active · 0 saved'), findsOneWidget);
 
       await _pump(
         tester,
@@ -793,7 +793,7 @@ void main() {
           showTestContentProvider.overrideWith((ref) => true),
         ],
       );
-      expect(find.text('2 Quests · 2 Active'), findsOneWidget);
+      expect(find.text('2 active · 0 saved'), findsOneWidget);
     });
 
     testWidgets('JuanChoice launcher reflects active campaign, results, and error states',

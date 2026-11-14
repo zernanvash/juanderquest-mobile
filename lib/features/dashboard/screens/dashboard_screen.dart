@@ -20,7 +20,10 @@ import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/models/quest_model.dart';
+import '../../quests/pixel/saved_quests.dart';
+import '../../quests/providers/campaign_provider.dart';
 import '../../quests/providers/quest_provider.dart';
+import '../providers/home_recommended_quest_provider.dart';
 import '../../spots/providers/hidden_gem_provider.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/screens/interests_screen.dart';
@@ -53,6 +56,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(submissionProvider.notifier).fetchSubmissions();
       ref.read(spotDiscoveryProvider.notifier).load();
       ref.read(questProvider.notifier).fetchQuests();
+      ref.read(campaignProvider.notifier).fetchCampaigns();
       InterestsPrompt.maybeShow(context, ref);
     });
   }
@@ -65,6 +69,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(submissionProvider.notifier).fetchSubmissions(force: true),
       ref.read(spotDiscoveryProvider.notifier).load(refresh: true),
       ref.read(questProvider.notifier).fetchQuests(),
+      ref.read(campaignProvider.notifier).fetchCampaigns(forceRefresh: true),
     ]);
     ref.invalidate(homeQotdProvider);
     ref.invalidate(homeNearbyQuizProvider);
@@ -151,6 +156,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                           // SECTION 3: EXPLORER MENU (2×3 LAUNCHER GRID)
                           _ExplorerMenuGrid(nextStopKey: tipsKeys.nextStop),
+
+                          // SECTION 4: LIVE CAMPAIGNS (EVENTS ROW)
+                          const _HomeEventsRow(),
                         ],
                       ),
                     ),
@@ -205,6 +213,8 @@ class _TodaysPulsePanel extends ConsumerWidget {
     );
     final inProgress = _inProgressQuests(quests, submissionsState);
     final activeQuest = inProgress.isNotEmpty ? inProgress.first : null;
+    final recommended =
+        activeQuest == null ? ref.watch(homeRecommendedQuestProvider) : null;
 
     final daily = claimState.latest ?? dailyAsync.valueOrNull;
     final isClaimed = daily?.claimToday == true;
@@ -359,28 +369,39 @@ class _TodaysPulsePanel extends ConsumerWidget {
           ),
           SizedBox(height: grid.px(1)),
 
-          // 3. Active Quest Row
+          // 3. Active or Recommended Quest Row
           _pulseCard(
             context,
             grid,
             key: const ValueKey('pulse_row_active_quest'),
             iconWidget: const PixelSprite(DesignerArt.questMarker, scale: 2),
+            badgeLabel: activeQuest == null ? recommended?.reason : null,
             title: activeQuest != null
                 ? 'ACTIVE: ${activeQuest.title}'
-                : 'NEXT MISSION: ${daily?.nextMission?.title ?? 'Explore Pangasinan'}',
+                : (recommended != null
+                    ? recommended.quest.title
+                    : 'Find a destination to start a quest'),
             subtitle: activeQuest != null
                 ? 'Step ${activeQuest.steps.where((s) => s.isVerified).length} of ${activeQuest.steps.length} verified'
-                : 'Pick a quest to start earning XP & rewards',
-            actionLabel: activeQuest != null ? 'CONTINUE ›' : 'QUEST LOG ›',
+                : (recommended != null
+                    ? recommended.quest.locationName
+                    : 'Browse Pangasinan spots on Explore'),
+            actionLabel: activeQuest != null
+                ? 'CONTINUE ›'
+                : (recommended != null ? 'VIEW QUEST ›' : 'EXPLORE ›'),
             actionKey: activeQuest != null
                 ? const ValueKey('home_active_quest_continue')
-                : const ValueKey('home_active_quest_explore'),
+                : (recommended != null
+                    ? const ValueKey('home_recommended_quest_view')
+                    : const ValueKey('home_active_quest_explore')),
             isPrimary: false,
             onAction: () {
               if (activeQuest != null) {
                 context.push('/quests/${activeQuest.id}');
+              } else if (recommended != null) {
+                context.push('/quests/${recommended.quest.id}');
               } else {
-                context.push('/quests');
+                context.go('/explore');
               }
             },
           ),
@@ -400,6 +421,7 @@ class _TodaysPulsePanel extends ConsumerWidget {
     required Key actionKey,
     required bool isPrimary,
     required VoidCallback onAction,
+    String? badgeLabel,
     bool loading = false,
   }) {
     return PixelPanel(
@@ -419,6 +441,14 @@ class _TodaysPulsePanel extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  if (badgeLabel != null) ...[
+                    PixelChip(
+                      badgeLabel,
+                      style: PixelBoxStyle.gold,
+                      textColor: PixelPalette.ink,
+                    ),
+                    const SizedBox(height: 2),
+                  ],
                   Text(
                     title,
                     maxLines: 1,
@@ -682,6 +712,7 @@ class _ExplorerMenuGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final grid = PixelGrid.of(context);
     final questsState = ref.watch(questProvider);
+    final savedIds = ref.watch(savedQuestsProvider);
     final submissionsState = ref.watch(submissionProvider);
     final user = ref.watch(authProvider).user;
     final nearbyQuizzes = ref.watch(homeNearbyQuizProvider).valueOrNull;
@@ -769,7 +800,7 @@ class _ExplorerMenuGrid extends ConsumerWidget {
                     icon: const PixelSprite(DesignerArt.questMarker, scale: 2),
                     title: 'QUEST LOG',
                     subtitle:
-                        '${quests.length} Quests · ${inProgress.length} Active',
+                        '${inProgress.length} active · ${quests.isNotEmpty ? quests.where((q) => savedIds.contains(q.id)).length : savedIds.length} saved',
                     onTap: () => context.push('/quests'),
                   ),
                 ),
@@ -1036,6 +1067,79 @@ class _MenuTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _HomeEventsRow extends ConsumerWidget {
+  const _HomeEventsRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final campaigns = ref.watch(campaignProvider).campaigns;
+    if (campaigns.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final grid = PixelGrid.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(height: grid.px(3)),
+        Text(
+          'EVENTS',
+          style: PixelType.title(context, color: PixelPalette.woodDeep),
+        ),
+        SizedBox(height: grid.px(1.5)),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < campaigns.length; i++) ...[
+                if (i > 0) SizedBox(width: grid.px(2)),
+                GestureDetector(
+                  key: ValueKey('home_event_${campaigns[i].id}'),
+                  onTap: () => context.push(
+                    '/quests/campaigns/${campaigns[i].id}',
+                    extra: campaigns[i],
+                  ),
+                  behavior: HitTestBehavior.opaque,
+                  child: SizedBox(
+                    width: 210,
+                    child: PixelPanel(
+                      style: PixelBoxStyle.parchment,
+                      padding: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            campaigns[i].municipality.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.greenDeep,
+                            ).copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            campaigns[i].title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: PixelType.body(context).copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

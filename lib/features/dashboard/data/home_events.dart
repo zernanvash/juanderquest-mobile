@@ -74,7 +74,7 @@ final _events = <HomeEvent>[
     badge: '+100 XP bounty',
     description:
         'Low-tide reef monitoring and Lucap gateway verification for eco-scouts.',
-    route: '/quests',
+    route: '/explore',
   ),
   HomeEvent(
     id: 'ev-juanchoice-round',
@@ -129,7 +129,7 @@ final _events = <HomeEvent>[
     badge: '+120 XP bounty',
     description:
         'Forest reserve trail cleanup and geotagged spring documentation.',
-    route: '/quests',
+    route: '/explore',
   ),
   HomeEvent(
     id: 'ev-tayug-sunflower',

@@ -257,7 +257,7 @@ class PixelAppBar extends StatelessWidget {
     '/dashboard',
     '/explore',
     '/map',
-    '/quests',
+    '/shop',
     '/profile',
   };
 

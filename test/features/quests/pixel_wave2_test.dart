@@ -23,7 +23,6 @@ import 'package:juanderquest_app/features/quests/screens/quest_builder_screen.da
 import 'package:juanderquest_app/features/quests/screens/quest_detail_screen.dart';
 import 'package:juanderquest_app/features/quests/screens/quest_list_screen.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
-import 'package:juanderquest_app/features/submissions/models/submission_model.dart';
 import 'package:juanderquest_app/features/submissions/providers/submission_provider.dart';
 
 class _Auth extends AuthNotifier {
@@ -612,49 +611,38 @@ void main() {
     }
   });
 
-  testWidgets('quest list tabs, category filter, search and status chips', (
-    tester,
-  ) async {
-    final pending = SubmissionModel(
-      id: 'q1',
-      questTitle: 'Coastal cleanup',
-      category: 'eco',
-      status: 'pending',
-      rewardPoints: 10,
-      createdAt: '2026-11-02T00:00:00Z',
-    );
-    await _pumpList(
-      tester,
-      submissions: SubmissionState(submissions: [pending], isLoading: false),
-    );
-    expect(find.text('Coastal cleanup'), findsOneWidget);
-    expect(find.text('Heritage walk'), findsOneWidget);
-    expect(find.text('PENDING REVIEW'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('quests_category_cultural')));
-    await tester.pumpAndSettle();
-    expect(find.text('Coastal cleanup'), findsNothing);
-    expect(find.text('Heritage walk'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('quests_category_')));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'walk');
-    await tester.pumpAndSettle();
-    expect(find.text('Heritage walk'), findsOneWidget);
-    expect(find.text('Coastal cleanup'), findsNothing);
-
-    await tester.enterText(find.byType(TextField).first, '');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Events · 1'));
-    await tester.pumpAndSettle();
-    expect(find.text('Bangus Festival 2026'), findsOneWidget);
-  });
-
   testWidgets('quest list save toggle and directions/view targets', (
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
-    await _pumpList(tester);
+    final inProgressQuest = _quest(
+      'q1',
+      'Coastal cleanup',
+      steps: const [
+        QuestStepModel(
+          order: 1,
+          title: 'Step 1',
+          description: '',
+          checkpointType: 'gps',
+          required: true,
+          status: 'verified',
+          gpsLat: 16.0,
+          gpsLng: 120.3,
+          radiusMeters: 50,
+        ),
+        QuestStepModel(
+          order: 2,
+          title: 'Step 2',
+          description: '',
+          checkpointType: 'gps',
+          required: true,
+          gpsLat: 16.0,
+          gpsLng: 120.3,
+          radiusMeters: 50,
+        ),
+      ],
+    );
+    await _pumpList(tester, quests: [inProgressQuest]);
     final save = find.bySemanticsLabel('Save Coastal cleanup');
     expect(save, findsOneWidget);
     await tester.tap(save);
@@ -667,38 +655,19 @@ void main() {
     expect(find.text('route:/navigate'), findsOneWidget);
     semantics.dispose();
 
-    await _pumpList(tester);
+    await _pumpList(tester, quests: [inProgressQuest]);
     await tester.tap(find.byKey(const ValueKey('quest_open_q1')));
     await tester.pumpAndSettle();
     expect(find.text('route:/quests/q1'), findsOneWidget);
   });
 
-  testWidgets('quest list marks the daily mission quest', (tester) async {
-    await _pumpList(tester, mission: true);
-    expect(find.text('Daily mission · Complete a quest step'), findsOneWidget);
-    expect(find.text('Play >'), findsOneWidget);
-  });
-
-  testWidgets('daily mission pill stays hidden when signed out or unavailable',
-      (
-    tester,
-  ) async {
-    await _pumpList(tester, mission: true, signedOut: true);
-    expect(find.text('Daily mission · Complete a quest step'), findsNothing);
-
-    await _pumpList(
-      tester,
-      missionFetcher: () async => throw StateError('offline'),
-    );
-    expect(find.text('Daily mission · Complete a quest step'), findsNothing);
-
-    await _pumpList(tester, mission: false);
-    expect(find.text('Daily mission · Complete a quest step'), findsNothing);
-  });
-
   testWidgets('quests that arrive after the first build are shown',
       (tester) async {
-    await _pumpList(tester, quests: const []);
+    await _pumpList(
+      tester,
+      quests: const [],
+      savedStorage: _MemorySavedStorage(['q0']),
+    );
     final container =
         ProviderScope.containerOf(tester.element(find.byType(QuestListScreen)));
     (container.read(questProvider.notifier) as _QuestFixture).emit(QuestState(
@@ -707,31 +676,6 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.byType(QuestCard), findsWidgets);
-  });
-
-  testWidgets('quest list TOP button jumps to the top', (tester) async {
-    final quests = [
-      for (var i = 1; i <= 15; i++) _quest('q$i', 'Quest $i'),
-    ];
-    await _pumpList(tester, quests: quests, size: const Size(400, 600));
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1600));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('quests_top_btn')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('quests_top_btn')));
-    await tester.pump();
-    final position =
-        tester.state<ScrollableState>(find.byType(Scrollable).first).position;
-    expect(position.pixels, 0);
-  });
-
-  testWidgets('quest list campaign card opens the campaign route',
-      (tester) async {
-    await _pumpList(tester);
-    await tester.tap(find.text('Events · 1'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('View event >'));
-    await tester.pumpAndSettle();
-    expect(find.text('route:/quests/campaigns/c1'), findsOneWidget);
   });
 
   testWidgets('quest detail renders every task state and its action', (

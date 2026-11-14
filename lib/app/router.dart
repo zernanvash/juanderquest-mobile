@@ -178,8 +178,61 @@ final routerProvider = Provider<GoRouter>((ref) {
                   path: '/saved',
                   builder: (context, state) => const SavedSpotsScreen()),
               GoRoute(
-                  path: '/shop',
-                  builder: (context, state) => const ShopScreen()),
+                path: '/quests',
+                builder: (context, state) => const QuestListScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'campaigns/:id',
+                    pageBuilder: (context, state) => buildDirectionalSlidePage(
+                      context: context,
+                      state: state,
+                      child: CampaignDetailScreen(
+                        campaignId: state.pathParameters['id'] ?? '',
+                        initialCampaign: state.extra as CampaignModel?,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => QuestDetailScreen(
+                        questId: state.pathParameters['id'] ?? ''),
+                    routes: [
+                      GoRoute(
+                        path: 'funding',
+                        builder: (context, state) => QuestFundingScreen(
+                          questId: state.pathParameters['id'] ?? '',
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'ar',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => ArQuestScreen(
+                          questId: state.pathParameters['id'] ?? '',
+                          stepOrder: int.tryParse(
+                              state.uri.queryParameters['step'] ?? ''),
+                          quest: state.extra is QuestModel
+                              ? state.extra as QuestModel
+                              : null,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'edit',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => QuestBuilderScreen(
+                          questId: state.pathParameters['id'] ?? '',
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'qr-sheet',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => QrSheetScreen(
+                          questId: state.pathParameters['id'] ?? '',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               GoRoute(
                 path: '/choice',
                 builder: (context, state) => const JuanChoiceScreen(),
@@ -244,60 +297,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/quests',
-                builder: (context, state) => const QuestListScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'campaigns/:id',
-                    pageBuilder: (context, state) => buildDirectionalSlidePage(
-                      context: context,
-                      state: state,
-                      child: CampaignDetailScreen(
-                        campaignId: state.pathParameters['id'] ?? '',
-                        initialCampaign: state.extra as CampaignModel?,
-                      ),
-                    ),
-                  ),
-                  GoRoute(
-                    path: ':id',
-                    builder: (context, state) => QuestDetailScreen(
-                        questId: state.pathParameters['id'] ?? ''),
-                    routes: [
-                      GoRoute(
-                        path: 'funding',
-                        builder: (context, state) => QuestFundingScreen(
-                          questId: state.pathParameters['id'] ?? '',
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'ar',
-                        parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) => ArQuestScreen(
-                          questId: state.pathParameters['id'] ?? '',
-                          stepOrder: int.tryParse(
-                              state.uri.queryParameters['step'] ?? ''),
-                          quest: state.extra is QuestModel
-                              ? state.extra as QuestModel
-                              : null,
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'edit',
-                        parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) => QuestBuilderScreen(
-                          questId: state.pathParameters['id'] ?? '',
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'qr-sheet',
-                        parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) => QrSheetScreen(
-                          questId: state.pathParameters['id'] ?? '',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                path: '/shop',
+                builder: (context, state) => const ShopScreen(),
               ),
             ],
           ),
