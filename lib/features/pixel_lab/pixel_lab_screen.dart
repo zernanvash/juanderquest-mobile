@@ -20,7 +20,6 @@ import '../dashboard/home_tips.dart';
 import '../spots/providers/spot_discovery_provider.dart';
 import '../spots/theater/theater_backdrop.dart';
 import 'home_options.dart';
-import 'nav_panel_options.dart';
 import 'rpg_feel_section.dart';
 import 'sound_lab_section.dart';
 import 'tutorial_preview.dart';
@@ -96,9 +95,6 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                               const RpgFeelSection()),
                           SizedBox(height: grid.px(3)),
                           _homeOptions(context, grid),
-                          SizedBox(height: grid.px(3)),
-                          _section(context, 'Navigation panel · pick one',
-                              const NavPanelOptionsSection()),
                           SizedBox(height: grid.px(3)),
                           _section(context, 'Sound lab (84 sample)',
                               const SoundLabSection()),
