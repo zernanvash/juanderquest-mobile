@@ -168,8 +168,9 @@ class SettingsScreen extends ConsumerWidget {
                                         .read(
                                             homeTipsControllerProvider.notifier)
                                         .resetForReplay();
-                                    if (context.mounted)
+                                    if (context.mounted) {
                                       context.go('/dashboard');
+                                    }
                                   },
                                 ),
                                 _SettingsTile(
