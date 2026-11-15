@@ -4,6 +4,7 @@ import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/providers/campaign_provider.dart';
 import '../data/verified_pangasinan_festivals.dart';
 import '../models/home_calendar_entry.dart';
+import 'festival_calendar_provider.dart';
 import 'home_daily_provider.dart';
 
 const Set<String> _demoCampaignIds = {
@@ -22,7 +23,9 @@ final homeFestivalEntriesProvider =
 /// 1. JuanChoice voting windows (`choiceOverviewProvider`)
 /// 2. Live dated campaigns (`campaignProvider`, skipping demo fallbacks)
 /// 3. Streak days (`homeDailyProvider` -> last `streak.current` days)
-/// 4. Month-only verified Pangasinan festivals
+/// 4. Festivals staff entered with exact dates (`festivalCalendarProvider`)
+/// 5. Month-only verified Pangasinan festivals, minus any month + town that
+///    already has a dated festival from step 4
 final homeCalendarEntriesProvider =
     Provider.family<List<HomeCalendarEntry>, int>((ref, year) {
   final entries = <HomeCalendarEntry>[];
@@ -114,8 +117,23 @@ final homeCalendarEntriesProvider =
     }
   }
 
-  // 4. Verified Pangasinan festivals (monthOnly: true)
-  entries.addAll(ref.watch(homeFestivalEntriesProvider(year)));
+  // 4. Festivals staff entered with exact dates (Plan 94)
+  final dated =
+      ref.watch(festivalCalendarProvider(year)).asData?.value ?? const [];
+  entries.addAll(dated);
+
+  // 5. Verified Pangasinan festivals (monthOnly: true)
+  bool hasDated(HomeCalendarEntry builtIn) {
+    final town = builtIn.municipality.toLowerCase();
+    if (town.isEmpty) return false;
+    return dated.any((d) =>
+        d.municipality.toLowerCase() == town &&
+        d.spansMonth(builtIn.startDate.year, builtIn.startDate.month));
+  }
+
+  entries.addAll(
+    ref.watch(homeFestivalEntriesProvider(year)).where((e) => !hasDated(e)),
+  );
 
   return entries;
 });
