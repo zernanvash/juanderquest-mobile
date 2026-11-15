@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/profile/providers/profile_stats_provider.dart';
+import 'package:juanderquest_app/features/merchant/models/merchant_models.dart';
+import 'package:juanderquest_app/features/merchant/providers/merchant_hub_provider.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
 
 void main() {
@@ -89,6 +91,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            merchantHubStatusProvider.overrideWith((ref) async => MerchantHubStatus.none),
             authProvider.overrideWith((ref) => _FakeAuthNotifier(
                   AuthState(user: unboundUser, token: 'fake-token'),
                 )),
@@ -121,6 +124,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            merchantHubStatusProvider.overrideWith((ref) async => MerchantHubStatus.none),
             authProvider.overrideWith((ref) => _FakeAuthNotifier(
                   AuthState(user: boundUser, token: 'fake-token'),
                 )),

@@ -956,6 +956,9 @@ void main() {
       await tester.pump();
       expect(find.text('Enter at least two characters to search.'),
           findsOneWidget);
+      // Plan 95: goals live in section 3, which starts collapsed.
+      await tester.tap(find.byKey(const ValueKey('affiliate_section_3')));
+      await tester.pump();
       await tester.tap(find.byKey(const ValueKey('affiliate_goal_quest_stop')));
       await tester.pump();
       expect(find.byKey(const ValueKey('affiliate_goal_quest_stop')),
