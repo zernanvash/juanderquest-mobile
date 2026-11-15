@@ -8,7 +8,6 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../explore/spot_filter_state.dart';
 import '../models/spot_model.dart';
-import 'theater_gallery_dialog.dart';
 
 /// Strips a leading `PHOTO:` (any case) from a spot credit name.
 String spotCreditName(String sourceName) {
@@ -27,19 +26,13 @@ class TheaterFirstViewport extends StatelessWidget {
   const TheaterFirstViewport({
     super.key,
     required this.spot,
-    required this.isSaved,
     required this.scrollOffset,
-    required this.onToggleSave,
-    required this.onShare,
     required this.onDirections,
     required this.onPlayQuest,
   });
 
   final SpotModel spot;
-  final bool isSaved;
   final double scrollOffset;
-  final VoidCallback onToggleSave;
-  final VoidCallback onShare;
   final VoidCallback onDirections;
   final VoidCallback onPlayQuest;
 
@@ -59,18 +52,8 @@ class TheaterFirstViewport extends StatelessWidget {
           // Scrims live in the stationary TheaterBackdropLayers (no edge
           // shows when the page is pulled past its top).
 
-          // Top Controls (Back, Gallery, Credit, Save, Share)
-          Positioned(
-            top: mediaQuery.padding.top + grid.px(1),
-            left: grid.px(2),
-            right: grid.px(2),
-            child: _TopControls(
-              spot: spot,
-              isSaved: isSaved,
-              onToggleSave: onToggleSave,
-              onShare: onShare,
-            ),
-          ),
+          // Plan 93b WP-11: Back, gallery, like, save, share and report live
+          // in the sticky top bar on SpotDetailScreen.
 
           // Pinned Bottom Hero Title Block
           Positioned(
@@ -86,191 +69,6 @@ class TheaterFirstViewport extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _TopControls extends StatelessWidget {
-  const _TopControls({
-    required this.spot,
-    required this.isSaved,
-    required this.onToggleSave,
-    required this.onShare,
-  });
-
-  final SpotModel spot;
-  final bool isSaved;
-  final VoidCallback onToggleSave;
-  final VoidCallback onShare;
-
-  @override
-  Widget build(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    final photoCount = spot.media.length;
-
-    return Row(
-      children: [
-        // Back button
-        Semantics(
-          button: true,
-          label: 'Back',
-          child: InkWell(
-            key: const Key('theater_back_btn'),
-            onTap: () => Navigator.of(context).maybePop(),
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              alignment: Alignment.center,
-              child: PixelPanel(
-                style: PixelBoxStyle.inkDialogue.copyWith(
-                  fill: PixelPalette.ink,
-                  outline: PixelPalette.paper,
-                  corner: 0,
-                  shadowPx: 0,
-                ),
-                padding: 1,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: grid.px(2),
-                    vertical: grid.px(1),
-                  ),
-                  child: Text(
-                    '◀',
-                    style: PixelType.small(context, color: PixelPalette.paper),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        SizedBox(width: grid.px(1)),
-
-        // Gallery button
-        if (photoCount > 0)
-          Semantics(
-            button: true,
-            label: 'Open photo gallery',
-            child: InkWell(
-              key: const Key('theater_gallery_btn'),
-              onTap: () =>
-                  TheaterGalleryDialog.show(context, media: spot.media),
-              child: Container(
-                constraints: const BoxConstraints(
-                  minWidth: 48,
-                  maxWidth: 96,
-                  minHeight: 48,
-                ),
-                alignment: Alignment.center,
-                child: PixelPanel(
-                  style: PixelBoxStyle.inkDialogue.copyWith(
-                    fill: PixelPalette.slate,
-                    outline: PixelPalette.paper,
-                    corner: 0,
-                    shadowPx: 0,
-                  ),
-                  padding: 1,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: grid.px(2),
-                      vertical: grid.px(1),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        photoCount == 1 ? '1 PHOTO' : '$photoCount PHOTOS',
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.paper,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-        const Spacer(),
-
-        // Save heart button
-        Semantics(
-          button: true,
-          label: isSaved ? 'Remove from saved spots' : 'Save spot',
-          child: InkWell(
-            key: const Key('theater_save_btn'),
-            onTap: onToggleSave,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              alignment: Alignment.center,
-              child: PixelPanel(
-                style: isSaved
-                    ? PixelBoxStyle.red.copyWith(corner: 0, shadowPx: 0)
-                    : PixelBoxStyle.inkDialogue.copyWith(
-                        fill: PixelPalette.ink,
-                        outline: PixelPalette.paper,
-                        corner: 0,
-                        shadowPx: 0,
-                      ),
-                padding: 1,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: grid.px(2),
-                    vertical: grid.px(1),
-                  ),
-                  child: Text(
-                    isSaved ? '♥' : '♡',
-                    style: PixelType.small(
-                      context,
-                      color: isSaved ? PixelPalette.white : PixelPalette.paper,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        SizedBox(width: grid.px(1)),
-
-        // Share button
-        Semantics(
-          button: true,
-          label: 'Share spot link',
-          child: InkWell(
-            key: const Key('theater_share_btn'),
-            onTap: onShare,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              alignment: Alignment.center,
-              child: PixelPanel(
-                style: PixelBoxStyle.inkDialogue.copyWith(
-                  fill: PixelPalette.ink,
-                  outline: PixelPalette.paper,
-                  corner: 0,
-                  shadowPx: 0,
-                ),
-                padding: 1,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: grid.px(2),
-                    vertical: grid.px(1),
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'Share',
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.paper,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

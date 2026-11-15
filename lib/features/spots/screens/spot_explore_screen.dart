@@ -33,8 +33,6 @@ class SpotExploreScreen extends ConsumerStatefulWidget {
 }
 
 class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
-  final Map<String, int> _likes = {};
-  final Set<String> _likedSpots = {};
   final ScrollController _scrollController = ScrollController();
   SpotFilterState _filterState = const SpotFilterState();
   int _visibleCount = 10;
@@ -73,19 +71,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       if (refresh)
         ref.refresh(hiddenGemProvider.future).then((_) {}, onError: (_) {}),
     ]);
-  }
-
-  void _toggleLike(SpotModel spot) {
-    setState(() {
-      final currentCount = _likes[spot.id] ?? (45 + spot.name.length * 3);
-      if (_likedSpots.contains(spot.id)) {
-        _likedSpots.remove(spot.id);
-        _likes[spot.id] = currentCount - 1;
-      } else {
-        _likedSpots.add(spot.id);
-        _likes[spot.id] = currentCount + 1;
-      }
-    });
   }
 
   @override
@@ -230,15 +215,19 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         ],
                         ExploreSpotCard(
                           spot: pagedSpots[i],
-                          likeCount: _likes[pagedSpots[i].id] ??
-                              (45 + pagedSpots[i].name.length * 3),
-                          isLiked: _likedSpots.contains(pagedSpots[i].id),
+                          likeCount: pagedSpots[i].likeCount,
+                          isLiked: pagedSpots[i].liked,
                           isSaved: pagedSpots[i].saved,
                           onTapCard: () => context.push(
                             '/explore/${pagedSpots[i].slug}',
                             extra: pagedSpots[i],
                           ),
-                          onToggleLike: () => _toggleLike(pagedSpots[i]),
+                          onToggleLike: () => ref
+                              .read(spotDiscoveryProvider.notifier)
+                              .toggleLiked(pagedSpots[i]),
+                          onDoubleTapLike: () => ref
+                              .read(spotDiscoveryProvider.notifier)
+                              .setLiked(pagedSpots[i], liked: true),
                           onToggleSave: () => ref
                               .read(spotDiscoveryProvider.notifier)
                               .toggleSaved(pagedSpots[i]),

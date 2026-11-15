@@ -177,6 +177,10 @@ void main() {
 
       final aboutTab = find.text('ABOUT');
       expect(aboutTab, findsWidgets);
+      // Plan 93b WP-11: the top bar is sticky, so center the tab below it.
+      await Scrollable.ensureVisible(tester.element(aboutTab.first),
+          alignment: 0.5);
+      await tester.pumpAndSettle();
       await tester.tap(aboutTab.first);
       await tester.pumpAndSettle();
       _checkNoException(tester);
@@ -237,6 +241,9 @@ void main() {
 
       final notesTab = find.text('NOTES');
       expect(notesTab, findsWidgets);
+      await Scrollable.ensureVisible(tester.element(notesTab.first),
+          alignment: 0.5);
+      await tester.pumpAndSettle();
       await tester.tap(notesTab.first);
       await tester.pumpAndSettle();
       _checkNoException(tester);
@@ -258,7 +265,7 @@ void main() {
 
     for (final size in const [Size(320, 568), Size(568, 320)]) {
       testWidgets(
-          'pinned bar fits at ${size.width.toInt()}x${size.height.toInt()} and 1.4x text',
+          'sticky bar fits at ${size.width.toInt()}x${size.height.toInt()} and 1.4x text',
           (tester) async {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1.0;
@@ -270,6 +277,16 @@ void main() {
         await tester.pumpWidget(_buildOverflowApp(spot: _testSpot));
         await tester.pumpAndSettle();
         _checkNoException(tester);
+        expect(find.byKey(const Key('theater_pinned_bar')), findsOneWidget);
+        for (final key in const [
+          'theater_gallery_btn',
+          'theater_like_btn',
+          'theater_save_btn',
+          'theater_share_btn',
+          'theater_report_btn',
+        ]) {
+          expect(find.byKey(Key(key)), findsOneWidget, reason: key);
+        }
 
         await tester.drag(
           find.byType(CustomScrollView),
@@ -279,7 +296,7 @@ void main() {
         expect(find.byKey(const Key('theater_pinned_bar')), findsOneWidget);
         _checkNoException(tester);
 
-        await tester.tap(find.byKey(const Key('theater_pinned_share')));
+        await tester.tap(find.byKey(const Key('theater_share_btn')));
         await tester.pumpAndSettle();
         _checkNoException(tester);
       });

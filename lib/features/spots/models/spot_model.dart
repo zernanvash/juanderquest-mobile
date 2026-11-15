@@ -74,6 +74,10 @@ class SpotModel {
   final String? imageUrl;
   final String? createdBy;
   final bool saved;
+
+  /// Plan 93b WP-13: the server's like state and real like count.
+  final bool liked;
+  final int likeCount;
   final List<String> tags, reasons;
 
   final List<String> goodFor;
@@ -106,6 +110,8 @@ class SpotModel {
     this.imageUrl,
     this.createdBy,
     this.saved = false,
+    this.liked = false,
+    this.likeCount = 0,
     this.goodFor = const [],
     this.bestTime = const [],
     this.hours = const {},
@@ -294,6 +300,8 @@ class SpotModel {
       distanceKm: (j['distance_km'] as num?)?.toDouble(),
       questId: j['quest_id']?.toString(),
       saved: j['saved'] == true,
+      liked: j['liked'] == true,
+      likeCount: (j['like_count'] as num?)?.toInt() ?? 0,
       imageUrl: primaryImg,
       createdBy: j['created_by']?.toString() ?? j['createdBy']?.toString(),
       tags: List<String>.from(j['tags'] ?? []),
@@ -345,6 +353,8 @@ class SpotModel {
     String? imageUrl,
     String? createdBy,
     bool? saved,
+    bool? liked,
+    int? likeCount,
     List<String>? tags,
     List<String>? reasons,
     List<String>? goodFor,
@@ -377,6 +387,8 @@ class SpotModel {
         imageUrl: imageUrl ?? this.imageUrl,
         createdBy: createdBy ?? this.createdBy,
         saved: saved ?? this.saved,
+        liked: liked ?? this.liked,
+        likeCount: likeCount ?? this.likeCount,
         goodFor: goodFor ?? this.goodFor,
         bestTime: bestTime ?? this.bestTime,
         hours: hours ?? this.hours,
@@ -406,6 +418,8 @@ class SpotModel {
         if (imageUrl != null) 'image_url': imageUrl,
         if (createdBy != null) 'created_by': createdBy,
         'saved': saved,
+        'liked': liked,
+        'like_count': likeCount,
         'tags': tags,
         'recommendation_reasons': reasons,
         'good_for': goodFor,

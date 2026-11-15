@@ -311,9 +311,16 @@ class _PreviewTile extends StatelessWidget {
 /// rises and is gone (timer-stepped, like the rest of the pixel motion).
 /// It listens to raw pointers, so buttons underneath keep their normal tap.
 class TheaterDoubleTapHearts extends StatefulWidget {
-  const TheaterDoubleTapHearts({super.key, required this.child});
+  const TheaterDoubleTapHearts({
+    super.key,
+    required this.child,
+    this.onDoubleTapLike,
+  });
 
   final Widget child;
+
+  /// Plan 93b WP-13: a double-tap also likes the spot.
+  final VoidCallback? onDoubleTapLike;
 
   @override
   State<TheaterDoubleTapHearts> createState() => _TheaterDoubleTapHeartsState();
@@ -349,6 +356,7 @@ class _TheaterDoubleTapHeartsState extends State<TheaterDoubleTapHearts> {
         (e.localPosition - last).distance <= 48) {
       _lastTapAt = null;
       setState(() => _hearts.add(_Heart(_nextId++, e.localPosition)));
+      widget.onDoubleTapLike?.call();
     } else {
       _lastTapAt = e.localPosition;
       _lastTapTime = now;

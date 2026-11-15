@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:juanderquest_app/features/spots/theater/theater_backdrop.dart';
+import 'package:juanderquest_app/features/spots/explore/widgets/explore_spot_card.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/core/dev/test_content.dart';
 import 'package:juanderquest_app/core/network/api_failure.dart';
@@ -29,6 +31,7 @@ class _InertAuthNotifier extends AuthNotifier {
 class _TestDiscoveryNotifier extends SpotDiscoveryNotifier {
   bool reloadCalled = false;
   SpotModel? toggledSpot;
+  final likeCalls = <bool>[];
 
   _TestDiscoveryNotifier(super.ref, SpotDiscoveryState initialState) {
     state = initialState;
@@ -54,6 +57,21 @@ class _TestDiscoveryNotifier extends SpotDiscoveryNotifier {
     state = state.copyWith(
       spots: state.spots
           .map((s) => s.id == spot.id ? s.copyWith(saved: next) : s)
+          .toList(),
+    );
+    return null;
+  }
+
+  @override
+  Future<ApiFailure?> setLiked(SpotModel spot, {required bool liked}) async {
+    final live = current(spot);
+    if (live.liked == liked) return null;
+    likeCalls.add(liked);
+    state = state.copyWith(
+      spots: state.spots
+          .map((s) => s.id == spot.id
+              ? s.copyWith(liked: liked, likeCount: s.likeCount + (liked ? 1 : -1))
+              : s)
           .toList(),
     );
     return null;
@@ -228,6 +246,48 @@ void main() {
       expect(find.text('Lingayen Beach'), findsWidgets);
     });
 
+    testWidgets('double-tapping a card photo likes the spot and stays on Explore',
+        (tester) async {
+      final pushedRoutes = <String>[];
+      final spot = _makeSpot(
+        id: 's-dbl',
+        name: 'Tondol Beach',
+        imageUrl: 'https://images.unsplash.com/photo-tondol',
+      );
+      final notifier = _TestDiscoveryNotifier(
+        ProviderContainer().read(Provider((ref) => ref)),
+        // The first photo spot becomes the featured card; the second is a
+        // regular Explore card.
+        SpotDiscoveryState(spots: [
+          _makeSpot(
+            id: 's-feat',
+            name: 'Featured Beach',
+            imageUrl: 'https://images.unsplash.com/photo-feat',
+          ),
+          spot,
+        ], isInitialLoading: false),
+      );
+      await tester.pumpWidget(_buildHarness(
+        discoveryNotifier: notifier,
+        pushedRoutes: pushedRoutes,
+      ));
+      await tester.pumpAndSettle();
+
+      await _scrollTo(tester, find.text('Tondol Beach'));
+      final photo = find.descendant(
+        of: find.byType(ExploreSpotCard),
+        matching: find.byType(TheaterDoubleTapHearts),
+      );
+      await _scrollTo(tester, photo.last);
+      await tester.tap(photo.last);
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.tap(photo.last);
+      await tester.pumpAndSettle();
+
+      expect(notifier.likeCalls, [true]);
+      expect(pushedRoutes.where((r) => r.startsWith('/explore/')), isEmpty);
+    });
+
     testWidgets('featured card does not show when no spot has a photo', (tester) async {
       final spotNoPhoto = _makeSpot(
         id: 's2',
@@ -328,14 +388,15 @@ void main() {
       // Plan 75m: the credit moved to the spot page's end panel.
       expect(find.text('SHARED BY TOURISM BOARD'), findsNothing);
 
-      // 1. Like button tap (initial likes: 45 + 16*3 = 93)
-      final likeBtn = find.widgetWithText(PixelButton, '93');
+      // 1. Plan 93b WP-13: the like count is the server's (0 here), and the
+      //    tap goes through the shared provider.
+      final likeBtn = find.widgetWithText(PixelButton, '0');
       await _scrollTo(tester, likeBtn);
       expect(likeBtn, findsOneWidget);
       await tester.tap(likeBtn);
       await tester.pump();
-      // Incremented to 94
-      expect(find.widgetWithText(PixelButton, '94'), findsOneWidget);
+      expect(find.widgetWithText(PixelButton, '1'), findsOneWidget);
+      expect(notifier.likeCalls, [true]);
 
       // 2. Save button tap
       final saveBtn = find.bySemanticsLabel('Save bookmark');

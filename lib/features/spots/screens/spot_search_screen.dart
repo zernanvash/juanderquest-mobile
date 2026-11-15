@@ -47,8 +47,6 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
   bool _quietOnly = false;
   bool _questsOnly = false;
 
-  final Map<String, int> _likes = {};
-  final Set<String> _likedSpots = {};
 
   final List<Map<String, String>> _categories = const [
     {'id': 'all', 'label': 'All Destinations'},
@@ -89,19 +87,6 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       setState(() {});
-    });
-  }
-
-  void _toggleLike(String spotId) {
-    setState(() {
-      final currentCount = _likes[spotId] ?? (45 + spotId.hashCode % 120).abs();
-      if (_likedSpots.contains(spotId)) {
-        _likedSpots.remove(spotId);
-        _likes[spotId] = currentCount - 1;
-      } else {
-        _likedSpots.add(spotId);
-        _likes[spotId] = currentCount + 1;
-      }
     });
   }
 
@@ -615,8 +600,8 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
   }
 
   Widget _resultCard(BuildContext context, PixelGrid grid, SpotModel spot) {
-    final likeCount = _likes[spot.id] ?? (45 + spot.name.length * 3);
-    final isLiked = _likedSpots.contains(spot.id);
+    final likeCount = spot.likeCount;
+    final isLiked = spot.liked;
     return PixelPanel(
       key: ValueKey('search_spot_${spot.id}'),
       style: PixelBoxStyle.parchment,
@@ -697,7 +682,8 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
             children: [
               GestureDetector(
                 key: ValueKey('search_like_${spot.id}'),
-                onTap: () => _toggleLike(spot.id),
+                onTap: () =>
+                    ref.read(spotDiscoveryProvider.notifier).toggleLiked(spot),
                 child: PixelPanel(
                   style: isLiked ? PixelBoxStyle.red : PixelBoxStyle.slot,
                   padding: 1,

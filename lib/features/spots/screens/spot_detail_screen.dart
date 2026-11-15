@@ -17,7 +17,9 @@ import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
 import '../theater/theater_about_section.dart';
+import '../explore/explore_art.dart';
 import '../theater/theater_backdrop.dart';
+import '../theater/theater_gallery_dialog.dart';
 import '../theater/theater_nearby_section.dart';
 import '../theater/theater_overview_section.dart';
 import '../theater/theater_quests_section.dart';
@@ -41,6 +43,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   List<SpotModel> _alternatives = [];
   bool _loadingAlternatives = true;
   bool _isSaved = false;
+  bool _isLiked = false;
+  int _likeCount = 0;
 
   // Plan 75m: scroll state lives in notifiers so scrolling rebuilds only the
   // scroll hint and the backdrop fade, never the whole page.
@@ -49,13 +53,12 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   /// 0 at the top of the page, 1 once the details cover most of the screen.
   final ValueNotifier<double> _reveal = ValueNotifier(0.0);
 
-  /// True once the first (hero) viewport has scrolled away; shows the pinned bar.
-  final ValueNotifier<bool> _pastHero = ValueNotifier(false);
-
   @override
   void initState() {
     super.initState();
     _isSaved = widget.spot.saved;
+    _isLiked = widget.spot.liked;
+    _likeCount = widget.spot.likeCount;
     _scrollController = ScrollController()..addListener(_onScroll);
 
     Future.microtask(() {
@@ -70,7 +73,6 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     _scrollController.dispose();
     _scrolled.dispose();
     _reveal.dispose();
-    _pastHero.dispose();
     super.dispose();
   }
 
@@ -79,8 +81,6 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     final offset = _scrollController.offset;
     _scrolled.value = offset >= 10;
     final viewport = _scrollController.position.viewportDimension;
-    final heroHeight = viewport < 520 ? 520.0 : viewport;
-    _pastHero.value = offset >= heroHeight - 1;
     final span = viewport * 0.6;
     final reveal = span > 0 ? (offset / span).clamp(0.0, 1.0) : 0.0;
     if ((_reveal.value - reveal).abs() > 0.02 || reveal == 0 || reveal == 1) {
@@ -145,6 +145,41 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  /// Plan 93b WP-13: the heart is Like (not Save) and shares state with
+  /// Explore and Search through [spotDiscoveryProvider].
+  Future<void> _setLiked(bool liked) async {
+    if (_isLiked == liked) return;
+    final before = widget.spot.copyWith(liked: _isLiked, likeCount: _likeCount);
+    final wasCount = _likeCount;
+    setState(() {
+      _isLiked = liked;
+      _likeCount = (_likeCount + (liked ? 1 : -1)).clamp(0, 1 << 31);
+    });
+    final notifier = ref.read(spotDiscoveryProvider.notifier);
+    final failure = await notifier.setLiked(before, liked: liked);
+    if (!mounted) return;
+    if (failure != null) {
+      setState(() {
+        _isLiked = !liked;
+        _likeCount = wasCount;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: PixelPalette.ink,
+          content: Text(
+            failure.message,
+            style: const TextStyle(color: PixelPalette.paper),
+          ),
+        ),
+      );
+      return;
+    }
+    final live = notifier.current(before);
+    if (live.liked == _isLiked && live.likeCount != _likeCount) {
+      setState(() => _likeCount = live.likeCount);
+    }
   }
 
   void _shareSpot() {
@@ -245,6 +280,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
             // 2. Story content: scrolls over the stationary photo.
             //    Double-tap anywhere pops a heart.
             TheaterDoubleTapHearts(
+              onDoubleTapLike: () => _setLiked(true),
               child: CustomScrollView(
                 controller: _scrollController,
                 physics: const BouncingScrollPhysics(),
@@ -255,11 +291,8 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                       valueListenable: _scrolled,
                       builder: (context, scrolled, _) => TheaterFirstViewport(
                         spot: spot,
-                        isSaved: _isSaved,
                         // Only whether the page has left the top matters here.
                         scrollOffset: scrolled ? 10 : 0,
-                        onToggleSave: _toggleSaved,
-                        onShare: _shareSpot,
                         onDirections: _openDirections,
                         onPlayQuest: _playQuest,
                       ),
@@ -317,7 +350,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
                         const SizedBox(height: 28),
 
-                        // End panel: photo credit, report problem, safe area
+                        // End panel: photo credit and safe area (Report is in the top bar)
                         _buildEndPanel(context, spot),
 
                         SizedBox(
@@ -329,44 +362,80 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                 ],
               ),
             ),
+            // Plan 93b WP-11: the top bar is always on screen.
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: _pastHero,
-                builder: (context, past, _) => past
-                    ? KeyedSubtree(
-                        key: const Key('theater_pinned_bar'),
-                        child: PixelAppBar(
-                          title: spot.name,
-                          onBack: () => Navigator.of(context).maybePop(),
-                          actions: [
-                            PixelIconButton(
-                              key: const Key('theater_pinned_save'),
-                              icon: _isSaved
-                                  ? DesignerArt.heartLiked
-                                  : DesignerArt.heartUnliked,
-                              semanticLabel: _isSaved
-                                  ? 'Remove from saved spots'
-                                  : 'Save spot',
-                              iconHeight: 20,
-                              style: _isSaved
-                                  ? PixelBoxStyle.red
-                                  : PixelBoxStyle.parchment,
-                              onPressed: _toggleSaved,
-                            ),
-                            PixelIconButton(
-                              key: const Key('theater_pinned_share'),
-                              icon: StudioIcons.share,
-                              semanticLabel: 'Share spot link',
-                              iconHeight: 20,
-                              onPressed: _shareSpot,
-                            ),
-                          ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final actions = <Widget>[
+                    if (spot.media.isNotEmpty)
+                      PixelIconButton(
+                        key: const Key('theater_gallery_btn'),
+                        icon: StudioIcons.gallery,
+                        semanticLabel: 'Open photo gallery',
+                        iconHeight: 20,
+                        onPressed: () => TheaterGalleryDialog.show(
+                          context,
+                          media: spot.media,
                         ),
-                      )
-                    : const SizedBox.shrink(),
+                      ),
+                    PixelIconButton(
+                      key: const Key('theater_like_btn'),
+                      icon: _isLiked
+                          ? DesignerArt.heartLiked
+                          : DesignerArt.heartUnliked,
+                      semanticLabel: _isLiked
+                          ? 'Unlike spot ($_likeCount likes)'
+                          : 'Like spot ($_likeCount likes)',
+                      iconHeight: 20,
+                      style: _isLiked
+                          ? PixelBoxStyle.red
+                          : PixelBoxStyle.parchment,
+                      onPressed: () => _setLiked(!_isLiked),
+                    ),
+                    PixelIconButton(
+                      key: const Key('theater_save_btn'),
+                      icon: _isSaved
+                          ? ExploreArt.bookmarkSaved
+                          : ExploreArt.bookmarkUnsaved,
+                      semanticLabel:
+                          _isSaved ? 'Remove from saved spots' : 'Save spot',
+                      iconHeight: 20,
+                      style: _isSaved
+                          ? PixelBoxStyle.wood
+                          : PixelBoxStyle.parchment,
+                      onPressed: _toggleSaved,
+                    ),
+                    PixelIconButton(
+                      key: const Key('theater_share_btn'),
+                      icon: StudioIcons.share,
+                      semanticLabel: 'Share spot link',
+                      iconHeight: 20,
+                      onPressed: _shareSpot,
+                    ),
+                    PixelIconButton(
+                      key: const Key('theater_report_btn'),
+                      icon: ExploreArt.flag,
+                      semanticLabel: 'Report a problem',
+                      iconHeight: 20,
+                      onPressed: _openReportSheet,
+                    ),
+                  ];
+                  // Narrow phones: the hero block already shows the name, so
+                  // the bar drops its title before the buttons get squeezed.
+                  final roomForTitle =
+                      constraints.maxWidth - (actions.length + 1) * 56 >= 96;
+                  return KeyedSubtree(
+                    key: const Key('theater_pinned_bar'),
+                    child: PixelAppBar(
+                      title: roomForTitle ? spot.name : '',
+                      onBack: () => Navigator.of(context).maybePop(),
+                      actions: actions,
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -409,20 +478,6 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
               ),
             ),
           ],
-          SizedBox(height: grid.px(2)),
-          Row(
-            children: [
-              Expanded(
-                child: PixelButton(
-                  key: const Key('theater_end_report_btn'),
-                  label: 'Report a problem',
-                  variant: PixelButtonVariant.secondary,
-                  expand: true,
-                  onPressed: _openReportSheet,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

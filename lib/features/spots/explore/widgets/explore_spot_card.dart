@@ -8,6 +8,7 @@ import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/pixel/pixel_grid.dart';
 import '../../../../core/pixel/pixel_text.dart';
 import '../../models/spot_model.dart';
+import '../../theater/theater_backdrop.dart';
 import '../explore_art.dart';
 import '../recommendation_reason.dart';
 import '../spot_filter_state.dart';
@@ -21,6 +22,7 @@ class ExploreSpotCard extends StatelessWidget {
     required this.isSaved,
     required this.onTapCard,
     required this.onToggleLike,
+    this.onDoubleTapLike,
     required this.onToggleSave,
     required this.onPlayQuest,
   });
@@ -31,6 +33,9 @@ class ExploreSpotCard extends StatelessWidget {
   final bool isSaved;
   final VoidCallback onTapCard;
   final VoidCallback onToggleLike;
+
+  /// Plan 93b WP-13: double-tapping the photo likes the spot.
+  final VoidCallback? onDoubleTapLike;
   final VoidCallback onToggleSave;
   final VoidCallback? onPlayQuest;
 
@@ -122,32 +127,38 @@ class ExploreSpotCard extends StatelessWidget {
             SizedBox(height: grid.px(2)),
 
             // Photo or 64px placeholder strip
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                pixelTick(context);
-                onTapCard();
-              },
-              child: hasPhoto
-                  ? PixelPanel(
-                      style: PixelBoxStyle.slot.copyWith(
-                        corner: 0,
-                        shadowPx: 0,
-                      ),
-                      padding: 1,
-                      child: AspectRatio(
-                        aspectRatio: 16 / 10,
-                        child: Image.network(
-                          spot.imageUrl!,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.medium,
-                          cacheWidth: cacheWidth > 0 ? cacheWidth : null,
-                          errorBuilder: (_, __, ___) =>
-                              _errorPhotoFallback(context),
+            TheaterDoubleTapHearts(
+              onDoubleTapLike: onDoubleTapLike,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  pixelTick(context);
+                  onTapCard();
+                },
+                // A double-tap handler makes a single tap wait briefly, so the
+                // first tap of a double-tap does not open the spot.
+                onDoubleTap: onDoubleTapLike == null ? null : () {},
+                child: hasPhoto
+                    ? PixelPanel(
+                        style: PixelBoxStyle.slot.copyWith(
+                          corner: 0,
+                          shadowPx: 0,
                         ),
-                      ),
-                    )
-                  : _categoryStripPlaceholder(context),
+                        padding: 1,
+                        child: AspectRatio(
+                          aspectRatio: 16 / 10,
+                          child: Image.network(
+                            spot.imageUrl!,
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.medium,
+                            cacheWidth: cacheWidth > 0 ? cacheWidth : null,
+                            errorBuilder: (_, __, ___) =>
+                                _errorPhotoFallback(context),
+                          ),
+                        ),
+                      )
+                    : _categoryStripPlaceholder(context),
+              ),
             ),
             SizedBox(height: grid.px(2)),
 

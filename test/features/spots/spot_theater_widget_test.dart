@@ -448,7 +448,8 @@ void main() {
       expect(find.textContaining('LIKED'), findsOneWidget);
     });
 
-    testWidgets('pinned bar replaces the scrolled-away hero controls',
+    // Plan 93b WP-11 / WP-13: the bar never scrolls away, and its heart is Like.
+    testWidgets('sticky bar stays on top; heart likes, bookmark saves',
         (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
@@ -458,30 +459,64 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: _fullSpot));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('theater_pinned_bar')), findsNothing);
-
-      await tester.drag(
-        find.byType(CustomScrollView),
-        const Offset(0, -900),
-      );
-      await tester.pumpAndSettle();
-
       final bar = find.byKey(const Key('theater_pinned_bar'));
       expect(bar, findsOneWidget);
       expect(tester.getTopLeft(bar).dy, 0);
-      expect(find.byKey(const Key('theater_pinned_save')), findsOneWidget);
-      expect(find.byKey(const Key('theater_pinned_share')), findsOneWidget);
+      for (final key in const [
+        'theater_gallery_btn',
+        'theater_like_btn',
+        'theater_save_btn',
+        'theater_share_btn',
+        'theater_report_btn',
+      ]) {
+        expect(find.byKey(Key(key)), findsOneWidget, reason: key);
+      }
 
-      await tester.tap(find.byKey(const Key('theater_pinned_save')));
+      PixelIconButton likeBtn() =>
+          tester.widget<PixelIconButton>(find.byKey(const Key('theater_like_btn')));
+      expect(likeBtn().semanticLabel, startsWith('Like spot'));
+      await tester.tap(find.byKey(const Key('theater_like_btn')));
+      await tester.pumpAndSettle();
+      expect(likeBtn().semanticLabel, startsWith('Unlike spot'));
+      // Liking is not saving.
+      expect(find.textContaining('saved places'), findsNothing);
+
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(bar).dy, 0);
+
+      await tester.tap(find.byKey(const Key('theater_save_btn')));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Added "Hundred Islands National Park"'),
         findsOneWidget,
       );
 
-      await tester.tap(find.byKey(const Key('theater_pinned_share')));
+      await tester.tap(find.byKey(const Key('theater_share_btn')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Share link copied:'), findsOneWidget);
+    });
+
+    testWidgets('double-tap pops a heart and likes the spot once',
+        (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_wrapScreen(spot: _fullSpot));
+      await tester.pumpAndSettle();
+
+      PixelIconButton likeBtn() =>
+          tester.widget<PixelIconButton>(find.byKey(const Key('theater_like_btn')));
+      expect(likeBtn().semanticLabel, startsWith('Like spot (0 likes)'));
+      for (var i = 0; i < 2; i++) {
+        await tester.tapAt(const Offset(200, 400));
+        await tester.pump(const Duration(milliseconds: 80));
+        await tester.tapAt(const Offset(200, 400));
+        await tester.pumpAndSettle();
+      }
+      expect(likeBtn().semanticLabel, 'Unlike spot (1 likes)');
     });
 
     testWidgets('one photo is singular and credits strip the PHOTO: prefix',
@@ -501,8 +536,8 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: spot));
       await tester.pumpAndSettle();
 
-      expect(find.text('1 PHOTO'), findsOneWidget);
-      expect(find.text('1 PHOTOS'), findsNothing);
+      // Plan 93b WP-11: the gallery is an icon button in the sticky bar.
+      expect(find.byKey(const Key('theater_gallery_btn')), findsOneWidget);
       expect(find.textContaining('PHOTO: BIANCABRAZAL'), findsNothing);
 
       await tester.scrollUntilVisible(
@@ -552,16 +587,9 @@ void main() {
       );
       expect(find.byKey(const ValueKey('spot_report')), findsNothing);
 
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('theater_end_report_btn')),
-        500,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.byKey(const Key('theater_end_report_btn')), findsOneWidget);
-      final reportBtn = tester.widget<PixelButton>(
-        find.byKey(const Key('theater_end_report_btn')),
-      );
-      expect(reportBtn.variant, PixelButtonVariant.secondary);
+      // Plan 93b WP-11: Report moved from the end panel to the sticky bar.
+      expect(find.byKey(const Key('theater_end_report_btn')), findsNothing);
+      expect(find.byKey(const Key('theater_report_btn')), findsOneWidget);
     });
 
     testWidgets(
