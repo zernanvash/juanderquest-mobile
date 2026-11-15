@@ -153,6 +153,12 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
         municipalityOptions.contains(_selectedMunicipality)
             ? _selectedMunicipality
             : 'All Municipalities';
+    final activeFilters = [
+      _selectedCategory != 'all',
+      selectedMunicipality != 'All Municipalities',
+      _quietOnly,
+      _questsOnly,
+    ].where((on) => on).length;
 
     final filteredSpots = spots.where((spot) {
       final matchesQuery = query.isEmpty ||
@@ -202,13 +208,33 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [
-                        PixelTextField(
-                          key: const ValueKey('search_field'),
-                          controller: _searchController,
-                          focusNode: _focusNode,
-                          label: 'Search places, food, beaches',
-                          hint: 'Type a place or experience',
-                          onChanged: _onSearchChanged,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: PixelTextField(
+                                key: const ValueKey('search_field'),
+                                controller: _searchController,
+                                focusNode: _focusNode,
+                                label: 'Search places, food, beaches',
+                                hint: 'Type a place or experience',
+                                onChanged: _onSearchChanged,
+                              ),
+                            ),
+                            SizedBox(width: grid.px(2)),
+                            PixelButton(
+                              key: const ValueKey('search_filters_button'),
+                              label: activeFilters == 0
+                                  ? 'Filters'
+                                  : 'Filters ($activeFilters)',
+                              variant: PixelButtonVariant.secondary,
+                              style: activeFilters == 0
+                                  ? PixelBoxStyle.parchment
+                                  : PixelBoxStyle.gold,
+                              onPressed: () =>
+                                  _openFilterSheet(municipalityOptions),
+                            ),
+                          ],
                         ),
                         if (query.isNotEmpty) ...[
                           SizedBox(height: grid.px(1)),
@@ -225,49 +251,65 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                             ),
                           ),
                         ],
-                        SizedBox(height: grid.px(3)),
-                        Text('Categories', style: PixelType.title(context)),
-                        SizedBox(height: grid.px(1)),
-                        Wrap(
-                          spacing: grid.px(1),
-                          runSpacing: grid.px(1),
-                          children: [
-                            for (final cat in _categories)
-                              GestureDetector(
-                                key: ValueKey('search_cat_${cat['id']}'),
-                                onTap: () => setState(
-                                  () => _selectedCategory = cat['id']!,
-                                ),
-                                child: PixelPanel(
-                                  style: _selectedCategory == cat['id']
-                                      ? PixelBoxStyle.green
-                                      : PixelBoxStyle.parchment,
-                                  padding: 1,
-                                  child: Text(
-                                    cat['label']!,
-                                    style: PixelType.small(
-                                      context,
-                                      color: _selectedCategory == cat['id']
-                                          ? PixelPalette.white
-                                          : PixelPalette.ink,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        SizedBox(height: grid.px(3)),
-                        if (query.isEmpty && featuredSearches.isNotEmpty) ...[
-                          Text(
-                            'Explore Current Destinations',
-                            style: PixelType.title(context),
-                          ),
-                          SizedBox(height: grid.px(1)),
+                        if (activeFilters > 0) ...[
+                          SizedBox(height: grid.px(2)),
                           Wrap(
                             spacing: grid.px(1),
                             runSpacing: grid.px(1),
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              for (final term in featuredSearches)
+                              if (_selectedCategory != 'all')
+                                _activePill(
+                                  context,
+                                  key: const ValueKey('search_pill_category'),
+                                  label: _categoryLabel(_selectedCategory),
+                                  onClear: () =>
+                                      setState(() => _selectedCategory = 'all'),
+                                ),
+                              if (selectedMunicipality != 'All Municipalities')
+                                _activePill(
+                                  context,
+                                  key: const ValueKey('search_pill_town'),
+                                  label: selectedMunicipality,
+                                  onClear: () => setState(() =>
+                                      _selectedMunicipality =
+                                          'All Municipalities'),
+                                ),
+                              if (_quietOnly)
+                                _activePill(
+                                  context,
+                                  key: const ValueKey('search_pill_quiet'),
+                                  label: 'Low Crowd Only',
+                                  onClear: () =>
+                                      setState(() => _quietOnly = false),
+                                ),
+                              if (_questsOnly)
+                                _activePill(
+                                  context,
+                                  key: const ValueKey('search_pill_quests'),
+                                  label: 'Quests Only',
+                                  onClear: () =>
+                                      setState(() => _questsOnly = false),
+                                ),
+                              PixelButton(
+                                key: const ValueKey('search_clear_all'),
+                                label: 'Clear all',
+                                variant: PixelButtonVariant.secondary,
+                                onPressed: _clearFilters,
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (query.isEmpty &&
+                            activeFilters == 0 &&
+                            featuredSearches.isNotEmpty) ...[
+                          SizedBox(height: grid.px(2)),
+                          Wrap(
+                            key: const ValueKey('search_trending'),
+                            spacing: grid.px(1),
+                            runSpacing: grid.px(1),
+                            children: [
+                              for (final term in featuredSearches.take(5))
                                 GestureDetector(
                                   onTap: () {
                                     _searchController.text = term;
@@ -284,60 +326,12 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                                 ),
                             ],
                           ),
-                          SizedBox(height: grid.px(3)),
                         ],
-                        _municipalityField(
-                          context,
-                          grid,
-                          selectedMunicipality,
-                          municipalityOptions,
-                        ),
-                        SizedBox(height: grid.px(2)),
-                        Wrap(
-                          spacing: grid.px(2),
-                          runSpacing: grid.px(2),
-                          children: [
-                            _toggle(
-                              context,
-                              grid,
-                              key: const ValueKey('search_quiet'),
-                              label: 'Low Crowd Only',
-                              on: _quietOnly,
-                              onTap: () =>
-                                  setState(() => _quietOnly = !_quietOnly),
-                            ),
-                            _toggle(
-                              context,
-                              grid,
-                              key: const ValueKey('search_quests'),
-                              label: 'Quests Only',
-                              on: _questsOnly,
-                              onTap: () =>
-                                  setState(() => _questsOnly = !_questsOnly),
-                            ),
-                          ],
-                        ),
                         SizedBox(height: grid.px(3)),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${filteredSpots.length} Results Found',
-                                style: PixelType.title(context),
-                              ),
-                            ),
-                            if (_selectedCategory != 'all' ||
-                                _selectedMunicipality != 'All Municipalities' ||
-                                _quietOnly ||
-                                _questsOnly ||
-                                query.isNotEmpty)
-                              PixelButton(
-                                key: const ValueKey('search_clear_all'),
-                                label: 'Clear All Filters',
-                                variant: PixelButtonVariant.secondary,
-                                onPressed: _clearFilters,
-                              ),
-                          ],
+                        Text(
+                          '${filteredSpots.length} Places',
+                          key: const ValueKey('search_result_count'),
+                          style: PixelType.title(context),
                         ),
                         SizedBox(height: grid.px(2)),
                         if (filteredSpots.isEmpty)
@@ -368,39 +362,224 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
     );
   }
 
-  Widget _municipalityField(
-    BuildContext context,
-    PixelGrid grid,
-    String selected,
-    List<String> options,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'MUNICIPALITY',
-          style: PixelType.small(context, color: PixelPalette.slate),
+  String _categoryLabel(String id) => _categories.firstWhere(
+        (c) => c['id'] == id,
+        orElse: () => _categories.first,
+      )['label']!;
+
+  Widget _activePill(
+    BuildContext context, {
+    required Key key,
+    required String label,
+    required VoidCallback onClear,
+  }) {
+    return GestureDetector(
+      key: key,
+      onTap: onClear,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40),
+        child: PixelPanel(
+          style: PixelBoxStyle.gold,
+          padding: 1,
+          child: Text(
+            '$label  x',
+            style: PixelType.small(context, color: PixelPalette.ink),
+          ),
         ),
-        SizedBox(height: grid.px(1)),
-        Wrap(
-          spacing: grid.px(1),
-          runSpacing: grid.px(1),
-          children: [
-            for (final name in options)
-              GestureDetector(
-                onTap: () => setState(() => _selectedMunicipality = name),
+      ),
+    );
+  }
+
+  Widget _sheetChip(
+    BuildContext context, {
+    required Key key,
+    required String label,
+    required bool on,
+    required VoidCallback onTap,
+    required PixelBoxStyle onStyle,
+    Color onText = PixelPalette.ink,
+  }) {
+    return GestureDetector(
+      key: key,
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40),
+        child: PixelPanel(
+          style: on ? onStyle : PixelBoxStyle.parchment,
+          padding: 1,
+          child: Text(
+            label,
+            style: PixelType.small(
+              context,
+              color: on ? onText : PixelPalette.ink,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Plan 93b WP-3: every filter lives in one on-demand sheet.
+  Future<void> _openFilterSheet(List<String> municipalityOptions) async {
+    var category = _selectedCategory;
+    var municipality = municipalityOptions.contains(_selectedMunicipality)
+        ? _selectedMunicipality
+        : 'All Municipalities';
+    var quiet = _quietOnly;
+    var quests = _questsOnly;
+    final applied = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) {
+          final grid = PixelGrid.of(sheetContext);
+          return Theme(
+            data: AppTheme.pixel,
+            child: SafeArea(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.85,
+                ),
                 child: PixelPanel(
-                  style: selected == name
-                      ? PixelBoxStyle.gold
-                      : PixelBoxStyle.parchment,
-                  padding: 1,
-                  child: Text(name, style: PixelType.small(context)),
+                  key: const ValueKey('search_filter_sheet'),
+                  style: PixelBoxStyle.parchment,
+                  padding: 2,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Category',
+                                style: PixelType.title(sheetContext),
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Wrap(
+                                spacing: grid.px(1),
+                                runSpacing: grid.px(1),
+                                children: [
+                                  for (final cat in _categories)
+                                    _sheetChip(
+                                      sheetContext,
+                                      key: ValueKey('search_cat_${cat['id']}'),
+                                      label: cat['label']!,
+                                      on: category == cat['id'],
+                                      onTap: () => setSheet(
+                                        () => category = cat['id']!,
+                                      ),
+                                      onStyle: PixelBoxStyle.green,
+                                      onText: PixelPalette.white,
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: grid.px(3)),
+                              Text(
+                                'Municipality',
+                                style: PixelType.title(sheetContext),
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Wrap(
+                                spacing: grid.px(1),
+                                runSpacing: grid.px(1),
+                                children: [
+                                  for (final name in municipalityOptions)
+                                    _sheetChip(
+                                      sheetContext,
+                                      key: ValueKey('search_town_$name'),
+                                      label: name,
+                                      on: municipality == name,
+                                      onTap: () =>
+                                          setSheet(() => municipality = name),
+                                      onStyle: PixelBoxStyle.gold,
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: grid.px(3)),
+                              Text(
+                                'Options',
+                                style: PixelType.title(sheetContext),
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Wrap(
+                                spacing: grid.px(2),
+                                runSpacing: grid.px(2),
+                                children: [
+                                  _toggle(
+                                    sheetContext,
+                                    grid,
+                                    key: const ValueKey('search_quiet'),
+                                    label: 'Low Crowd Only',
+                                    on: quiet,
+                                    onTap: () => setSheet(() => quiet = !quiet),
+                                  ),
+                                  _toggle(
+                                    sheetContext,
+                                    grid,
+                                    key: const ValueKey('search_quests'),
+                                    label: 'Quests Only',
+                                    on: quests,
+                                    onTap: () =>
+                                        setSheet(() => quests = !quests),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: grid.px(2)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: PixelButton(
+                              key: const ValueKey('search_filter_reset'),
+                              label: 'Reset',
+                              variant: PixelButtonVariant.secondary,
+                              expand: true,
+                              onPressed: () => setSheet(() {
+                                category = 'all';
+                                municipality = 'All Municipalities';
+                                quiet = false;
+                                quests = false;
+                              }),
+                            ),
+                          ),
+                          SizedBox(width: grid.px(2)),
+                          Expanded(
+                            child: PixelButton(
+                              key: const ValueKey('search_filter_apply'),
+                              label: 'Apply',
+                              expand: true,
+                              onPressed: () =>
+                                  Navigator.of(sheetContext).pop(true),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-          ],
-        ),
-      ],
+            ),
+          );
+        },
+      ),
     );
+    if (applied == true && mounted) {
+      setState(() {
+        _selectedCategory = category;
+        _selectedMunicipality = municipality;
+        _quietOnly = quiet;
+        _questsOnly = quests;
+      });
+    }
   }
 
   Widget _toggle(

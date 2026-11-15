@@ -761,12 +761,21 @@ void main() {
           spots: (ref) => fixture = _SpotsFixture(ref, _spotsState));
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Patar Beach'), findsWidgets);
+      // Plan 93b WP-3: filters live in an on-demand sheet.
+      expect(find.byKey(const ValueKey('search_cat_eat_drink')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('search_filters_button')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('search_cat_eat_drink')));
       await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('search_filter_apply')));
+      await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('search_empty')), findsOneWidget);
+      expect(find.text('Filters (1)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('search_pill_category')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('search_clear_all')));
       await tester.pump();
       expect(find.text('Patar Beach'), findsWidgets);
+      expect(find.byKey(const ValueKey('search_pill_category')), findsNothing);
       await tester.tap(find.byKey(const ValueKey('search_like_s1')));
       await tester.pump();
       await tester.tap(find.byKey(const ValueKey('search_save_s1')));
@@ -784,6 +793,24 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('route:/navigate', skipOffstage: false), findsOneWidget);
+    });
+
+    testWidgets('filter sheet Reset clears choices before Apply',
+        (tester) async {
+      await _pump(tester, const SpotSearchScreen(),
+          spots: (ref) => _SpotsFixture(ref, _spotsState));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byKey(const ValueKey('search_filters_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('search_quiet')));
+      await tester.tap(find.byKey(const ValueKey('search_quests')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('search_filter_reset')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('search_filter_apply')));
+      await tester.pumpAndSettle();
+      expect(find.text('Filters'), findsOneWidget);
+      expect(find.byKey(const ValueKey('search_clear_all')), findsNothing);
     });
 
     testWidgets('hides test spots until the developer switch is on',
@@ -830,16 +857,19 @@ void main() {
       expect(find.text('ARTEST Spot'), findsWidgets);
     });
 
-    testWidgets('starts with categories above destinations and no keyboard',
+    testWidgets('starts with the search bar and results, no chip wall, no keyboard',
         (tester) async {
       await _pump(tester, const SpotSearchScreen(),
           spots: (ref) => _SpotsFixture(ref, _spotsState));
       await tester.pump(const Duration(milliseconds: 100));
 
-      final categories = tester.getTopLeft(find.text('Categories'));
-      final destinations =
-          tester.getTopLeft(find.text('Explore Current Destinations'));
-      expect(categories.dy, lessThan(destinations.dy));
+      expect(find.text('Categories'), findsNothing);
+      expect(find.text('MUNICIPALITY'), findsNothing);
+      expect(find.byKey(const ValueKey('search_filters_button')), findsOneWidget);
+      final count = tester.getTopLeft(
+          find.byKey(const ValueKey('search_result_count')));
+      final bar = tester.getTopLeft(find.byKey(const ValueKey('search_field')));
+      expect(bar.dy, lessThan(count.dy));
 
       final field = find.descendant(
         of: find.byKey(const ValueKey('search_field')),
