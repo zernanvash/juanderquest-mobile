@@ -110,6 +110,10 @@ import 'package:juanderquest_app/features/shop/models/cosmetic_item.dart';
 import 'package:juanderquest_app/features/quests/screens/quest_builder_screen.dart';
 import 'package:juanderquest_app/features/quests/screens/qr_sheet_screen.dart';
 import 'package:juanderquest_app/features/quests/builder/quest_builder_repository.dart';
+import 'package:juanderquest_app/features/merchant/models/merchant_models.dart';
+import 'package:juanderquest_app/features/merchant/providers/merchant_hub_provider.dart';
+import 'package:juanderquest_app/features/merchant/screens/affiliate_pending_screen.dart';
+import 'package:juanderquest_app/features/merchant/screens/merchant_dashboard_screen.dart';
 
 // Inert Subclasses to prevent Dio/network calls and pending timers
 class _MockQuestBuilderRepo extends QuestBuilderRepository {
@@ -686,6 +690,30 @@ void main() {
               child is BadgesScreen ||
               child is SpotDetailScreen)
             apiClientProvider.overrideWithValue(affiliateApi),
+          // Plan 95: the widest status (long reviewer note) and dashboard.
+          if (child is AffiliatePendingScreen)
+            merchantHubStatusProvider.overrideWith(
+              (ref) async => MerchantHubStatus.fromResponse(const {
+                'data': {
+                  'id': 'app-1',
+                  'status': 'needs_changes',
+                  'business_name': 'Bonuan Waterfront Bangus Grill and Pasalubong Center',
+                  'category': 'dining',
+                  'municipality': 'Dagupan City',
+                  'business_province': 'Pangasinan',
+                  'gps_lat': 16.0754,
+                  'gps_lng': 120.3421,
+                  'contact_name': 'Maria Santos',
+                  'contact_email': 'maria.santos@bonuan-grill.example',
+                  'contact_phone': '09170000000',
+                  'sponsorship_goals': ['quest_stop', 'voucher_perk', 'map_pin'],
+                  'applicant_feedback':
+                      'Please move the map pin to the exact storefront along Tondaligan Road and include a working contact phone.',
+                },
+              }),
+            ),
+          if (child is MerchantDashboardScreen)
+            merchantApiProvider.overrideWithValue(_OverflowMerchantApi()),
           dailyMissionFetcherProvider.overrideWithValue(() async => false),
           homeDailyProvider.overrideWith(
             (ref) async => const HomeDailyState(
@@ -907,6 +935,18 @@ void main() {
       await testScreenOverflow(tester, const AffiliateApplicationScreen(),
           const Size(568, 320), 1.4);
     });
+    for (final size in const [Size(320, 568), Size(568, 320)]) {
+      testWidgets('AffiliatePendingScreen does not overflow at $size',
+          (tester) async {
+        await testScreenOverflow(
+            tester, const AffiliatePendingScreen(), size, 2.0);
+      });
+      testWidgets('MerchantDashboardScreen does not overflow at $size',
+          (tester) async {
+        await testScreenOverflow(
+            tester, const MerchantDashboardScreen(), size, 2.0);
+      });
+    }
     testWidgets('DashboardScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
@@ -2856,4 +2896,34 @@ class _FixedQuizRadarNotifier extends QuizRadarNotifier {
 
   @override
   Future<void> refreshFromHome({bool force = false}) async {}
+}
+
+/// Plan 95: a long-named merchant with an unfinished checklist.
+class _OverflowMerchantApi extends MerchantApi {
+  _OverflowMerchantApi() : super(ApiClient(enableRetries: false));
+
+  @override
+  Future<MerchantDashboardData> dashboard() async =>
+      MerchantDashboardData.fromJson(const {
+        'merchant': {
+          'name': 'Bonuan Waterfront Bangus Grill and Pasalubong Center',
+          'category': 'dining',
+          'municipality': 'Dagupan City',
+          'is_published': false,
+        },
+        'counts': {'active_products': 12},
+        'checklist': {
+          'items': [
+            {'id': 'profile_info', 'title': 'Review business info & address', 'completed': true},
+            {'id': 'profile_contact', 'title': 'Confirm contact details', 'completed': true},
+            {'id': 'profile_photo', 'title': 'Upload logo or banner photo', 'completed': false},
+            {'id': 'catalog_item', 'title': 'Add your first product or specialty', 'completed': false},
+            {'id': 'publish_profile', 'title': 'Publish merchant showcase profile', 'completed': false},
+          ],
+        },
+        'truthful_notice': {
+          'statement':
+              'Visitor engagement metrics, point staking, and live automated checkout are deferred.',
+        },
+      });
 }

@@ -28,6 +28,8 @@ import '../features/settings/screens/settings_developer_screen.dart';
 import '../features/pixel_lab/pixel_lab_screen.dart';
 import '../features/cosmetics/screens/appearance_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
+import '../features/merchant/screens/affiliate_pending_screen.dart';
+import '../features/merchant/screens/merchant_dashboard_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
 import '../features/juanchoice/screens/juanchoice_screen.dart';
@@ -344,7 +346,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (context, state) => const WalletConnectScreen()),
       GoRoute(
           path: '/affiliate',
-          builder: (context, state) => const AffiliateApplicationScreen()),
+          builder: (context, state) => AffiliateApplicationScreen(
+              edit: state.uri.queryParameters['edit'] == '1')),
+      // Plan 95: application status and the approved merchant workspace.
+      GoRoute(
+          path: '/affiliate/pending',
+          builder: (context, state) => const AffiliatePendingScreen()),
+      GoRoute(
+          path: '/merchant',
+          builder: (context, state) => MerchantDashboardScreen(
+              initialTab: state.uri.queryParameters['tab'] ?? 'overview')),
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) => buildDirectionalSlidePage(

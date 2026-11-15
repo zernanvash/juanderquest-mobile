@@ -20,6 +20,8 @@ import '../../app_update/providers/app_update_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../dashboard/home_tips.dart';
+import '../../merchant/models/merchant_models.dart';
+import '../../merchant/providers/merchant_hub_provider.dart';
 import '../home_town.dart';
 
 /// Settings home: short categories that open their own pages, so a new
@@ -29,6 +31,8 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final merchantHub = ref.watch(merchantHubStatusProvider).valueOrNull ??
+        MerchantHubStatus.none;
     final user = ref.watch(authProvider).user;
     final updateState = ref.watch(appUpdateProvider);
     final version =
@@ -111,10 +115,9 @@ class SettingsScreen extends ConsumerWidget {
                               key: const ValueKey('settings_affiliate'),
                               icon: 'M',
                               pixelIcon: DesignerArt.salakot,
-                              title: 'Merchant affiliate',
-                              subtitle:
-                                  'Apply to take part in tourism promotions',
-                              onTap: () => context.push('/affiliate'),
+                              title: merchantHub.label,
+                              subtitle: merchantHub.subtitle,
+                              onTap: () => context.push(merchantHub.route),
                             ),
                           ]),
                           _SettingsGroup(title: 'APP', tiles: [

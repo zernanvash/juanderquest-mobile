@@ -19,6 +19,8 @@ import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/passport_preview.dart';
 import '../../cosmetics/widgets/profile_banner.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
+import '../../merchant/models/merchant_models.dart';
+import '../../merchant/providers/merchant_hub_provider.dart';
 import '../../wallet/screens/wallet_connect_screen.dart';
 import '../models/cosmetic_item.dart';
 import '../models/shop_teaser.dart';
@@ -436,7 +438,55 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               ),
             ),
           ),
+        _merchantHubCard(context, grid),
       ],
+    );
+  }
+
+  /// Plan 95: the 5th storefront card opens the merchant journey at the
+  /// step this traveler is on.
+  Widget _merchantHubCard(BuildContext context, PixelGrid grid) {
+    final hub =
+        ref.watch(merchantHubStatusProvider).valueOrNull ?? MerchantHubStatus.none;
+    return GestureDetector(
+      key: const ValueKey('shop_merchant_hub_button'),
+      onTap: () {
+        pixelTick(context);
+        context.push(hub.route);
+      },
+      child: PixelPanel(
+        style: PixelBoxStyle.wood.copyWith(corner: 1, shadowPx: 1),
+        padding: 1,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: grid.px(2),
+            vertical: grid.px(1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox.square(
+                dimension: 16,
+                child: FittedBox(
+                  child: PixelSprite(DesignerArt.salakot, scale: 1),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              Flexible(
+                child: Text(
+                  hub.state == MerchantHubState.none ||
+                          hub.state == MerchantHubState.rejected
+                      ? 'Merchant hub'
+                      : hub.label,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  style: PixelType.small(context, color: PixelPalette.paper),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
