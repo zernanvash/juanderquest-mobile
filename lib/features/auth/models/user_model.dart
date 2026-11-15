@@ -41,6 +41,13 @@ class UserModel {
         RegExp(r'^usr-[0-9a-f-]+$', caseSensitive: false).hasMatch(raw)) {
       return null;
     }
+    // Plan 93b WP-1.3: wallet-derived ids show as @0xFAdD…9671 (display only).
+    final wallet = RegExp(r'^(?:wallet:)?(0x[0-9a-f]{40})$', caseSensitive: false)
+        .firstMatch(raw);
+    if (wallet != null) {
+      final address = wallet.group(1)!;
+      return '@${address.substring(0, 6)}…${address.substring(address.length - 4)}';
+    }
     return '@$raw';
   }
 

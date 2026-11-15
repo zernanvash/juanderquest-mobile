@@ -622,7 +622,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     final hasMedia = _mediaFile != null || _mediaUrl != null;
     return StudioSection(
       step: 2,
-      title: 'Photos',
+      title: 'Cover photo',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -695,7 +695,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
               )
             : _mediaUrl != null
                 ? Image.network(
-                    _mediaUrl!,
+                    SpotModel.resolveImageUrl(_mediaUrl!),
                     fit: BoxFit.cover,
                     filterQuality: FilterQuality.medium,
                     errorBuilder: (_, __, ___) => const Center(

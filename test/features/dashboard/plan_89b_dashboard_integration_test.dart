@@ -402,14 +402,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('WK'), findsOneWidget);
 
-    // Filter to EVENT and tap NEXT EVENT to jump to the dated campaign
-    await tester.ensureVisible(find.text('EVENT'));
-    await tester.tap(find.text('EVENT'));
-    await tester.pumpAndSettle();
-
+    // Plan 93b WP-1: no filter strip; NEXT EVENT jumps to the dated campaign.
     final nextEventBtn = find.byKey(const ValueKey('home_calendar_next_event'));
     expect(nextEventBtn, findsOneWidget);
     await tester.ensureVisible(nextEventBtn);
+    await tester.pumpAndSettle();
     await tester.tap(nextEventBtn);
     await tester.pumpAndSettle();
     expect(find.textContaining('Bangus Festival Cleanup'), findsWidgets);

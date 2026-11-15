@@ -255,11 +255,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('home_tile_merchants')));
     expect(navigatedTo, '/affiliate');
 
-    await tester.tap(find.text('TOWN'));
-    await tester.pump();
+    // Plan 93b WP-1: no category filter; every tile stays visible.
+    expect(find.text('TOWN'), findsNothing);
     expect(find.byKey(const ValueKey('home_tile_plaza')), findsOneWidget);
     expect(find.byKey(const ValueKey('home_tile_merchants')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_tile_quizzes')), findsNothing);
   });
 
   testWidgets('WP-4: HomeDualBentoRow renders recommended quest & daily claim key',
@@ -352,9 +351,8 @@ void main() {
       findsOneWidget,
     );
 
-    // Filter to VOTE -> Nov 14 has no vote, so NEXT EVENT > appears
-    await tester.tap(find.text('VOTE'));
-    await tester.pump();
+    // Plan 93b WP-1: no filter strip. Nov 14 has only the month-only fiesta,
+    // so NEXT EVENT > still appears.
     expect(
       find.byKey(const ValueKey('home_calendar_next_event')),
       findsOneWidget,
@@ -602,15 +600,9 @@ void main() {
       expect(goGestureSize.width >= 44, isTrue);
       expect(goGestureSize.height >= 32, isTrue);
 
-      // Verify calendar filter chip ('VOTE') and grid category chip ('PLAY') hit size >= 44x32
-      for (final chipLabel in const ['VOTE', 'PLAY']) {
-        final chipGesture = find.ancestor(
-          of: find.text(chipLabel),
-          matching: find.byType(GestureDetector),
-        );
-        final chipSize = tester.getSize(chipGesture.first);
-        expect(chipSize.width >= 44, isTrue, reason: '$chipLabel width < 44');
-        expect(chipSize.height >= 32, isTrue, reason: '$chipLabel height < 32');
+      // Plan 93b WP-1: the calendar and Main Menu filter chips are gone.
+      for (final chipLabel in const ['ALL', 'PLAY', 'TOWN', 'LOGS', 'STREAK']) {
+        expect(find.text(chipLabel), findsNothing);
       }
     },
   );

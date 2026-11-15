@@ -11,8 +11,6 @@ import '../models/home_calendar_entry.dart';
 import '../pixel/home_pixel_art.dart';
 import '../providers/home_calendar_provider.dart';
 
-enum CalendarFilter { all, voting, campaign, festival, stampStreak }
-
 /// Concept B Band 4: Pangasinan Chrono-Almanac Calendar.
 ///
 /// Defaults to a compact 7-day Week Strip and expands in-place to a 7-column
@@ -37,7 +35,6 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
   late DateTime _viewMonth;
   bool _monthExpanded = false;
   bool _agendaExpanded = false;
-  CalendarFilter _filter = CalendarFilter.all;
 
   static const _greenDeepStyle = PixelBoxStyle(
     fill: PixelPalette.greenDeep,
@@ -77,16 +74,6 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
     }
   }
 
-  bool _matchesFilter(HomeCalendarEntry e) {
-    return switch (_filter) {
-      CalendarFilter.all => true,
-      CalendarFilter.voting => e.kind == CalendarEntryKind.voting,
-      CalendarFilter.campaign => e.kind == CalendarEntryKind.campaign,
-      CalendarFilter.festival => e.kind == CalendarEntryKind.festival,
-      CalendarFilter.stampStreak => e.kind == CalendarEntryKind.stampStreak,
-    };
-  }
-
   List<DateTime> _weekDaysFor(DateTime anchor) {
     final monday = anchor.subtract(Duration(days: anchor.weekday - 1));
     return List.generate(7, (i) => monday.add(Duration(days: i)));
@@ -121,10 +108,9 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
   }
 
   void _jumpToNextEvent(List<HomeCalendarEntry> allEntries) {
-    final filtered = allEntries.where(_matchesFilter).toList();
     DateTime? bestDate;
 
-    for (final e in filtered) {
+    for (final e in allEntries) {
       if (e.monthOnly) {
         final anchor = DateTime(e.startDate.year, e.startDate.month, 1);
         if (anchor.isAfter(_selectedDate)) {
@@ -177,9 +163,8 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
           if (!primaryEntries.any((p) => p.id == e.id)) e,
       ],
     ];
-    final filtered = entries.where(_matchesFilter).toList();
 
-    final monthFestivals = filtered
+    final monthFestivals = entries
         .where(
           (e) =>
               e.kind == CalendarEntryKind.festival &&
@@ -187,7 +172,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
         )
         .toList();
 
-    final dayEntries = filtered.where((e) => e.spansDay(_selectedDate)).toList();
+    final dayEntries = entries.where((e) => e.spansDay(_selectedDate)).toList();
     final agendaItems = <HomeCalendarEntry>[
       ...dayEntries,
       ...monthFestivals,
@@ -280,40 +265,6 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
             ),
           ],
           SizedBox(height: grid.px(1)),
-          // Filter pills
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              _FilterChip(
-                label: 'ALL',
-                active: _filter == CalendarFilter.all,
-                onTap: () => setState(() => _filter = CalendarFilter.all),
-              ),
-              _FilterChip(
-                label: 'VOTE',
-                active: _filter == CalendarFilter.voting,
-                onTap: () => setState(() => _filter = CalendarFilter.voting),
-              ),
-              _FilterChip(
-                label: 'EVENT',
-                active: _filter == CalendarFilter.campaign,
-                onTap: () => setState(() => _filter = CalendarFilter.campaign),
-              ),
-              _FilterChip(
-                label: 'FIESTA',
-                active: _filter == CalendarFilter.festival,
-                onTap: () => setState(() => _filter = CalendarFilter.festival),
-              ),
-              _FilterChip(
-                label: 'STREAK',
-                active: _filter == CalendarFilter.stampStreak,
-                onTap: () =>
-                    setState(() => _filter = CalendarFilter.stampStreak),
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(1)),
           // Day of week header
           const Row(
             children: [
@@ -329,9 +280,9 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
           const SizedBox(height: 2),
           // Week strip or full month grid
           if (!_monthExpanded)
-            _buildWeekRow(_weekDaysFor(_selectedDate), filtered, today)
+            _buildWeekRow(_weekDaysFor(_selectedDate), entries, today)
           else
-            _buildMonthGrid(_monthCellsFor(_viewMonth), filtered, today),
+            _buildMonthGrid(_monthCellsFor(_viewMonth), entries, today),
           SizedBox(height: grid.px(1)),
           // Selected day & month agenda
           Container(
@@ -434,6 +385,18 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                               context,
                               color: PixelPalette.sun,
                             ).copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      // Plan 93b WP-1: with no filter strip, month-only fiestas
+                      // fill the agenda; keep NEXT EVENT for days with no dated entry.
+                      if (dayEntries.isEmpty)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: _MiniCalButton(
+                            key: const ValueKey('home_calendar_next_event'),
+                            label: 'NEXT EVENT >',
+                            active: true,
+                            onTap: () => _jumpToNextEvent(entries),
                           ),
                         ),
                     ],
@@ -684,51 +647,6 @@ class _MiniCalButton extends StatelessWidget {
               ),
             ),
             alignment: Alignment.center,
-            child: Text(
-              label,
-              style: PixelType.small(
-                context,
-                color: active ? PixelPalette.ink : PixelPalette.cream,
-              ).copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 32),
-        child: Center(
-          widthFactor: 1,
-          heightFactor: 1,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 24),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(
-              color: active ? PixelPalette.sun : PixelPalette.greenDark,
-              border: Border.all(
-                color: active ? PixelPalette.ink : PixelPalette.greenMid,
-                width: 1,
-              ),
-            ),
             child: Text(
               label,
               style: PixelType.small(

@@ -10,14 +10,11 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../spots/explore/explore_art.dart';
 import '../../vote/pixel/wave3_art.dart';
 
-enum CommandTileCategory { all, play, town, logs }
-
 class _CommandTileSpec {
   const _CommandTileSpec({
     required this.key,
     required this.label,
     required this.icon,
-    required this.category,
     this.badge,
     this.badgeLive = false,
     this.subtitle,
@@ -30,7 +27,6 @@ class _CommandTileSpec {
   final PixelArt icon;
   final String? badge;
   final bool badgeLive;
-  final CommandTileCategory category;
   final String? subtitle;
   final String? route;
   final VoidCallback? onTap;
@@ -61,8 +57,6 @@ class HomeCommandGrid extends StatefulWidget {
 }
 
 class _HomeCommandGridState extends State<HomeCommandGrid> {
-  CommandTileCategory _category = CommandTileCategory.all;
-
   static const _creamPanel = PixelBoxStyle(
     fill: PixelPalette.cream,
     highlight: PixelPalette.white,
@@ -79,21 +73,19 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
   }
 
   List<_CommandTileSpec> _tiles(BuildContext context) {
-    final all = <_CommandTileSpec>[
+    return <_CommandTileSpec>[
       _CommandTileSpec(
         key: const ValueKey('home_menu_quests'),
         label: 'QUESTS',
         subtitle:
             '${widget.activeQuestsCount} active · ${widget.savedCount} saved',
         icon: DesignerArt.questMarker,
-        category: CommandTileCategory.play,
         route: '/quests',
       ),
       const _CommandTileSpec(
         key: ValueKey('home_tile_merchants'),
         label: 'MERCHANTS',
         icon: DesignerArt.salakot,
-        category: CommandTileCategory.town,
         route: '/affiliate',
       ),
       _CommandTileSpec(
@@ -102,21 +94,18 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         icon: DesignerArt.juanChoice,
         badge: widget.voteLive ? 'LIVE' : 'SOON',
         badgeLive: widget.voteLive,
-        category: CommandTileCategory.town,
         route: '/choice',
       ),
       const _CommandTileSpec(
         key: ValueKey('home_tile_plaza'),
         label: 'PLAZA',
         icon: DesignerArt.plazaTrophy,
-        category: CommandTileCategory.town,
         route: '/plaza',
       ),
       _CommandTileSpec(
         key: const ValueKey('home_tile_quizzes'),
         label: 'QUIZZES',
         icon: DesignerArt.questionMark,
-        category: CommandTileCategory.play,
         onTap: widget.onOpenQuizzes,
       ),
       const _CommandTileSpec(
@@ -124,27 +113,21 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         label: '+ SPOT',
         icon: DesignerArt.spotMarker,
         badge: '+XP',
-        category: CommandTileCategory.play,
         route: '/map/add-spot',
       ),
       const _CommandTileSpec(
         key: ValueKey('home_tile_saved'),
         label: 'SAVED',
         icon: ExploreArt.bookmarkSaved,
-        category: CommandTileCategory.logs,
         route: '/saved',
       ),
       const _CommandTileSpec(
         key: ValueKey('home_tile_history'),
         label: 'HISTORY',
         icon: Wave3Art.list,
-        category: CommandTileCategory.logs,
         route: '/history',
       ),
     ];
-
-    if (_category == CommandTileCategory.all) return all;
-    return all.where((t) => t.category == _category).toList();
   }
 
   @override
@@ -160,48 +143,10 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: grid.px(1),
-            runSpacing: grid.px(1),
-            children: [
-              Text(
-                'MAIN MENU',
-                style: PixelType.small(context, color: PixelPalette.woodDeep)
-                    .copyWith(fontWeight: FontWeight.w700),
-              ),
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: [
-                  _CatChip(
-                    label: 'ALL',
-                    active: _category == CommandTileCategory.all,
-                    onTap: () =>
-                        setState(() => _category = CommandTileCategory.all),
-                  ),
-                  _CatChip(
-                    label: 'PLAY',
-                    active: _category == CommandTileCategory.play,
-                    onTap: () =>
-                        setState(() => _category = CommandTileCategory.play),
-                  ),
-                  _CatChip(
-                    label: 'TOWN',
-                    active: _category == CommandTileCategory.town,
-                    onTap: () =>
-                        setState(() => _category = CommandTileCategory.town),
-                  ),
-                  _CatChip(
-                    label: 'LOGS',
-                    active: _category == CommandTileCategory.logs,
-                    onTap: () =>
-                        setState(() => _category = CommandTileCategory.logs),
-                  ),
-                ],
-              ),
-            ],
+          Text(
+            'MAIN MENU',
+            style: PixelType.small(context, color: PixelPalette.woodDeep)
+                .copyWith(fontWeight: FontWeight.w700),
           ),
           SizedBox(height: grid.px(2)),
           LayoutBuilder(
@@ -254,67 +199,6 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
             },
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CatChip extends StatefulWidget {
-  const _CatChip({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  State<_CatChip> createState() => _CatChipState();
-}
-
-class _CatChipState extends State<_CatChip> {
-  bool _down = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final base = widget.active
-        ? PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0)
-        : PixelBoxStyle.wood.copyWith(corner: 0, shadowPx: 0);
-    final style = _down
-        ? base.copyWith(highlight: base.shade, shade: base.highlight)
-        : base;
-
-    return GestureDetector(
-      onTap: widget.onTap,
-      onTapDown: (_) => setState(() => _down = true),
-      onTapUp: (_) => setState(() => _down = false),
-      onTapCancel: () => setState(() => _down = false),
-      behavior: HitTestBehavior.opaque,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 32),
-        child: Center(
-          widthFactor: 1,
-          heightFactor: 1,
-          child: Transform.translate(
-            offset: Offset(0, _down ? 1 : 0),
-            child: PixelPanel(
-              style: style,
-              padding: 0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                child: Text(
-                  widget.label,
-                  style: PixelType.small(
-                    context,
-                    color: widget.active ? PixelPalette.ink : PixelPalette.cream,
-                  ).copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

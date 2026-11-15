@@ -21,6 +21,13 @@ void main() {
     expect(_user('@kaizero').publicHandle, '@kaizero');
   });
 
+  test('publicHandle shortens wallet-derived ids (Plan 93b WP-1.3)', () {
+    const address = '0xFAdD000000000000000000000000000000009671';
+    expect(_user('@wallet:$address').publicHandle, '@0xFAdD…9671');
+    expect(_user(address).publicHandle, '@0xFAdD…9671');
+    expect(_user('wallet:$address').seedId, 'wallet:$address');
+  });
+
   test('withoutTestContent hides test items unless the switch is on', () {
     final items = [('real', false), ('sim', true)];
     expect(
