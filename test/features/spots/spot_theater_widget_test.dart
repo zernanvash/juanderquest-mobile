@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
+import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
@@ -556,6 +558,58 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.byKey(const Key('theater_end_report_btn')), findsOneWidget);
+      final reportBtn = tester.widget<PixelButton>(
+        find.byKey(const Key('theater_end_report_btn')),
+      );
+      expect(reportBtn.variant, PixelButtonVariant.secondary);
     });
+
+    testWidgets(
+      'Plan 93a: dark notes field, pixel tag picker, and amenities without underscores',
+      (tester) async {
+        const spot = SpotModel(
+          id: 'spot-93a',
+          slug: 'spot-93a',
+          name: 'Lingayen Beach',
+          description: 'Open coastal stretch.',
+          category: 'nature_outdoors',
+          subcategory: 'beach',
+          municipality: 'Lingayen',
+          address: 'Lingayen, Pangasinan',
+          sourceName: 'LGU',
+          trustLevel: 'lgu_verified',
+          gpsLat: 16.02,
+          gpsLng: 120.23,
+          tags: ['coast'],
+          reasons: ['sunset'],
+          amenities: ['pet_friendly', 'free_parking'],
+        );
+
+        await tester.pumpWidget(_wrapScreen(spot: spot));
+        await tester.pumpAndSettle();
+
+        await tester.scrollUntilVisible(
+          find.text('pet friendly'),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('pet friendly'), findsOneWidget);
+        expect(find.text('free parking'), findsOneWidget);
+        expect(find.text('pet_friendly'), findsNothing);
+
+        await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('spot_comment_input')),
+          400,
+          scrollable: find.byType(Scrollable).first,
+        );
+        final tf = tester.widget<TextField>(
+          find.byKey(const ValueKey('spot_comment_input')),
+        );
+        expect(tf.decoration?.filled, isTrue);
+        expect(tf.decoration?.fillColor, PixelPalette.ink);
+        expect(find.byType(DropdownButton<String>), findsNothing);
+        expect(find.byKey(const ValueKey('spot_comment_tag')), findsOneWidget);
+      },
+    );
   });
 }

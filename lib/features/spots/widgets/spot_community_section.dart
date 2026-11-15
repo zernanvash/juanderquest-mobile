@@ -356,13 +356,13 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
             )
           else if (_comments.isEmpty)
             PixelPanel(
-              style: PixelBoxStyle.slot,
+              style: PixelBoxStyle.inkDialogue,
               padding: 2,
               child: Center(
                 child: Text(
                   'No notes yet. Be the first to share a tip.',
                   textAlign: TextAlign.center,
-                  style: PixelType.body(context, color: PixelPalette.cream),
+                  style: PixelType.body(context, color: PixelPalette.mist),
                 ),
               ),
             )
@@ -398,46 +398,57 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
               maxLength: 1000,
               style: PixelType.body(context, color: PixelPalette.paper),
               decoration: InputDecoration(
+                filled: true,
+                fillColor: PixelPalette.ink,
+                contentPadding: EdgeInsets.all(grid.px(1.5)),
                 hintText: 'Share a tip for other explorers…',
                 hintStyle: PixelType.body(context, color: PixelPalette.stone),
-                border: InputBorder.none,
+                border: const OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: PixelPalette.stone, width: 2),
+                ),
+                enabledBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: PixelPalette.stone, width: 2),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: PixelPalette.gold, width: 2),
+                ),
                 counterText: '',
               ),
             ),
             SizedBox(height: grid.px(1)),
             Wrap(
+              key: const ValueKey('spot_comment_tag'),
               spacing: grid.px(1),
               runSpacing: grid.px(1),
-              crossAxisAlignment: WrapCrossAlignment.center,
-              alignment: WrapAlignment.spaceBetween,
               children: [
-                DropdownButton<String>(
-                  key: const ValueKey('spot_comment_tag'),
-                  value: _tag,
-                  dropdownColor: PixelPalette.ink,
-                  underline: const SizedBox.shrink(),
-                  items: [
-                    for (final e in spotCommentTags.entries)
-                      DropdownMenuItem(
-                        value: e.key,
-                        child: Text(
-                          e.value.toUpperCase(),
-                          style: PixelType.small(
-                            context,
-                            color: PixelPalette.paper,
-                          ),
-                        ),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _tag = v ?? 'general'),
-                ),
-                PixelButton(
-                  key: const ValueKey('spot_comment_post'),
-                  label: _posting ? 'POSTING…' : 'POST NOTE',
-                  variant: PixelButtonVariant.primary,
-                  onPressed: _posting ? null : _post,
-                ),
+                for (final e in spotCommentTags.entries)
+                  GestureDetector(
+                    key: ValueKey('spot_comment_tag_${e.key}'),
+                    onTap: () => setState(() => _tag = e.key),
+                    child: PixelChip(
+                      e.value.toUpperCase(),
+                      style: _tag == e.key
+                          ? PixelBoxStyle.gold
+                          : PixelBoxStyle.slot,
+                      textColor: _tag == e.key
+                          ? PixelPalette.ink
+                          : PixelPalette.cream,
+                    ),
+                  ),
               ],
+            ),
+            SizedBox(height: grid.px(1)),
+            Align(
+              alignment: Alignment.centerRight,
+              child: PixelButton(
+                key: const ValueKey('spot_comment_post'),
+                label: _posting ? 'POSTING…' : 'POST NOTE',
+                variant: PixelButtonVariant.primary,
+                onPressed: _posting ? null : _post,
+              ),
             ),
           ],
         ),

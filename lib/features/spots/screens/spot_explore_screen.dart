@@ -35,15 +35,35 @@ class SpotExploreScreen extends ConsumerStatefulWidget {
 class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   final Map<String, int> _likes = {};
   final Set<String> _likedSpots = {};
+  final ScrollController _scrollController = ScrollController();
   SpotFilterState _filterState = const SpotFilterState();
   int _visibleCount = 10;
+  int _totalOrdinaryCount = 0;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     Future.microtask(() {
       ref.read(spotDiscoveryProvider.notifier).initialize();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200 &&
+        _visibleCount < _totalOrdinaryCount) {
+      setState(() {
+        _visibleCount += 10;
+      });
+    }
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -109,6 +129,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
             final ordinarySpots = spotlightPlacement.ordinary
                 .where((s) => s.id != topHeroSpot?.id)
                 .toList();
+            _totalOrdinaryCount = ordinarySpots.length;
             final pagedSpots = ordinarySpots.take(_visibleCount).toList();
             final hasMore = _visibleCount < ordinarySpots.length;
 
@@ -141,6 +162,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 color: PixelPalette.green,
                 backgroundColor: PixelPalette.paper,
                 child: ListView(
+                  controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.symmetric(
                     horizontal: grid.px(2),
@@ -285,20 +307,26 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               ),
             ),
           ] else if (hasMore) ...[
-            ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48),
-              child: Center(
-                child: PixelButton(
-                  label: 'LOAD MORE',
-                  variant: PixelButtonVariant.secondary,
-                  style: PixelBoxStyle.parchment,
-                  expand: true,
-                  onPressed: () {
-                    setState(() {
-                      _visibleCount += 10;
-                    });
-                  },
-                ),
+            Padding(
+              key: const ValueKey('explore_paging_loader'),
+              padding: EdgeInsets.symmetric(vertical: grid.px(1)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: PixelPalette.gold,
+                    ),
+                  ),
+                  SizedBox(width: grid.px(1)),
+                  Text(
+                    'Loading more spots…',
+                    style: PixelType.small(context, color: PixelPalette.stone),
+                  ),
+                ],
               ),
             ),
           ] else ...[

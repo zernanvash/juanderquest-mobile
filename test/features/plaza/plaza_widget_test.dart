@@ -92,7 +92,7 @@ void main() {
   }
 
   group('PlazaScreen (Plan 79a)', () {
-    testWidgets('Renders compact 1-row toolbar with scope and period chips', (
+    testWidgets('Renders wrapping 2-row toolbar without duplicate feed switch', (
       tester,
     ) async {
       final feedNotifier = _FakePlazaFeedNotifier(
@@ -103,12 +103,13 @@ void main() {
       await tester.pumpWidget(createPlazaApp(feedNotifier));
       await tester.pumpAndSettle();
 
-      // Verify toolbar chips are all present in the compact row
-      expect(find.text('Everyone'), findsWidgets);
-      expect(find.text('Following'), findsWidgets);
+      // Verify toolbar chips are all present and duplicate feed scope switch is removed
+      expect(find.text('Everyone'), findsOneWidget);
+      expect(find.text('Following'), findsOneWidget);
       expect(find.text('My Town'), findsOneWidget);
       expect(find.text('This Week'), findsOneWidget);
       expect(find.text('All Time'), findsOneWidget);
+      expect(find.byKey(const ValueKey('plaza_feed_scope')), findsNothing);
 
       // Verify tapping 'My Town' selects it and updates feed scope to 'town'
       final myTownFinder = find.ancestor(
@@ -119,25 +120,16 @@ void main() {
         tester.widget<PixelChip>(myTownFinder).style,
         PixelBoxStyle.parchment,
       );
-      // Verify tapping 'Following' toolbar chip updates feed segmented switch to index 1 ('Following')
-      await tester.tap(find.text('Following').first);
+      // Verify tapping 'Following' toolbar chip updates feed scope to 'following'
+      await tester.tap(find.text('Following'));
       await tester.pump();
       expect(feedNotifier.lastScope, 'following');
-      final segmentedFinder = find.byKey(const ValueKey('plaza_feed_scope'));
-      expect(segmentedFinder, findsOneWidget);
-      PixelSegmented segmented = tester.widget<PixelSegmented>(
-        find.descendant(
-            of: segmentedFinder, matching: find.byType(PixelSegmented)),
-      );
-      expect(segmented.items, equals(const ['All', 'Following']));
-      expect(segmented.selectedIndex, equals(1));
 
-      // Verify tapping 'My Town' hides the All/Following feed switch so it never shows wrong 'Following' tab
+      // Verify tapping 'My Town' selects it and updates feed scope to 'town'
       await tester.tap(find.text('My Town'));
       await tester.pump();
       expect(tester.widget<PixelChip>(myTownFinder).style, PixelBoxStyle.gold);
       expect(feedNotifier.lastScope, 'town');
-      expect(find.byKey(const ValueKey('plaza_feed_scope')), findsNothing);
     });
 
     testWidgets('Renders PlazaRanker v2 activity reason chips', (tester) async {

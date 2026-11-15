@@ -885,20 +885,20 @@ void main() {
         ),
         standings: _standings,
       );
-      expect(find.text('Pangasinan Plaza'), findsOneWidget);
+      expect(find.text('Pangasinan Plaza'), findsNothing);
       expect(find.text('Ana Victoria'), findsWidgets);
       expect(find.text('1500 pts'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('plaza_cheer_a1')));
       await tester.pump();
       expect(feed.cheers, 1);
-      await tester.tap(find.text('Following').last);
+      await tester.tap(find.text('Following'));
       await tester.pump();
       expect(feed.setScopeValue, 'following');
       await tester.tap(find.text('All Time'));
       await tester.pump();
     });
 
-    testWidgets('Plan 75n: feed filter fits at 320 px and 1 quest is singular',
+    testWidgets('Plan 93a: plaza toolbar fits at 320 px and 2.0x text and 1 quest is singular',
         (tester) async {
       final one = <String, dynamic>{
         ..._standings,
@@ -913,15 +913,13 @@ void main() {
         standings: one,
       );
       tester.view.physicalSize = const Size(640, 6000);
-      tester.platformDispatcher.textScaleFactorTestValue = 1.4;
+      tester.platformDispatcher.textScaleFactorTestValue = 2.0;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await tester.pump();
 
-      final following = find.descendant(
-        of: find.byKey(const ValueKey('plaza_feed_scope')),
-        matching: find.text('Following'),
-      );
+      final following = find.text('Following');
       expect(following, findsOneWidget);
+      expect(find.byKey(const ValueKey('plaza_feed_scope')), findsNothing);
       final paragraph =
           tester.renderObject<RenderParagraph>(following);
       expect(paragraph.didExceedMaxLines, isFalse);
