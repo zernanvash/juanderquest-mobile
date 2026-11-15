@@ -6,6 +6,7 @@ import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/dashboard/data/verified_pangasinan_festivals.dart';
 import 'package:juanderquest_app/features/dashboard/models/home_calendar_entry.dart';
 import 'package:juanderquest_app/features/dashboard/pixel/home_pixel_art.dart';
+import 'package:juanderquest_app/features/dashboard/providers/festival_calendar_provider.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_calendar_provider.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/widgets/home_adventure_calendar.dart';
@@ -102,6 +103,8 @@ void main() {
             streak: 3,
           );
         }),
+        // Plan 94: no dated festivals from the server in this test.
+        festivalCalendarProvider.overrideWith((ref, year) async => const []),
         campaignProvider.overrideWithProvider(
           StateNotifierProvider<CampaignNotifier, CampaignState>((ref) {
             const state = CampaignState(
