@@ -49,6 +49,58 @@ class TrailsApi {
     return "Couldn't load this. Try again.";
   }
 
+  /// Plan 83c: the full published catalog for `/trail`.
+  Future<TrailCatalog> fetchTrails() async {
+    try {
+      final response = await _apiClient.dio.get('/trails');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return TrailCatalog.fromJson(
+          (response.data['data'] as Map<String, dynamic>?) ?? const {},
+        );
+      }
+      throw Exception(
+        response.data['error']?['message'] ?? 'Could not load trails',
+      );
+    } on DioException catch (e) {
+      throw Exception(extractErrorMessage(e));
+    }
+  }
+
+  /// Plan 83c: `POST /trails/personal`. Reuse [idempotencyKey] for a retry of
+  /// the same request; the server rejects one key with different terms.
+  Future<String> createPersonalTrail({
+    required String idempotencyKey,
+    String? text,
+    List<String> themes = const [],
+    int? budgetMin,
+    String? pace,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/trails/personal',
+        data: {
+          if (text != null && text.trim().isNotEmpty) 'text': text.trim(),
+          if (themes.isNotEmpty) 'themes': themes,
+          if (budgetMin != null) 'budget_min': budgetMin,
+          if (pace != null) 'pace': pace,
+        },
+        options: Options(headers: {'Idempotency-Key': idempotencyKey}),
+      );
+      final data = response.data['data'];
+      if (response.statusCode == 201 && data is Map) {
+        final trail = data['trail'];
+        if (trail is Map && trail['id'] != null) return trail['id'].toString();
+      }
+      throw Exception(
+        response.data['error']?['message'] ?? 'Could not create the trail',
+      );
+    } on DioException catch (e) {
+      throw Exception(extractErrorMessage(e));
+    }
+  }
+
+  static String newIdempotencyKey() => _uuid.v4();
+
   Future<List<NearbyTrail>> fetchTrailsNear({
     required double lat,
     required double lng,

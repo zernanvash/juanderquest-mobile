@@ -50,7 +50,7 @@ import '../features/quests/screens/quest_builder_screen.dart';
 import '../features/quests/screens/qr_sheet_screen.dart';
 import '../features/plaza/plaza_screen.dart';
 import '../features/about/screens/about_screen.dart';
-import '../features/trail/trail_coming_soon_screen.dart';
+import '../features/trail/trail_catalog_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/navigation/models/route_model.dart';
 import '../features/navigation/screens/navigation_screen.dart';
@@ -391,7 +391,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => buildDirectionalSlidePage(
           context: context,
           state: state,
-          child: const TrailComingSoonScreen(),
+          child: const TrailCatalogScreen(),
         ),
       ),
       GoRoute(

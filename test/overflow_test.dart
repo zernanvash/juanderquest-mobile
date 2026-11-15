@@ -48,7 +48,7 @@ import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
 import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
 import 'package:juanderquest_app/features/notifications/screens/notifications_screen.dart';
 import 'package:juanderquest_app/features/quests/screens/quest_funding_screen.dart';
-import 'package:juanderquest_app/features/trail/trail_coming_soon_screen.dart';
+import 'package:juanderquest_app/features/trail/trail_catalog_screen.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/providers/cultural_quiz_provider.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz_detail_screen.dart';
@@ -601,6 +601,46 @@ void main() {
                     'distance_meters': 35
                   },
                 ],
+              },
+            },
+          ));
+          return;
+        }
+        // Plan 83c: the widest catalog card (long title, Hiyas, locked).
+        if (options.path == '/trails') {
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {
+                'items': [
+                  {
+                    'id': 't-long',
+                    'title':
+                        'The Long Pilgrimage Road from Manaoag Basilica to the Hundred Islands Wharf',
+                    'tagline':
+                        'Churches, bagoong stalls, river crossings and a sunset boat ride at the end of the day',
+                    'tier': 'legendary',
+                    'stop_count': 12,
+                    'total_minutes': 600,
+                    'total_km': 148.4,
+                    'unlock_rule': {'type': 'points', 'price_points': 1500},
+                    'is_unlocked': false,
+                  },
+                  {
+                    'id': 't-free',
+                    'title': 'Dagupan Bangus Walk',
+                    'tier': 'starter',
+                    'stop_count': 4,
+                    'total_minutes': 120,
+                    'total_km': 3.2,
+                    'unlock_rule': {'type': 'free'},
+                    'is_unlocked': true,
+                  },
+                ],
+                'total': 2,
+                'personal_generation': null,
               },
             },
           ));
@@ -2368,16 +2408,16 @@ void main() {
       );
     });
 
-    testWidgets('TrailComingSoonScreen does not overflow in small portrait',
+    testWidgets('TrailCatalogScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const TrailComingSoonScreen(), const Size(320, 568), 1.4);
+          tester, const TrailCatalogScreen(), const Size(320, 568), 2.0);
     });
 
-    testWidgets('TrailComingSoonScreen does not overflow in small landscape',
+    testWidgets('TrailCatalogScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const TrailComingSoonScreen(), const Size(568, 320), 1.4);
+          tester, const TrailCatalogScreen(), const Size(568, 320), 2.0);
     });
 
     testWidgets('NavigationScreen does not overflow in small landscape',

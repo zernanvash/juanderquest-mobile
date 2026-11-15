@@ -400,3 +400,42 @@ String formatMinutes(int minutes) {
   final m = minutes % 60;
   return m > 0 ? '$h hr $m min' : '$h hr';
 }
+
+/// Plan 83c: `GET /trails` — the published catalog plus this traveler's
+/// personal-trail allowance (null when signed out or the feature is off).
+class TrailCatalog {
+  final List<NearbyTrail> items;
+  final PersonalGeneration? personalGeneration;
+
+  const TrailCatalog({required this.items, this.personalGeneration});
+
+  factory TrailCatalog.fromJson(Map<String, dynamic> json) {
+    final gen = json['personal_generation'];
+    return TrailCatalog(
+      items: ((json['items'] as List<dynamic>?) ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(NearbyTrail.fromJson)
+          .toList(),
+      personalGeneration: gen is Map<String, dynamic>
+          ? PersonalGeneration.fromJson(gen)
+          : null,
+    );
+  }
+}
+
+class PersonalGeneration {
+  final int freeRemaining;
+  final int pricePoints;
+
+  const PersonalGeneration({
+    required this.freeRemaining,
+    required this.pricePoints,
+  });
+
+  factory PersonalGeneration.fromJson(Map<String, dynamic> json) {
+    return PersonalGeneration(
+      freeRemaining: _num(json['free_remaining'])?.toInt() ?? 0,
+      pricePoints: _num(json['price_points'])?.toInt() ?? 0,
+    );
+  }
+}

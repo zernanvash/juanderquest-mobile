@@ -32,7 +32,6 @@ import 'package:juanderquest_app/features/spots/screens/interests_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_discovery_studio_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_search_screen.dart';
 import 'package:juanderquest_app/features/spots/utils/spot_location_handoff.dart';
-import 'package:juanderquest_app/features/trail/trail_coming_soon_screen.dart';
 
 class _Auth extends AuthNotifier {
   _Auth(super.apiClient, super.refreshNotifier, UserModel? user) {
@@ -515,18 +514,6 @@ void main() {
       ]) {
         expect(find.text(author, skipOffstage: false), findsOneWidget);
       }
-    });
-  });
-
-  group('TrailComingSoonScreen', () {
-    testWidgets('renders the preview and opens Explore', (tester) async {
-      await _pump(tester, const TrailComingSoonScreen());
-      expect(find.text('A better way to explore along your route'),
-          findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('trail_back_explore')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 600));
-      expect(find.text('route:/explore', skipOffstage: false), findsOneWidget);
     });
   });
 
