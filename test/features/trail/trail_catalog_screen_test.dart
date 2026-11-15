@@ -33,18 +33,19 @@ Map<String, dynamic> _trail(
   String tier, {
   bool unlocked = false,
   int price = 0,
-}) => {
-  'id': id,
-  'title': 'Trail $id',
-  'tier': tier,
-  'stop_count': 2,
-  'total_minutes': 90,
-  'total_km': 5,
-  'unlock_rule': price > 0
-      ? {'type': 'points', 'price_points': price}
-      : {'type': 'free'},
-  'is_unlocked': unlocked,
-};
+}) =>
+    {
+      'id': id,
+      'title': 'Trail $id',
+      'tier': tier,
+      'stop_count': 2,
+      'total_minutes': 90,
+      'total_km': 5,
+      'unlock_rule': price > 0
+          ? {'type': 'points', 'price_points': price}
+          : {'type': 'free'},
+      'is_unlocked': unlocked,
+    };
 
 class _FakeTrailsApi extends TrailsApi {
   _FakeTrailsApi({this.generation}) : super(ApiClient());
@@ -83,15 +84,15 @@ class _FakeTrailsApi extends TrailsApi {
 
   @override
   Future<TrailDetail> fetchTrail(String id) async => TrailDetail.fromJson({
-    'id': id,
-    'title': 'Trail $id',
-    'tier': 'starter',
-    'is_unlocked': true,
-    'stops': [
-      {'position': 1, 'name': 'First', 'lat': 16.0, 'lng': 120.3},
-      {'position': 2, 'name': 'Last Stop', 'lat': 16.2, 'lng': 120.04},
-    ],
-  });
+        'id': id,
+        'title': 'Trail $id',
+        'tier': 'starter',
+        'is_unlocked': true,
+        'stops': [
+          {'position': 1, 'name': 'First', 'lat': 16.0, 'lng': 120.3},
+          {'position': 2, 'name': 'Last Stop', 'lat': 16.2, 'lng': 120.04},
+        ],
+      });
 
   @override
   Future<String> createPersonalTrail({
@@ -117,8 +118,10 @@ Future<void> _pump(
   WidgetTester tester,
   _FakeTrailsApi api, {
   UserModel? user,
+  Size size = const Size(400, 1000),
+  double textScale = 1.0,
 }) async {
-  tester.view.physicalSize = const Size(400, 1000);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -144,7 +147,14 @@ Future<void> _pump(
           ),
         ),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -210,7 +220,8 @@ void main() {
     expect(find.byKey(const ValueKey('trail_create_login')), findsOneWidget);
   });
 
-  testWidgets('Create sends the form, keeps the key for a retry, then '
+  testWidgets(
+      'Create sends the form, keeps the key for a retry, then '
       'shows the new trail in My Trails', (tester) async {
     final api = _FakeTrailsApi(
       generation: const PersonalGeneration(freeRemaining: 1, pricePoints: 80),
@@ -244,4 +255,23 @@ void main() {
     });
     expect(find.byKey(const ValueKey('trail_card_mine')), findsOneWidget);
   });
+
+  for (final size in const [Size(320, 568), Size(568, 320)]) {
+    testWidgets('Create tab fits $size at 2.0x text', (tester) async {
+      final api = _FakeTrailsApi(
+        generation: const PersonalGeneration(freeRemaining: 0, pricePoints: 80),
+      );
+      await _pump(tester, api, user: _user, size: size, textScale: 2.0);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+      expect(find.text('Describe your trip'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.drag(find.byType(ListView), const Offset(0, -3000));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('trail_create_submit')), findsOneWidget);
+      expect(find.text('Costs 80 points'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

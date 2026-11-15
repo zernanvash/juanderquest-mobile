@@ -2411,13 +2411,15 @@ void main() {
     testWidgets('TrailCatalogScreen does not overflow in small portrait',
         (tester) async {
       await testScreenOverflow(
-          tester, const TrailCatalogScreen(), const Size(320, 568), 2.0);
+          tester, const TrailCatalogScreen(), const Size(320, 568), 2.0,
+          clampScale: false);
     });
 
     testWidgets('TrailCatalogScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(
-          tester, const TrailCatalogScreen(), const Size(568, 320), 2.0);
+          tester, const TrailCatalogScreen(), const Size(568, 320), 2.0,
+          clampScale: false);
     });
 
     testWidgets('NavigationScreen does not overflow in small landscape',
