@@ -33,10 +33,70 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.text('Quest funding ready'), findsOneWidget);
+    expect(find.text('UPDATE'), findsOneWidget);
+    expect(find.text('OPEN >'), findsOneWidget);
+    expect(find.text('MARK READ'), findsOneWidget);
+    expect(find.byKey(const ValueKey('notifications_read_all')), findsOneWidget);
     await tester.tap(find.byTooltip('Mark as read'));
     await tester.pumpAndSettle();
     expect(read, isTrue);
     expect(find.byTooltip('Mark as read'), findsNothing);
+    expect(find.byKey(const ValueKey('notifications_read_all')), findsNothing);
+  });
+
+  testWidgets('maps kind labels, formats relative time, and READ ALL calls POST /notifications/read-all', (tester) async {
+    final client = ApiClient(enableRetries: false);
+    var readAllCalled = false;
+    final twoHoursAgo =
+        DateTime.now().subtract(const Duration(hours: 2)).toUtc().toIso8601String();
+    client.dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      if (options.path == '/notifications' && options.method == 'GET') {
+        return handler.resolve(Response(requestOptions: options, statusCode: 200, data: {
+          'success': true,
+          'data': {
+            'items': [
+              {
+                'id': 'n1',
+                'kind': 'quest_reward',
+                'title': 'Reward dropped',
+                'message': '+20 mJDQ',
+                'href': '/quests/q1',
+                'read': false,
+                'created_at': twoHoursAgo,
+              },
+              {
+                'id': 'n2',
+                'kind': 'weekly_recap',
+                'title': 'Weekly Plaza recap',
+                'message': 'You climbed 2 ranks.',
+                'href': '/plaza',
+                'read': false,
+                'created_at': twoHoursAgo,
+              },
+            ],
+          },
+        }));
+      }
+      if (options.path == '/notifications/read-all' && options.method == 'POST') {
+        readAllCalled = true;
+        return handler.resolve(Response(requestOptions: options, statusCode: 200, data: {'success': true}));
+      }
+      return handler.reject(DioException(requestOptions: options));
+    }));
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [apiClientProvider.overrideWithValue(client)],
+      child: const MaterialApp(home: NotificationsScreen()),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('REWARD'), findsOneWidget);
+    expect(find.text('PLAZA'), findsOneWidget);
+    expect(find.text('2h ago'), findsNWidgets(2));
+    await tester.tap(find.byKey(const ValueKey('notifications_read_all')));
+    await tester.pumpAndSettle();
+    expect(readAllCalled, isTrue);
+    expect(find.byKey(const ValueKey('notifications_read_all')), findsNothing);
+    expect(find.text('READ'), findsNWidgets(2));
   });
 
   testWidgets('shows an empty state when the inbox has no events', (tester) async {

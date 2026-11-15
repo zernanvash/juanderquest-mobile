@@ -142,7 +142,7 @@ class TheaterAboutSection extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: PixelChip(
-                      item,
+                      item.replaceAll('_', ' '),
                       style: PixelBoxStyle.parchment,
                       textColor: PixelPalette.ink,
                     ),

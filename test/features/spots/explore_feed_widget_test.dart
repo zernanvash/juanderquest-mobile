@@ -486,7 +486,7 @@ void main() {
       );
     });
 
-    testWidgets('LOAD MORE button pages items and caught-up message displays', (tester) async {
+    testWidgets('infinite scroll auto-pages items and caught-up message displays', (tester) async {
       // Create 15 spots
       final spots = List.generate(
         15,
@@ -505,22 +505,21 @@ void main() {
       await tester.pumpWidget(_buildHarness(discoveryNotifier: notifier));
       await tester.pumpAndSettle();
 
-      // Initially, Paged Spot 0 is visible
+      // Initially, Paged Spot 0 is visible and LOAD MORE button is gone
       await _scrollTo(tester, find.text('Paged Spot 0'));
       expect(find.text('Paged Spot 0'), findsWidgets);
+      expect(find.text('LOAD MORE'), findsNothing);
       expect(find.text('Paged Spot 14'), findsNothing);
 
-      // Scroll to and find LOAD MORE button
-      final loadMoreBtn = find.text('LOAD MORE');
-      await _scrollTo(tester, loadMoreBtn);
-      expect(loadMoreBtn, findsOneWidget);
-
-      // Tap LOAD MORE
-      await tester.tap(loadMoreBtn);
+      // Drag down to trigger infinite scroll auto-paging without settling on the infinite spinner
+      await tester.dragUntilVisible(
+        find.text('Paged Spot 14'),
+        find.byType(ListView),
+        const Offset(0, -400),
+      );
       await tester.pumpAndSettle();
 
-      // Scroll to Paged Spot 14
-      await _scrollTo(tester, find.text('Paged Spot 14'));
+      // Scroll to Paged Spot 14 after auto-paging
       expect(find.text('Paged Spot 14'), findsWidgets);
 
       // Caught up message

@@ -133,6 +133,49 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 
+  bool _markingAllRead = false;
+
+  Future<void> _markAllRead() async {
+    if (_markingAllRead) return;
+    setState(() => _markingAllRead = true);
+    try {
+      await ref.read(apiClientProvider).dio.post('/notifications/read-all');
+      if (!mounted) return;
+      setState(() {
+        _items = _items.map((item) => {...item, 'read': true}).toList();
+        _markingAllRead = false;
+      });
+    } on DioException {
+      if (!mounted) return;
+      setState(() => _markingAllRead = false);
+      showPixelToast(context, 'Could not mark all as read. Please retry.');
+    }
+  }
+
+  static String _kindLabel(String? kind) {
+    switch (kind) {
+      case 'quest_reward':
+        return 'REWARD';
+      case 'weekly_recap':
+        return 'PLAZA';
+      default:
+        return 'UPDATE';
+    }
+  }
+
+  static String _formatRelativeTime(dynamic raw) {
+    final s = raw?.toString();
+    if (s == null || s.isEmpty) return '';
+    final dt = DateTime.tryParse(s)?.toLocal();
+    if (dt == null) return '';
+    final diff = DateTime.now().difference(dt);
+    if (diff.isNegative || diff.inMinutes < 1) return 'Just now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.month}/${dt.day}/${dt.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -154,6 +197,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     onBack: () => canPop
                         ? Navigator.of(context).maybePop()
                         : context.go('/dashboard'),
+                    actions: [
+                      if (!_loading && _items.any((i) => i['read'] != true))
+                        PixelButton(
+                          key: const ValueKey('notifications_read_all'),
+                          label: _markingAllRead ? 'READING…' : 'READ ALL',
+                          variant: PixelButtonVariant.secondary,
+                          onPressed: _markingAllRead ? null : _markAllRead,
+                        ),
+                    ],
                   ),
                   Expanded(
                     child: ListView(
@@ -238,17 +290,40 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       BuildContext context, PixelGrid grid, Map<String, dynamic> item) {
     final read = item['read'] == true;
     final id = item['id'].toString();
+    final href = item['href']?.toString() ?? '';
+    final timeLabel = _formatRelativeTime(item['created_at']);
     return PixelPanel(
       style: read ? PixelBoxStyle.parchment : PixelBoxStyle.green,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Wrap(
+            spacing: grid.px(1),
+            runSpacing: grid.px(1),
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              PixelChip(
+                _kindLabel(item['kind']?.toString()),
+                style: read ? PixelBoxStyle.slot : PixelBoxStyle.gold,
+              ),
+              if (timeLabel.isNotEmpty)
+                Text(
+                  timeLabel,
+                  style: PixelType.small(
+                    context,
+                    color: read ? PixelPalette.slate : PixelPalette.mist,
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: grid.px(1)),
           GestureDetector(
             key: ValueKey('notification_$id'),
             behavior: HitTestBehavior.opaque,
             onTap: () {
               if (!read) _markRead(id);
-              context.push(appRouteForPushHref(item['href']?.toString()));
+              context.push(appRouteForPushHref(href));
             },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,22 +348,28 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
           SizedBox(height: grid.px(2)),
           Wrap(
-            spacing: grid.px(2),
+            spacing: grid.px(1),
             runSpacing: grid.px(1),
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              PixelChip(
-                item['kind'] == 'quest_reward' ? 'Reward' : 'Campaign',
-                style: read ? PixelBoxStyle.slot : PixelBoxStyle.gold,
-              ),
+              if (href.isNotEmpty)
+                PixelButton(
+                  key: ValueKey('notification_open_$id'),
+                  label: 'OPEN >',
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: () {
+                    if (!read) _markRead(id);
+                    context.push(appRouteForPushHref(href));
+                  },
+                ),
               if (read)
-                const PixelChip('Read', style: PixelBoxStyle.slot)
+                const PixelChip('READ', style: PixelBoxStyle.slot)
               else
                 Tooltip(
                   message: 'Mark as read',
                   child: PixelButton(
                     key: ValueKey('notification_read_$id'),
-                    label: 'Mark as read',
+                    label: 'MARK READ',
                     variant: PixelButtonVariant.secondary,
                     onPressed: () => _markRead(id),
                   ),

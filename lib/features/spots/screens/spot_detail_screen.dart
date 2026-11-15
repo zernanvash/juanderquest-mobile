@@ -416,7 +416,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                 child: PixelButton(
                   key: const Key('theater_end_report_btn'),
                   label: 'Report a problem',
-                  variant: PixelButtonVariant.ghost,
+                  variant: PixelButtonVariant.secondary,
                   expand: true,
                   onPressed: _openReportSheet,
                 ),
@@ -442,15 +442,15 @@ class _SpotCulturalQuizzesSection extends ConsumerWidget {
     }
 
     final grid = PixelGrid.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 28),
+    return TheaterPanel(
+      padding: EdgeInsets.all(grid.px(2)),
       child: Column(
         key: const ValueKey('spot_cultural_quizzes_section'),
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'CULTURAL QUIZZES HERE',
-            style: PixelType.title(context, color: PixelPalette.ink),
+            style: PixelType.title(context, color: PixelPalette.paper),
           ),
           SizedBox(height: grid.px(2)),
           for (final SpotQuizSummaryModel quiz in quizzes) ...[

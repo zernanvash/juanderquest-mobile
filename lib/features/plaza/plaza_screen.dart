@@ -120,8 +120,6 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                           grid.px(8) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
-                          _hero(context, grid),
-                          SizedBox(height: grid.px(3)),
                           if (!_askedPush && user != null) ...[
                             _alerts(context, grid),
                             SizedBox(height: grid.px(3)),
@@ -195,26 +193,6 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
     );
   }
 
-  Widget _hero(BuildContext context, PixelGrid grid) {
-    return PixelPanel(
-      style: PixelBoxStyle.wood,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Pangasinan Plaza',
-            style: PixelType.title(context, color: PixelPalette.paper),
-          ),
-          SizedBox(height: grid.px(1)),
-          Text(
-            'Track community ranks, cheer explorer journeys, and follow local adventurers.',
-            style: PixelType.body(context, color: PixelPalette.cream),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _alerts(BuildContext context, PixelGrid grid) {
     return PixelPanel(
       style: PixelBoxStyle.gold,
@@ -267,67 +245,67 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
   }
 
   Widget _controls(BuildContext context, PixelGrid grid) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _toolbarChip(
-            context,
-            grid,
-            label: 'Everyone',
-            selected: _board == 'everyone',
-            onTap: () {
-              setState(() => _board = 'everyone');
-              ref.read(plazaFeedProvider.notifier).setScope('mixed');
-            },
-          ),
-          SizedBox(width: grid.px(1)),
-          _toolbarChip(
-            context,
-            grid,
-            label: 'Following',
-            selected: _board == 'following',
-            onTap: () {
-              setState(() => _board = 'following');
-              ref.read(plazaFeedProvider.notifier).setScope('following');
-            },
-          ),
-          SizedBox(width: grid.px(1)),
-          _toolbarChip(
-            context,
-            grid,
-            label: 'My Town',
-            selected: _board == 'town',
-            onTap: () {
-              setState(() => _board = 'town');
-              ref.read(plazaFeedProvider.notifier).setScope('town');
-            },
-          ),
-          SizedBox(width: grid.px(2)),
-          Container(
-            width: 2,
-            height: grid.px(5),
-            color: PixelPalette.paperDim,
-          ),
-          SizedBox(width: grid.px(2)),
-          _toolbarChip(
-            context,
-            grid,
-            label: 'This Week',
-            selected: _period == 'weekly',
-            onTap: () => setState(() => _period = 'weekly'),
-          ),
-          SizedBox(width: grid.px(1)),
-          _toolbarChip(
-            context,
-            grid,
-            label: 'All Time',
-            selected: _period == 'all_time',
-            onTap: () => setState(() => _period = 'all_time'),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: grid.px(1),
+          runSpacing: grid.px(1),
+          children: [
+            _toolbarChip(
+              context,
+              grid,
+              label: 'Everyone',
+              selected: _board == 'everyone',
+              onTap: () {
+                setState(() => _board = 'everyone');
+                ref.read(plazaFeedProvider.notifier).setScope('mixed');
+              },
+            ),
+            _toolbarChip(
+              context,
+              grid,
+              label: 'Following',
+              selected: _board == 'following',
+              onTap: () {
+                setState(() => _board = 'following');
+                ref.read(plazaFeedProvider.notifier).setScope('following');
+              },
+            ),
+            _toolbarChip(
+              context,
+              grid,
+              label: 'My Town',
+              selected: _board == 'town',
+              onTap: () {
+                setState(() => _board = 'town');
+                ref.read(plazaFeedProvider.notifier).setScope('town');
+              },
+            ),
+          ],
+        ),
+        SizedBox(height: grid.px(1)),
+        Wrap(
+          spacing: grid.px(1),
+          runSpacing: grid.px(1),
+          children: [
+            _toolbarChip(
+              context,
+              grid,
+              label: 'This Week',
+              selected: _period == 'weekly',
+              onTap: () => setState(() => _period = 'weekly'),
+            ),
+            _toolbarChip(
+              context,
+              grid,
+              label: 'All Time',
+              selected: _period == 'all_time',
+              onTap: () => setState(() => _period = 'all_time'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -380,32 +358,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
   }
 
   Widget _feedHeader(BuildContext context, PixelGrid grid) {
-    // Filter under the title, full width: squeezed beside it, "Following"
-    // was cut to "FOLLOW…".
-    // When board is My Town, feed is already scoped to town, so hide the All/Following switch
-    // to prevent showing 'Following' incorrectly and keep content accessible above fold.
-    final currentScope = ref.watch(plazaFeedProvider.notifier).scope;
-    final showScopeSwitch = _board != 'town' && currentScope != 'town';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Live explorer activity', style: PixelType.title(context)),
-        if (showScopeSwitch) ...[
-          SizedBox(height: grid.px(1)),
-          SizedBox(
-            key: const ValueKey('plaza_feed_scope'),
-            child: PixelSegmented(
-              items: const ['All', 'Following'],
-              selectedIndex: currentScope == 'following' ? 1 : 0,
-              onChanged: (index) => ref
-                  .read(plazaFeedProvider.notifier)
-                  .setScope(index == 0 ? 'mixed' : 'following'),
-            ),
-          ),
-        ],
-      ],
-    );
+    return Text('Live explorer activity', style: PixelType.title(context));
   }
 
   Widget _standings(

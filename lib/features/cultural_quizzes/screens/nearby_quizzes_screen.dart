@@ -95,6 +95,7 @@ class _NearbyQuizzesScreenState extends ConsumerState<NearbyQuizzesScreen> {
                       SizedBox(height: grid.px(2)),
                       PixelButton(
                         label: 'RETRY RADAR',
+                        variant: PixelButtonVariant.secondary,
                         style: PixelBoxStyle.gold,
                         onPressed: () => ref
                             .read(quizRadarProvider.notifier)
@@ -136,6 +137,7 @@ class _NearbyQuizzesScreenState extends ConsumerState<NearbyQuizzesScreen> {
                       SizedBox(height: grid.px(2)),
                       PixelButton(
                         label: 'EXPLORE SPOTS',
+                        variant: PixelButtonVariant.secondary,
                         style: PixelBoxStyle.gold,
                         expand: true,
                         onPressed: () => context.go('/explore'),
@@ -271,6 +273,7 @@ class _RadarHeaderPanel extends StatelessWidget {
               ),
               PixelButton(
                 label: loading ? 'SCANNING' : 'SCAN',
+                variant: PixelButtonVariant.secondary,
                 style: PixelBoxStyle.parchment,
                 onPressed: loading ? null : onRefresh,
               ),
