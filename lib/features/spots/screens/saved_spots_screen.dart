@@ -171,24 +171,6 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
         grid.px(8) + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
-        PixelPanel(
-          style: PixelBoxStyle.wood,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Your saved library',
-                style: PixelType.title(context, color: PixelPalette.paper),
-              ),
-              SizedBox(height: grid.px(1)),
-              Text(
-                'Places you bookmarked for later.',
-                style: PixelType.body(context, color: PixelPalette.cream),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: grid.px(3)),
         PixelTextField(
           key: const ValueKey('saved_search'),
           controller: _search,

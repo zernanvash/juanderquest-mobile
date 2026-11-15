@@ -138,14 +138,15 @@ void main() {
     expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
   });
 
-  testWidgets('ProfileScreen exposes Shop card', (tester) async {
+  // Plan 93b WP-7.4: Shop is a bottom tab, so Profile has no Shop card.
+  testWidgets('ProfileScreen has no duplicate Shop card', (tester) async {
     await pumpAtSize(
       tester,
       const ProfileScreen(),
       const Size(390, 844),
       1.0,
     );
-    expect(find.byKey(const ValueKey('profile_shop')), findsOneWidget);
+    expect(find.byKey(const ValueKey('profile_shop')), findsNothing);
   });
 
   for (final size in [const Size(320, 568), const Size(568, 320)]) {

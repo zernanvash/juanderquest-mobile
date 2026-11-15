@@ -168,32 +168,11 @@ class _SubmissionHistoryScreenState
     );
   }
 
+  // Plan 93b WP-7.3: a slim count row instead of a title-repeating banner.
   Widget _intro(BuildContext context, PixelGrid grid, int count) {
-    return PixelPanel(
-      style: PixelBoxStyle.wood,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Submissions & proof',
-                  style: PixelType.title(context, color: PixelPalette.paper),
-                ),
-                SizedBox(height: grid.px(1)),
-                Text(
-                  'Track the status of your quest proofs.',
-                  style: PixelType.body(context, color: PixelPalette.cream),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: grid.px(2)),
-          PixelChip('$count total', style: PixelBoxStyle.gold),
-        ],
-      ),
+    return Align(
+      alignment: Alignment.centerRight,
+      child: PixelChip('$count total', style: PixelBoxStyle.gold),
     );
   }
 

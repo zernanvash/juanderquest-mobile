@@ -425,11 +425,12 @@ void main() {
       expect(find.text('route:/saved'), findsOneWidget);
     });
 
-    testWidgets('shows shop card and keeps settings in header gear',
+    // Plan 93b WP-7.4: Shop is a bottom tab, so Profile has no Shop card.
+    testWidgets('has no shop card and keeps settings in header gear',
         (tester) async {
       _useTallView(tester);
       await _pump(tester, const ProfileScreen(), user: _user);
-      expect(find.byKey(const ValueKey('profile_shop')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_shop')), findsNothing);
       expect(find.byKey(const ValueKey('profile_settings')), findsNothing);
     });
 
