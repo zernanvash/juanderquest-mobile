@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/l10n/app_language.dart';
 import '../core/pixel/generated/designer_art.g.dart';
 import '../core/pixel/generated/pixel_palette.g.dart';
 import '../core/pixel/pixel_nav.dart';
@@ -137,25 +138,26 @@ class _MainShellState extends ConsumerState<MainShell> {
                         widget.navigationShell.goBranch(index);
                       }
                     },
-                    items: const [
+                    items: [
                       // Owner 2026-11-05: Home · Explore · Map · Shop · Profile.
+                      // Plan 93b WP-8: labels follow Settings -> Language.
                       PixelHotbarItem(
-                        label: 'Home',
+                        label: tr(context, en: 'Home', tl: 'Tahanan'),
                         icon: DesignerArt.navHome,
                       ),
                       PixelHotbarItem(
-                        label: 'Explore',
+                        label: tr(context, en: 'Explore', tl: 'Tuklasin'),
                         icon: DesignerArt.search,
                       ),
                       PixelHotbarItem(
-                        label: 'Map',
+                        label: tr(context, en: 'Map', tl: 'Mapa'),
                         icon: DesignerArt.navMap,
                       ),
                       PixelHotbarItem(
-                        label: 'Shop',
+                        label: tr(context, en: 'Shop', tl: 'Tindahan'),
                         icon: DesignerArt.navShop,
                       ),
-                      PixelHotbarItem(
+                      const PixelHotbarItem(
                         label: 'Profile',
                         icon: DesignerArt.navProfile,
                       ),

@@ -24,6 +24,22 @@ enum PixelTextSize {
       };
 }
 
+/// Plan 93b WP-8: app language (English or Tagalog for now).
+enum AppLanguage {
+  english,
+  tagalog;
+
+  String get label => switch (this) {
+        AppLanguage.english => 'Pure English',
+        AppLanguage.tagalog => 'Tagalog',
+      };
+
+  String get shortCode => switch (this) {
+        AppLanguage.english => 'EN',
+        AppLanguage.tagalog => 'TL',
+      };
+}
+
 @immutable
 class PixelSettings {
   const PixelSettings({
@@ -31,6 +47,7 @@ class PixelSettings {
     this.font = defaultFont,
     this.haptics = true,
     this.textSize = PixelTextSize.followPhone,
+    this.language = AppLanguage.english,
   }) : _artPx = artPx;
 
   static const double defaultArtPx = 2;
@@ -58,6 +75,7 @@ class PixelSettings {
   final String font;
   final bool haptics;
   final PixelTextSize textSize;
+  final AppLanguage language;
 
   double resolveArtPx([double shortestSide = 400]) {
     final art = _artPx;
@@ -86,12 +104,14 @@ class PixelSettings {
     String? font,
     bool? haptics,
     PixelTextSize? textSize,
+    AppLanguage? language,
   }) =>
       PixelSettings(
         artPx: artPx ?? _artPx,
         font: font ?? this.font,
         haptics: haptics ?? this.haptics,
         textSize: textSize ?? this.textSize,
+        language: language ?? this.language,
       );
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -100,6 +120,7 @@ class PixelSettings {
         'fontV': fontVersion,
         'haptics': haptics,
         'textSize': textSize.name,
+        'language': language.name,
       };
 
   static PixelSettings? fromJson(String raw) {
@@ -119,6 +140,11 @@ class PixelSettings {
           }
         }
       }
+      final languageName = decoded['language'];
+      final language = AppLanguage.values.firstWhere(
+        (v) => v.name == languageName,
+        orElse: () => AppLanguage.english,
+      );
       return PixelSettings(
         artPx: art != null && artSizes.contains(art) ? art : null,
         font: font is String &&
@@ -128,6 +154,7 @@ class PixelSettings {
             : defaultFont,
         haptics: haptics is bool ? haptics : true,
         textSize: parsedTextSize,
+        language: language,
       );
     } catch (_) {
       return null;
@@ -140,10 +167,11 @@ class PixelSettings {
       other._artPx == _artPx &&
       other.font == font &&
       other.haptics == haptics &&
-      other.textSize == textSize;
+      other.textSize == textSize &&
+      other.language == language;
 
   @override
-  int get hashCode => Object.hash(_artPx, font, haptics, textSize);
+  int get hashCode => Object.hash(_artPx, font, haptics, textSize, language);
 }
 
 class PixelScope extends StatelessWidget {
@@ -300,6 +328,11 @@ class PixelSettingsNotifier extends Notifier<PixelSettings> {
 
   void setTextSize(PixelTextSize value) {
     state = state.copyWith(textSize: value);
+    unawaited(_persist());
+  }
+
+  void setLanguage(AppLanguage value) {
+    state = state.copyWith(language: value);
     unawaited(_persist());
   }
 

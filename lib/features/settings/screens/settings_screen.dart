@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/app_release.dart';
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -15,7 +16,6 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/services/push_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/designer_guide.dart';
 import '../../app_update/providers/app_update_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
@@ -51,7 +51,8 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Explorer Settings',
+                    title:
+                        tr(context, en: 'Explorer Settings', tl: 'Mga Setting'),
                     onBack:
                         canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
@@ -68,116 +69,148 @@ class SettingsScreen extends ConsumerWidget {
                         children: [
                           _identity(context, grid, user),
                           SizedBox(height: grid.px(3)),
-                          _SettingsGroup(title: 'ACCOUNT', tiles: [
-                            _SettingsTile(
-                              key: const ValueKey('settings_appearance'),
-                              icon: 'A',
-                              title: 'Appearance',
-                              subtitle:
-                                  'Profile banners, frames, titles and name colours',
-                              onTap: () => context.push('/settings/appearance'),
-                            ),
-                            _SettingsTile(
-                              key: const ValueKey('settings_home_town'),
-                              icon: 'H',
-                              title: 'Home town',
-                              subtitle: 'The town you are from, for My Town',
-                              onTap: () => showHomeTownPicker(context, ref),
-                            ),
-                            _SettingsTile(
-                              key: const ValueKey('settings_interests'),
-                              icon: 'I',
-                              title: 'Travel interests',
-                              subtitle: 'Tune which destinations we recommend',
-                              onTap: () =>
-                                  context.push('/onboarding/interests'),
-                            ),
-                            _SettingsTile(
-                              key: const ValueKey('settings_wallet'),
-                              icon: 'W',
-                              title: 'Web3 Wallet',
-                              subtitle: user?.hasBoundWallet == true
-                                  ? 'Linked ${user!.formattedWalletAddress} · Polygon Amoy testnet · not real money'
-                                  : 'Polygon Amoy testnet · not real money',
-                              onTap: () => context.push('/wallet/connect'),
-                            ),
-                          ]),
-                          _SettingsGroup(title: 'ACTIVITY', tiles: [
-                            _SettingsTile(
-                              key: const ValueKey('settings_submissions'),
-                              icon: 'S',
-                              title: 'My submissions',
-                              subtitle:
-                                  'Status of your quest and spot submissions',
-                              onTap: () => context.push('/history'),
-                            ),
-                            _SettingsTile(
-                              key: const ValueKey('settings_affiliate'),
-                              icon: 'M',
-                              pixelIcon: DesignerArt.salakot,
-                              title: merchantHub.label,
-                              subtitle: merchantHub.subtitle,
-                              onTap: () => context.push(merchantHub.route),
-                            ),
-                          ]),
-                          _SettingsGroup(title: 'APP', tiles: [
-                            _SettingsTile(
-                              key: const ValueKey('settings_text_size'),
-                              icon: 'T',
-                              title: 'Text size',
-                              subtitle: ref
-                                  .watch(pixelSettingsProvider)
-                                  .textSize
-                                  .label,
-                              onTap: () => _showTextSizeDialog(context, ref),
-                            ),
-                            // Owner 2026-11-04: run the first-run tutorial again on Home.
-                            _SettingsTile(
-                              key: const ValueKey('settings_replay_tutorial'),
-                              icon: 'R',
-                              title: 'Replay tutorial',
-                              subtitle: 'Juan shows you around Home again',
-                              onTap: () async {
-                                await ref
-                                    .read(homeTipsControllerProvider.notifier)
-                                    .resetForReplay();
-                                if (context.mounted) context.go('/dashboard');
-                              },
-                            ),
-                            _SettingsTile(
-                              key: const ValueKey('settings_updates'),
-                              icon: 'U',
-                              title: 'App updates',
-                              subtitle: updateState.hasUpdate
-                                  ? '$version · update available'
-                                  : version,
-                              highlight: updateState.hasUpdate,
-                              onTap: () => context.push('/settings/updates'),
-                            ),
-                            _SettingsTile(
-                              key: const ValueKey('settings_developer'),
-                              icon: 'D',
-                              title: 'Developer tools',
-                              subtitle: ref.watch(designerGuideProvider)
-                                  ? 'Designer guide is on'
-                                  : 'Designer guide and diagnostics',
-                              onTap: () => context.push('/settings/developer'),
-                            ),
-                          ]),
-                          _SettingsGroup(title: 'ABOUT', tiles: [
-                            _SettingsTile(
-                              key: const ValueKey('settings_about'),
-                              icon: 'J',
-                              title: 'About JuanDerQuest & team',
-                              subtitle:
-                                  'Universidad de Dagupan capstone authors',
-                              onTap: () => context.push('/about'),
-                            ),
-                          ]),
+                          _SettingsGroup(
+                              title: tr(context, en: 'ACCOUNT', tl: 'ACCOUNT'),
+                              tiles: [
+                                _SettingsTile(
+                                  key: const ValueKey('settings_appearance'),
+                                  icon: 'A',
+                                  title: tr(context,
+                                      en: 'Appearance',
+                                      tl: 'Hitsura ng Profile'),
+                                  onTap: () =>
+                                      context.push('/settings/appearance'),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings_home_town'),
+                                  icon: 'H',
+                                  title: tr(context,
+                                      en: 'Home town', tl: 'Sariling Bayan'),
+                                  onTap: () => showHomeTownPicker(context, ref),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings_interests'),
+                                  icon: 'I',
+                                  title: tr(context,
+                                      en: 'Travel interests',
+                                      tl: 'Hilig sa Paglalakbay'),
+                                  onTap: () =>
+                                      context.push('/onboarding/interests'),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings_wallet'),
+                                  icon: 'W',
+                                  title: tr(context,
+                                      en: 'Web3 Wallet', tl: 'Web3 Wallet'),
+                                  // Keeps the testnet disclosure in one word.
+                                  value: user?.hasBoundWallet == true
+                                      ? user!.formattedWalletAddress
+                                      : 'Testnet',
+                                  onTap: () => context.push('/wallet/connect'),
+                                ),
+                              ]),
+                          _SettingsGroup(
+                              title: tr(context, en: 'ACTIVITY', tl: 'GAWAIN'),
+                              tiles: [
+                                _SettingsTile(
+                                  key: const ValueKey('settings_submissions'),
+                                  icon: 'S',
+                                  title: tr(context,
+                                      en: 'My submissions',
+                                      tl: 'Mga Isinumite'),
+                                  onTap: () => context.push('/history'),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings_affiliate'),
+                                  icon: 'M',
+                                  pixelIcon: DesignerArt.salakot,
+                                  title: merchantHub.label,
+                                  onTap: () => context.push(merchantHub.route),
+                                ),
+                              ]),
+                          _SettingsGroup(
+                              title: tr(context, en: 'APP', tl: 'APP'),
+                              tiles: [
+                                _SettingsTile(
+                                  key: const ValueKey('settings_language'),
+                                  icon: 'L',
+                                  title:
+                                      tr(context, en: 'Language', tl: 'Wika'),
+                                  value: ref
+                                      .watch(pixelSettingsProvider)
+                                      .language
+                                      .label,
+                                  onTap: () =>
+                                      _showLanguageDialog(context, ref),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings_text_size'),
+                                  icon: 'T',
+                                  title: tr(context,
+                                      en: 'Text size', tl: 'Laki ng Teksto'),
+                                  value: ref
+                                      .watch(pixelSettingsProvider)
+                                      .textSize
+                                      .label,
+                                  onTap: () =>
+                                      _showTextSizeDialog(context, ref),
+                                ),
+                                // Owner 2026-11-04: run the first-run tutorial again on Home.
+                                _SettingsTile(
+                                  key: const ValueKey(
+                                      'settings_replay_tutorial'),
+                                  icon: 'R',
+                                  title: tr(context,
+                                      en: 'Replay tutorial',
+                                      tl: 'Ulitin ang Gabay'),
+                                  onTap: () async {
+                                    await ref
+                                        .read(
+                                            homeTipsControllerProvider.notifier)
+                                        .resetForReplay();
+                                    if (context.mounted)
+                                      context.go('/dashboard');
+                                  },
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings_updates'),
+                                  icon: 'U',
+                                  title: tr(context,
+                                      en: 'App updates', tl: 'Update ng App'),
+                                  value: updateState.hasUpdate
+                                      ? '$version · update'
+                                      : version,
+                                  highlight: updateState.hasUpdate,
+                                  onTap: () =>
+                                      context.push('/settings/updates'),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings_developer'),
+                                  icon: 'D',
+                                  title: tr(context,
+                                      en: 'Developer tools',
+                                      tl: 'Developer Tools'),
+                                  onTap: () =>
+                                      context.push('/settings/developer'),
+                                ),
+                              ]),
+                          _SettingsGroup(
+                              title: tr(context, en: 'ABOUT', tl: 'TUNGKOL'),
+                              tiles: [
+                                _SettingsTile(
+                                  key: const ValueKey('settings_about'),
+                                  icon: 'J',
+                                  title: tr(context,
+                                      en: 'About JuanDerQuest & team',
+                                      tl: 'Tungkol sa JuanDerQuest'),
+                                  onTap: () => context.push('/about'),
+                                ),
+                              ]),
                           SizedBox(height: grid.px(4)),
                           PixelButton(
                             key: const ValueKey('settings_logout'),
-                            label: 'Log Out of Account',
+                            label: tr(context,
+                                en: 'Log Out of Account', tl: 'Mag-log Out'),
                             variant: PixelButtonVariant.danger,
                             expand: true,
                             onPressed: () async {
@@ -251,6 +284,43 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  void _showLanguageDialog(BuildContext context, WidgetRef ref) {
+    final current = ref.read(pixelSettingsProvider).language;
+    showPixelDialog(
+      context: context,
+      title: tr(context, en: 'Language', tl: 'Wika'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final option in AppLanguage.values)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: PixelButton(
+                key: ValueKey('settings_language_${option.name}'),
+                label: option == current ? '* ${option.label}' : option.label,
+                variant: option == current
+                    ? PixelButtonVariant.primary
+                    : PixelButtonVariant.secondary,
+                expand: true,
+                onPressed: () {
+                  ref.read(pixelSettingsProvider.notifier).setLanguage(option);
+                  Navigator.of(context, rootNavigator: true).pop();
+                },
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        PixelButton(
+          label: tr(context, en: 'Close', tl: 'Isara'),
+          variant: PixelButtonVariant.secondary,
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+        ),
+      ],
+    );
+  }
+
   void _showTextSizeDialog(BuildContext context, WidgetRef ref) {
     final current = ref.read(pixelSettingsProvider).textSize;
     showPixelDialog(
@@ -267,9 +337,7 @@ class SettingsScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: PixelButton(
                 key: ValueKey('settings_text_size_${option.name}'),
-                label: option == current
-                    ? '* ${option.label}'
-                    : option.label,
+                label: option == current ? '* ${option.label}' : option.label,
                 variant: option == current
                     ? PixelButtonVariant.primary
                     : PixelButtonVariant.secondary,
@@ -338,7 +406,7 @@ class _SettingsTile extends StatelessWidget {
     required this.icon,
     this.pixelIcon,
     required this.title,
-    required this.subtitle,
+    this.value,
     required this.onTap,
     this.highlight = false,
   });
@@ -346,7 +414,9 @@ class _SettingsTile extends StatelessWidget {
   final String icon;
   final PixelArt? pixelIcon;
   final String title;
-  final String subtitle;
+
+  /// Plan 93b WP-8: one line per row; only status rows show a short value.
+  final String? value;
   final VoidCallback onTap;
   final bool highlight;
 
@@ -362,7 +432,6 @@ class _SettingsTile extends StatelessWidget {
           vertical: grid.px(2),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             PixelPanel(
               style: PixelBoxStyle.slot,
@@ -388,22 +457,29 @@ class _SettingsTile extends StatelessWidget {
             ),
             SizedBox(width: grid.px(2)),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: PixelType.title(context)),
-                  Text(
-                    subtitle,
-                    style: PixelType.body(
-                      context,
-                      color: highlight
-                          ? PixelPalette.greenDark
-                          : PixelPalette.slate,
-                    ),
-                  ),
-                ],
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.title(context),
               ),
             ),
+            if (value != null) ...[
+              SizedBox(width: grid.px(1)),
+              Flexible(
+                child: Text(
+                  value!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: PixelType.small(
+                    context,
+                    color:
+                        highlight ? PixelPalette.greenDark : PixelPalette.slate,
+                  ),
+                ),
+              ),
+            ],
             SizedBox(width: grid.px(1)),
             Text(
               '>',

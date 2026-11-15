@@ -124,7 +124,7 @@ void main() {
       1.0,
     );
     expect(find.byKey(const ValueKey('settings_governance')), findsNothing);
-    expect(find.text('Polygon Amoy testnet · not real money'), findsOneWidget);
+    expect(find.text('Testnet'), findsOneWidget);
   });
 
   testWidgets('DashboardScreen renders Concept B command grid and almanac', (tester) async {
