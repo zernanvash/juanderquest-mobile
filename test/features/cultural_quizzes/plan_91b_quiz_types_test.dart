@@ -7,6 +7,7 @@ import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_
 import 'package:juanderquest_app/features/cultural_quizzes/providers/cultural_quiz_provider.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz_play_screen.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz_result_screen.dart';
+import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 
 class _RecordingQuizController extends CulturalQuizController {
   _RecordingQuizController(this._result) : super(ApiClient());
@@ -50,7 +51,12 @@ void main() {
       'question_text': 'Order the events',
       'selected_option_id': '',
       'correct_option_id': '',
-      'correct_order': ['First', 'Second', 'Third'],
+      // Server shape (service.ts breakdown): objects, not strings.
+      'correct_order': [
+        {'id': 'o-1', 'ordinal': 1, 'option_text': 'First'},
+        {'id': 'o-2', 'ordinal': 2, 'option_text': 'Second'},
+        {'id': 'o-3', 'ordinal': 3, 'option_text': 'Third'},
+      ],
       'is_correct': true,
       'explanation': 'Chronological order',
     });
@@ -129,7 +135,8 @@ void main() {
           versionId: 'v-1',
           ordinal: 3,
           questionType: 'photo_clue',
-          mediaUrl: 'https://juanderquest.app/media/spot.jpg',
+          // Live spot photos are root-relative upload paths.
+          mediaUrl: '/api/v1/uploads/spot-photos/catalog-spot.jpg',
           questionText: 'Photo Question',
           explanation: 'Photo expl',
           options: [
@@ -188,6 +195,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('PHOTO CLUE'), findsOneWidget);
     expect(find.byKey(const ValueKey('quiz_photo_clue_frame')), findsOneWidget);
+    final photo = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const ValueKey('quiz_photo_clue_frame')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect(
+      (photo.image as NetworkImage).url,
+      SpotModel.resolveImageUrl('/api/v1/uploads/spot-photos/catalog-spot.jpg'),
+    );
+    expect((photo.image as NetworkImage).url, startsWith('http'));
     expect(find.byKey(const ValueKey('quiz_lifeline_fifty_fifty')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('quiz_option_ph2')));
     await tester.pumpAndSettle();

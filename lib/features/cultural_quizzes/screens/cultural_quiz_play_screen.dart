@@ -12,6 +12,7 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../spots/models/spot_model.dart';
 import '../models/cultural_quiz_model.dart';
 import '../providers/cultural_quiz_provider.dart';
 
@@ -355,7 +356,8 @@ class _CulturalQuizPlayScreenState
               style: PixelBoxStyle.slot,
               child: ClipRect(
                 child: Image.network(
-                  question.mediaUrl!,
+                  // Spot photos are stored as /api/v1/uploads/... paths.
+                  SpotModel.resolveImageUrl(question.mediaUrl!),
                   height: 150,
                   width: double.infinity,
                   fit: BoxFit.cover,

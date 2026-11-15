@@ -207,8 +207,9 @@ class CulturalQuizGradeBreakdownItem {
       questionText: json['question_text'] as String? ?? '',
       selectedOptionId: json['selected_option_id'] as String? ?? '',
       correctOptionId: json['correct_option_id'] as String? ?? '',
+      // The API sends {id, ordinal, option_text} objects in the correct order.
       correctOrder: (json['correct_order'] as List<dynamic>? ?? [])
-          .map((e) => e.toString())
+          .map((e) => e is Map ? '${e['option_text'] ?? ''}' : e.toString())
           .toList(),
       isCorrect: json['is_correct'] as bool? ?? false,
       explanation: json['explanation'] as String? ?? '',
