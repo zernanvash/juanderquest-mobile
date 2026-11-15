@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/screens/juanchoice_screen.dart';
@@ -15,6 +16,22 @@ class _SignedInAuthNotifier extends AuthNotifier {
       id: 'choice-test-user', seedId: 'wallet:choice-test-user', displayName: 'Choice Tester',
       email: 'choice@example.test', avatarUrl: '', role: 'user', demoPoints: 0,
     ), token: 'test-session');
+  }
+}
+
+class _RecordingVoteNotifier extends ChoiceVoteNotifier {
+  _RecordingVoteNotifier(super.ref, this.calls);
+  final List<String> calls;
+  @override
+  Future<void> submit(String campaignId, String candidateId, int expectedVersion) async {
+    calls.add('$campaignId:$candidateId');
+  }
+}
+
+// The leader bar's glint loops, so pumpAndSettle would never return.
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
   }
 }
 
@@ -228,6 +245,78 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Voting is closed'), findsOneWidget);
     expect(find.text('SIGN IN TO VOTE'), findsNothing);
+  });
+
+  test('hidden tally: null votes and tally_hidden parse instead of throwing', () {
+    final standing = ChoiceStanding.fromJson(const {
+      'candidate_id': 'candidate-id', 'spot_name': 'Hidden Cove', 'votes': null});
+    expect(standing.votes, isNull);
+    final hidden = ChoiceCampaign.fromJson({
+      'id': 'campaign-id', 'theme': 'Local activities', 'region': 'Pangasinan',
+      'status': 'scheduled', 'opens_at': '2026-11-08T16:00:00.000Z',
+      'closes_at': '2026-11-15T16:00:00.000Z', 'tally_hidden': true});
+    expect(hidden.tallyHidden, isTrue);
+    expect(ChoiceCampaign.fromJson({
+      'id': 'campaign-id', 'theme': 'Local activities', 'region': 'Pangasinan',
+      'status': 'scheduled', 'opens_at': '2026-11-08T16:00:00.000Z',
+      'closes_at': '2026-11-15T16:00:00.000Z'}).tallyHidden, isFalse);
+  });
+
+  testWidgets('hidden tally: ballot still loads, counts read Hidden, vote stays', (tester) async {
+    final hidden = ChoiceCampaign(id: campaign.id, theme: campaign.theme,
+      region: campaign.region, status: 'scheduled', opensAt: campaign.opensAt,
+      closesAt: campaign.closesAt, tallyHidden: true);
+    await tester.pumpWidget(ProviderScope(overrides: [
+      authProvider.overrideWith((ref) => _SignedInAuthNotifier()),
+      choiceOverviewProvider.overrideWith((ref) async => overview()),
+      choiceDetailProvider('campaign-id').overrideWith((ref) async => ChoiceDetail(
+        campaign: hidden,
+        standings: [ChoiceStanding.fromJson(const {
+          'candidate_id': 'candidate-id', 'spot_name': 'Hidden Cove', 'votes': null})],
+        ballot: null,
+        eligibility: const ChoiceEligibility(eligible: true, reason: null,
+          eligibleAt: null, canVoteNow: true))),
+    ], child: const MaterialApp(home: JuanChoiceDetailScreen(campaignId: 'campaign-id'))));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('choice_tally_hidden')), findsOneWidget);
+    expect(find.textContaining('Hidden', findRichText: true), findsWidgets);
+    expect(find.textContaining('null', findRichText: true), findsNothing);
+    expect(find.text('Vote for this place'), findsOneWidget);
+  });
+
+  testWidgets('confirm vote closes the dialog inside a tab navigator and submits', (tester) async {
+    // Like the bottom-bar shell: the page sits in a shell Navigator while
+    // showPixelDialog opens on the root one.
+    final calls = <String>[];
+    await tester.pumpWidget(ProviderScope(overrides: [
+      authProvider.overrideWith((ref) => _SignedInAuthNotifier()),
+      choiceOverviewProvider.overrideWith((ref) async => overview()),
+      choiceVoteProvider.overrideWith((ref) => _RecordingVoteNotifier(ref, calls)),
+      choiceDetailProvider('campaign-id').overrideWith((ref) async => ChoiceDetail(
+        campaign: campaign,
+        standings: const [ChoiceStanding(candidateId: 'candidate-id', spotName: 'Hidden Cove', votes: 2)],
+        ballot: null,
+        eligibility: const ChoiceEligibility(eligible: true, reason: null,
+          eligibleAt: null, canVoteNow: true))),
+    ], child: MaterialApp.router(routerConfig: GoRouter(routes: [
+      ShellRoute(
+        builder: (context, state, child) => child,
+        routes: [
+          GoRoute(path: '/', builder: (context, state) => const SizedBox()),
+          GoRoute(path: '/choice/campaign-id', builder: (context, state) =>
+              const JuanChoiceDetailScreen(campaignId: 'campaign-id')),
+        ],
+      ),
+    ], initialLocation: '/choice/campaign-id'))));
+    await _settle(tester);
+    await tester.tap(find.text('Vote for this place'));
+    await _settle(tester);
+    expect(find.text('Confirm JuanChoice vote'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('choice_confirm_vote')));
+    await _settle(tester);
+    expect(find.text('Confirm JuanChoice vote'), findsNothing);
+    expect(find.byType(JuanChoiceDetailScreen), findsOneWidget);
+    expect(calls, ['campaign-id:candidate-id']);
   });
 
   for (final size in [const Size(320, 568), const Size(568, 320)]) {
