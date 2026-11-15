@@ -105,6 +105,11 @@ void main() {
     expect(find.text('Camera'), findsOneWidget);
     expect(find.text('Gallery'), findsOneWidget);
     expect(find.text('Video 30s'), findsOneWidget);
+    // Plan 93b WP-12: the media step is the cover photo.
+    expect(find.textContaining(RegExp('cover photo', caseSensitive: false)),
+        findsOneWidget);
+    expect(find.textContaining(RegExp(r'^photos$', caseSensitive: false)),
+        findsNothing);
     expect(find.textContaining('Families & kids & Groups & barkada'),
         findsOneWidget);
     expect(find.textContaining('Step 1 of'), findsNothing);
