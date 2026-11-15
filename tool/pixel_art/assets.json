@@ -11,15 +11,21 @@
     {"name": "juanChoice",            "file": "assets/icons/juanchoice.png"},
     {"name": "juanChoiceHover",       "file": "assets/icons/juanchoice-hover.png"},
     {"name": "navExplore",            "file": "assets/icons/nav-explore.png"},
+    {"name": "navMap",                "file": "assets/icons/jdq-map.png"},
     {"name": "navHome",               "file": "assets/icons/nav-home.png"},
     {"name": "navProfile",            "file": "assets/icons/jdq-profile.png"},
     {"name": "navSettings",           "file": "assets/icons/nav-settings.png"},
     {"name": "navShop",               "file": "assets/icons/nav-shop.png"},
     {"name": "chestOpenAnim",         "file": "assets/icons/chest-sprite.png",                "frameWidth": 32, "fps": 10},
+    {"name": "coinAnim",              "file": "assets/icons/ExportedLayers.png",              "frameWidth": 32, "frameHeight": 32, "frameCount": 7, "fps": 10},
+    {"name": "gem",                   "file": "assets/icons/jdq-gem.png"},
     {"name": "notifBell",             "file": "assets/icons/notif.png"},
     {"name": "plazaTrophy",           "file": "assets/icons/plaza.png"},
+    {"name": "questionMark",          "file": "assets/icons/jdq-question.png"},
     {"name": "questMarker",           "file": "assets/icons/quest-marker.png"},
+    {"name": "salakot",               "file": "assets/icons/jdq-merchants.png"},
     {"name": "search",                "file": "assets/icons/search.png"},
+    {"name": "spotMarker",            "file": "assets/icons/jdq-marker.png"},
     {"name": "juanIdle",              "file": "assets/mascot/__juan-idle.png",                "frameWidth": 64, "frameCount": 8, "fps": 8, "trim": true}
   ]
 }

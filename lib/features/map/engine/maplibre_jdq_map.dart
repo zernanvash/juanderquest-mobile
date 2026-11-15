@@ -10,7 +10,6 @@ import 'package:maplibre_gl/maplibre_gl.dart' as gl;
 import '../../../core/config/map_config.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/pixel_art.dart';
-import '../pixel/map_marker_art.dart';
 import '../utils/admin_areas.dart';
 import 'building_layer_style.dart';
 import 'jdq_map.dart';
@@ -807,13 +806,13 @@ class MapLibreJdqMap extends JdqMap {
     if (!_disposed) _location.value = enabled;
   }
 
-  Future<Uint8List?> _rasterizeToPng(PixelArt art, {int scale = 2}) async {
+  Future<Uint8List?> _rasterizeToPng(PixelArt art, {double scale = 2}) async {
     try {
       final img = art.image();
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
-      final targetW = art.width * scale;
-      final targetH = art.height * scale;
+      final targetW = (art.width * scale).round();
+      final targetH = (art.height * scale).round();
       canvas.drawImageRect(
         img,
         Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
@@ -971,7 +970,8 @@ class MapLibreJdqMap extends JdqMap {
           DesignerArt.questMarker,
           scale: 2,
         );
-        final spotBytes = await _rasterizeToPng(MapMarkerArt.spotPin, scale: 3);
+        final spotBytes =
+            await _rasterizeToPng(DesignerArt.spotMarker, scale: 0.75);
         if (questBytes != null && spotBytes != null) {
           await c.addImage('jdq-pin-quest', questBytes);
           await c.addImage('jdq-pin-spot', spotBytes);

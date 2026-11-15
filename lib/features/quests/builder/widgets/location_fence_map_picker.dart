@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../core/pixel/generated/designer_art.g.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_box.dart';
@@ -11,7 +12,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../map/engine/jdq_map.dart';
 import '../../../map/engine/jdq_map_canvas.dart';
 import '../../../map/engine/maplibre_jdq_map.dart';
-import '../../../map/pixel/map_marker_art.dart';
 import '../../../map/utils/admin_areas.dart';
 import '../builder_models.dart';
 
@@ -148,9 +148,15 @@ class _LocationFenceMapPickerState
                             ),
                           ),
                           const SizedBox(height: 2),
-                          const PixelSprite(
-                            MapMarkerArt.spotPin,
-                            scale: 2,
+                          const SizedBox.square(
+                            dimension: 32,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: PixelSprite(
+                                DesignerArt.spotMarker,
+                                scale: 1,
+                              ),
+                            ),
                           ),
                         ],
                       ),

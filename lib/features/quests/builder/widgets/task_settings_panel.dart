@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/pixel/generated/designer_art.g.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_input.dart';
@@ -55,7 +56,13 @@ class TaskSettingsPanel extends StatelessWidget {
             const Expanded(
               child: Row(
                 children: [
-                  PixelSprite(MapMarkerArt.spotPin, scale: 1),
+                  SizedBox.square(
+                    dimension: 16,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: PixelSprite(DesignerArt.spotMarker, scale: 1),
+                    ),
+                  ),
                   SizedBox(width: 6),
                   Flexible(
                     child: Text(

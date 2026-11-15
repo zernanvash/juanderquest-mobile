@@ -197,13 +197,33 @@ class HomeHero extends ConsumerWidget {
             key: const ValueKey('home_hero_purse_bar'),
             children: [
               Expanded(
-                child: _purseSlot(
-                  context,
-                  grid,
-                  key: const ValueKey('home_purse_mjdq'),
-                  icon: const PixelMicro(PixelMicroArt.coin, scale: 2),
-                  label: '${homeNumber(points)} MJDQ',
-                  onTap: () => context.push('/shop'),
+                child: Semantics(
+                  button: true,
+                  label: '$points mJDQ',
+                  child: ExcludeSemantics(
+                    child: GestureDetector(
+                      key: const ValueKey('home_purse_mjdq'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => context.push('/shop'),
+                      child: PixelPanel(
+                        style: PixelBoxStyle.parchment,
+                        padding: 1,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 34),
+                          child: Center(
+                            child: MjdqAmount(
+                              points,
+                              animateOnIncrease: true,
+                              style: PixelType.small(
+                                context,
+                                color: PixelPalette.ink,
+                              ).copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               SizedBox(width: grid.px(1)),

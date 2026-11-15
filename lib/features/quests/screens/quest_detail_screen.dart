@@ -1157,6 +1157,14 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     width,
                     'Reward bounty',
                     '+${quest.rewardPoints} mJDQ',
+                    valueWidget: MjdqAmount(
+                      quest.rewardPoints,
+                      sign: true,
+                      style: PixelType.title(
+                        context,
+                        color: PixelPalette.gold,
+                      ),
+                    ),
                   ),
                   _statSlot(
                     context,
@@ -1196,16 +1204,20 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     String label,
     String value, {
     String? semantics,
+    Widget? valueWidget,
   }) {
-    final text = Text(
-      value,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: PixelType.title(
-        context,
-        color: label == 'Reward bounty' ? PixelPalette.gold : PixelPalette.ink,
-      ),
-    );
+    final text = valueWidget ??
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: PixelType.title(
+            context,
+            color: label == 'Reward bounty'
+                ? PixelPalette.gold
+                : PixelPalette.ink,
+          ),
+        );
     return SizedBox(
       width: width,
       child: PixelPanel(

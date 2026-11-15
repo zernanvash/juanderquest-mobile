@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/audio/game_audio.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -116,9 +117,27 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      PixelSprite(
-                                        PixelMicroArt.coin.frames.first,
-                                        scale: 3,
+                                      SizedBox.square(
+                                        dimension: 24,
+                                        child: FittedBox(
+                                          fit: BoxFit.contain,
+                                          child: result.passed &&
+                                                  !(MediaQuery
+                                                          .maybeDisableAnimationsOf(
+                                                        context,
+                                                      ) ??
+                                                      false)
+                                              ? const PixelAnimation(
+                                                  DesignerArt.coinAnim,
+                                                  scale: 1,
+                                                  loop: false,
+                                                )
+                                              : PixelSprite(
+                                                  DesignerArt
+                                                      .coinAnim.frames.first,
+                                                  scale: 1,
+                                                ),
+                                        ),
                                       ),
                                       SizedBox(width: grid.px(1)),
                                       PixelRollingNumber(

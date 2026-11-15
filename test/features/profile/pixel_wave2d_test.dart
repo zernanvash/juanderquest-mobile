@@ -574,7 +574,8 @@ void main() {
           vouchers: VoucherState(vouchers: [_voucher]));
       expect(find.text('Lingayen Sunset'), findsOneWidget);
       expect(find.text('Bamboo Frame'), findsOneWidget);
-      expect(find.text('1250 mJDQ'), findsNWidgets(2));
+      expect(find.byType(MjdqAmount), findsNWidgets(2));
+      expect(find.bySemanticsLabel('1250 mJDQ'), findsWidgets);
 
       await tester.tap(find.byKey(const ValueKey('shop_tab_1')));
       await tester.pump();

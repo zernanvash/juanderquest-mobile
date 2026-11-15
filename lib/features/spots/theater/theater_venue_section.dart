@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -14,7 +15,6 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../map/engine/jdq_map.dart';
 import '../../map/engine/jdq_map_canvas.dart';
 import '../../map/engine/maplibre_jdq_map.dart';
-import '../../map/pixel/map_marker_art.dart';
 import '../models/spot_model.dart';
 import 'theater_panel.dart';
 
@@ -130,9 +130,15 @@ class _TheaterVenueSectionState extends ConsumerState<TheaterVenueSection> {
                         fallback: const ColoredBox(
                           color: PixelPalette.ink,
                           child: Center(
-                            child: PixelSprite(
-                              MapMarkerArt.spotPin,
-                              scale: 2,
+                            child: SizedBox.square(
+                              dimension: 32,
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: PixelSprite(
+                                  DesignerArt.spotMarker,
+                                  scale: 1,
+                                ),
+                              ),
                             ),
                           ),
                         ),

@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -28,7 +29,6 @@ import '../../map/engine/maplibre_jdq_map.dart';
 import '../models/spot_model.dart';
 import '../utils/exif_gps.dart';
 import '../utils/spot_location_handoff.dart';
-import '../studio/pixel/studio_icons.dart';
 import '../studio/pixel/studio_text.dart';
 import '../utils/spot_posting.dart';
 import '../widgets/spot_posting_sheet.dart';
@@ -336,7 +336,13 @@ class _SpotDiscoveryStudioScreenState
             child: Center(
               child: Padding(
                 padding: EdgeInsets.only(bottom: 36),
-                child: PixelSprite(StudioIcons.pin, scale: 3),
+                child: SizedBox.square(
+                  dimension: 48,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: PixelSprite(DesignerArt.spotMarker, scale: 1),
+                  ),
+                ),
               ),
             ),
           ),

@@ -17,6 +17,7 @@ class HomeCalendarEntry {
     required this.route,
     this.municipality = '',
     this.monthOnly = false,
+    this.rewardMjdq,
   });
 
   final String id;
@@ -28,6 +29,7 @@ class HomeCalendarEntry {
   final DateTime endDate;
   final String route;
   final bool monthOnly;
+  final int? rewardMjdq;
 
   bool spansMonth(int year, int month) {
     if (monthOnly) {

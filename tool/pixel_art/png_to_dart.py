@@ -90,8 +90,18 @@ def frames_of(img, spec):
     fw = spec.get('frameWidth')
     if not fw:
         return [img]
-    count = spec.get('frameCount') or w // fw
-    frames = [img.crop((i * fw, 0, min(i * fw + fw, w), h)) for i in range(count)]
+    fh = spec.get('frameHeight')
+    if fh:
+        cols = w // fw
+        rows = h // fh
+        count = spec.get('frameCount') or (cols * rows)
+        frames = [
+            img.crop(((i % cols) * fw, (i // cols) * fh, (i % cols) * fw + fw, (i // cols) * fh + fh))
+            for i in range(count)
+        ]
+    else:
+        count = spec.get('frameCount') or w // fw
+        frames = [img.crop((i * fw, 0, min(i * fw + fw, w), h)) for i in range(count)]
     if spec.get('trim'):
         # One common box for all frames so the animation does not jitter.
         boxes = [f.getbbox() for f in frames if f.getbbox()]

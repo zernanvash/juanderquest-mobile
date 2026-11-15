@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -28,7 +29,13 @@ class PinReticle extends StatelessWidget {
         child: Padding(
           // Lift the pin so its tip, not its middle, marks the map center.
           padding: EdgeInsets.only(bottom: 40),
-          child: PixelSprite(StudioIcons.pin, scale: 3),
+          child: SizedBox.square(
+            dimension: 48,
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: PixelSprite(DesignerArt.spotMarker, scale: 1),
+            ),
+          ),
         ),
       ),
     );

@@ -7,7 +7,6 @@ import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
-import '../../map/pixel/map_marker_art.dart';
 import '../../navigation/widgets/nav_pixel_art.dart';
 import '../../spots/explore/explore_art.dart';
 import '../../vote/pixel/wave3_art.dart';
@@ -121,7 +120,7 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
       _CommandTileSpec(
         key: const ValueKey('home_tile_quizzes'),
         label: 'QUIZZES',
-        icon: NavPixelArt.questionTile,
+        icon: DesignerArt.questionMark,
         badge: '${widget.nearbyQuizCount}',
         category: CommandTileCategory.play,
         onTap: widget.onOpenQuizzes,
@@ -129,7 +128,7 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
       const _CommandTileSpec(
         key: ValueKey('home_tile_add_spot'),
         label: '+ SPOT',
-        icon: MapMarkerArt.iconAddPin,
+        icon: DesignerArt.spotMarker,
         badge: '+XP',
         category: CommandTileCategory.play,
         route: '/map/add-spot',

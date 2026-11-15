@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/app_release.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -108,6 +110,7 @@ class SettingsScreen extends ConsumerWidget {
                             _SettingsTile(
                               key: const ValueKey('settings_affiliate'),
                               icon: 'M',
+                              pixelIcon: DesignerArt.salakot,
                               title: 'Merchant affiliate',
                               subtitle:
                                   'Apply to take part in tourism promotions',
@@ -330,6 +333,7 @@ class _SettingsTile extends StatelessWidget {
   const _SettingsTile({
     super.key,
     required this.icon,
+    this.pixelIcon,
     required this.title,
     required this.subtitle,
     required this.onTap,
@@ -337,6 +341,7 @@ class _SettingsTile extends StatelessWidget {
   });
 
   final String icon;
+  final PixelArt? pixelIcon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -361,11 +366,21 @@ class _SettingsTile extends StatelessWidget {
               padding: 1,
               child: SizedBox(
                 width: grid.px(10),
-                child: Text(
-                  icon,
-                  textAlign: TextAlign.center,
-                  style: PixelType.title(context),
-                ),
+                child: pixelIcon != null
+                    ? Center(
+                        child: SizedBox.square(
+                          dimension: 20,
+                          child: FittedBox(
+                            fit: BoxFit.contain,
+                            child: PixelSprite(pixelIcon!, scale: 1),
+                          ),
+                        ),
+                      )
+                    : Text(
+                        icon,
+                        textAlign: TextAlign.center,
+                        style: PixelType.title(context),
+                      ),
               ),
             ),
             SizedBox(width: grid.px(2)),

@@ -6,6 +6,8 @@ import 'package:flutter/widgets.dart';
 
 import 'generated/pixel_palette.g.dart';
 
+export 'mjdq_amount.dart';
+
 /// One sprite as palette-keyed rows: one character = one art pixel, '.' is
 /// transparent. Generated from designer PNGs by tool/pixel_art/png_to_dart.py.
 class PixelArt {

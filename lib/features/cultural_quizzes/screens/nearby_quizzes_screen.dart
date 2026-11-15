@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -238,9 +240,12 @@ class _RadarHeaderPanel extends StatelessWidget {
           Row(
             children: [
               const SizedBox(
-                width: 44,
-                height: 44,
-                child: CustomPaint(painter: _StaticRadarPainter()),
+                width: 40,
+                height: 40,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: PixelSprite(DesignerArt.questionMark, scale: 1),
+                ),
               ),
               SizedBox(width: grid.px(2)),
               Expanded(
@@ -283,43 +288,6 @@ class _RadarHeaderPanel extends StatelessWidget {
       ),
     );
   }
-}
-
-class _StaticRadarPainter extends CustomPainter {
-  const _StaticRadarPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final ringPaint = Paint()
-      ..color = PixelPalette.greenBright
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final sweepPaint = Paint()
-      ..color = PixelPalette.sun
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final dotPaint = Paint()
-      ..color = PixelPalette.gold
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRect(
-      Rect.fromCenter(center: center, width: size.width - 4, height: size.height - 4),
-      ringPaint,
-    );
-    canvas.drawRect(
-      Rect.fromCenter(center: center, width: size.width * 0.55, height: size.height * 0.55),
-      ringPaint,
-    );
-    canvas.drawLine(center, Offset(size.width - 6, 8), sweepPaint);
-    canvas.drawRect(
-      Rect.fromCenter(center: center, width: 6, height: 6),
-      dotPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _StaticRadarPainter oldDelegate) => false;
 }
 
 enum _QuizCardMode { ready, approaching, completed }

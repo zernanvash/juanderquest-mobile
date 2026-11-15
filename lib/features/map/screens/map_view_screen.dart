@@ -1098,7 +1098,21 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                     ).copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-                if (bountyOrStatus != null) ...[
+                if (isQuest) ...[
+                  SizedBox(width: grid.px(0.5)),
+                  PixelPanel(
+                    style: PixelBoxStyle.slot,
+                    padding: 1,
+                    child: MjdqAmount(
+                      _selectedQuest!.rewardPoints,
+                      sign: true,
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.woodDeep,
+                      ).copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ] else if (bountyOrStatus != null) ...[
                   SizedBox(width: grid.px(0.5)),
                   PixelPanel(
                     style: PixelBoxStyle.slot,
@@ -1160,21 +1174,39 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                                   height: 56,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Center(
-                                    child: PixelSprite(
-                                      isQuest
-                                          ? DesignerArt.questMarker
-                                          : MapMarkerArt.spotPin,
-                                      scale: 2,
-                                    ),
+                                    child: isQuest
+                                        ? const PixelSprite(
+                                            DesignerArt.questMarker,
+                                            scale: 2,
+                                          )
+                                        : const SizedBox.square(
+                                            dimension: 32,
+                                            child: FittedBox(
+                                              fit: BoxFit.contain,
+                                              child: PixelSprite(
+                                                DesignerArt.spotMarker,
+                                                scale: 1,
+                                              ),
+                                            ),
+                                          ),
                                   ),
                                 )
                               : Center(
-                                  child: PixelSprite(
-                                    isQuest
-                                        ? DesignerArt.questMarker
-                                        : MapMarkerArt.spotPin,
-                                    scale: 2,
-                                  ),
+                                  child: isQuest
+                                      ? const PixelSprite(
+                                          DesignerArt.questMarker,
+                                          scale: 2,
+                                        )
+                                      : const SizedBox.square(
+                                          dimension: 32,
+                                          child: FittedBox(
+                                            fit: BoxFit.contain,
+                                            child: PixelSprite(
+                                              DesignerArt.spotMarker,
+                                              scale: 1,
+                                            ),
+                                          ),
+                                        ),
                                 ),
                         ),
                       ),

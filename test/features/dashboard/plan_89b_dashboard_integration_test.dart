@@ -311,6 +311,7 @@ void main() {
     final arts = sprites.map((s) => s.art).toSet();
 
     expect(arts.contains(DesignerArt.navProfile), isTrue);
+    expect(arts.contains(DesignerArt.navMap), isTrue);
     expect(arts.contains(DesignerArt.plazaTrophy), isTrue);
     expect(arts.contains(DesignerArt.search), isTrue);
     expect(arts.contains(DesignerArt.navSettings), isTrue);

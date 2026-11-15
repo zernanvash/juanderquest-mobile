@@ -34,6 +34,13 @@ void main() {
     expect((DesignerArt.chestOpenAnim.frames.first.width, DesignerArt.chestOpenAnim.frames.first.height), (32, 32));
     expect((DesignerArt.navHome.width, DesignerArt.navHome.height), (24, 24));
     expect((DesignerArt.navProfile.width, DesignerArt.navProfile.height), (24, 24));
+    expect((DesignerArt.navMap.width, DesignerArt.navMap.height), (32, 32));
+    expect((DesignerArt.questionMark.width, DesignerArt.questionMark.height), (32, 32));
+    expect((DesignerArt.gem.width, DesignerArt.gem.height), (32, 32));
+    expect((DesignerArt.spotMarker.width, DesignerArt.spotMarker.height), (64, 64));
+    expect((DesignerArt.salakot.width, DesignerArt.salakot.height), (23, 23));
+    expect(DesignerArt.coinAnim.frames, hasLength(7));
+    expect((DesignerArt.coinAnim.frames.first.width, DesignerArt.coinAnim.frames.first.height), (32, 32));
     for (final v in DesignerArt.all.values.whereType<PixelFrames>()) {
       final first = v.frames.first;
       for (final f in v.frames) {
@@ -75,5 +82,40 @@ void main() {
     expect(find.byType(PixelAnimation), findsWidgets);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byKey(const ValueKey('pixel_lab_chest')), findsOneWidget);
+  });
+
+  testWidgets('MjdqAmount renders number + coin and exposes "<amount> mJDQ" to screen readers', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.pixel,
+        home: const Scaffold(
+          body: Center(child: MjdqAmount(1250)),
+        ),
+      ),
+    );
+    expect(find.text('1250'), findsOneWidget);
+    expect(find.byType(PixelSprite), findsOneWidget);
+    expect(find.bySemanticsLabel('1250 mJDQ'), findsOneWidget);
+  });
+
+  testWidgets('MjdqAmount plays coin animation when points increase and settles on frame 1', (tester) async {
+    Widget buildFor(int points) => MaterialApp(
+          theme: AppTheme.pixel,
+          home: Scaffold(
+            body: Center(child: MjdqAmount(points, animateOnIncrease: true)),
+          ),
+        );
+
+    await tester.pumpWidget(buildFor(100));
+    expect(find.byType(PixelAnimation), findsNothing);
+    expect(find.byType(PixelSprite), findsOneWidget);
+
+    await tester.pumpWidget(buildFor(150));
+    await tester.pump();
+    expect(find.byType(PixelAnimation), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(PixelAnimation), findsNothing);
+    expect(find.byType(PixelSprite), findsOneWidget);
   });
 }

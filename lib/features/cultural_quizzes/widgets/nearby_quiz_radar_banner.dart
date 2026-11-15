@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
@@ -50,6 +52,14 @@ class NearbyQuizRadarBanner extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox.square(
+                dimension: 24,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: PixelSprite(DesignerArt.questionMark, scale: 1),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
               Expanded(
                 child: Text(
                   headline,

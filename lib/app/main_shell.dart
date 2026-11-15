@@ -139,8 +139,6 @@ class _MainShellState extends ConsumerState<MainShell> {
                     },
                     items: const [
                       // Owner 2026-11-05: Home · Explore · Map · Shop · Profile.
-                      // Explore and Map icons are placeholders until the
-                      // designer draws them.
                       PixelHotbarItem(
                         label: 'Home',
                         icon: DesignerArt.navHome,
@@ -151,7 +149,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                       ),
                       PixelHotbarItem(
                         label: 'Map',
-                        icon: DesignerArt.navExplore,
+                        icon: DesignerArt.navMap,
                       ),
                       PixelHotbarItem(
                         label: 'Shop',

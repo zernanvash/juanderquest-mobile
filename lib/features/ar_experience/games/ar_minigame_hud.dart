@@ -4,7 +4,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_text.dart';
@@ -271,6 +273,16 @@ class ArMiniGameHud extends StatelessWidget {
         child: PixelPanel(
           style: PixelBoxStyle.parchment,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (game.passed) ...[
+              const SizedBox.square(
+                dimension: 32,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: PixelSprite(DesignerArt.gem, scale: 1),
+                ),
+              ),
+              const SizedBox(height: 6),
+            ],
             FittedBox(
               child: Text(game.passed ? 'PANALO!' : 'TAPOS NA!',
                   style: PixelType.display(context, color: game.passed ? PixelPalette.greenDeep : PixelPalette.ink)),

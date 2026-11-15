@@ -380,13 +380,22 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                                   vertical: 1,
                                 ),
                                 color: _badgeColor(item.kind),
-                                child: Text(
-                                  item.shortBadge,
-                                  style: PixelType.small(
-                                    context,
-                                    color: PixelPalette.ink,
-                                  ).copyWith(fontWeight: FontWeight.w700),
-                                ),
+                                child: item.rewardMjdq != null
+                                    ? MjdqAmount(
+                                        item.rewardMjdq!,
+                                        sign: true,
+                                        style: PixelType.small(
+                                          context,
+                                          color: PixelPalette.ink,
+                                        ).copyWith(fontWeight: FontWeight.w700),
+                                      )
+                                    : Text(
+                                        item.shortBadge,
+                                        style: PixelType.small(
+                                          context,
+                                          color: PixelPalette.ink,
+                                        ).copyWith(fontWeight: FontWeight.w700),
+                                      ),
                               ),
                               const SizedBox(width: 6),
                               Expanded(

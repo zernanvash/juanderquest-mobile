@@ -12,6 +12,8 @@ import 'pixel_grid.dart';
 import 'pixel_rpg.dart';
 import 'pixel_text.dart';
 
+export 'mjdq_amount.dart';
+
 void pixelTick(BuildContext context) {
   if (PixelScope.of(context).haptics) HapticFeedback.selectionClick();
   if (GameAudio.instance.buttonSounds.value) GameAudio.instance.playSfx('tap', vary: true);
@@ -63,6 +65,7 @@ class PixelButton extends StatefulWidget {
     this.expand = false,
     this.loading = false,
     this.iconScale = 3,
+    this.iconSize,
     this.style,
     this.textColor,
   });
@@ -74,6 +77,7 @@ class PixelButton extends StatefulWidget {
   final bool expand;
   final bool loading;
   final int iconScale;
+  final double? iconSize;
   final PixelBoxStyle? style;
   final Color? textColor;
 
@@ -102,7 +106,16 @@ class _PixelButtonState extends State<PixelButton> {
           _SteppedDots(color: textColor),
           SizedBox(width: grid.px(2)),
         ] else if (widget.icon != null) ...[
-          PixelSprite(widget.icon!, scale: widget.iconScale),
+          if (widget.iconSize != null)
+            SizedBox.square(
+              dimension: widget.iconSize,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: PixelSprite(widget.icon!, scale: widget.iconScale),
+              ),
+            )
+          else
+            PixelSprite(widget.icon!, scale: widget.iconScale),
           SizedBox(width: grid.px(2)),
         ],
         Flexible(

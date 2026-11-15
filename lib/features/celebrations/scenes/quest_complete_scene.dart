@@ -34,6 +34,7 @@ class QuestCompleteGame extends FlameGame {
 
   late final _ChestComponent _chest;
   late final _CoinBurstComponent _coins;
+  late final _CounterCoinComponent _counterCoin;
   late final TextComponent _title;
   late final TextComponent _questCaption;
   late final TextComponent _counter;
@@ -110,17 +111,19 @@ class QuestCompleteGame extends FlameGame {
     );
 
     _counter = TextComponent(
-      text: reducedMotion ? '+$reward mJDQ' : '',
+      text: reducedMotion ? '+$reward' : '',
       anchor: Anchor.center,
       textRenderer: _textPaint(18, PixelPalette.white),
     );
+
+    _counterCoin = _CounterCoinComponent(unit, reducedMotion: reducedMotion);
 
     if (reducedMotion) {
       _titleStepper.complete();
       _rewardStepper.complete();
     }
 
-    addAll([_chest, _coins, _title, _questCaption, _counter]);
+    addAll([_chest, _coins, _title, _questCaption, _counter, _counterCoin]);
     _layout(size);
   }
 
@@ -138,11 +141,19 @@ class QuestCompleteGame extends FlameGame {
       _questCaption.position = Vector2(s.x / 2, s.y * 0.28);
       _chest.position = Vector2(s.x * 0.35, s.y * 0.58);
       _counter.position = Vector2(s.x * 0.65, s.y * 0.58);
+      _counterCoin.position = Vector2(
+        _counter.position.x + _counter.size.x / 2 + unit * 6,
+        _counter.position.y,
+      );
     } else {
       _title.position = Vector2(s.x / 2, s.y * 0.15);
       _questCaption.position = Vector2(s.x / 2, s.y * 0.22);
       _chest.position = Vector2(s.x / 2, s.y * 0.44);
-      _counter.position = Vector2(s.x / 2, s.y * 0.64);
+      _counter.position = Vector2(s.x / 2 - unit * 4, s.y * 0.64);
+      _counterCoin.position = Vector2(
+        _counter.position.x + _counter.size.x / 2 + unit * 6,
+        _counter.position.y,
+      );
     }
   }
 
@@ -165,11 +176,19 @@ class QuestCompleteGame extends FlameGame {
 
     // Reward counter: starts once chest opens (t >= 0.9s), steps every 0.08s
     if (_t >= 0.9 && !_rewardStepper.isComplete) {
+      _counterCoin.spinning = true;
       _counterAccumulator += dt;
       while (_counterAccumulator >= 0.08) {
         _counterAccumulator -= 0.08;
         _rewardStepper.step();
-        _counter.text = '+${_rewardStepper.current} mJDQ';
+        _counter.text = '+${_rewardStepper.current}';
+        _counterCoin.position = Vector2(
+          _counter.position.x + _counter.size.x / 2 + unit * 6,
+          _counter.position.y,
+        );
+      }
+      if (_rewardStepper.isComplete) {
+        _counterCoin.spinning = false;
       }
     }
   }
@@ -316,5 +335,51 @@ class _CoinBurstComponent extends Component
         _paint,
       );
     }
+  }
+}
+
+class _CounterCoinComponent extends PositionComponent {
+  _CounterCoinComponent(this.unit, {this.reducedMotion = false})
+      : super(anchor: Anchor.center);
+
+  final double unit;
+  final bool reducedMotion;
+  late final List<ui.Image> _frames;
+  final Paint _paint = Paint()
+    ..filterQuality = FilterQuality.none
+    ..isAntiAlias = false;
+
+  bool spinning = false;
+  double _animT = 0;
+  int _frameIndex = 0;
+
+  @override
+  Future<void> onLoad() async {
+    _frames = DesignerArt.coinAnim.frames.map((f) => f.image()).toList();
+    final side = unit * 8;
+    size = Vector2(side, side);
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (reducedMotion || !spinning) {
+      _frameIndex = 0;
+      _animT = 0;
+      return;
+    }
+    _animT += dt;
+    _frameIndex = (_animT * DesignerArt.coinAnim.fps).floor() % _frames.length;
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final img = _frames[_frameIndex.clamp(0, _frames.length - 1)];
+    canvas.drawImageRect(
+      img,
+      Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+      Rect.fromLTWH(0, 0, size.x, size.y),
+      _paint,
+    );
   }
 }

@@ -613,8 +613,9 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                   style: PixelBoxStyle.green,
                   textColor: PixelPalette.white,
                 ),
-                const PixelChip(
-                  '+1 STAMP · 0 mJDQ',
+                const MjdqChip(
+                  0,
+                  prefix: '+1 STAMP · ',
                   style: PixelBoxStyle.parchment,
                 ),
               ],

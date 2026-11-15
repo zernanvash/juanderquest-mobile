@@ -115,11 +115,11 @@ class QuestCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    PixelTag(
-                      '+${quest.rewardPoints} mJDQ',
+                    MjdqChip(
+                      quest.rewardPoints,
+                      sign: true,
                       style: PixelBoxStyle.gold,
                       textColor: PixelPalette.ink,
-                      maxWidth: grid.px(45),
                     ),
                     if (onToggleSaved != null)
                       SavedQuestHeart(

@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -310,7 +312,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     title: 'Traveler Shop',
                     isTab: true,
                     actions: [
-                      PixelChip('$points mJDQ', style: PixelBoxStyle.gold),
+                      MjdqChip(
+                        points,
+                        style: PixelBoxStyle.gold,
+                        animateOnIncrease: true,
+                      ),
                     ],
                   ),
                   Expanded(
@@ -373,7 +379,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             spacing: grid.px(2),
             runSpacing: grid.px(1),
             children: [
-              PixelChip('$points mJDQ', style: PixelBoxStyle.gold),
+              MjdqChip(
+                points,
+                style: PixelBoxStyle.gold,
+                animateOnIncrease: true,
+              ),
               if (ref.watch(authProvider).user?.hasBoundWallet != true)
                 GestureDetector(
                   onTap: () => context.push('/wallet/connect'),
@@ -537,12 +547,28 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               children: [
                 Text(item.name, style: PixelType.title(context)),
                 SizedBox(height: grid.px(1)),
-                Text(
-                  '${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
-                  style: PixelType.body(
-                    context,
-                    color: PixelPalette.slate,
-                  ),
+                Row(
+                  children: [
+                    if (item.rarity != 'common') ...[
+                      const SizedBox.square(
+                        dimension: 16,
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: PixelSprite(DesignerArt.gem, scale: 1),
+                        ),
+                      ),
+                      SizedBox(width: grid.px(1)),
+                    ],
+                    Expanded(
+                      child: Text(
+                        '${item.kind.replaceAll('_', ' ')} · ${item.rarity}',
+                        style: PixelType.body(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   _cosmeticPrice(item),
@@ -867,8 +893,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             children: [
               PixelChip(voucher.category.replaceAll('_', ' '),
                   style: PixelBoxStyle.slot),
-              PixelChip(
-                '${voucher.costPoints} mJDQ',
+              MjdqChip(
+                voucher.costPoints,
                 style: canAfford
                     ? PixelBoxStyle.gold
                     : PixelBoxStyle.slot,

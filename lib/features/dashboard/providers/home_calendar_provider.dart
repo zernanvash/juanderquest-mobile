@@ -80,6 +80,8 @@ final homeCalendarEntriesProvider =
         shortBadge: c.rewardPerParticipantMjdq > 0
             ? '+${c.rewardPerParticipantMjdq} mJDQ'
             : 'EVENT',
+        rewardMjdq:
+            c.rewardPerParticipantMjdq > 0 ? c.rewardPerParticipantMjdq : null,
         kind: CalendarEntryKind.campaign,
         startDate: start,
         endDate: end.isBefore(start) ? start : end,

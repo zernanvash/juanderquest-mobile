@@ -712,7 +712,7 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                 onPressed: () {},
               ),
               const PixelIconButton(
-                icon: DesignerArt.navExplore,
+                icon: DesignerArt.navMap,
                 semanticLabel: 'Disabled explore',
               ),
             ],
@@ -949,7 +949,7 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
             index: _hotbar,
             onTap: (index) => setState(() => _hotbar = index),
             items: const [
-              PixelHotbarItem(label: 'Explore', icon: DesignerArt.navExplore),
+              PixelHotbarItem(label: 'Explore', icon: DesignerArt.navMap),
               PixelHotbarItem(label: 'Shop', icon: DesignerArt.navShop),
               PixelHotbarItem(label: 'Settings', icon: DesignerArt.navSettings),
               PixelHotbarItem(label: 'Quests', icon: DesignerArt.notifBell),
@@ -1082,7 +1082,10 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
               for (final entry in stills)
                 cell(
                   entry.key,
-                  PixelSprite(entry.value as PixelArt, scale: 3),
+                  PixelSprite(
+                    entry.value as PixelArt,
+                    scale: (entry.value as PixelArt).width > 48 ? 1 : 3,
+                  ),
                 ),
             ],
           ),

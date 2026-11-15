@@ -235,12 +235,24 @@ class _SpotQuestRow extends StatelessWidget {
                   style: PixelBoxStyle.gold,
                   textColor: PixelPalette.ink,
                 ),
-                Text(
-                  '${q.rewardPoints} mJDQ · $stepLabel',
-                  style: PixelType.small(
-                    context,
-                    color: PixelPalette.greenDeep,
-                  ).copyWith(fontWeight: FontWeight.w700),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MjdqAmount(
+                      q.rewardPoints,
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.greenDeep,
+                      ).copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      ' · $stepLabel',
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.greenDeep,
+                      ).copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ],
                 ),
               ],
             ),

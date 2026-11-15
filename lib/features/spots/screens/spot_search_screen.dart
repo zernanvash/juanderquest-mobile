@@ -499,7 +499,11 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                       Positioned(
                         top: grid.px(1),
                         right: grid.px(1),
-                        child: const PixelChip('+250 mJDQ Bounty'),
+                        child: const MjdqChip(
+                          250,
+                          sign: true,
+                          suffix: 'Bounty',
+                        ),
                       ),
                   ],
                 ),

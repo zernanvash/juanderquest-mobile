@@ -7,7 +7,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -496,9 +498,23 @@ class _AffiliateApplicationScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Partner with local tourism',
-            style: PixelType.title(context, color: PixelPalette.paper),
+          Row(
+            children: [
+              const SizedBox.square(
+                dimension: 24,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: PixelSprite(DesignerArt.salakot, scale: 1),
+                ),
+              ),
+              SizedBox(width: grid.px(2)),
+              Expanded(
+                child: Text(
+                  'Partner with local tourism',
+                  style: PixelType.title(context, color: PixelPalette.paper),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: grid.px(1)),
           Text(

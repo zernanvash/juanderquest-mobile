@@ -163,12 +163,25 @@ class TheaterOverviewSection extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: grid.px(1)),
-                    PixelStatRow(
-                      'Bounty',
-                      '+250 mJDQ',
-                      labelColor: PixelPalette.paperDim,
-                      valueColor: PixelPalette.gold,
-                      style: PixelType.body(context),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Bounty',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.paperDim,
+                          ),
+                        ),
+                        MjdqAmount(
+                          250,
+                          sign: true,
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.gold,
+                          ),
+                        ),
+                      ],
                     ),
                     SizedBox(height: grid.px(1)),
                     PixelText.rich(

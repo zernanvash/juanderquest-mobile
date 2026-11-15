@@ -8,8 +8,6 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
-import '../../map/pixel/map_marker_art.dart';
-import '../../navigation/widgets/nav_pixel_art.dart';
 import '../../quests/models/quest_model.dart';
 import '../providers/home_daily_provider.dart';
 
@@ -125,13 +123,23 @@ class HomeDualBentoRow extends StatelessWidget {
             final stacked = constraints.maxWidth < 260 || textScale >= 1.6;
             final qotdChip = _MicroPillButton(
               key: const ValueKey('home_qotd_pill'),
-              icon: NavPixelArt.questionTile,
+              icon: DesignerArt.questionMark,
               label: qotdDone ? 'QOTD DONE' : 'QOTD +5 mJDQ',
+              labelWidget: qotdDone
+                  ? null
+                  : MjdqAmount(
+                      5,
+                      sign: true,
+                      prefix: 'QOTD ',
+                      style:
+                          PixelType.small(context, color: PixelPalette.woodDeep)
+                              .copyWith(fontWeight: FontWeight.w700),
+                    ),
               onTap: onTapQotd,
             );
             final gemChip = _MicroPillButton(
               key: const ValueKey('home_gem_pill'),
-              icon: MapMarkerArt.spotPin,
+              icon: DesignerArt.gem,
               label: gemName != null && gemName!.isNotEmpty
                   ? 'GEM: $gemName'
                   : 'HIDDEN GEM',
@@ -242,14 +250,21 @@ class _MissionBentoBox extends StatelessWidget {
                       .copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  quest.locationName.isNotEmpty
-                      ? quest.locationName
-                      : '+${quest.rewardPoints} mJDQ',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: PixelType.small(context, color: PixelPalette.greenLight),
-                ),
+                if (quest.locationName.isNotEmpty)
+                  Text(
+                    quest.locationName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        PixelType.small(context, color: PixelPalette.greenLight),
+                  )
+                else
+                  MjdqAmount(
+                    quest.rewardPoints,
+                    sign: true,
+                    style:
+                        PixelType.small(context, color: PixelPalette.greenLight),
+                  ),
               ] else ...[
                 Text(
                   'Find a destination to start a quest',
@@ -397,10 +412,12 @@ class _MicroPillButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.labelWidget,
   });
 
   final PixelArt icon;
   final String label;
+  final Widget? labelWidget;
   final VoidCallback? onTap;
 
   @override
@@ -427,13 +444,14 @@ class _MicroPillButton extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: PixelType.small(context, color: PixelPalette.woodDeep)
-                    .copyWith(fontWeight: FontWeight.w700),
-              ),
+              child: labelWidget ??
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PixelType.small(context, color: PixelPalette.woodDeep)
+                        .copyWith(fontWeight: FontWeight.w700),
+                  ),
             ),
           ],
         ),

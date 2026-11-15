@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -396,8 +397,9 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
             SizedBox(height: grid.px(3)),
             PixelButton(
               label: 'Show it on the map',
-              icon: StudioIcons.pin,
-              iconScale: 2,
+              icon: DesignerArt.spotMarker,
+              iconScale: 1,
+              iconSize: 20,
               expand: true,
               onPressed: done,
             ),
@@ -603,8 +605,9 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
             SizedBox(height: grid.px(2)),
             PixelButton(
               label: 'Adjust pin',
-              icon: StudioIcons.pin,
-              iconScale: 2,
+              icon: DesignerArt.spotMarker,
+              iconScale: 1,
+              iconSize: 20,
               variant: PixelButtonVariant.secondary,
               onPressed: _requestMovePin,
             ),
