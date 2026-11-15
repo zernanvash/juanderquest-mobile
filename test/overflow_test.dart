@@ -2101,6 +2101,89 @@ void main() {
       );
     });
 
+    testWidgets(
+        'CulturalQuizPlayScreen Plan 91b true_false, photo_clue, sequence_order do not overflow at 2.0x',
+        (tester) async {
+      final session = (
+        attempt: CulturalQuizAttemptModel(
+          id: 'att-91b',
+          quizId: 'quiz-91b',
+          versionId: 'v-1',
+          rewardScopeId: 'scope-1',
+          userId: 'u1',
+          status: 'in_progress',
+          startedAt: DateTime.now(),
+          expiresAt: DateTime.now().add(const Duration(minutes: 20)),
+          totalQuestions: 3,
+          xpAwarded: 0,
+        ),
+        questions: const [
+          CulturalQuizQuestionModel(
+            id: 'q-tf',
+            versionId: 'v-1',
+            ordinal: 1,
+            questionType: 'true_false',
+            questionText: 'Cape Bolinao Lighthouse was lit in 1905.',
+            explanation: 'Fact.',
+            options: [
+              CulturalQuizOptionModel(
+                  id: 'tf-1', questionId: 'q-tf', ordinal: 1, optionText: 'Fact'),
+              CulturalQuizOptionModel(
+                  id: 'tf-2', questionId: 'q-tf', ordinal: 2, optionText: 'Myth'),
+            ],
+          ),
+          CulturalQuizQuestionModel(
+            id: 'q-photo',
+            versionId: 'v-1',
+            ordinal: 2,
+            questionType: 'photo_clue',
+            mediaUrl: 'https://juanderquest.app/media/bolinao.jpg',
+            questionText: 'Identify this coastal landmark in Pangasinan.',
+            explanation: 'Cape Bolinao.',
+            options: [
+              CulturalQuizOptionModel(
+                  id: 'p-1', questionId: 'q-photo', ordinal: 1, optionText: 'Lighthouse'),
+              CulturalQuizOptionModel(
+                  id: 'p-2', questionId: 'q-photo', ordinal: 2, optionText: 'Cathedral'),
+              CulturalQuizOptionModel(
+                  id: 'p-3', questionId: 'q-photo', ordinal: 3, optionText: 'Plaza'),
+              CulturalQuizOptionModel(
+                  id: 'p-4', questionId: 'q-photo', ordinal: 4, optionText: 'Bridge'),
+            ],
+          ),
+          CulturalQuizQuestionModel(
+            id: 'q-seq',
+            versionId: 'v-1',
+            ordinal: 3,
+            questionType: 'sequence_order',
+            questionText: 'Order the route stops from Dagupan to Bolinao.',
+            explanation: 'Westward coast.',
+            options: [
+              CulturalQuizOptionModel(
+                  id: 's-1', questionId: 'q-seq', optionText: 'Lingayen'),
+              CulturalQuizOptionModel(
+                  id: 's-2', questionId: 'q-seq', optionText: 'Alaminos'),
+              CulturalQuizOptionModel(
+                  id: 's-3', questionId: 'q-seq', optionText: 'Bolinao'),
+            ],
+          ),
+        ],
+      );
+
+      await testScreenOverflow(
+        tester,
+        CulturalQuizPlayScreen(quizId: 'quiz-91b', session: session),
+        const Size(320, 568),
+        2.0,
+      );
+      await testScreenOverflow(
+        tester,
+        CulturalQuizPlayScreen(quizId: 'quiz-91b', session: session),
+        const Size(568, 320),
+        2.0,
+      );
+    });
+
     testWidgets('AboutScreen does not overflow in small landscape',
         (tester) async {
       await testScreenOverflow(

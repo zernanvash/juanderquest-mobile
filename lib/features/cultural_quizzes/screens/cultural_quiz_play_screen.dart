@@ -37,6 +37,10 @@ class _CulturalQuizPlayScreenState
     extends ConsumerState<CulturalQuizPlayScreen> {
   int _currentIndex = 0;
   final Map<String, String> _selectedOptionByQuestion = {};
+  final Map<String, List<String>> _orderedOptionIdsByQuestion = {};
+  final Set<String> _eliminatedOptionIds = {};
+  bool _fiftyFiftyUsed = false;
+  bool _isUsingLifeline = false;
   Timer? _countdownTimer;
   late Duration _remaining;
   bool _isSubmitting = false;
@@ -71,9 +75,43 @@ class _CulturalQuizPlayScreenState
     super.dispose();
   }
 
+  bool _isQuestionAnswered(CulturalQuizQuestionModel q) {
+    if (q.questionType == 'sequence_order') {
+      return (_orderedOptionIdsByQuestion[q.id]?.length ?? 0) == q.options.length;
+    }
+    return _selectedOptionByQuestion.containsKey(q.id);
+  }
+
+  Future<void> _useFiftyFifty(CulturalQuizQuestionModel question) async {
+    if (_fiftyFiftyUsed || _isUsingLifeline) return;
+    setState(() => _isUsingLifeline = true);
+    try {
+      final eliminated = await ref
+          .read(culturalQuizControllerProvider.notifier)
+          .useFiftyFifty(
+            quizId: widget.quizId,
+            attemptId: widget.session.attempt.id,
+            questionId: question.id,
+          );
+      if (!mounted) return;
+      setState(() {
+        _fiftyFiftyUsed = true;
+        _eliminatedOptionIds.addAll(eliminated);
+        if (eliminated.contains(_selectedOptionByQuestion[question.id])) {
+          _selectedOptionByQuestion.remove(question.id);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      showPixelToast(context, e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isUsingLifeline = false);
+    }
+  }
+
   Future<void> _submitQuiz() async {
     final questions = widget.session.questions;
-    if (_selectedOptionByQuestion.length < questions.length) {
+    if (questions.any((q) => !_isQuestionAnswered(q))) {
       showPixelToast(
           context, 'Please answer all 5 questions before submitting.');
       return;
@@ -85,18 +123,34 @@ class _CulturalQuizPlayScreenState
     });
 
     try {
-      final answers = questions
-          .map((q) => (
-                questionId: q.id,
-                selectedOptionId: _selectedOptionByQuestion[q.id]!,
-              ))
-          .toList();
-
-      final result =
-          await ref.read(culturalQuizControllerProvider.notifier).submitAttempt(
-                attemptId: widget.session.attempt.id,
-                answers: answers,
-              );
+      final hasSequence = questions.any((q) => q.questionType == 'sequence_order');
+      final controller = ref.read(culturalQuizControllerProvider.notifier);
+      final result = hasSequence
+          ? await controller.submitAttemptAnswers(
+              attemptId: widget.session.attempt.id,
+              answers: questions
+                  .map((q) => q.questionType == 'sequence_order'
+                      ? (
+                          questionId: q.id,
+                          selectedOptionId: null,
+                          orderedOptionIds: _orderedOptionIdsByQuestion[q.id]!,
+                        )
+                      : (
+                          questionId: q.id,
+                          selectedOptionId: _selectedOptionByQuestion[q.id]!,
+                          orderedOptionIds: null,
+                        ))
+                  .toList(),
+            )
+          : await controller.submitAttempt(
+              attemptId: widget.session.attempt.id,
+              answers: questions
+                  .map((q) => (
+                        questionId: q.id,
+                        selectedOptionId: _selectedOptionByQuestion[q.id]!,
+                      ))
+                  .toList(),
+            );
 
       if (!mounted) return;
       if (result.passed) {
@@ -177,24 +231,47 @@ class _CulturalQuizPlayScreenState
                             ),
                           ],
                         ),
-                        SizedBox(height: grid.px(3)),
-                        Text(
-                          'Question ${currentQ.ordinal}',
-                          style: PixelType.small(
-                            context,
-                            color: PixelPalette.greenDark,
-                          ),
+                        SizedBox(height: grid.px(2)),
+                        _buildProgressPips(context, grid, questions),
+                        SizedBox(height: grid.px(2)),
+                        Wrap(
+                          spacing: grid.px(2),
+                          runSpacing: grid.px(1),
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            PixelChip(
+                              _questionTypeLabel(currentQ.questionType),
+                              key: const ValueKey('quiz_question_type_pill'),
+                              style: PixelBoxStyle.gold,
+                              textColor: PixelPalette.ink,
+                            ),
+                            Text(
+                              'Question ${currentQ.ordinal}',
+                              style: PixelType.small(
+                                context,
+                                color: PixelPalette.greenDark,
+                              ),
+                            ),
+                            if (!_fiftyFiftyUsed &&
+                                (currentQ.questionType == 'multiple_choice' ||
+                                    currentQ.questionType == 'photo_clue'))
+                              PixelButton(
+                                key: const ValueKey('quiz_lifeline_fifty_fifty'),
+                                label: _isUsingLifeline ? '...' : '50/50',
+                                variant: PixelButtonVariant.secondary,
+                                onPressed: _isUsingLifeline
+                                    ? null
+                                    : () => _useFiftyFifty(currentQ),
+                              ),
+                          ],
                         ),
-                        SizedBox(height: grid.px(1)),
+                        SizedBox(height: grid.px(2)),
                         Text(
                           currentQ.questionText,
                           style: PixelType.title(context),
                         ),
                         SizedBox(height: grid.px(3)),
-                        for (final opt in currentQ.options) ...[
-                          _option(context, grid, currentQ, opt),
-                          SizedBox(height: grid.px(2)),
-                        ],
+                        ..._buildQuestionBody(context, grid, currentQ),
                         if (_submitError != null)
                           PixelPanel(
                             style: PixelBoxStyle.red,
@@ -219,41 +296,293 @@ class _CulturalQuizPlayScreenState
     );
   }
 
+  String _questionTypeLabel(String type) => switch (type) {
+        'true_false' => 'MYTH VS FACT',
+        'photo_clue' => 'PHOTO CLUE',
+        'sequence_order' => 'SEQUENCE ORDER',
+        _ => 'MULTIPLE CHOICE',
+      };
+
+  Widget _buildProgressPips(
+    BuildContext context,
+    PixelGrid grid,
+    List<CulturalQuizQuestionModel> questions,
+  ) {
+    return Wrap(
+      spacing: grid.px(1.5),
+      runSpacing: grid.px(1),
+      children: [
+        for (var i = 0; i < questions.length; i++)
+          GestureDetector(
+            key: ValueKey('quiz_pip_$i'),
+            onTap: () {
+              pixelTick(context);
+              setState(() {
+                _currentIndex = i;
+              });
+            },
+            child: PixelChip(
+              '${i + 1}',
+              style: i == _currentIndex
+                  ? PixelBoxStyle.gold
+                  : _isQuestionAnswered(questions[i])
+                      ? PixelBoxStyle.green
+                      : PixelBoxStyle.slot,
+              textColor: i == _currentIndex
+                  ? PixelPalette.ink
+                  : _isQuestionAnswered(questions[i])
+                      ? PixelPalette.white
+                      : PixelPalette.ink,
+            ),
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _buildQuestionBody(
+    BuildContext context,
+    PixelGrid grid,
+    CulturalQuizQuestionModel question,
+  ) {
+    switch (question.questionType) {
+      case 'true_false':
+        return [_buildTrueFalse(context, grid, question)];
+      case 'photo_clue':
+        return [
+          if (question.mediaUrl != null && question.mediaUrl!.isNotEmpty) ...[
+            PixelPanel(
+              key: const ValueKey('quiz_photo_clue_frame'),
+              style: PixelBoxStyle.slot,
+              child: ClipRect(
+                child: Image.network(
+                  question.mediaUrl!,
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => SizedBox(
+                    height: 80,
+                    child: Center(
+                      child: Text(
+                        'Photo clue unavailable',
+                        style: PixelType.small(context, color: PixelPalette.slate),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: grid.px(2)),
+          ],
+          for (var i = 0; i < question.options.length; i++) ...[
+            _option(context, grid, question, question.options[i], i),
+            SizedBox(height: grid.px(2)),
+          ],
+        ];
+      case 'sequence_order':
+        return [_buildSequenceOrder(context, grid, question)];
+      default:
+        return [
+          for (var i = 0; i < question.options.length; i++) ...[
+            _option(context, grid, question, question.options[i], i),
+            SizedBox(height: grid.px(2)),
+          ],
+        ];
+    }
+  }
+
+  Widget _buildTrueFalse(
+    BuildContext context,
+    PixelGrid grid,
+    CulturalQuizQuestionModel question,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 280;
+        final cards = question.options.map((opt) {
+          final isSelected = _selectedOptionByQuestion[question.id] == opt.id;
+          final label = opt.optionText.toUpperCase();
+          return GestureDetector(
+            key: ValueKey('quiz_option_${opt.id}'),
+            onTap: () {
+              pixelTick(context);
+              setState(() {
+                _selectedOptionByQuestion[question.id] = opt.id;
+              });
+            },
+            child: PixelPanel(
+              style: isSelected ? PixelBoxStyle.green : PixelBoxStyle.parchment,
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                child: Center(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: PixelType.title(
+                      context,
+                      color: isSelected ? PixelPalette.white : PixelPalette.ink,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList();
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                cards[i],
+                if (i + 1 < cards.length) SizedBox(height: grid.px(2)),
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (var i = 0; i < cards.length; i++) ...[
+              Expanded(child: cards[i]),
+              if (i + 1 < cards.length) SizedBox(width: grid.px(2)),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSequenceOrder(
+    BuildContext context,
+    PixelGrid grid,
+    CulturalQuizQuestionModel question,
+  ) {
+    final selectedOrder = _orderedOptionIdsByQuestion[question.id] ?? const [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Tap items in order (${selectedOrder.length}/${question.options.length})',
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+            ),
+            if (selectedOrder.isNotEmpty)
+              PixelButton(
+                key: const ValueKey('quiz_sequence_reset'),
+                label: 'RESET',
+                variant: PixelButtonVariant.secondary,
+                onPressed: () {
+                  pixelTick(context);
+                  setState(() {
+                    _orderedOptionIdsByQuestion.remove(question.id);
+                  });
+                },
+              ),
+          ],
+        ),
+        SizedBox(height: grid.px(2)),
+        for (final opt in question.options) ...[
+          Builder(
+            builder: (context) {
+              final rankIndex = selectedOrder.indexOf(opt.id);
+              final isPicked = rankIndex >= 0;
+              return GestureDetector(
+                key: ValueKey('quiz_sequence_option_${opt.id}'),
+                onTap: () {
+                  pixelTick(context);
+                  setState(() {
+                    final list = List<String>.of(
+                      _orderedOptionIdsByQuestion[question.id] ?? const [],
+                    );
+                    if (isPicked) {
+                      list.remove(opt.id);
+                    } else {
+                      list.add(opt.id);
+                    }
+                    if (list.isEmpty) {
+                      _orderedOptionIdsByQuestion.remove(question.id);
+                    } else {
+                      _orderedOptionIdsByQuestion[question.id] = list;
+                    }
+                  });
+                },
+                child: PixelPanel(
+                  style: isPicked ? PixelBoxStyle.green : PixelBoxStyle.parchment,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PixelChip(
+                        isPicked ? '${rankIndex + 1}' : '?',
+                        style: isPicked ? PixelBoxStyle.gold : PixelBoxStyle.slot,
+                      ),
+                      SizedBox(width: grid.px(2)),
+                      Expanded(
+                        child: Text(
+                          opt.optionText,
+                          style: PixelType.body(
+                            context,
+                            color: isPicked ? PixelPalette.white : PixelPalette.ink,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: grid.px(2)),
+        ],
+      ],
+    );
+  }
+
   Widget _option(
     BuildContext context,
     PixelGrid grid,
     CulturalQuizQuestionModel question,
     CulturalQuizOptionModel option,
+    int fallbackIndex,
   ) {
+    final isEliminated = _eliminatedOptionIds.contains(option.id);
     final isSelected = _selectedOptionByQuestion[question.id] == option.id;
-    return GestureDetector(
-      key: ValueKey('quiz_option_${option.id}'),
-      onTap: () {
-        pixelTick(context);
-        setState(() {
-          _selectedOptionByQuestion[question.id] = option.id;
-        });
-      },
-      child: PixelPanel(
-        style: isSelected ? PixelBoxStyle.green : PixelBoxStyle.parchment,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PixelChip(
-              String.fromCharCode(64 + option.ordinal),
-              style: isSelected ? PixelBoxStyle.gold : PixelBoxStyle.slot,
-            ),
-            SizedBox(width: grid.px(2)),
-            Expanded(
-              child: Text(
-                option.optionText,
-                style: PixelType.body(
-                  context,
-                  color: isSelected ? PixelPalette.white : PixelPalette.ink,
+    final letterOrdinal = option.ordinal ?? (fallbackIndex + 1);
+    return Opacity(
+      opacity: isEliminated ? 0.35 : 1.0,
+      child: GestureDetector(
+        key: ValueKey('quiz_option_${option.id}'),
+        onTap: isEliminated
+            ? null
+            : () {
+                pixelTick(context);
+                setState(() {
+                  _selectedOptionByQuestion[question.id] = option.id;
+                });
+              },
+        child: PixelPanel(
+          style: isSelected ? PixelBoxStyle.green : PixelBoxStyle.parchment,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PixelChip(
+                String.fromCharCode(64 + letterOrdinal),
+                style: isSelected ? PixelBoxStyle.gold : PixelBoxStyle.slot,
+              ),
+              SizedBox(width: grid.px(2)),
+              Expanded(
+                child: Text(
+                  option.optionText,
+                  style: PixelType.body(
+                    context,
+                    color: isSelected ? PixelPalette.white : PixelPalette.ink,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

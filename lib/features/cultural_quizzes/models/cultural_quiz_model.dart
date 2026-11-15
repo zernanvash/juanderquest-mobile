@@ -66,14 +66,14 @@ class CulturalQuizModel {
 class CulturalQuizOptionModel {
   final String id;
   final String questionId;
-  final int ordinal;
+  final int? ordinal;
   final String optionText;
   final bool? isCorrect;
 
   const CulturalQuizOptionModel({
     required this.id,
     required this.questionId,
-    required this.ordinal,
+    this.ordinal,
     required this.optionText,
     this.isCorrect,
   });
@@ -82,7 +82,7 @@ class CulturalQuizOptionModel {
     return CulturalQuizOptionModel(
       id: json['id'] as String? ?? '',
       questionId: json['question_id'] as String? ?? '',
-      ordinal: (json['ordinal'] as num?)?.toInt() ?? 1,
+      ordinal: (json['ordinal'] as num?)?.toInt(),
       optionText: json['option_text'] as String? ?? '',
       isCorrect: json['is_correct'] as bool?,
     );
@@ -93,6 +93,8 @@ class CulturalQuizQuestionModel {
   final String id;
   final String versionId;
   final int ordinal;
+  final String questionType;
+  final String? mediaUrl;
   final String questionText;
   final String explanation;
   final String? sourceUrl;
@@ -102,6 +104,8 @@ class CulturalQuizQuestionModel {
     required this.id,
     required this.versionId,
     required this.ordinal,
+    this.questionType = 'multiple_choice',
+    this.mediaUrl,
     required this.questionText,
     required this.explanation,
     this.sourceUrl,
@@ -113,6 +117,8 @@ class CulturalQuizQuestionModel {
       id: json['id'] as String? ?? '',
       versionId: json['version_id'] as String? ?? '',
       ordinal: (json['ordinal'] as num?)?.toInt() ?? 1,
+      questionType: json['question_type'] as String? ?? 'multiple_choice',
+      mediaUrl: json['media_url'] as String?,
       questionText: json['question_text'] as String? ?? '',
       explanation: json['explanation'] as String? ?? '',
       sourceUrl: json['source_url'] as String?,
@@ -173,18 +179,22 @@ class CulturalQuizAttemptModel {
 
 class CulturalQuizGradeBreakdownItem {
   final String questionId;
+  final String questionType;
   final String questionText;
   final String selectedOptionId;
   final String correctOptionId;
+  final List<String> correctOrder;
   final bool isCorrect;
   final String explanation;
   final String? sourceUrl;
 
   const CulturalQuizGradeBreakdownItem({
     required this.questionId,
+    this.questionType = 'multiple_choice',
     required this.questionText,
     required this.selectedOptionId,
     required this.correctOptionId,
+    this.correctOrder = const [],
     required this.isCorrect,
     required this.explanation,
     this.sourceUrl,
@@ -193,9 +203,13 @@ class CulturalQuizGradeBreakdownItem {
   factory CulturalQuizGradeBreakdownItem.fromJson(Map<String, dynamic> json) {
     return CulturalQuizGradeBreakdownItem(
       questionId: json['question_id'] as String? ?? '',
+      questionType: json['question_type'] as String? ?? 'multiple_choice',
       questionText: json['question_text'] as String? ?? '',
       selectedOptionId: json['selected_option_id'] as String? ?? '',
       correctOptionId: json['correct_option_id'] as String? ?? '',
+      correctOrder: (json['correct_order'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList(),
       isCorrect: json['is_correct'] as bool? ?? false,
       explanation: json['explanation'] as String? ?? '',
       sourceUrl: json['source_url'] as String?,

@@ -84,16 +84,37 @@ class CulturalQuizController extends StateNotifier<AsyncValue<CulturalQuizGraded
   Future<CulturalQuizGradedResultModel> submitAttempt({
     required String attemptId,
     required List<({String questionId, String selectedOptionId})> answers,
+  }) {
+    return submitAttemptAnswers(
+      attemptId: attemptId,
+      answers: answers
+          .map((a) => (
+                questionId: a.questionId,
+                selectedOptionId: a.selectedOptionId,
+                orderedOptionIds: null,
+              ))
+          .toList(),
+    );
+  }
+
+  Future<CulturalQuizGradedResultModel> submitAttemptAnswers({
+    required String attemptId,
+    required List<({String questionId, String? selectedOptionId, List<String>? orderedOptionIds})> answers,
   }) async {
     state = const AsyncValue.loading();
     try {
       final response = await _client.dio.put(
         '/quiz-attempts/$attemptId/submission',
         data: {
-          'answers': answers.map((a) => {
-            'question_id': a.questionId,
-            'selected_option_id': a.selectedOptionId,
-          }).toList(),
+          'answers': answers
+              .map((a) => {
+                    'question_id': a.questionId,
+                    if (a.selectedOptionId != null)
+                      'selected_option_id': a.selectedOptionId,
+                    if (a.orderedOptionIds != null)
+                      'ordered_option_ids': a.orderedOptionIds,
+                  })
+              .toList(),
         },
       );
 
@@ -105,6 +126,23 @@ class CulturalQuizController extends StateNotifier<AsyncValue<CulturalQuizGraded
       state = AsyncValue.error(e, st);
       rethrow;
     }
+  }
+
+  Future<List<String>> useFiftyFifty({
+    required String quizId,
+    required String attemptId,
+    required String questionId,
+  }) async {
+    final response = await _client.dio.post(
+      '/quizzes/$quizId/attempts/$attemptId/lifeline',
+      data: {
+        'lifeline': 'fifty_fifty',
+        'question_id': questionId,
+      },
+    );
+    final data = response.data['data'] as Map<String, dynamic>?;
+    final eliminated = data?['eliminated_option_ids'] as List<dynamic>? ?? const [];
+    return eliminated.map((e) => e.toString()).toList();
   }
 }
 

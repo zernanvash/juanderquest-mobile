@@ -1,17 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/audio/game_audio.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/cultural_quiz_model.dart';
 
-class CulturalQuizResultScreen extends StatelessWidget {
+class CulturalQuizResultScreen extends StatefulWidget {
   final CulturalQuizGradedResultModel result;
 
   const CulturalQuizResultScreen({
@@ -20,8 +25,43 @@ class CulturalQuizResultScreen extends StatelessWidget {
   });
 
   @override
+  State<CulturalQuizResultScreen> createState() =>
+      _CulturalQuizResultScreenState();
+}
+
+class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
+  late int _displayScore;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayScore = 0;
+    if (GameAudio.instance.buttonSounds.value) {
+      unawaited(
+        GameAudio.instance.playSfx(
+          widget.result.passed ? 'quest_complete' : 'error',
+        ),
+      );
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _displayScore = widget.result.score;
+      });
+    });
+  }
+
+  String _rankLabel(int score) {
+    if (score >= 5) return 'CULTURAL MASTER';
+    if (score == 4) return 'HERITAGE SCOUT';
+    return 'KEEP EXPLORING';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final result = widget.result;
     final passed = result.passed;
+    final rank = _rankLabel(result.score);
     return Theme(
       data: AppTheme.pixel,
       child: Builder(
@@ -57,6 +97,42 @@ class CulturalQuizResultScreen extends StatelessWidget {
                                   context,
                                   color: PixelPalette.white,
                                 ),
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: grid.px(1.5),
+                                runSpacing: grid.px(1),
+                                children: [
+                                  PixelChip(
+                                    rank,
+                                    key: const ValueKey('quiz_result_rank'),
+                                    style: result.score >= 4
+                                        ? PixelBoxStyle.gold
+                                        : PixelBoxStyle.slot,
+                                    textColor: PixelPalette.ink,
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      PixelSprite(
+                                        PixelMicroArt.coin.frames.first,
+                                        scale: 3,
+                                      ),
+                                      SizedBox(width: grid.px(1)),
+                                      PixelRollingNumber(
+                                        value: _displayScore,
+                                        format: (v) =>
+                                            '$v/${result.totalQuestions}',
+                                        style: PixelType.title(
+                                          context,
+                                          color: PixelPalette.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                               SizedBox(height: grid.px(1)),
                               Text(
@@ -160,6 +236,18 @@ class CulturalQuizResultScreen extends StatelessWidget {
             ],
           ),
           SizedBox(height: grid.px(2)),
+          if (item.correctOrder.isNotEmpty) ...[
+            Text(
+              'Correct order: ${item.correctOrder.asMap().entries.map((e) => '${e.key + 1}. ${e.value}').join(' ')}',
+              style: PixelType.small(
+                context,
+                color: item.isCorrect
+                    ? PixelPalette.greenDark
+                    : PixelPalette.sun,
+              ),
+            ),
+            SizedBox(height: grid.px(1)),
+          ],
           Text(
             'Explanation:',
             style: PixelType.small(
