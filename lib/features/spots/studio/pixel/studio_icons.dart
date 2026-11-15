@@ -1,6 +1,5 @@
 import '../../../../core/pixel/generated/designer_art.g.dart';
 import '../../../../core/pixel/pixel_art.dart';
-import '../../../../core/pixel/placeholder_art.dart';
 import '../../explore/explore_art.dart';
 
 /// Pixel icons used by the Spot Discovery Studio and its map pin card.
@@ -105,7 +104,7 @@ abstract final class StudioIcons {
         'culture_heritage' => ExploreArt.heritageStrip,
         'activities_wellness' => ExploreArt.activitiesStrip,
         'shopping_local' => DesignerArt.navShop,
-        'stay' => PlaceholderArt.home,
+        'stay' => DesignerArt.navHome,
         _ => ExploreArt.natureStrip,
       };
 }

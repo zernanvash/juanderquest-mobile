@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../core/pixel/generated/designer_art.g.dart';
 import '../core/pixel/generated/pixel_palette.g.dart';
 import '../core/pixel/pixel_nav.dart';
-import '../core/pixel/placeholder_art.dart';
 import '../features/companion/widgets/companion_card.dart';
 import '../features/dashboard/home_tips.dart';
 import '../features/onboarding/pixel_tutorial.dart';
@@ -144,7 +143,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                       // designer draws them.
                       PixelHotbarItem(
                         label: 'Home',
-                        icon: PlaceholderArt.home,
+                        icon: DesignerArt.navHome,
                       ),
                       PixelHotbarItem(
                         label: 'Explore',

@@ -8,7 +8,6 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
-import '../../celebrations/celebration_art.dart';
 import '../../map/pixel/map_marker_art.dart';
 import '../../navigation/widgets/nav_pixel_art.dart';
 import '../../quests/models/quest_model.dart';
@@ -329,8 +328,8 @@ class _StampBentoBox extends StatelessWidget {
                       fit: BoxFit.contain,
                       child: PixelSprite(
                         claimedToday
-                            ? CelebrationArt.chestOpen
-                            : CelebrationArt.chestClosed,
+                            ? DesignerArt.chestOpenAnim.frames.last
+                            : DesignerArt.chestOpenAnim.frames.first,
                         scale: 1,
                       ),
                     ),

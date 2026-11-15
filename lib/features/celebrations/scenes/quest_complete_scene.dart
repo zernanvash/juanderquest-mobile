@@ -4,6 +4,7 @@ import 'package:flame/game.dart';
 import 'package:flame/text.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../celebration_art.dart';
 import '../steppers.dart';
@@ -185,8 +186,7 @@ class _ChestComponent extends PositionComponent {
   final VoidCallback onOpen;
   final bool reducedMotion;
 
-  late final ui.Image _closedImg;
-  late final ui.Image _openedImg;
+  late final List<ui.Image> _frames;
   final Paint _paint = Paint()
     ..filterQuality = FilterQuality.none
     ..isAntiAlias = false;
@@ -195,18 +195,21 @@ class _ChestComponent extends PositionComponent {
   double _stepAcc = 0;
   int _bob = 0;
   int _shake = 0;
+  int _frameIndex = 0;
   bool _open = false;
 
   bool get isOpen => _open;
 
   @override
   Future<void> onLoad() async {
-    _closedImg = CelebrationArt.chestClosed.image();
-    _openedImg = CelebrationArt.chestOpen.image();
-    // Chest is 16x16 art pixels at 4x scale
-    size = Vector2.all(16 * unit * 4);
+    _frames = [
+      for (final frame in DesignerArt.chestOpenAnim.frames) frame.image(),
+    ];
+    // Chest is 32x32 art pixels at 2x scale (64 * unit)
+    size = Vector2.all(32 * unit * 2);
     if (reducedMotion) {
       _open = true;
+      _frameIndex = _frames.length - 1;
     }
   }
 
@@ -222,9 +225,18 @@ class _ChestComponent extends PositionComponent {
     while (_stepAcc >= stepDuration) {
       _stepAcc -= stepDuration;
       if (!_open) {
-        // Shake for 0.8s: alternate -1, 1 art px
-        _shake = _t < 0.8 ? (_shake <= 0 ? 1 : -1) : 0;
+        if (_t < 0.4) {
+          // Shake closed chest for 0.4s: alternate -1, 1 art px
+          _shake = _shake <= 0 ? 1 : -1;
+          _frameIndex = 0;
+        } else {
+          // Step through the 6-frame chest open animation from 0.4s to 0.8s
+          _shake = 0;
+          final progress = ((_t - 0.4) / 0.4).clamp(0.0, 1.0);
+          _frameIndex = (progress * (_frames.length - 1)).round();
+        }
       } else {
+        _frameIndex = _frames.length - 1;
         _bob = (_t * 4).floor() % 2;
       }
     }
@@ -232,13 +244,14 @@ class _ChestComponent extends PositionComponent {
     if (!_open && _t >= 0.8) {
       _open = true;
       _shake = 0;
+      _frameIndex = _frames.length - 1;
       onOpen();
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final img = _open ? _openedImg : _closedImg;
+    final img = _frames[_frameIndex.clamp(0, _frames.length - 1)];
     final px = unit * 4;
     canvas.drawImageRect(
       img,

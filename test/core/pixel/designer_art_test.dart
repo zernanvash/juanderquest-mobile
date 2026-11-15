@@ -30,6 +30,10 @@ void main() {
     expect(DesignerArt.heartLikeAnim.frames, hasLength(12));
     expect(DesignerArt.heartUnlikeAnim.frames, hasLength(13));
     expect(DesignerArt.juanIdle.frames, hasLength(8));
+    expect(DesignerArt.chestOpenAnim.frames, hasLength(6));
+    expect((DesignerArt.chestOpenAnim.frames.first.width, DesignerArt.chestOpenAnim.frames.first.height), (32, 32));
+    expect((DesignerArt.navHome.width, DesignerArt.navHome.height), (24, 24));
+    expect((DesignerArt.navProfile.width, DesignerArt.navProfile.height), (24, 24));
     for (final v in DesignerArt.all.values.whereType<PixelFrames>()) {
       final first = v.frames.first;
       for (final f in v.frames) {
@@ -65,5 +69,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('pixel_lab_like')));
     await tester.pump(const Duration(seconds: 2));
     expect(find.byKey(const ValueKey('pixel_lab_like')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('pixel_lab_chest')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(PixelAnimation), findsWidgets);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byKey(const ValueKey('pixel_lab_chest')), findsOneWidget);
   });
 }

@@ -46,6 +46,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
   String _dialogResult = 'NO DIALOG YET';
   bool _liked = false;
   bool _playLike = false;
+  bool _chestOpen = false;
+  bool _playChest = false;
 
   @override
   void dispose() {
@@ -996,7 +998,10 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
           SizedBox(height: grid.px(2)),
           Text('TRY IT · LIKE', style: PixelType.body(context)),
           SizedBox(height: grid.px(1)),
-          Row(
+          Wrap(
+            spacing: grid.px(4),
+            runSpacing: grid.px(2),
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               GestureDetector(
                 key: const ValueKey('pixel_lab_like'),
@@ -1024,6 +1029,38 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                       ),
               ),
               SizedBox(width: grid.px(4)),
+              GestureDetector(
+                key: const ValueKey('pixel_lab_chest'),
+                onTap: () => setState(() {
+                  if (_chestOpen) {
+                    _chestOpen = false;
+                    _playChest = false;
+                  } else {
+                    _playChest = true;
+                  }
+                }),
+                child: _playChest
+                    ? PixelAnimation(
+                        DesignerArt.chestOpenAnim,
+                        scale: 3,
+                        loop: false,
+                        onDone: () =>
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() {
+                              _playChest = false;
+                              _chestOpen = true;
+                            });
+                          }
+                        }),
+                      )
+                    : PixelSprite(
+                        _chestOpen
+                            ? DesignerArt.chestOpenAnim.frames.last
+                            : DesignerArt.chestOpenAnim.frames.first,
+                        scale: 3,
+                      ),
+              ),
               const PixelAnimation(DesignerArt.juanIdle, scale: 3),
             ],
           ),
