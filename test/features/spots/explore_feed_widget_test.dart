@@ -455,6 +455,10 @@ void main() {
           find.byKey(const ValueKey('explore_view_spot_plain-spot'));
       await _scrollTo(tester, viewSpot);
       expect(viewSpot, findsOneWidget);
+      // Plan 93b WP-10: VIEW SPOT shares the like/save row.
+      final like = find.widgetWithText(PixelButton, '0');
+      expect(tester.getCenter(viewSpot).dy,
+          moreOrLessEquals(tester.getCenter(like).dy, epsilon: 1));
       await tester.tap(viewSpot);
       await tester.pumpAndSettle();
       expect(pushedRoutes, contains('/explore/plain-cove'));

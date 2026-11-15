@@ -562,6 +562,17 @@ void main() {
     });
   });
   group('ShopScreen', () {
+    // Plan 93b WP-4: the Shop opens on a category hub.
+    Future<void> openCategory(WidgetTester tester, int id) async {
+      if (find.byKey(const ValueKey('shop_back_to_hub')).evaluate().isNotEmpty) {
+        await tester.tap(find.byKey(const ValueKey('shop_back_to_hub')));
+        await tester.pump();
+      }
+      await tester.ensureVisible(find.byKey(ValueKey('shop_tab_$id')));
+      await tester.tap(find.byKey(ValueKey('shop_tab_$id')));
+      await tester.pump();
+    }
+
     const cosmetics = CosmeticsState(
       items: [_banner, _frame],
       owned: [OwnedCosmetic(item: _banner, source: 'purchase')],
@@ -569,42 +580,53 @@ void main() {
       loadout: {'banner_id': 'banner-1'},
     );
 
-    testWidgets('renders cosmetics, vouchers and my items', (tester) async {
+    testWidgets('hub opens cosmetics, vouchers, coming soon and inventory',
+        (tester) async {
       await _pump(tester, const ShopScreen(),
           cosmetics: cosmetics,
           vouchers: VoucherState(vouchers: [_voucher]));
-      expect(find.text('Lingayen Sunset'), findsOneWidget);
-      expect(find.text('Bamboo Frame'), findsOneWidget);
-      expect(find.byType(MjdqAmount), findsNWidgets(2));
+      // Hub: four category cards plus the merchant hub, no duplicate banner.
+      for (final id in const [0, 1, 2, 3]) {
+        expect(find.byKey(ValueKey('shop_tab_$id')), findsOneWidget);
+      }
+      expect(find.byKey(const ValueKey('shop_merchant_hub_button')),
+          findsOneWidget);
+      expect(find.text('Make your profile yours'), findsNothing);
+      expect(find.byType(MjdqAmount), findsOneWidget);
       expect(find.bySemanticsLabel('1250 mJDQ'), findsWidgets);
+      // Adjacent hub cards match in height.
+      expect(tester.getSize(find.byKey(const ValueKey('shop_tab_0'))).height,
+          tester.getSize(find.byKey(const ValueKey('shop_tab_1'))).height);
 
-      await tester.tap(find.byKey(const ValueKey('shop_tab_1')));
-      await tester.pump();
+      await openCategory(tester, 0);
+      // Cosmetics default to Banners, not an All dump.
+      expect(find.text('Lingayen Sunset'), findsOneWidget);
+      expect(find.text('Bamboo Frame'), findsNothing);
+
+      await openCategory(tester, 1);
       expect(find.text('150 Discount Voucher'), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('shop_tab_2')));
-      await tester.pump();
+      await openCategory(tester, 2);
       expect(find.text('Seasonal stamps'), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('shop_tab_3')));
-      await tester.pump();
+      await openCategory(tester, 3);
       expect(find.text('Lingayen Sunset'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('shop_inv_vouchers')));
+      await tester.pump();
       expect(find.byKey(const ValueKey('shop_redeemed_empty')), findsOneWidget);
     });
 
     testWidgets('empty shop shows every empty state', (tester) async {
       await _pump(tester, const ShopScreen());
+      await openCategory(tester, 0);
       expect(find.byKey(const ValueKey('shop_cosmetics_empty')),
           findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('shop_tab_1')));
-      await tester.pump();
+      await openCategory(tester, 1);
       expect(find.byKey(const ValueKey('shop_vouchers_empty')),
           findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('shop_tab_2')));
-      await tester.pump();
+      await openCategory(tester, 2);
       expect(find.byKey(const ValueKey('shop_teasers_empty')), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('shop_tab_3')));
-      await tester.pump();
+      await openCategory(tester, 3);
       expect(find.byKey(const ValueKey('shop_owned_empty')), findsOneWidget);
     });
 
@@ -619,6 +641,7 @@ void main() {
         cosmeticsNotifier: (ref) => cosmeticsFixture = _CosmeticsFixture(
             ref, const CosmeticsState(error: 'Shop could not be loaded.')),
       );
+      await openCategory(tester, 0);
       expect(find.text('Could not load the shop'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('shop_error_retry')));
       await tester.pump();
@@ -633,8 +656,7 @@ void main() {
         voucherNotifier: (ref) => voucherFixture = _VoucherFixture(
             ref, VoucherState(error: 'Could not connect to voucher store.')),
       );
-      await tester.tap(find.byKey(const ValueKey('shop_tab_1')));
-      await tester.pump();
+      await openCategory(tester, 1);
       expect(find.text('Could not load the shop'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('shop_error_retry')));
       await tester.pump();
@@ -643,6 +665,13 @@ void main() {
 
     testWidgets('filter and live animation toggle work', (tester) async {
       await _pump(tester, const ShopScreen(), cosmetics: cosmetics);
+      await openCategory(tester, 0);
+      // Uniform 40 px sub-tabs.
+      expect(
+          tester
+              .getSize(find.byKey(const ValueKey('shop_filter_frame')))
+              .height,
+          greaterThanOrEqualTo(40));
       await tester.tap(find.byKey(const ValueKey('shop_filter_frame')));
       await tester.pump();
       expect(find.text('Bamboo Frame'), findsOneWidget);
@@ -666,6 +695,9 @@ void main() {
         cosmeticsNotifier: (ref) =>
             fixture = _CosmeticsFixture(ref, cosmetics),
       );
+      await openCategory(tester, 0);
+      await tester.tap(find.byKey(const ValueKey('shop_filter_frame')));
+      await tester.pump();
       await tester.tap(find.byKey(const ValueKey('shop_cosmetic_frame-1')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
@@ -681,6 +713,7 @@ void main() {
         cosmeticsNotifier: (ref) =>
             fixture = _CosmeticsFixture(ref, cosmetics),
       );
+      await openCategory(tester, 0);
       await tester.tap(find.byKey(const ValueKey('shop_cosmetic_banner-1')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
@@ -699,8 +732,7 @@ void main() {
         voucherNotifier: (ref) => fixture = _VoucherFixture(
             ref, VoucherState(vouchers: [_voucher])),
       );
-      await tester.tap(find.byKey(const ValueKey('shop_tab_1')));
-      await tester.pump();
+      await openCategory(tester, 1);
       await tester.tap(find.byKey(const ValueKey('shop_redeem_v1')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));

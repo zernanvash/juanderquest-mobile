@@ -36,23 +36,25 @@ class ShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopScreenState extends ConsumerState<ShopScreen> {
-  static const _tabs = <(int, String)>[
-    (0, 'Cosmetics'),
-    (1, 'Vouchers'),
-    (2, 'Coming soon'),
-    (3, 'My items'),
+  // Plan 93b WP-4: a category-first storefront hub.
+  static const _categories = <(int, String, String)>[
+    (0, 'Cosmetics', 'Banners, avatar frames, titles & name colours'),
+    (1, 'Partner Vouchers', 'Discounts & offers from Pangasinan merchants'),
+    (3, 'My Inventory', 'Your look, owned cosmetics & voucher codes'),
+    (2, 'Coming Soon', 'Upcoming seasonal & on-chain drops'),
   ];
 
   static const _filters = <(String, String)>[
-    ('all', 'All'),
     ('banner', 'Banners'),
     ('frame', 'Frames'),
     ('title', 'Titles'),
-    ('name_color', 'Name colours'),
+    ('name_color', 'Colours'),
   ];
 
-  int _selectedTab = 0; // Cosmetics, Vouchers, Coming soon, My items
-  String _filter = 'all';
+  /// null: the category hub. 0 Cosmetics, 1 Vouchers, 2 Coming soon, 3 My items.
+  int? _selectedTab;
+  String _filter = 'banner';
+  bool _inventoryVouchers = false;
   bool? _liveGrid; // null: follow the system animation setting (Plan 69)
 
   @override
@@ -330,11 +332,19 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [
-                        _header(context, grid, points),
-                        SizedBox(height: grid.px(3)),
-                        _tabRow(context, grid),
-                        SizedBox(height: grid.px(3)),
-                        if (_selectedTab == 0)
+                        if (user?.hasBoundWallet != true) ...[
+                          _walletPrompt(context, grid),
+                          SizedBox(height: grid.px(3)),
+                        ],
+                        if (_selectedTab == null)
+                          _hub(context, grid, cosmeticsState, voucherState)
+                        else ...[
+                          _categoryHeader(context, grid),
+                          SizedBox(height: grid.px(3)),
+                        ],
+                        if (_selectedTab == null)
+                          const SizedBox.shrink()
+                        else if (_selectedTab == 0)
                           _cosmetics(context, grid, cosmeticsState, points)
                         else if (_selectedTab == 1)
                           _vouchers(context, grid, voucherState, points)
@@ -356,90 +366,182 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     );
   }
 
-  Widget _header(BuildContext context, PixelGrid grid, int points) {
-    return PixelPanel(
-      style: PixelBoxStyle.wood,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Make your profile yours',
-            style: PixelType.small(context, color: PixelPalette.sun),
+  Widget _walletPrompt(BuildContext context, PixelGrid grid) {
+    return GestureDetector(
+      key: const ValueKey('shop_link_wallet'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => context.push('/wallet/connect'),
+      child: PixelPanel(
+        style: PixelBoxStyle.slot.copyWith(shadowPx: 0),
+        padding: 1,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: grid.px(2),
+            vertical: grid.px(1),
           ),
-          SizedBox(height: grid.px(1)),
-          Text(
-            'Traveler shop',
-            style: PixelType.title(context, color: PixelPalette.paper),
+          child: Text(
+            'Link your wallet to buy or redeem >',
+            style: PixelType.small(context),
           ),
-          SizedBox(height: grid.px(2)),
-          Text(
-            'Collect Pangasinan-inspired cosmetics, partner offers, and upcoming experiences.',
-            style: PixelType.body(context, color: PixelPalette.cream),
-          ),
-          SizedBox(height: grid.px(2)),
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            children: [
-              MjdqChip(
-                points,
-                style: PixelBoxStyle.gold,
-                animateOnIncrease: true,
-              ),
-              if (ref.watch(authProvider).user?.hasBoundWallet != true)
-                GestureDetector(
-                  onTap: () => context.push('/wallet/connect'),
-                  child: const PixelChip(
-                    'Link wallet >',
-                    style: PixelBoxStyle.parchment,
-                  ),
-                ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _tabRow(BuildContext context, PixelGrid grid) {
-    return Wrap(
-      spacing: grid.px(2),
-      runSpacing: grid.px(2),
-      children: [
-        for (final tab in _tabs)
-          GestureDetector(
-            key: ValueKey('shop_tab_${tab.$1}'),
-            onTap: () {
-              pixelTick(context);
-              setState(() => _selectedTab = tab.$1);
-            },
-            child: PixelPanel(
-              style: (_selectedTab == tab.$1
-                      ? PixelBoxStyle.green
-                      : PixelBoxStyle.parchment)
-                  .copyWith(corner: 1, shadowPx: 1),
-              padding: 1,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: grid.px(2),
-                  vertical: grid.px(1),
-                ),
-                child: Text(
-                  tab.$2,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  style: PixelType.small(
-                    context,
-                    color: _selectedTab == tab.$1
-                        ? PixelPalette.white
-                        : PixelPalette.ink,
-                  ),
-                ),
-              ),
-            ),
+  Widget _hub(
+    BuildContext context,
+    PixelGrid grid,
+    CosmeticsState cosmetics,
+    VoucherState vouchers,
+  ) {
+    String count(int id) => switch (id) {
+          0 => '${cosmetics.items.length} items',
+          1 => '${vouchers.vouchers.length} offers',
+          2 => '${cosmetics.teasers.length} soon',
+          _ => '${cosmetics.owned.length} owned',
+        };
+    Widget pair(int a, int b) => IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _categoryCard(context, grid, _categories[a], count)),
+              SizedBox(width: grid.px(2)),
+              Expanded(child: _categoryCard(context, grid, _categories[b], count)),
+            ],
           ),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        pair(0, 1),
+        SizedBox(height: grid.px(2)),
+        pair(2, 3),
+        SizedBox(height: grid.px(2)),
         _merchantHubCard(context, grid),
       ],
+    );
+  }
+
+  static const _categoryIcons = <int, PixelArt>{
+    0: DesignerArt.gem,
+    1: DesignerArt.handshake,
+    2: DesignerArt.navShop,
+    3: DesignerArt.navProfile,
+  };
+
+  Widget _categoryCard(
+    BuildContext context,
+    PixelGrid grid,
+    (int, String, String) category,
+    String Function(int) count,
+  ) {
+    return GestureDetector(
+      key: ValueKey('shop_tab_${category.$1}'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        pixelTick(context);
+        setState(() => _selectedTab = category.$1);
+      },
+      child: PixelPanel(
+        style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+        padding: 2,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SizedBox.square(
+                  dimension: 24,
+                  child: FittedBox(
+                    child: PixelSprite(_categoryIcons[category.$1]!, scale: 1),
+                  ),
+                ),
+                SizedBox(width: grid.px(1)),
+                Flexible(
+                  child: Text(
+                    count(category.$1),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PixelType.small(context, color: PixelPalette.slate),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: grid.px(1)),
+            Text(category.$2, style: PixelType.title(context)),
+            SizedBox(height: grid.px(1)),
+            Text(
+              category.$3,
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _categoryHeader(BuildContext context, PixelGrid grid) {
+    final title =
+        _categories.firstWhere((c) => c.$1 == _selectedTab).$2;
+    return Row(
+      children: [
+        PixelButton(
+          key: const ValueKey('shop_back_to_hub'),
+          label: '< All',
+          variant: PixelButtonVariant.secondary,
+          onPressed: () {
+            pixelTick(context);
+            setState(() => _selectedTab = null);
+          },
+        ),
+        SizedBox(width: grid.px(2)),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: PixelType.title(context),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Uniform sub-tab / filter pill (Plan 93b WP-10: 40 px tall).
+  Widget _pill(
+    BuildContext context,
+    PixelGrid grid, {
+    required Key key,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      key: key,
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        pixelTick(context);
+        onTap();
+      },
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40),
+        child: PixelPanel(
+          style: (active ? PixelBoxStyle.gold : PixelBoxStyle.slot)
+              .copyWith(corner: 1, shadowPx: 0),
+          padding: 1,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: grid.px(2),
+              vertical: grid.px(1),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: PixelType.small(context),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -457,13 +559,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       child: PixelPanel(
         style: PixelBoxStyle.wood.copyWith(corner: 1, shadowPx: 1),
         padding: 1,
-        child: Padding(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
           padding: EdgeInsets.symmetric(
             horizontal: grid.px(2),
             vertical: grid.px(1),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox.square(
                 dimension: 16,
@@ -513,7 +615,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     }
     final live = _liveGrid ?? !MediaQuery.of(context).disableAnimations;
     final visibleItems = state.items
-        .where((item) => _filter == 'all' || item.kind == _filter)
+        .where((item) => item.kind == _filter)
         .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,29 +625,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           runSpacing: grid.px(1),
           children: [
             for (final filter in _filters)
-              GestureDetector(
+              _pill(
+                context,
+                grid,
                 key: ValueKey('shop_filter_${filter.$1}'),
-                onTap: () {
-                  pixelTick(context);
-                  setState(() => _filter = filter.$1);
-                },
-                child: PixelPanel(
-                  style: (_filter == filter.$1
-                          ? PixelBoxStyle.gold
-                          : PixelBoxStyle.slot)
-                      .copyWith(corner: 1, shadowPx: 0),
-                  padding: 1,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: grid.px(2),
-                      vertical: grid.px(1),
-                    ),
-                    child: Text(
-                      filter.$2,
-                      style: PixelType.small(context),
-                    ),
-                  ),
-                ),
+                label: filter.$2,
+                active: _filter == filter.$1,
+                onTap: () => setState(() => _filter = filter.$1),
               ),
           ],
         ),
@@ -922,7 +1008,12 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     return PixelPanel(
       key: ValueKey('shop_voucher_${voucher.id}'),
       style: PixelBoxStyle.parchment,
-      child: Column(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: _offerCardMinHeight,
+          minWidth: double.infinity,
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (voucher.availability == 'preview') ...[
@@ -1001,6 +1092,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             ),
         ],
       ),
+      ),
     );
   }
 
@@ -1026,14 +1118,29 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     );
   }
 
+  /// Plan 93b WP-10: teaser and voucher cards share a minimum height.
+  static const _offerCardMinHeight = 120.0;
+
   Widget _teaserCard(BuildContext context, PixelGrid grid, ShopTeaser teaser) {
     return PixelPanel(
       style: PixelBoxStyle.parchment,
-      child: Column(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: _offerCardMinHeight,
+          minWidth: double.infinity,
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PixelChip(teaser.etaText ?? 'Coming soon',
-              style: PixelBoxStyle.gold),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              const PixelChip('Coming soon', style: PixelBoxStyle.slot),
+              if (teaser.etaText != null)
+                PixelChip(teaser.etaText!, style: PixelBoxStyle.gold),
+            ],
+          ),
           SizedBox(height: grid.px(2)),
           Text(teaser.title, style: PixelType.title(context)),
           SizedBox(height: grid.px(1)),
@@ -1042,6 +1149,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
         ],
+      ),
       ),
     );
   }
@@ -1060,13 +1168,30 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (state.owned.isEmpty)
+        Wrap(
+          spacing: grid.px(1),
+          runSpacing: grid.px(1),
+          children: [
+            _pill(context, grid,
+                key: const ValueKey('shop_inv_look'),
+                label: 'My Look',
+                active: !_inventoryVouchers,
+                onTap: () => setState(() => _inventoryVouchers = false)),
+            _pill(context, grid,
+                key: const ValueKey('shop_inv_vouchers'),
+                label: 'My Vouchers',
+                active: _inventoryVouchers,
+                onTap: () => setState(() => _inventoryVouchers = true)),
+          ],
+        ),
+        SizedBox(height: grid.px(3)),
+        if (!_inventoryVouchers && state.owned.isEmpty)
           const PixelEmptyState(
             key: ValueKey('shop_owned_empty'),
             title: 'No cosmetics owned',
             message: 'Browse the shop to get started.',
           )
-        else
+        else if (!_inventoryVouchers)
           for (final kind in const [
             'banner',
             'frame',
@@ -1134,10 +1259,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               ],
             ],
           ],
-        SizedBox(height: grid.px(3)),
-        Text('Redeemed vouchers', style: PixelType.title(context)),
-        SizedBox(height: grid.px(2)),
-        if (voucherState.redeemedVouchers.isEmpty)
+        if (!_inventoryVouchers)
+          const SizedBox.shrink()
+        else if (voucherState.redeemedVouchers.isEmpty)
           PixelEmptyState(
             key: const ValueKey('shop_redeemed_empty'),
             title: 'No redeemed vouchers yet',
@@ -1194,9 +1318,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               PixelPanel(
                 style: PixelBoxStyle.slot,
                 padding: 1,
-                child: Text(
-                  redeemed.code,
-                  style: PixelType.numbers(context),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Align(
+                    widthFactor: 1,
+                    child: Text(
+                      redeemed.code,
+                      style: PixelType.numbers(context),
+                    ),
+                  ),
                 ),
               ),
               PixelButton(

@@ -162,8 +162,8 @@ class ExploreSpotCard extends StatelessWidget {
             ),
             SizedBox(height: grid.px(2)),
 
-            // Action Row: LIKE (count, pixel heart), SAVE (bookmark), PLAY QUEST
-            // (if available), and VIEW SPOT right-aligned for ordinary cards.
+            // Action Row: LIKE (count, pixel heart), SAVE (bookmark), and
+            // PLAY QUEST or VIEW SPOT.
             Wrap(
               spacing: grid.px(1),
               runSpacing: grid.px(1),
@@ -228,23 +228,26 @@ class ExploreSpotCard extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                // Plan 93b WP-10: VIEW SPOT stays in the same 48 px row.
+                if (!hasQuest)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Center(
+                      widthFactor: 1,
+                      child: PixelButton(
+                        key: ValueKey('explore_view_spot_${spot.id}'),
+                        label: 'VIEW SPOT >',
+                        variant: PixelButtonVariant.secondary,
+                        onPressed: () {
+                          pixelTick(context);
+                          onTapCard();
+                        },
+                      ),
+                    ),
+                  ),
               ],
             ),
-            if (!hasQuest) ...[
-              SizedBox(height: grid.px(1)),
-              Align(
-                alignment: Alignment.centerRight,
-                child: PixelButton(
-                  key: ValueKey('explore_view_spot_${spot.id}'),
-                  label: 'VIEW SPOT >',
-                  variant: PixelButtonVariant.secondary,
-                  onPressed: () {
-                    pixelTick(context);
-                    onTapCard();
-                  },
-                ),
-              ),
-            ],
           ],
         ),
       ),
