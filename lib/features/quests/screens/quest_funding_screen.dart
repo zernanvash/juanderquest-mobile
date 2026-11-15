@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -317,7 +319,20 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Set up this round', style: PixelType.title(context)),
+          Row(
+            children: [
+              const SizedBox.square(
+                dimension: 20,
+                child: FittedBox(
+                  child: PixelSprite(DesignerArt.handshake, scale: 1),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              Expanded(
+                child: Text('Set up this round', style: PixelType.title(context)),
+              ),
+            ],
+          ),
           SizedBox(height: grid.px(1)),
           Text('No funding round yet — set one up below',
               style: PixelType.body(context, color: PixelPalette.slate)),
@@ -380,9 +395,22 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Funding round · ${status.replaceAll('_', ' ')}',
-            style: PixelType.title(context),
+          Row(
+            children: [
+              const SizedBox.square(
+                dimension: 20,
+                child: FittedBox(
+                  child: PixelSprite(DesignerArt.handshake, scale: 1),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              Expanded(
+                child: Text(
+                  'Funding round · ${status.replaceAll('_', ' ')}',
+                  style: PixelType.title(context),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: grid.px(1)),
           Text(

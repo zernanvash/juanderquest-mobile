@@ -239,18 +239,27 @@ void main() {
 
     expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
     expect(find.text('2 active · 5 saved'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_tile_route')), findsOneWidget);
-    expect(find.text('GO'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_tile_route')), findsNothing);
+    expect(find.byKey(const ValueKey('home_tile_merchants')), findsOneWidget);
+    expect(find.text('GO'), findsNothing);
+    expect(find.text('MERCHANTS'), findsOneWidget);
+    expect(find.text('2'), findsNothing);
+    expect(find.text('3'), findsNothing);
+    expect(find.text('5'), findsNothing);
+    expect(find.text('RANKS'), findsNothing);
+    expect(find.text('LOG'), findsNothing);
+    expect(find.text('LIVE'), findsOneWidget);
     expect(find.byKey(const ValueKey('home_tile_plaza')), findsOneWidget);
     expect(find.text('LARO AR'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('home_tile_route')));
-    expect(navigatedTo, '/navigate');
+    await tester.tap(find.byKey(const ValueKey('home_tile_merchants')));
+    expect(navigatedTo, '/affiliate');
 
     await tester.tap(find.text('TOWN'));
     await tester.pump();
     expect(find.byKey(const ValueKey('home_tile_plaza')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_tile_route')), findsNothing);
+    expect(find.byKey(const ValueKey('home_tile_merchants')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_tile_quizzes')), findsNothing);
   });
 
   testWidgets('WP-4: HomeDualBentoRow renders recommended quest & daily claim key',

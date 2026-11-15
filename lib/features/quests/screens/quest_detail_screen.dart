@@ -1132,11 +1132,25 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             SizedBox(height: grid.px(2)),
             Align(
               alignment: Alignment.centerLeft,
-              child: PixelTag(
-                'Sponsored campaign · ${quest.remainingSlots ?? 'open'} slots',
-                style: PixelBoxStyle.gold,
-                textColor: PixelPalette.ink,
-                maxWidth: grid.px(110),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox.square(
+                    dimension: 18,
+                    child: FittedBox(
+                      child: PixelSprite(DesignerArt.handshake, scale: 1),
+                    ),
+                  ),
+                  SizedBox(width: grid.px(1)),
+                  Flexible(
+                    child: PixelTag(
+                      'Sponsored campaign · ${quest.remainingSlots ?? 'open'} slots',
+                      style: PixelBoxStyle.gold,
+                      textColor: PixelPalette.ink,
+                      maxWidth: grid.px(110),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1294,9 +1308,23 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           ],
           if (sponsors.isNotEmpty) ...[
             SizedBox(height: grid.px(1)),
-            Text(
-              'Supported by $sponsors.',
-              style: PixelType.small(context, color: PixelPalette.slate),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox.square(
+                  dimension: 18,
+                  child: FittedBox(
+                    child: PixelSprite(DesignerArt.handshake, scale: 1),
+                  ),
+                ),
+                SizedBox(width: grid.px(1)),
+                Expanded(
+                  child: Text(
+                    'Supported by $sponsors.',
+                    style: PixelType.small(context, color: PixelPalette.slate),
+                  ),
+                ),
+              ],
             ),
           ],
           if (perk != null) ...[

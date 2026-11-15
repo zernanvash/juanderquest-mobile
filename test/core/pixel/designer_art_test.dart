@@ -39,8 +39,9 @@ void main() {
     expect((DesignerArt.gem.width, DesignerArt.gem.height), (32, 32));
     expect((DesignerArt.spotMarker.width, DesignerArt.spotMarker.height), (64, 64));
     expect((DesignerArt.salakot.width, DesignerArt.salakot.height), (23, 23));
+    expect((DesignerArt.handshake.width, DesignerArt.handshake.height), (32, 32));
     expect(DesignerArt.coinAnim.frames, hasLength(7));
-    expect((DesignerArt.coinAnim.frames.first.width, DesignerArt.coinAnim.frames.first.height), (32, 32));
+    expect((DesignerArt.coinAnim.frames.first.width, DesignerArt.coinAnim.frames.first.height), (13, 13));
     for (final v in DesignerArt.all.values.whereType<PixelFrames>()) {
       final first = v.frames.first;
       for (final f in v.frames) {

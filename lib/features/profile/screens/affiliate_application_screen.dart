@@ -408,8 +408,24 @@ class _AffiliateApplicationScreenState
                                   validator: _required('Contact phone'),
                                 ),
                                 SizedBox(height: grid.px(3)),
-                                Text('How would you like to participate?',
-                                    style: PixelType.title(context)),
+                                Row(
+                                  children: [
+                                    const SizedBox.square(
+                                      dimension: 20,
+                                      child: FittedBox(
+                                        child: PixelSprite(
+                                            DesignerArt.handshake,
+                                            scale: 1),
+                                      ),
+                                    ),
+                                    SizedBox(width: grid.px(1)),
+                                    Expanded(
+                                      child: Text(
+                                          'How would you like to participate?',
+                                          style: PixelType.title(context)),
+                                    ),
+                                  ],
+                                ),
                                 SizedBox(height: grid.px(1)),
                                 for (final entry in _affiliateGoals.entries)
                                   PixelCheckbox(

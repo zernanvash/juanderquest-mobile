@@ -467,8 +467,8 @@ GoRouter _router() => GoRouter(
           builder: (_, __) => const _RouteProbe('/plaza'),
         ),
         GoRoute(
-          path: '/navigate',
-          builder: (_, __) => const _RouteProbe('/navigate'),
+          path: '/affiliate',
+          builder: (_, __) => const _RouteProbe('/affiliate'),
         ),
         GoRoute(
           path: '/map/add-spot',
@@ -680,7 +680,7 @@ void main() {
       await _pump(tester);
       expect(find.byKey(const ValueKey('home_command_grid')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_tile_route')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_merchants')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_vote')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_plaza')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_quizzes')), findsOneWidget);
@@ -690,7 +690,7 @@ void main() {
 
       await _tapRoute(tester, find.byKey(const ValueKey('home_menu_quests')), '/quests');
       await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_route')), '/navigate');
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_merchants')), '/affiliate');
       await _pump(tester);
       await _tapRoute(tester, find.byKey(const ValueKey('home_tile_vote')), '/choice');
       await _pump(tester);

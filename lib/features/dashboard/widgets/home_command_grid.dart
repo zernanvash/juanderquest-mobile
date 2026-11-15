@@ -7,7 +7,6 @@ import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
-import '../../navigation/widgets/nav_pixel_art.dart';
 import '../../spots/explore/explore_art.dart';
 import '../../vote/pixel/wave3_art.dart';
 
@@ -18,8 +17,8 @@ class _CommandTileSpec {
     required this.key,
     required this.label,
     required this.icon,
-    required this.badge,
     required this.category,
+    this.badge,
     this.badgeLive = false,
     this.subtitle,
     this.route,
@@ -29,7 +28,7 @@ class _CommandTileSpec {
   final Key key;
   final String label;
   final PixelArt icon;
-  final String badge;
+  final String? badge;
   final bool badgeLive;
   final CommandTileCategory category;
   final String? subtitle;
@@ -87,18 +86,15 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         subtitle:
             '${widget.activeQuestsCount} active · ${widget.savedCount} saved',
         icon: DesignerArt.questMarker,
-        badge: '${widget.activeQuestsCount}',
         category: CommandTileCategory.play,
         route: '/quests',
       ),
       const _CommandTileSpec(
-        key: ValueKey('home_tile_route'),
-        label: 'ROUTE',
-        icon: NavPixelArt.modeCar,
-        badge: 'GO',
-        badgeLive: true,
-        category: CommandTileCategory.play,
-        route: '/navigate',
+        key: ValueKey('home_tile_merchants'),
+        label: 'MERCHANTS',
+        icon: DesignerArt.salakot,
+        category: CommandTileCategory.town,
+        route: '/affiliate',
       ),
       _CommandTileSpec(
         key: const ValueKey('home_tile_vote'),
@@ -113,7 +109,6 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         key: ValueKey('home_tile_plaza'),
         label: 'PLAZA',
         icon: DesignerArt.plazaTrophy,
-        badge: 'RANKS',
         category: CommandTileCategory.town,
         route: '/plaza',
       ),
@@ -121,7 +116,6 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         key: const ValueKey('home_tile_quizzes'),
         label: 'QUIZZES',
         icon: DesignerArt.questionMark,
-        badge: '${widget.nearbyQuizCount}',
         category: CommandTileCategory.play,
         onTap: widget.onOpenQuizzes,
       ),
@@ -133,11 +127,10 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         category: CommandTileCategory.play,
         route: '/map/add-spot',
       ),
-      _CommandTileSpec(
-        key: const ValueKey('home_tile_saved'),
+      const _CommandTileSpec(
+        key: ValueKey('home_tile_saved'),
         label: 'SAVED',
         icon: ExploreArt.bookmarkSaved,
-        badge: '${widget.savedCount}',
         category: CommandTileCategory.logs,
         route: '/saved',
       ),
@@ -145,7 +138,6 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         key: ValueKey('home_tile_history'),
         label: 'HISTORY',
         icon: Wave3Art.list,
-        badge: 'LOG',
         category: CommandTileCategory.logs,
         route: '/history',
       ),
@@ -267,7 +259,7 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
   }
 }
 
-class _CatChip extends StatelessWidget {
+class _CatChip extends StatefulWidget {
   const _CatChip({
     required this.label,
     required this.active,
@@ -279,28 +271,47 @@ class _CatChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_CatChip> createState() => _CatChipState();
+}
+
+class _CatChipState extends State<_CatChip> {
+  bool _down = false;
+
+  @override
   Widget build(BuildContext context) {
+    final base = widget.active
+        ? PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0)
+        : PixelBoxStyle.wood.copyWith(corner: 0, shadowPx: 0);
+    final style = _down
+        ? base.copyWith(highlight: base.shade, shade: base.highlight)
+        : base;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) => setState(() => _down = false),
+      onTapCancel: () => setState(() => _down = false),
       behavior: HitTestBehavior.opaque,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 44, minHeight: 32),
         child: Center(
           widthFactor: 1,
           heightFactor: 1,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 26),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(
-              color: active ? PixelPalette.sun : PixelPalette.wood,
-              border: Border.all(color: PixelPalette.ink, width: 1),
-            ),
-            child: Text(
-              label,
-              style: PixelType.small(
-                context,
-                color: active ? PixelPalette.ink : PixelPalette.cream,
-              ).copyWith(fontWeight: FontWeight.w700),
+          child: Transform.translate(
+            offset: Offset(0, _down ? 1 : 0),
+            child: PixelPanel(
+              style: style,
+              padding: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                child: Text(
+                  widget.label,
+                  style: PixelType.small(
+                    context,
+                    color: widget.active ? PixelPalette.ink : PixelPalette.cream,
+                  ).copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
           ),
         ),
@@ -309,7 +320,7 @@ class _CatChip extends StatelessWidget {
   }
 }
 
-class _MenuIconTile extends StatelessWidget {
+class _MenuIconTile extends StatefulWidget {
   const _MenuIconTile({
     required this.spec,
     required this.onPressed,
@@ -319,90 +330,128 @@ class _MenuIconTile extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
+  State<_MenuIconTile> createState() => _MenuIconTileState();
+}
+
+class _MenuIconTileState extends State<_MenuIconTile> {
+  bool _down = false;
+
+  static const _tileStyle = PixelBoxStyle(
+    fill: PixelPalette.cream,
+    highlight: PixelPalette.white,
+    shade: PixelPalette.woodLight,
+    outline: PixelPalette.ink,
+    corner: 0,
+    shadowPx: 0,
+  );
+
+  static const _tilePressedStyle = PixelBoxStyle(
+    fill: PixelPalette.cream,
+    highlight: PixelPalette.woodLight,
+    shade: PixelPalette.white,
+    outline: PixelPalette.ink,
+    corner: 0,
+    shadowPx: 0,
+  );
+
+  @override
   Widget build(BuildContext context) {
+    final spec = widget.spec;
     return GestureDetector(
       key: spec.key,
-      onTap: onPressed,
+      onTap: widget.onPressed,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) => setState(() => _down = false),
+      onTapCancel: () => setState(() => _down = false),
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 56),
-        padding: const EdgeInsets.fromLTRB(4, 6, 4, 5),
-        decoration: BoxDecoration(
-          color: PixelPalette.white,
-          border: Border.all(color: PixelPalette.woodDeep, width: 2),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: PixelSprite(
-                        spec.icon,
-                        scale: spec.icon.width <= 16 ? 2 : 1,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      spec.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: PixelType.small(context, color: PixelPalette.ink)
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  if (spec.subtitle != null) ...[
-                    const SizedBox(height: 1),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        spec.subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
+      child: Transform.translate(
+        offset: Offset(0, _down ? 1 : 0),
+        child: PixelPanel(
+          style: _down ? _tilePressedStyle : _tileStyle,
+          padding: 0,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 5),
+            child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 45),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: PixelSprite(
+                            spec.icon,
+                            scale: spec.icon.width <= 16 ? 2 : 1,
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          spec.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: PixelType.small(context, color: PixelPalette.ink)
+                              .copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      if (spec.subtitle != null) ...[
+                        const SizedBox(height: 1),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            spec.subtitle!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.slate,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (spec.badge != null)
+                  Positioned(
+                    top: -3,
+                    right: -1,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 3,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: spec.badgeLive
+                            ? PixelPalette.red
+                            : PixelPalette.sun,
+                        border: Border.all(color: PixelPalette.ink, width: 1),
+                      ),
+                      child: Text(
+                        spec.badge!,
+                        style: PixelType.small(
+                          context,
+                          color: spec.badgeLive
+                              ? PixelPalette.white
+                              : PixelPalette.ink,
+                        ).copyWith(fontWeight: FontWeight.w700),
+                      ),
                     ),
-                  ],
-                ],
-              ),
+                  ),
+              ],
             ),
-            Positioned(
-              top: -3,
-              right: -1,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                decoration: BoxDecoration(
-                  color: spec.badgeLive
-                      ? PixelPalette.greenBright
-                      : PixelPalette.sun,
-                  border: Border.all(color: PixelPalette.ink, width: 1),
-                ),
-                child: Text(
-                  spec.badge,
-                  style: PixelType.small(
-                    context,
-                    color: spec.badgeLive
-                        ? PixelPalette.white
-                        : PixelPalette.ink,
-                  ).copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
+          ),
+        ),
         ),
       ),
     );

@@ -267,7 +267,7 @@ GoRouter _appRouter() => GoRouter(
           '/settings',
           '/notifications',
           '/quests',
-          '/navigate',
+          '/affiliate',
           '/choice',
           '/plaza',
           '/map/add-spot',
@@ -348,7 +348,7 @@ void main() {
     await tapAndCheck(const ValueKey('home_appbar_search'), '/search');
     await tapAndCheck(const ValueKey('home_appbar_settings'), '/settings');
     await tapAndCheck(const ValueKey('home_menu_quests'), '/quests');
-    await tapAndCheck(const ValueKey('home_tile_route'), '/navigate');
+    await tapAndCheck(const ValueKey('home_tile_merchants'), '/affiliate');
     await tapAndCheck(const ValueKey('home_tile_vote'), '/choice');
     await tapAndCheck(const ValueKey('home_tile_plaza'), '/plaza');
     await tapAndCheck(const ValueKey('home_tile_add_spot'), '/map/add-spot');
