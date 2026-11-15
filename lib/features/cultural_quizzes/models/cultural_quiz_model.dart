@@ -272,6 +272,22 @@ class NearbyQuizInvitationModel {
     required this.isCompleted,
   }) : inRange = inRange ?? (distanceMeters <= radiusMeters);
 
+  NearbyQuizInvitationModel asCompleted() => NearbyQuizInvitationModel(
+        quizId: quizId,
+        destinationId: destinationId,
+        destinationName: destinationName,
+        municipality: municipality,
+        title: title,
+        description: description,
+        radiusMeters: radiusMeters,
+        distanceMeters: distanceMeters,
+        inRange: inRange,
+        xpReward: xpReward,
+        timeLimitMinutes: timeLimitMinutes,
+        language: language,
+        isCompleted: true,
+      );
+
   factory NearbyQuizInvitationModel.fromJson(Map<String, dynamic> json) {
     final radius = (json['radius_meters'] as num?)?.toInt() ?? 200;
     final distance = (json['distance_meters'] as num?)?.toInt() ?? 0;

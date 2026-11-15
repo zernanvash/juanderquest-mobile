@@ -233,6 +233,25 @@ void main() {
     expect(apiCalls, 2);
   });
 
+  test('markCompleted moves a passed quiz to completed and drops the banner', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = _FixedRadarNotifier(
+      container.read(Provider((ref) => ref)),
+      QuizRadarState(items: [
+        _inv(id: 'q1', title: 'Capitol Quiz', distance: 30, radius: 100, xp: 35),
+      ]),
+    );
+    addTearDown(notifier.dispose);
+    expect(notifier.state.showBanner, isTrue);
+
+    notifier.markCompleted('q1');
+
+    expect(notifier.state.showBanner, isFalse);
+    expect(notifier.state.inRangeIncomplete, isEmpty);
+    expect(notifier.state.completed.single.quizId, 'q1');
+  });
+
   testWidgets('NearbyQuizzesScreen renders Ready to play, Walk closer, and Completed sections', (tester) async {
     final hubState = QuizRadarState(
       origin: 'gps',

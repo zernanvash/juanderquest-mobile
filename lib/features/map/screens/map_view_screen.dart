@@ -51,8 +51,14 @@ class MapViewScreen extends ConsumerStatefulWidget {
   ConsumerState<MapViewScreen> createState() => _MapViewScreenState();
 }
 
-class _MapViewScreenState extends ConsumerState<MapViewScreen> {
+class _MapViewScreenState extends ConsumerState<MapViewScreen>
+    with WidgetsBindingObserver {
   late final JdqMap _nativeMap;
+  // Plan 91a: live quiz radar feed while the Map tab is on screen and the
+  // app is in the foreground. Starts only after permission is already granted.
+  StreamSubscription<Position>? _quizRadarGps;
+  bool _quizRadarFeedWanted = false;
+  bool _appResumed = true;
   late final Future<String> _style;
   String _pinSignature = '';
   bool _deepLinkHandled = false;
@@ -60,6 +66,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _nativeMap = ref.read(jdqMapFactoryProvider)();
     _style = ref.read(mapStyleProvider.future);
     unawaited(
@@ -104,6 +111,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                   origin: 'gps',
                 ),
           );
+          _quizRadarFeedWanted = true;
+          _syncQuizRadarFeed();
         }
       }
     } catch (_) {}
@@ -176,7 +185,45 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
   int _areaRequest = 0;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncQuizRadarFeed();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appResumed = state == AppLifecycleState.resumed;
+    _syncQuizRadarFeed();
+  }
+
+  void _syncQuizRadarFeed() {
+    final visible = mounted && TickerMode.of(context);
+    if (_quizRadarFeedWanted && visible && _appResumed) {
+      _quizRadarGps ??= Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 50,
+        ),
+      ).listen(
+        (pos) => unawaited(
+          ref.read(quizRadarProvider.notifier).checkWithLocation(
+                lat: pos.latitude,
+                lng: pos.longitude,
+                origin: 'gps',
+              ),
+        ),
+        onError: (_) {},
+      );
+    } else {
+      _quizRadarGps?.cancel();
+      _quizRadarGps = null;
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _quizRadarGps?.cancel();
     _nativeMap.dispose();
     _clusterRefreshTimer?.cancel();
     _areaRefreshTimer?.cancel();
@@ -477,6 +524,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
               origin: 'gps',
             ),
       );
+      _quizRadarFeedWanted = true;
+      _syncQuizRadarFeed();
       final camera = _camera;
       _nativeMap.setMyLocation(true);
       _move(

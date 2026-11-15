@@ -390,6 +390,17 @@ class QuizRadarNotifier extends StateNotifier<QuizRadarState> {
     }
   }
 
+  /// Marks a quiz done after a passing submit, so the unlock banner stops
+  /// offering it before the next (throttled) radar check.
+  void markCompleted(String quizId) {
+    if (!state.items.any((q) => q.quizId == quizId && !q.isCompleted)) return;
+    state = state.copyWith(
+      items: sortNearbyQuizInvitations([
+        for (final q in state.items) q.quizId == quizId ? q.asCompleted() : q,
+      ]),
+    );
+  }
+
   void dismissBanner() {
     final activeIds = state.inRangeIncomplete.map((q) => q.quizId).toSet();
     if (activeIds.isEmpty) return;

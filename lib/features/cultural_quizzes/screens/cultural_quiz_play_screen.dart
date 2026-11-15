@@ -99,6 +99,9 @@ class _CulturalQuizPlayScreenState
               );
 
       if (!mounted) return;
+      if (result.passed) {
+        ref.read(quizRadarProvider.notifier).markCompleted(widget.quizId);
+      }
 
       context.pushReplacement(
         '/cultural-quizzes/${widget.quizId}/result',
