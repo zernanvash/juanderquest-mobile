@@ -33,6 +33,7 @@ import '../providers/home_qotd_provider.dart';
 import '../providers/home_recommended_quest_provider.dart';
 import '../widgets/home_adventure_calendar.dart';
 import '../widgets/home_command_grid.dart';
+import '../widgets/home_daily_tasks_panel.dart';
 import '../widgets/home_dual_bento_row.dart';
 import '../widgets/home_hero.dart';
 
@@ -247,6 +248,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             gemSlug: firstGem?.id,
                           ),
                           SizedBox(height: grid.px(3)),
+
+                          // Plan 100 WP-4: today's tasks (they earn the stamps).
+                          if (daily != null && daily.missions.isNotEmpty) ...[
+                            HomeDailyTasksPanel(
+                              missions: daily.missions,
+                              onOpen: (m) => switch (m.kind) {
+                                'qotd' => _showQotdSheet(context, ref, qotd),
+                                'cheer_post' => context.push('/plaza'),
+                                _ => context.push('/quests'),
+                              },
+                            ),
+                            SizedBox(height: grid.px(3)),
+                          ],
 
                           // BAND 4: PANGASINAN CHRONO-ALMANAC CALENDAR
                           const HomeAdventureCalendar(),
