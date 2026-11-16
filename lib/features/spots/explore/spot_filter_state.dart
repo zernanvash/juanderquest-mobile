@@ -80,7 +80,8 @@ class SpotFilterState {
   }
 
   /// Extracts up to 5 unique non-empty categories from a spots list.
-  static List<String> extractCategories(List<SpotModel> spots, {int limit = 5}) {
+  static List<String> extractCategories(List<SpotModel> spots,
+      {int limit = 5}) {
     final seen = <String>{};
     final result = <String>[];
     for (final s in spots) {
@@ -94,7 +95,8 @@ class SpotFilterState {
   }
 
   /// Extracts up to 5 unique non-empty municipalities from a spots list.
-  static List<String> extractMunicipalities(List<SpotModel> spots, {int limit = 5}) {
+  static List<String> extractMunicipalities(List<SpotModel> spots,
+      {int limit = 5}) {
     final seen = <String>{};
     final result = <String>[];
     for (final s in spots) {

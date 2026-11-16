@@ -9,13 +9,13 @@ import 'package:juanderquest_app/features/spots/explore/widgets/explore_spot_car
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/core/dev/test_content.dart';
 import 'package:juanderquest_app/core/network/api_failure.dart';
-import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/pixel/pixel_feedback.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
+import 'package:juanderquest_app/features/dashboard/providers/festival_calendar_provider.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
@@ -205,6 +205,7 @@ Widget _buildHarness({
       spotDiscoveryProvider.overrideWith((ref) => discoveryNotifier),
       choiceSpotlightProvider.overrideWith((ref) => spotlight),
       hiddenGemProvider.overrideWith((ref) async => const []),
+      festivalCalendarProvider.overrideWith((ref, year) async => const []),
       showTestContentProvider.overrideWith((ref) => showTest),
     ],
     child: MaterialApp.router(
@@ -243,8 +244,10 @@ void main() {
       await tester.pumpWidget(_buildHarness(discoveryNotifier: notifier));
       await tester.pumpAndSettle();
 
-      await _scrollTo(tester, find.text('FEATURED DESTINATION'));
-      expect(find.text('FEATURED DESTINATION'), findsOneWidget);
+      // Owner 2026-11-16: featured is a tile in the spotlight row.
+      expect(find.byKey(const ValueKey('explore_spotlight_featured')),
+          findsOneWidget);
+      expect(find.text('FEATURED'), findsOneWidget);
       expect(find.text('Lingayen Beach'), findsWidgets);
     });
 
@@ -396,12 +399,15 @@ void main() {
 
       // 1. Plan 93b WP-13: the like count is the server's (0 here), and the
       //    tap goes through the shared provider.
-      final likeBtn = find.widgetWithText(PixelButton, '0');
+      final likeBtn = find.byKey(const ValueKey('explore_like_spot-interactive'));
       await _scrollTo(tester, likeBtn);
       expect(likeBtn, findsOneWidget);
+      expect(find.descendant(of: likeBtn, matching: find.text('0')),
+          findsOneWidget);
       await tester.tap(likeBtn);
       await tester.pump();
-      expect(find.widgetWithText(PixelButton, '1'), findsOneWidget);
+      expect(find.descendant(of: likeBtn, matching: find.text('1')),
+          findsOneWidget);
       expect(notifier.likeCalls, [true]);
 
       // 2. Save button tap
@@ -438,7 +444,7 @@ void main() {
       expect(pushedRoutes, contains('/explore/interactive-spot'));
     });
 
-    testWidgets('non-quest cards offer VIEW SPOT on the right',
+    testWidgets('non-quest cards have no VIEW SPOT; the post opens the place',
         (tester) async {
       final pushedRoutes = <String>[];
       final spot = _makeSpot(
@@ -457,55 +463,60 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      final viewSpot =
-          find.byKey(const ValueKey('explore_view_spot_plain-spot'));
-      await _scrollTo(tester, viewSpot);
-      expect(viewSpot, findsOneWidget);
-      // Plan 93b WP-10: VIEW SPOT shares the like/save row.
-      final like = find.widgetWithText(PixelButton, '0');
-      expect(tester.getCenter(viewSpot).dy,
+      // Owner 2026-11-16: no VIEW SPOT button.
+      expect(find.byKey(const ValueKey('explore_view_spot_plain-spot')),
+          findsNothing);
+      expect(find.text('VIEW SPOT >'), findsNothing);
+      // Like and save share one row.
+      final like = find.byKey(const ValueKey('explore_like_plain-spot'));
+      final save = find.byKey(const ValueKey('explore_save_plain-spot'));
+      await _scrollTo(tester, like);
+      expect(tester.getCenter(save).dy,
           moreOrLessEquals(tester.getCenter(like).dy, epsilon: 1));
-      await tester.tap(viewSpot);
+      // Tapping the post (its town line) opens the place.
+      await tester.tap(find.textContaining('·').first);
       await tester.pumpAndSettle();
       expect(pushedRoutes, contains('/explore/plain-cove'));
     });
 
-    testWidgets('test spots appear only with the developer switch on',
+    testWidgets('badges show at the top right and explain themselves',
         (tester) async {
-      final normal = _makeSpot(id: 'normal', name: 'Normal Cove');
-      final testSpot = _makeSpot(
-        id: 'artest',
-        name: 'ARTEST Spot',
-        isTest: true,
+      final spot = _makeSpot(
+        id: 'badge-spot',
+        name: 'Badge Bay',
+        slug: 'badge-bay',
+        questId: 'quest-1',
       );
       final notifier = _TestDiscoveryNotifier(
         ProviderContainer().read(Provider((ref) => ref)),
-        SpotDiscoveryState(
-          spots: [normal, testSpot],
-          isInitialLoading: false,
-        ),
+        SpotDiscoveryState(spots: [spot], isInitialLoading: false),
       );
-
       await tester.pumpWidget(_buildHarness(discoveryNotifier: notifier));
       await tester.pumpAndSettle();
-      await _scrollTo(tester, find.text('Normal Cove'));
-      expect(find.text('Normal Cove'), findsWidgets);
-      expect(find.text('ARTEST Spot'), findsNothing);
 
-      final showNotifier = _TestDiscoveryNotifier(
+      final quest = find.byKey(const ValueKey('explore_badge_quest'));
+      await _scrollTo(tester, quest);
+      expect(quest, findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('explore_badges')));
+      await tester.pumpAndSettle();
+      expect(find.text('Has a quest'), findsOneWidget);
+      expect(find.text('There is a quest you can play here.'), findsOneWidget);
+    });
+
+    testWidgets('the search box under the bar opens Search', (tester) async {
+      final pushedRoutes = <String>[];
+      final notifier = _TestDiscoveryNotifier(
         ProviderContainer().read(Provider((ref) => ref)),
-        SpotDiscoveryState(
-          spots: [normal, testSpot],
-          isInitialLoading: false,
-        ),
+        const SpotDiscoveryState(spots: [], isInitialLoading: false),
       );
       await tester.pumpWidget(_buildHarness(
-        discoveryNotifier: showNotifier,
-        showTest: true,
+        discoveryNotifier: notifier,
+        pushedRoutes: pushedRoutes,
       ));
       await tester.pumpAndSettle();
-      await _scrollTo(tester, find.text('ARTEST Spot'));
-      expect(find.text('ARTEST Spot'), findsWidgets);
+      await tester.tap(find.byKey(const ValueKey('explore_search_bar')));
+      await tester.pumpAndSettle();
+      expect(pushedRoutes, contains('/search'));
     });
 
     testWidgets('loading state displays PixelLoader', (tester) async {

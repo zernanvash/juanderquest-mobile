@@ -5,12 +5,14 @@ import '../../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../../core/pixel/pixel_box.dart';
 import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/pixel/pixel_grid.dart';
+import '../../../../core/pixel/pixel_text_3d.dart';
 import '../../../../core/pixel/pixel_text.dart';
 import '../../models/spot_model.dart';
 import '../../theater/theater_backdrop.dart';
 import '../explore_art.dart';
 import '../recommendation_reason.dart';
 import '../spot_filter_state.dart';
+import 'explore_badges.dart';
 import 'collapsible_spot_photo.dart';
 
 class ExploreSpotCard extends StatelessWidget {
@@ -25,7 +27,11 @@ class ExploreSpotCard extends StatelessWidget {
     this.onDoubleTapLike,
     required this.onToggleSave,
     required this.onPlayQuest,
+    this.badges = const [],
   });
+
+  /// Colour badges at the top right (owner 2026-11-16).
+  final List<ExploreBadge> badges;
 
   final SpotModel spot;
   final int likeCount;
@@ -53,175 +59,189 @@ class ExploreSpotCard extends StatelessWidget {
       label: 'Destination ${spot.name} in ${spot.municipality}',
       // Owner 2026-11-17: each place sits in its own box (was a line under
       // each post).
-      child: PixelPanel(
-        style: PixelBoxStyle.parchment,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Plan 75m: credit and "Report a problem" live on the spot page;
-            // the card goes straight to the place.
-            // Name (Tap opens theater)
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                pixelTick(context);
-                onTapCard();
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ShadowText(
-                    spot.name,
-                    style: PixelType.title(context, color: PixelPalette.ink),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: grid.px(1)),
-
-                  // Town · Category caption + Optional Truthful Recommendation Chip
-                  Wrap(
-                    spacing: grid.px(1),
-                    runSpacing: grid.px(1),
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        '${spot.municipality.toUpperCase()} · ${categoryLabel(spot.category).toUpperCase()}',
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.stone,
-                        ),
-                      ),
-                      if (recommendationReason != null)
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: PixelChip(
-                            recommendationReason.toUpperCase(),
-                            style: _recommendationStyle(recommendationReason),
-                            textColor: _recommendationTextColor(
-                              recommendationReason,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  // Owner 2026-11-17: no caption/traveler note on the card;
-                  // the place page shows it.
-                ],
-              ),
-            ),
-            SizedBox(height: grid.px(2)),
-
-            // Photo (takes no space when there is none or it fails)
-            TheaterDoubleTapHearts(
-              onDoubleTapLike: onDoubleTapLike,
-              child: GestureDetector(
+      // The whole post opens the place (no VIEW SPOT button).
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          pixelTick(context);
+          onTapCard();
+        },
+        child: PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Plan 75m: credit and "Report a problem" live on the spot page;
+              // the card goes straight to the place.
+              // Name (Tap opens theater)
+              GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
                   pixelTick(context);
                   onTapCard();
                 },
-                // A double-tap handler makes a single tap wait briefly, so the
-                // first tap of a double-tap does not open the spot.
-                onDoubleTap: onDoubleTapLike == null ? null : () {},
-                child: CollapsibleSpotPhoto(
-                  url: spot.imageUrl,
-                  aspectRatio: 16 / 10,
-                  gapBelow: grid.px(2),
-                  cacheWidth: cacheWidth > 0 ? cacheWidth : null,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: ShadowText(
+                            spot.name,
+                            style: PixelType.title(context,
+                                color: PixelPalette.ink),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (badges.isNotEmpty) ...[
+                          SizedBox(width: grid.px(2)),
+                          ExploreBadgeRow(badges: badges, spotName: spot.name),
+                        ],
+                      ],
+                    ),
+                    SizedBox(height: grid.px(1)),
+
+                    // Town · Category caption + Optional Truthful Recommendation Chip
+                    Wrap(
+                      spacing: grid.px(1),
+                      runSpacing: grid.px(1),
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          '${spot.municipality.toUpperCase()} · ${categoryLabel(spot.category).toUpperCase()}',
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.stone,
+                          ),
+                        ),
+                        if (recommendationReason != null)
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: PixelChip(
+                              recommendationReason.toUpperCase(),
+                              style: _recommendationStyle(recommendationReason),
+                              textColor: _recommendationTextColor(
+                                recommendationReason,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    // Owner 2026-11-17: no caption/traveler note on the card;
+                    // the place page shows it.
+                  ],
                 ),
               ),
-            ),
+              SizedBox(height: grid.px(2)),
 
-            // Action Row: LIKE (count, pixel heart), SAVE (bookmark), and
-            // PLAY QUEST or VIEW SPOT.
-            Wrap(
-              spacing: grid.px(1),
-              runSpacing: grid.px(1),
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                // LIKE Button with Count
-                ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 48),
-                  child: Center(
-                    widthFactor: 1,
-                    child: PixelButton(
-                      label: '$likeCount',
-                      icon: isLiked
-                          ? DesignerArt.heartLiked
-                          : DesignerArt.heartUnliked,
-                      iconScale: 2,
-                      variant: isLiked
-                          ? PixelButtonVariant.danger
-                          : PixelButtonVariant.secondary,
-                      style:
-                          isLiked ? PixelBoxStyle.red : PixelBoxStyle.parchment,
-                      textColor:
-                          isLiked ? PixelPalette.white : PixelPalette.ink,
-                      onPressed: onToggleLike,
-                    ),
+              // Photo (takes no space when there is none or it fails)
+              TheaterDoubleTapHearts(
+                onDoubleTapLike: onDoubleTapLike,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    pixelTick(context);
+                    onTapCard();
+                  },
+                  // A double-tap handler makes a single tap wait briefly, so the
+                  // first tap of a double-tap does not open the spot.
+                  onDoubleTap: onDoubleTapLike == null ? null : () {},
+                  child: CollapsibleSpotPhoto(
+                    url: spot.imageUrl,
+                    aspectRatio: 16 / 10,
+                    gapBelow: grid.px(2),
+                    cacheWidth: cacheWidth > 0 ? cacheWidth : null,
                   ),
                 ),
+              ),
 
-                // SAVE Bookmark Button
-                ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 48),
-                  child: Center(
-                    widthFactor: 1,
-                    child: PixelIconButton(
-                      icon: isSaved
-                          ? ExploreArt.bookmarkSaved
-                          : ExploreArt.bookmarkUnsaved,
-                      semanticLabel:
-                          isSaved ? 'Remove bookmark' : 'Save bookmark',
-                      // Saved: gold bookmark on wood (gold on gold was invisible).
-                      style: isSaved
-                          ? PixelBoxStyle.wood
-                          : PixelBoxStyle.parchment,
-                      iconHeight: 20,
-                      onPressed: onToggleSave,
-                    ),
-                  ),
-                ),
-
-                // PLAY QUEST Button (when questId exists)
-                if (hasQuest && onPlayQuest != null)
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 48),
-                    child: Center(
-                      widthFactor: 1,
-                      child: PixelButton(
-                        label: 'PLAY QUEST',
-                        variant: PixelButtonVariant.primary,
-                        style: PixelBoxStyle.gold,
-                        textColor: PixelPalette.ink,
-                        onPressed: onPlayQuest,
-                      ),
-                    ),
-                  ),
-
-                // Plan 93b WP-10: VIEW SPOT stays in the same 48 px row.
-                if (!hasQuest)
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 48),
-                    child: Center(
-                      widthFactor: 1,
-                      child: PixelButton(
-                        key: ValueKey('explore_view_spot_${spot.id}'),
-                        label: 'VIEW SPOT >',
-                        variant: PixelButtonVariant.secondary,
-                        onPressed: () {
+              // Action Row: LIKE (count, pixel heart), SAVE (bookmark), and
+              // PLAY QUEST or VIEW SPOT.
+              Wrap(
+                spacing: grid.px(1),
+                runSpacing: grid.px(1),
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Like: heart + count, no box (owner 2026-11-16).
+                  Semantics(
+                    button: true,
+                    label: isLiked
+                        ? 'Unlike, $likeCount likes'
+                        : 'Like, $likeCount likes',
+                    child: ExcludeSemantics(
+                      child: GestureDetector(
+                        key: ValueKey('explore_like_${spot.id}'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
                           pixelTick(context);
-                          onTapCard();
+                          onToggleLike();
                         },
+                        child: ConstrainedBox(
+                          constraints:
+                              const BoxConstraints(minHeight: 48, minWidth: 48),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              PixelIconFit(
+                                isLiked
+                                    ? DesignerArt.heartLiked
+                                    : DesignerArt.heartUnliked,
+                                box: 24,
+                              ),
+                              SizedBox(width: grid.px(1)),
+                              Text(
+                                '$likeCount',
+                                style: PixelType.numbers(
+                                  context,
+                                  color: isLiked
+                                      ? PixelPalette.red
+                                      : PixelPalette.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-              ],
-            ),
-          ],
+
+                  // Save: bookmark, no box.
+                  PixelIconButton(
+                    key: ValueKey('explore_save_${spot.id}'),
+                    icon: isSaved
+                        ? ExploreArt.bookmarkSaved
+                        : ExploreArt.bookmarkUnsaved,
+                    semanticLabel:
+                        isSaved ? 'Remove bookmark' : 'Save bookmark',
+                    iconHeight: 24,
+                    boxed: false,
+                    onPressed: onToggleSave,
+                  ),
+
+                  // PLAY QUEST Button (when questId exists)
+                  if (hasQuest && onPlayQuest != null)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Center(
+                        widthFactor: 1,
+                        child: PixelButton(
+                          label: 'PLAY QUEST',
+                          variant: PixelButtonVariant.primary,
+                          style: PixelBoxStyle.gold,
+                          textColor: PixelPalette.ink,
+                          onPressed: onPlayQuest,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

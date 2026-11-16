@@ -92,7 +92,8 @@ class ExploreJuanChoiceCard extends StatelessWidget {
                       constraints: const BoxConstraints(minHeight: 48),
                       child: Center(
                         child: PixelButton(
-                          label: '${winner.name.toUpperCase()} · ${winner.municipality.toUpperCase()}',
+                          label:
+                              '${winner.name.toUpperCase()} · ${winner.municipality.toUpperCase()}',
                           variant: PixelButtonVariant.secondary,
                           style: PixelBoxStyle.parchment.copyWith(
                             outline: PixelPalette.goldDeep,
@@ -130,7 +131,8 @@ class ExploreJuanChoiceCard extends StatelessWidget {
                       padding: EdgeInsets.all(grid.px(1)),
                       child: Text(
                         'SEE FINAL RESULTS ›',
-                        style: PixelType.small(context, color: PixelPalette.green),
+                        style:
+                            PixelType.small(context, color: PixelPalette.green),
                       ),
                     ),
                   ),

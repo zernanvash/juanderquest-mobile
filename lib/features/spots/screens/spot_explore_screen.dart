@@ -1,10 +1,16 @@
+import '../../dashboard/models/home_calendar_entry.dart';
+import '../../dashboard/providers/festival_calendar_provider.dart';
+import '../../dashboard/providers/home_calendar_provider.dart';
+import '../explore/widgets/explore_badges.dart';
+import '../explore/widgets/explore_search_bar.dart';
+import '../explore/widgets/explore_spotlight_row.dart';
+import '../providers/hidden_gem_provider.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -18,13 +24,10 @@ import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../explore/explore_art.dart';
 import '../explore/juanchoice_placement.dart';
 import '../explore/spot_filter_state.dart';
-import '../explore/widgets/explore_featured_card.dart';
 import '../explore/widgets/explore_juanchoice_card.dart';
 import '../explore/widgets/explore_spot_card.dart';
 import '../models/spot_model.dart';
-import '../providers/hidden_gem_provider.dart';
 import '../providers/spot_discovery_provider.dart';
-import '../widgets/hidden_gem_card.dart';
 
 class SpotExploreScreen extends ConsumerStatefulWidget {
   const SpotExploreScreen({super.key});
@@ -125,6 +128,27 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   .where((s) => spotlight.winnerSpotIds.contains(s.id))
                   .toList();
 
+          // Badge signals: today's hidden gems and towns with a festival
+          // this month.
+          final gemIds = <String>{
+            for (final g
+                in ref.watch(hiddenGemProvider).valueOrNull ?? const [])
+              g.id,
+          };
+          final today = DateTime.now();
+          // Festivals only (dated ones from staff, plus the verified
+          // month-only list); not the whole Home calendar.
+          final fiestaTowns = <String>{
+            for (final e in [
+              ...ref.watch(festivalCalendarProvider(today.year)).valueOrNull ??
+                  const <HomeCalendarEntry>[],
+              ...ref.watch(homeFestivalEntriesProvider(today.year)),
+            ])
+              if (e.municipality.isNotEmpty &&
+                  e.spansMonth(today.year, today.month))
+                normalizeTown(e.municipality),
+          };
+
           return Scaffold(
             backgroundColor: PixelPalette.paper,
             appBar: PreferredSize(
@@ -133,13 +157,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 title: 'Explore',
                 isTab: true,
                 actions: [
-                  PixelIconButton(
-                    icon: DesignerArt.search,
-                    semanticLabel: 'Search & Filters',
-                    style: PixelBoxStyle.parchment,
-                    iconHeight: 24,
-                    onPressed: () => context.push('/search'),
-                  ),
+                  // Search is the open box under the bar (owner 2026-11-16).
                   // Owner 2026-11-16: Saved sits right of Search (the Map
                   // moved to the main menu).
                   PixelIconButton(
@@ -166,6 +184,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   vertical: grid.px(2),
                 ),
                 children: [
+                  ExploreSearchBar(onOpen: () => context.push('/search')),
+                  SizedBox(height: grid.px(3)),
                   // App-only blocks preserved in order
                   // Offline Fallback Banner
                   if (state.isOfflineFallback) ...[
@@ -182,9 +202,9 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     SizedBox(height: grid.px(2)),
                   ],
 
-                  // Personalized Hidden Gem (hero #1 at the top of feed)
-                  const HiddenGemCard(),
-                  SizedBox(height: grid.px(2)),
+                  // Hidden gem + featured destination, one row, two columns
+                  // (owner 2026-11-16).
+                  ExploreSpotlightRow(featured: topHeroSpot),
 
                   // Loading State
                   if (state.isInitialLoading && state.spots.isEmpty)
@@ -201,18 +221,6 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
                   // Feed Stream List
                   else ...[
-                    // Featured Destination (Hero card with real photo)
-                    if (topHeroSpot != null) ...[
-                      ExploreFeaturedCard(
-                        spot: topHeroSpot,
-                        onTap: () => context.push(
-                          '/explore/${topHeroSpot!.slug}',
-                          extra: topHeroSpot,
-                        ),
-                      ),
-                      SizedBox(height: grid.px(2)),
-                    ],
-
                     // Feed Cards + JuanChoice Insertion
                     for (var i = 0; i < pagedSpots.length; i++) ...[
                       if (spotlightPlacement.hasSpotlight &&
@@ -229,6 +237,11 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         SizedBox(height: grid.px(2)),
                       ],
                       ExploreSpotCard(
+                        badges: exploreBadgesFor(
+                          pagedSpots[i],
+                          gemIds: gemIds,
+                          fiestaTowns: fiestaTowns,
+                        ),
                         spot: pagedSpots[i],
                         likeCount: pagedSpots[i].likeCount,
                         isLiked: pagedSpots[i].liked,

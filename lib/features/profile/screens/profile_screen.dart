@@ -239,7 +239,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final nameColor = _cosmeticColor(nameColorAsset?['color']);
     return PixelPanel(
       style: PixelBoxStyle.parchment,
-      padding: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -25,7 +25,8 @@ class ExploreFeaturedCard extends StatelessWidget {
     if (!hasPhoto) return const SizedBox.shrink();
 
     final cardWidth = MediaQuery.sizeOf(context).width;
-    final cacheWidth = (cardWidth * MediaQuery.devicePixelRatioOf(context)).round();
+    final cacheWidth =
+        (cardWidth * MediaQuery.devicePixelRatioOf(context)).round();
 
     return Semantics(
       button: true,
@@ -60,7 +61,8 @@ class ExploreFeaturedCard extends StatelessWidget {
                   ),
                   Text(
                     spot.municipality,
-                    style: PixelType.small(context, color: PixelPalette.sunLight),
+                    style:
+                        PixelType.small(context, color: PixelPalette.sunLight),
                   ),
                 ],
               ),
