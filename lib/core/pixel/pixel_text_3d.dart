@@ -203,7 +203,8 @@ class PixelText3D extends StatelessWidget {
             maxLines: 1,
             softWrap: false,
           ),
-          ...layers,
+          // Drawing copies are decoration; the sizing text above is read once.
+          ...[for (final l in layers) ExcludeSemantics(child: l)],
         ],
       ),
     );

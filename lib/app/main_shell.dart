@@ -149,7 +149,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                       key: const ValueKey('main_menu_scrim'),
                       onTap: () => _setMenu(false),
                       child: ColoredBox(
-                        color: PixelPalette.ink.withValues(alpha: 0.6),
+                        color: PixelPalette.ink.withValues(alpha: 0.78),
                       ),
                     ),
                   ),
