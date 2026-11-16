@@ -144,6 +144,14 @@ class SettingsScreen extends ConsumerWidget {
                                       _showLanguageDialog(context, ref),
                                 ),
                                 _SettingsTile(
+                                  key: const ValueKey('settings_notifications'),
+                                  icon: 'N',
+                                  title: tr(context,
+                                      en: 'Notifications', tl: 'Mga Abiso'),
+                                  onTap: () =>
+                                      context.push('/settings/notifications'),
+                                ),
+                                _SettingsTile(
                                   key: const ValueKey('settings_text_size'),
                                   icon: 'T',
                                   title: tr(context,
