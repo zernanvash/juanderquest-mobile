@@ -78,8 +78,10 @@ class GameAudio {
       } else {
         await _music?.pause();
       }
-    } catch (_) {
-      // No audio engine: stay silent.
+    } catch (e) {
+      // No audio engine: stay silent, and allow a retry on the next change.
+      _musicPlaying = false;
+      debugPrint('GameAudio music: $e');
     }
   }
 
