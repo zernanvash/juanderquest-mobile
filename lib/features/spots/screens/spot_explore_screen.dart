@@ -162,7 +162,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 // Owner 2026-11-16: more side margin on Explore posts.
                 padding: EdgeInsets.symmetric(
-                  horizontal: grid.px(5),
+                  horizontal: grid.gutter,
                   vertical: grid.px(2),
                 ),
                 children: [

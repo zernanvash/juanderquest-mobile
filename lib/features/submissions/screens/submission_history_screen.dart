@@ -128,7 +128,7 @@ class _SubmissionHistoryScreenState
     if (state.submissions.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: grid.px(4)),
+        padding: EdgeInsets.symmetric(horizontal: grid.gutter),
         children: [
           SizedBox(height: grid.px(6)),
           PixelPanel(

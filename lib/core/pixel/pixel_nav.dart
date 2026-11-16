@@ -152,7 +152,7 @@ class _PixelHotbarState extends State<PixelHotbar> {
                     item.label,
                     maxLines: 1,
                     softWrap: false,
-                    style: PixelType.small(
+                    style: PixelType.labelSmall(
                       context,
                       color: selected ? PixelPalette.ink : PixelPalette.slate,
                     ).copyWith(fontWeight: selected ? FontWeight.w700 : null),
@@ -243,7 +243,8 @@ class _PixelMenuButtonState extends State<PixelMenuButton> {
                       child: Text(
                         text,
                         maxLines: 1,
-                        style: PixelType.small(context, color: PixelPalette.ink)
+                        style: PixelType.labelSmall(context,
+                                color: PixelPalette.ink)
                             .copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -297,7 +298,7 @@ class _Badge extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: grid.px(1)),
         child: Text(
           text,
-          style: PixelType.small(
+          style: PixelType.labelSmall(
             context,
             color: alert ? PixelPalette.white : PixelPalette.ink,
           ),

@@ -114,7 +114,7 @@ class PixelText3D extends StatelessWidget {
     final text = this.text.toUpperCase();
     final u = PixelGrid.of(context).unit;
     var base = PixelType.display(context).copyWith(
-      fontSize: size * PixelScope.of(context).fontScale(),
+      fontSize: size * PixelType.headerScale,
       fontWeight: FontWeight.w700,
       height: 1.1,
     );

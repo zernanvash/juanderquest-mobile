@@ -47,11 +47,18 @@ abstract final class PixelTheme {
     Color color = PixelPalette.ink,
     bool bold = false,
     bool plain = false,
+    bool header = false,
   }) =>
       TextStyle(
-        fontFamily: plain ? 'VT323' : 'Silkscreen',
+        // Owner 2026-11-17: PressStart2P headers, Silkscreen labels, VT323
+        // plain text.
+        fontFamily: header
+            ? 'PressStart2P'
+            : plain
+                ? 'VT323'
+                : 'Silkscreen',
         fontFamilyFallback: PixelFonts.fallback,
-        fontSize: size,
+        fontSize: header ? size * 0.61 : size,
         height: 1.25,
         letterSpacing: 0,
         color: color,
@@ -99,15 +106,15 @@ abstract final class PixelTheme {
         selectionHandleColor: PixelPalette.green,
       ),
       textTheme: TextTheme(
-        displayLarge: _text(32, bold: true),
-        displayMedium: _text(28, bold: true),
-        displaySmall: _text(24, bold: true),
-        headlineLarge: _text(24, bold: true),
-        headlineMedium: _text(22, bold: true),
-        headlineSmall: _text(20, bold: true),
-        titleLarge: _text(20, bold: true),
-        titleMedium: _text(16, bold: true),
-        titleSmall: _text(16, bold: true),
+        displayLarge: _text(32, bold: true, header: true),
+        displayMedium: _text(28, bold: true, header: true),
+        displaySmall: _text(24, bold: true, header: true),
+        headlineLarge: _text(24, bold: true, header: true),
+        headlineMedium: _text(22, bold: true, header: true),
+        headlineSmall: _text(20, bold: true, header: true),
+        titleLarge: _text(20, bold: true, header: true),
+        titleMedium: _text(16, bold: true, header: true),
+        titleSmall: _text(16, bold: true, header: true),
         bodyLarge: _text(21, plain: true),
         bodyMedium: _text(19, plain: true),
         bodySmall: _text(15, plain: true),
@@ -122,7 +129,8 @@ abstract final class PixelTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         iconTheme: const IconThemeData(color: PixelPalette.paper),
-        titleTextStyle: _text(24, color: PixelPalette.paper, bold: true),
+        titleTextStyle:
+            _text(24, color: PixelPalette.paper, bold: true, header: true),
       ),
       iconTheme: const IconThemeData(color: PixelPalette.ink),
       dividerTheme: const DividerThemeData(
@@ -142,7 +150,7 @@ abstract final class PixelTheme {
         surfaceTintColor: transparent,
         elevation: 0,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        titleTextStyle: _text(24, bold: true),
+        titleTextStyle: _text(24, bold: true, header: true),
         contentTextStyle: _text(19, color: PixelPalette.slate, plain: true),
       ),
       snackBarTheme: SnackBarThemeData(

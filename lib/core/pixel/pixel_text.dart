@@ -11,15 +11,15 @@ abstract final class PixelType {
     Color color = PixelPalette.ink,
     bool bold = false,
     FontFeature? feature,
-    bool plain = false,
+    String font = headerFont,
+    double scale = headerScale,
   }) {
-    final settings = PixelScope.of(context);
-    // Owner 2026-11-17: plain text (body, small, numbers) uses VT323; the
-    // chosen pixel font stays for headings, which are bigger than body.
+    // Owner 2026-11-17: three fonts. PressStart2P for headers, Silkscreen
+    // for buttons, chips and tags, VT323 for plain text.
     return TextStyle(
-      fontFamily: plain ? plainFont : settings.font,
+      fontFamily: font,
       fontFamilyFallback: PixelFonts.fallback,
-      fontSize: plain ? size * plainScale : size * settings.fontScale(),
+      fontSize: size * scale,
       height: 1.25,
       color: color,
       fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
@@ -28,6 +28,13 @@ abstract final class PixelType {
     );
   }
 
+  static const headerFont = 'PressStart2P';
+
+  /// PressStart2P fills its whole em; this brings it to the same visual
+  /// size as the other fonts.
+  static const headerScale = 0.61;
+
+  static const labelFont = 'Silkscreen';
   static const plainFont = 'VT323';
 
   /// VT323 draws small for its size; this matches its letters to the
@@ -44,11 +51,20 @@ abstract final class PixelType {
 
   static TextStyle body(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 13, color: color, plain: true);
+      _base(context, 13, color: color, font: plainFont, scale: plainScale);
+
+  /// Buttons, chips, tags, tabs and bottom-bar labels.
+  static TextStyle label(BuildContext context,
+          {Color color = PixelPalette.ink}) =>
+      _base(context, 13, color: color, font: labelFont, scale: 1);
+
+  static TextStyle labelSmall(BuildContext context,
+          {Color color = PixelPalette.ink}) =>
+      _base(context, 11, color: color, font: labelFont, scale: 1);
 
   static TextStyle small(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 11.5, color: color, plain: true);
+      _base(context, 11.5, color: color, font: plainFont, scale: plainScale);
 
   static TextStyle numbers(BuildContext context,
           {Color color = PixelPalette.ink}) =>
@@ -58,7 +74,8 @@ abstract final class PixelType {
         color: color,
         bold: true,
         feature: const FontFeature.tabularFigures(),
-        plain: true,
+        font: plainFont,
+        scale: plainScale,
       );
 }
 

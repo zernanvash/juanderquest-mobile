@@ -296,7 +296,7 @@ class PixelGrid {
 
   /// Side padding for page content (owner 2026-11-17: more room at the
   /// screen edges, everywhere).
-  double get gutter => px(7);
+  double get gutter => px(10);
 }
 
 abstract interface class PixelSettingsStore {

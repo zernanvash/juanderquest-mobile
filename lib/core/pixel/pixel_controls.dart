@@ -126,7 +126,7 @@ class _PixelButtonState extends State<PixelButton> {
             alignment: Alignment.center,
             child: ShadowText(
               widget.label,
-              style: PixelType.body(context, color: textColor).copyWith(
+              style: PixelType.label(context, color: textColor).copyWith(
                 fontWeight: FontWeight.w700,
               ),
               maxLines: 1,
@@ -277,7 +277,7 @@ class PixelChip extends StatelessWidget {
               label,
               maxLines: 1,
               softWrap: false,
-              style: PixelType.small(context, color: textColor),
+              style: PixelType.labelSmall(context, color: textColor),
             ),
           ),
         ),
@@ -556,7 +556,7 @@ class PixelSegmented extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: PixelType.small(
+                        style: PixelType.labelSmall(
                           context,
                           color:
                               selected ? PixelPalette.ink : PixelPalette.slate,
