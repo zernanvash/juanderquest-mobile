@@ -59,7 +59,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('EXPLORER SETTINGS'), findsOneWidget);
+    expect(find.text('SETTINGS'), findsOneWidget);
     // Settings home is a short list of categories; each opens its own page.
     for (final group in const ['ACCOUNT', 'ACTIVITY', 'APP', 'ABOUT']) {
       expect(find.text(group, skipOffstage: false), findsOneWidget,
@@ -114,7 +114,7 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    expect(find.text('EXPLORER SETTINGS'), findsOneWidget);
+    expect(find.text('SETTINGS'), findsOneWidget);
   });
 
   testWidgets('Replay tutorial shows the first-run tutorial on Home again',

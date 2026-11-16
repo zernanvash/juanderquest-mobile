@@ -34,7 +34,7 @@ class AboutScreen extends StatelessWidget {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'About JuanDerQuest',
+                    title: 'About',
                     onBack:
                         canPop ? () => Navigator.of(context).maybePop() : null,
                   ),

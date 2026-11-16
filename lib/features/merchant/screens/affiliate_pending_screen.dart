@@ -36,7 +36,7 @@ class AffiliatePendingScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Application Status',
+                    title: 'Application',
                     onBack: Navigator.of(context).canPop()
                         ? () => Navigator.of(context).maybePop()
                         : null,

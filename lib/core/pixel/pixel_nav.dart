@@ -404,14 +404,16 @@ class PixelAppBar extends StatelessWidget {
                 Expanded(
                   // v0.3: short titles are banded lettering; long ones
                   // (destination or quest names) stay readable body text.
-                  child: title.length <= 18
+                  // Owner 2026-11-16: one fixed title size; long titles
+                  // (place or quest names) stay body text.
+                  child: title.length <= 14
                       ? Align(
                           alignment: Alignment.centerLeft,
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: PixelText3D(
                               title,
-                              size: 14,
+                              size: 12,
                               depth: 1,
                               colors: PixelText3DColors.cream,
                               textAlign: TextAlign.left,

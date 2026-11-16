@@ -41,7 +41,7 @@ class SettingsDeveloperScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Developer Tools',
+                    title: 'Developer',
                     onBack:
                         canPop ? () => Navigator.of(context).maybePop() : null,
                   ),

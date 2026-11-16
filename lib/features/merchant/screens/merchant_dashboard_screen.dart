@@ -124,7 +124,7 @@ class _MerchantDashboardScreenState
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Merchant Dashboard',
+                    title: 'Merchant hub',
                     onBack: Navigator.of(context).canPop()
                         ? () => Navigator.of(context).maybePop()
                         : null,

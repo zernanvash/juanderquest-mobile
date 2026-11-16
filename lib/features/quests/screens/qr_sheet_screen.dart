@@ -167,7 +167,7 @@ class _QrSheetScreenState extends ConsumerState<QrSheetScreen> {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'QR Sheet & Placards',
+                    title: 'QR placards',
                     onBack: () => Navigator.of(context).pop(),
                   ),
                   Expanded(

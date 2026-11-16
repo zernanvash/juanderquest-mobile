@@ -90,7 +90,7 @@ class BadgesScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Traveler Badges',
+                    title: 'Badges',
                     onBack: canPop
                         ? () => Navigator.of(context).maybePop()
                         : () => context.go('/profile'),

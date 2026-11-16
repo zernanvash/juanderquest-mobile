@@ -49,7 +49,7 @@ class _NearbyQuizzesScreenState extends ConsumerState<NearbyQuizzesScreen> {
       body: Column(
         children: [
           PixelAppBar(
-            title: 'Cultural Quizzes',
+            title: 'Quizzes',
             onBack: () =>
                 context.canPop() ? context.pop() : context.go('/dashboard'),
           ),

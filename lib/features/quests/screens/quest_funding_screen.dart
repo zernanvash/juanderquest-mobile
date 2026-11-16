@@ -255,7 +255,7 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Eco-Quest Funding',
+                    title: 'Quest funding',
                     onBack:
                         canPop ? () => Navigator.of(context).maybePop() : null,
                   ),

@@ -194,7 +194,7 @@ void main() {
           }, calls),
           initial: '/affiliate');
       await _settle(tester);
-      expect(find.text('MERCHANT DASHBOARD'), findsOneWidget);
+      expect(find.text('MERCHANT HUB'), findsOneWidget);
     });
 
     testWidgets('edit mode keeps the form and prefills the reviewer request',

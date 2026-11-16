@@ -418,7 +418,7 @@ class _AffiliateApplicationScreenState
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Merchant Affiliate',
+                    title: 'Be a partner',
                     onBack: canPop
                         ? () => Navigator.of(context).maybePop()
                         : null,

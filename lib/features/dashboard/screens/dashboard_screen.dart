@@ -125,7 +125,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Your journey',
+                    title: 'Home',
                     isTab: true,
                     actions: [
                       Tooltip(

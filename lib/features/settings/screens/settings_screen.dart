@@ -52,7 +52,7 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   PixelAppBar(
                     title:
-                        tr(context, en: 'Explorer Settings', tl: 'Mga Setting'),
+                        tr(context, en: 'Settings', tl: 'Mga Setting'),
                     onBack:
                         canPop ? () => Navigator.of(context).maybePop() : null,
                   ),

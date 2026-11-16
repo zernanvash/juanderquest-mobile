@@ -279,7 +279,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('Spot Discovery Studio'), findsOneWidget);
+      expect(find.text('POST A SPOT'), findsOneWidget);
       expect(find.byKey(const ValueKey('spot_postcard')), findsOneWidget);
       expect(find.textContaining('Patar Cove'), findsWidgets);
 

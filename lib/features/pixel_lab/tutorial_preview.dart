@@ -48,7 +48,7 @@ class _TutorialPreviewScreenState extends ConsumerState<TutorialPreviewScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         PixelAppBar(
-                          title: 'First-run tutorial',
+                          title: 'Tutorial',
                           onBack: () => Navigator.of(context).maybePop(),
                         ),
                         Expanded(

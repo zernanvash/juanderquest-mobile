@@ -49,7 +49,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Community Governance',
+                    title: 'Governance',
                     onBack: canPop
                         ? () => Navigator.of(context).maybePop()
                         : null,

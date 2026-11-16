@@ -254,7 +254,7 @@ class _SpotDiscoveryStudioScreenState
             body: Column(
               children: [
                 PixelAppBar(
-                  title: 'Spot Discovery Studio',
+                  title: 'Post a spot',
                   onBack:
                       canPop ? () => Navigator.of(context).maybePop() : null,
                   actions: [

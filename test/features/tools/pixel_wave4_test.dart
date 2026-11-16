@@ -880,7 +880,7 @@ void main() {
         ),
       );
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Spot Discovery Studio'), findsOneWidget);
+      expect(find.text('POST A SPOT'), findsOneWidget);
       expect(find.byKey(const ValueKey('studio_map')), findsOneWidget);
       expect(find.byKey(const ValueKey('spot_postcard')), findsOneWidget);
     });
