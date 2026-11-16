@@ -90,53 +90,59 @@ class HomeHero extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          key: const ValueKey('home_hero_purse_bar'),
-          children: [
-            Semantics(
-              button: true,
-              label: '$points mJDQ',
-              child: ExcludeSemantics(
-                child: GestureDetector(
-                  key: const ValueKey('home_purse_mjdq'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => context.push('/shop'),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: grid.px(1)),
-                    child: MjdqAmount(
-                      points,
-                      animateOnIncrease: true,
-                      idleSpin: true,
-                      style: PixelType.title(context, color: PixelPalette.ink),
+        // Shrinks to fit on narrow screens with large text.
+        FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              key: const ValueKey('home_hero_purse_bar'),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Semantics(
+                  button: true,
+                  label: '$points mJDQ',
+                  child: ExcludeSemantics(
+                    child: GestureDetector(
+                      key: const ValueKey('home_purse_mjdq'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => context.push('/shop'),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: grid.px(1)),
+                        child: MjdqAmount(
+                          points,
+                          animateOnIncrease: true,
+                          idleSpin: true,
+                          style:
+                              PixelType.title(context, color: PixelPalette.ink),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            // Owner 2026-11-17: more room between the currencies.
-            SizedBox(width: grid.px(16)),
-            _purseSlot(
-              context,
-              grid,
-              key: const ValueKey('home_purse_stamps'),
-              icon: HomePixelArt.stampCheck,
-              value: homeNumber(stampsCount),
-              semantics: '$stampsCount stamps',
-              onTap: () => context.push('/profile/badges'),
-            ),
-            // Owner 2026-11-17: more room between the currencies.
-            SizedBox(width: grid.px(16)),
-            _purseSlot(
-              context,
-              grid,
-              key: const ValueKey('home_purse_rep'),
-              icon: DesignerArt.handshake,
-              value: homeNumber(repCount),
-              semantics: '$repCount reputation',
-              onTap: () => context.push('/plaza'),
-            ),
-          ],
-        ),
+                // Owner 2026-11-17: more room between the currencies.
+                SizedBox(width: grid.px(16)),
+                _purseSlot(
+                  context,
+                  grid,
+                  key: const ValueKey('home_purse_stamps'),
+                  icon: HomePixelArt.stampCheck,
+                  value: homeNumber(stampsCount),
+                  semantics: '$stampsCount stamps',
+                  onTap: () => context.push('/profile/badges'),
+                ),
+                // Owner 2026-11-17: more room between the currencies.
+                SizedBox(width: grid.px(16)),
+                _purseSlot(
+                  context,
+                  grid,
+                  key: const ValueKey('home_purse_rep'),
+                  icon: DesignerArt.handshake,
+                  value: homeNumber(repCount),
+                  semantics: '$repCount reputation',
+                  onTap: () => context.push('/plaza'),
+                ),
+              ],
+            )),
         SizedBox(height: grid.px(1)),
         PixelPanel(
           style: PixelBoxStyle.wood,

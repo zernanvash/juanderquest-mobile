@@ -58,7 +58,7 @@ abstract final class PixelTheme {
                 ? 'VT323'
                 : 'Silkscreen',
         fontFamilyFallback: PixelFonts.fallback,
-        fontSize: header ? size * 0.61 : size,
+        fontSize: header ? size * 0.78 : size,
         height: 1.25,
         letterSpacing: 0,
         color: color,

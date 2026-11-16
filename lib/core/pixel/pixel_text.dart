@@ -32,7 +32,7 @@ abstract final class PixelType {
 
   /// PressStart2P fills its whole em; this brings it to the same visual
   /// size as the other fonts.
-  static const headerScale = 0.61;
+  static const headerScale = 0.78;
 
   static const labelFont = 'Silkscreen';
   static const plainFont = 'VT323';
