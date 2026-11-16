@@ -15,6 +15,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/dev/test_content.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
+import '../explore/explore_art.dart';
 import '../explore/juanchoice_placement.dart';
 import '../explore/spot_filter_state.dart';
 import '../explore/widgets/explore_featured_card.dart';
@@ -139,14 +140,15 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     iconHeight: 20,
                     onPressed: () => context.push('/search'),
                   ),
-                  // Owner 2026-11-16: the Map sits right of Search.
+                  // Owner 2026-11-16: Saved sits right of Search (the Map
+                  // moved to the main menu).
                   PixelIconButton(
-                    key: const ValueKey('explore_appbar_map'),
-                    icon: DesignerArt.navMap,
-                    semanticLabel: 'Map',
+                    key: const ValueKey('explore_appbar_saved'),
+                    icon: ExploreArt.bookmarkSaved,
+                    semanticLabel: 'Saved places',
                     style: PixelBoxStyle.parchment,
                     iconHeight: 20,
-                    onPressed: () => context.go('/map'),
+                    onPressed: () => context.push('/saved'),
                   ),
                 ],
               ),

@@ -482,6 +482,10 @@ GoRouter _router({bool menu = false}) => GoRouter(
           builder: (_, __) => const _RouteProbe('/map/add-spot'),
         ),
         GoRoute(
+          path: '/map',
+          builder: (_, __) => const _RouteProbe('/map'),
+        ),
+        GoRoute(
           path: '/saved',
           builder: (_, __) => const _RouteProbe('/saved'),
         ),
@@ -703,7 +707,7 @@ void main() {
       expect(find.byKey(const ValueKey('home_tile_plaza')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_quizzes')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_add_spot')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_tile_saved')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_map')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_history')), findsOneWidget);
 
       await _tapRoute(
@@ -722,7 +726,7 @@ void main() {
           '/map/add-spot');
       await _pump(tester, menu: true);
       await _tapRoute(
-          tester, find.byKey(const ValueKey('home_tile_saved')), '/saved');
+          tester, find.byKey(const ValueKey('home_tile_map')), '/map');
       await _pump(tester, menu: true);
       await _tapRoute(
           tester, find.byKey(const ValueKey('home_tile_history')), '/history');

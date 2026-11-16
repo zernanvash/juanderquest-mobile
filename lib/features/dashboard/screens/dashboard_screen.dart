@@ -128,24 +128,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     title: 'Home',
                     isTab: true,
                     actions: [
-                      Tooltip(
-                        message: 'Search',
-                        child: PixelIconButton(
-                          key: const ValueKey('home_appbar_search'),
-                          icon: DesignerArt.search,
-                          semanticLabel: 'Search',
-                          iconHeight: 36,
-                          onPressed: () => context.push('/search'),
-                        ),
-                      ),
-                      // Owner 2026-11-16: the Map sits right of Search.
-                      PixelIconButton(
-                        key: const ValueKey('home_appbar_map'),
-                        icon: DesignerArt.navMap,
-                        semanticLabel: 'Map',
-                        iconHeight: 36,
-                        onPressed: () => context.go('/map'),
-                      ),
+                      // Owner 2026-11-16: only the bell on Home (Search is on
+                      // Explore, the Map in the menu, Settings on Profile).
                       Tooltip(
                         message: 'Notifications',
                         child: Stack(
@@ -173,16 +157,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ),
                               ),
                           ],
-                        ),
-                      ),
-                      Tooltip(
-                        message: 'Settings',
-                        child: PixelIconButton(
-                          key: const ValueKey('home_appbar_settings'),
-                          icon: DesignerArt.navSettings,
-                          semanticLabel: 'Settings',
-                          iconHeight: 36,
-                          onPressed: () => context.push('/settings'),
                         ),
                       ),
                     ],

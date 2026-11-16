@@ -321,8 +321,7 @@ void main() {
         DesignerArt.navProfile,
         DesignerArt.navMap,
         DesignerArt.plazaTrophy,
-        DesignerArt.search,
-        DesignerArt.navSettings
+        DesignerArt.notifBell
       ])
         if (names.contains(a.name)) a,
     };
@@ -330,8 +329,7 @@ void main() {
     expect(arts.contains(DesignerArt.navProfile), isTrue);
     expect(arts.contains(DesignerArt.navMap), isTrue);
     expect(arts.contains(DesignerArt.plazaTrophy), isTrue);
-    expect(arts.contains(DesignerArt.search), isTrue);
-    expect(arts.contains(DesignerArt.navSettings), isTrue);
+    expect(arts.contains(DesignerArt.notifBell), isTrue);
   });
 
   testWidgets('Home renders 4 Concept B bands in exact top-to-bottom order',
@@ -371,14 +369,17 @@ void main() {
       expect(find.text('route:$expectedRoute'), findsOneWidget);
     }
 
-    await tapAndCheck(const ValueKey('home_appbar_search'), '/search');
-    await tapAndCheck(const ValueKey('home_appbar_settings'), '/settings');
+    // Owner 2026-11-16: Home's bar keeps only the bell.
+    await _pumpRouter(tester);
+    expect(find.byKey(const ValueKey('home_appbar_search')), findsNothing);
+    expect(find.byKey(const ValueKey('home_appbar_settings')), findsNothing);
+    expect(find.byKey(const ValueKey('home_appbar_map')), findsNothing);
     await tapAndCheck(const ValueKey('home_menu_quests'), '/quests');
     await tapAndCheck(const ValueKey('home_tile_merchants'), '/affiliate');
     await tapAndCheck(const ValueKey('home_tile_vote'), '/choice');
     await tapAndCheck(const ValueKey('home_tile_plaza'), '/plaza');
     await tapAndCheck(const ValueKey('home_tile_add_spot'), '/map/add-spot');
-    await tapAndCheck(const ValueKey('home_tile_saved'), '/saved');
+    await tapAndCheck(const ValueKey('home_tile_map'), '/map');
     await tapAndCheck(const ValueKey('home_tile_history'), '/history');
     await tapAndCheck(const ValueKey('home_tile_quizzes'), '/cultural-quizzes');
   });

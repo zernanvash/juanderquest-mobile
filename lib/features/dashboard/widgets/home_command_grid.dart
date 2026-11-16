@@ -7,7 +7,6 @@ import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
-import '../../spots/explore/explore_art.dart';
 import '../../vote/pixel/wave3_art.dart';
 
 class _CommandTileSpec {
@@ -108,11 +107,13 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         badge: '+XP',
         route: '/map/add-spot',
       ),
+      // Owner 2026-11-16: Map and Saved swapped places (Saved is now on
+      // Explore's bar, the Map here).
       const _CommandTileSpec(
-        key: ValueKey('home_tile_saved'),
-        label: 'SAVED',
-        icon: ExploreArt.bookmarkSaved,
-        route: '/saved',
+        key: ValueKey('home_tile_map'),
+        label: 'MAP',
+        icon: DesignerArt.navMap,
+        route: '/map',
       ),
       const _CommandTileSpec(
         key: ValueKey('home_tile_history'),
