@@ -161,7 +161,7 @@ class PixelText3D extends StatelessWidget {
           colors: colours,
           stops: stops,
         ).createShader(r),
-        child: text_(base.copyWith(color: const Color(0xFFFFFFFF))),
+        child: text_(base.copyWith(color: PixelPalette.white)),
       );
     }
 
