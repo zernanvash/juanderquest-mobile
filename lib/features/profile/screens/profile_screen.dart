@@ -11,6 +11,7 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_rpg.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/models/user_model.dart';
@@ -120,7 +121,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     // Owner 2026-11-08: bio, 3 equipped badges, home town, Pasaporte, stats,
     // favourite spot and latest journey, from the server.
-    final showcaseKey = isMine ? '' : (widget.username ?? '').replaceFirst('@', '');
+    final showcaseKey =
+        isMine ? '' : (widget.username ?? '').replaceFirst('@', '');
     final showcase = ref.watch(showcaseProvider(showcaseKey)).valueOrNull;
     final earnedBadges = showcase?.badgesEarned ?? 0;
 
@@ -193,10 +195,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         if (showcase != null) ...[
                           SizedBox(height: grid.px(3)),
-                          ProfileShowcaseSection(showcase: showcase, isMine: isMine),
+                          ProfileShowcaseSection(
+                              showcase: showcase, isMine: isMine),
                         ],
                         SizedBox(height: grid.px(3)),
-                        _actionButtons(context, grid, isMine, earnedBadges, savedSpots),
+                        _actionButtons(
+                            context, grid, isMine, earnedBadges, savedSpots),
                         SizedBox(height: grid.px(4)),
                         _postedDestinations(
                           context,
@@ -370,14 +374,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const PixelMicro(PixelMicroArt.sparkle, scale: 2),
                         SizedBox(width: grid.px(1)),
                         Flexible(
-                          child: Text('Badges', style: PixelType.title(context)),
+                          child:
+                              Text('Badges', style: PixelType.title(context)),
                         ),
                       ],
                     ),
                     SizedBox(height: grid.px(1)),
                     Text(
                       '$earnedBadges Earned ›',
-                      style: PixelType.small(context, color: PixelPalette.greenDark),
+                      style: PixelType.small(context,
+                          color: PixelPalette.greenDark),
                     ),
                   ],
                 ),
@@ -405,14 +411,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           const PixelMicro(PixelMicroArt.coin, scale: 2),
                           SizedBox(width: grid.px(1)),
                           Flexible(
-                            child: Text('Saved', style: PixelType.title(context)),
+                            child:
+                                Text('Saved', style: PixelType.title(context)),
                           ),
                         ],
                       ),
                       SizedBox(height: grid.px(1)),
                       Text(
                         '$savedSpots Places ›',
-                        style: PixelType.small(context, color: PixelPalette.slate),
+                        style:
+                            PixelType.small(context, color: PixelPalette.slate),
                       ),
                     ],
                   ),
@@ -432,101 +440,108 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String targetHandle,
     AsyncValue<List<SpotModel>> userSpotsAsync,
   ) {
-    final countSuffix = userSpotsAsync.maybeWhen(
-      data: (spots) => ' (${spots.length})',
-      orElse: () => '',
+    final count = userSpotsAsync.maybeWhen(
+      data: (spots) => '${spots.length}',
+      orElse: () => null,
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                'Posted Destinations$countSuffix',
-                style: PixelType.title(context),
+    // v0.3: one panel for the section, plain rows inside.
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: PixelSectionTitle(
+                  'Posted spots',
+                  value: count,
+                  valueColor: PixelPalette.greenDark,
+                ),
               ),
-            ),
-            if (isMine)
-              PixelButton(
-                key: const ValueKey('profile_post_spot'),
-                label: '+ Post Spot',
-                onPressed: () => context.push('/map/add-spot'),
-              ),
-          ],
-        ),
-        SizedBox(height: grid.px(2)),
-        userSpotsAsync.when(
-          loading: () => PixelPanel(
-            key: const ValueKey('profile_spots_loading'),
-            style: PixelBoxStyle.parchment,
-            padding: 2,
-            child: Center(
-              child: Text(
-                'Loading destinations...',
-                style: PixelType.body(context, color: PixelPalette.slate),
-              ),
-            ),
+              if (isMine)
+                PixelButton(
+                  key: const ValueKey('profile_post_spot'),
+                  label: '+ Post Spot',
+                  onPressed: () => context.push('/map/add-spot'),
+                ),
+            ],
           ),
-          error: (_, __) => PixelPanel(
-            key: const ValueKey('profile_spots_error'),
-            style: PixelBoxStyle.parchment,
-            padding: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Unable to load destinations.',
+          SizedBox(height: grid.px(2)),
+          userSpotsAsync.when(
+            loading: () => KeyedSubtree(
+              key: const ValueKey('profile_spots_loading'),
+              child: Center(
+                child: Text(
+                  'Loading destinations...',
                   style: PixelType.body(context, color: PixelPalette.slate),
                 ),
-                SizedBox(height: grid.px(2)),
-                PixelButton(
-                  key: const ValueKey('profile_spots_retry'),
-                  label: 'RETRY',
-                  variant: PixelButtonVariant.secondary,
-                  onPressed: () => ref.invalidate(userSpotsProvider(targetHandle)),
-                ),
-              ],
+              ),
             ),
-          ),
-          data: (userSpots) {
-            if (userSpots.isEmpty) {
-              return PixelPanel(
-                key: const ValueKey('profile_no_spots'),
-                style: PixelBoxStyle.parchment,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      isMine
-                          ? 'No destinations posted yet. Share a hidden spot in Pangasinan!'
-                          : 'No destinations posted yet by this explorer.',
-                      style: PixelType.body(context, color: PixelPalette.slate),
-                    ),
-                    if (isMine) ...[
-                      SizedBox(height: grid.px(2)),
-                      PixelButton(
-                        key: const ValueKey('profile_post_spot_empty'),
-                        label: '+ Post a Destination',
-                        onPressed: () => context.push('/map/add-spot'),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }
-            return Column(
-              children: [
-                for (final spot in userSpots) ...[
-                  _spotCard(context, grid, spot),
+            error: (_, __) => KeyedSubtree(
+              key: const ValueKey('profile_spots_error'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Unable to load destinations.',
+                    style: PixelType.body(context, color: PixelPalette.slate),
+                  ),
                   SizedBox(height: grid.px(2)),
+                  PixelButton(
+                    key: const ValueKey('profile_spots_retry'),
+                    label: 'RETRY',
+                    variant: PixelButtonVariant.secondary,
+                    onPressed: () =>
+                        ref.invalidate(userSpotsProvider(targetHandle)),
+                  ),
                 ],
-              ],
-            );
-          },
-        ),
-      ],
+              ),
+            ),
+            data: (userSpots) {
+              if (userSpots.isEmpty) {
+                return KeyedSubtree(
+                  key: const ValueKey('profile_no_spots'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        isMine
+                            ? 'No destinations posted yet. Share a hidden spot in Pangasinan!'
+                            : 'No destinations posted yet by this explorer.',
+                        style:
+                            PixelType.body(context, color: PixelPalette.slate),
+                      ),
+                      if (isMine) ...[
+                        SizedBox(height: grid.px(2)),
+                        PixelButton(
+                          key: const ValueKey('profile_post_spot_empty'),
+                          label: '+ Post a Destination',
+                          onPressed: () => context.push('/map/add-spot'),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final (i, spot) in userSpots.indexed) ...[
+                    if (i > 0)
+                      Container(
+                          height: grid.unit, color: PixelPalette.paperDim),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                      child: _spotCard(context, grid, spot),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -540,54 +555,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => context.push('/explore/${spot.slug}', extra: spot),
-        child: PixelPanel(
-          style: PixelBoxStyle.parchment,
-          padding: 2,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: grid.px(16),
-                height: grid.px(16),
-                child: ClipRect(
-                  child: hasPhoto
-                      ? Image.network(
-                          photo,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _spotFallback(context),
-                        )
-                      : _spotFallback(context),
-                ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: grid.px(16),
+              height: grid.px(16),
+              child: ClipRect(
+                child: hasPhoto
+                    ? Image.network(
+                        photo,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _spotFallback(context),
+                      )
+                    : _spotFallback(context),
               ),
-              SizedBox(width: grid.px(2)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      spot.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: PixelType.title(context),
-                    ),
-                    SizedBox(height: grid.px(0.5)),
-                    Text(
-                      '${spot.municipality} · ${spot.category.toUpperCase()}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: PixelType.small(context, color: PixelPalette.greenDark),
-                    ),
-                  ],
-                ),
+            ),
+            SizedBox(width: grid.px(2)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    spot.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: PixelType.title(context),
+                  ),
+                  SizedBox(height: grid.px(0.5)),
+                  Text(
+                    '${spot.municipality} · ${spot.category.toUpperCase()}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        PixelType.small(context, color: PixelPalette.greenDark),
+                  ),
+                ],
               ),
-              SizedBox(width: grid.px(1)),
-              PixelButton(
-                label: 'View ›',
-                variant: PixelButtonVariant.secondary,
-                onPressed: () => context.push('/explore/${spot.slug}', extra: spot),
-              ),
-            ],
-          ),
+            ),
+            SizedBox(width: grid.px(1)),
+            PixelButton(
+              label: 'View ›',
+              variant: PixelButtonVariant.secondary,
+              onPressed: () =>
+                  context.push('/explore/${spot.slug}', extra: spot),
+            ),
+          ],
         ),
       ),
     );

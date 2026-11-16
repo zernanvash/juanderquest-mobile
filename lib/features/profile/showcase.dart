@@ -9,6 +9,7 @@ import '../../core/pixel/pixel_box.dart';
 import '../../core/pixel/pixel_controls.dart';
 import '../../core/pixel/pixel_feedback.dart';
 import '../../core/pixel/pixel_grid.dart';
+import '../../core/pixel/pixel_text_3d.dart';
 import '../../core/pixel/pixel_text.dart';
 import '../auth/providers/auth_provider.dart';
 import '../spots/providers/spot_discovery_provider.dart';
@@ -18,7 +19,8 @@ import '../spots/providers/spot_discovery_provider.dart';
 
 class ShowcaseBadge {
   final String id, title, description;
-  const ShowcaseBadge({required this.id, required this.title, this.description = ''});
+  const ShowcaseBadge(
+      {required this.id, required this.title, this.description = ''});
   factory ShowcaseBadge.fromJson(Map<String, dynamic> j) => ShowcaseBadge(
         id: '${j['id']}',
         title: '${j['title'] ?? j['id']}',
@@ -40,7 +42,11 @@ class JourneyStop {
 
 class FavoriteSpot {
   final String id, slug, name, municipality;
-  const FavoriteSpot({required this.id, required this.slug, required this.name, required this.municipality});
+  const FavoriteSpot(
+      {required this.id,
+      required this.slug,
+      required this.name,
+      required this.municipality});
   factory FavoriteSpot.fromJson(Map<String, dynamic> j) => FavoriteSpot(
         id: '${j['id']}',
         slug: '${j['slug'] ?? j['id']}',
@@ -76,25 +82,34 @@ class ProfileShowcase {
   });
 
   factory ProfileShowcase.fromJson(Map<String, dynamic> j) {
-    final stats = j['stats'] is Map ? Map<String, dynamic>.from(j['stats'] as Map) : const <String, dynamic>{};
-    final pas = j['pasaporte'] is Map ? Map<String, dynamic>.from(j['pasaporte'] as Map) : const <String, dynamic>{};
+    final stats = j['stats'] is Map
+        ? Map<String, dynamic>.from(j['stats'] as Map)
+        : const <String, dynamic>{};
+    final pas = j['pasaporte'] is Map
+        ? Map<String, dynamic>.from(j['pasaporte'] as Map)
+        : const <String, dynamic>{};
     int n(Object? v) => v is num ? v.toInt() : 0;
     return ProfileShowcase(
-      bio: (j['bio'] as String?)?.trim().isEmpty == true ? null : j['bio'] as String?,
+      bio: (j['bio'] as String?)?.trim().isEmpty == true
+          ? null
+          : j['bio'] as String?,
       homeTown: j['home_municipality'] as String?,
       badges: [
         for (final b in (j['featured_badges'] as List? ?? const []))
           if (b is Map) ShowcaseBadge.fromJson(Map<String, dynamic>.from(b)),
       ],
       favorite: j['favorite_spot'] is Map
-          ? FavoriteSpot.fromJson(Map<String, dynamic>.from(j['favorite_spot'] as Map))
+          ? FavoriteSpot.fromJson(
+              Map<String, dynamic>.from(j['favorite_spot'] as Map))
           : null,
       quests: n(stats['quests_completed']),
       spotsPosted: n(stats['spots_posted']),
       trails: n(stats['trails_completed']),
       badgesEarned: n(stats['badges_earned']),
       bestWeeklyRank: (stats['best_weekly_rank'] as num?)?.toInt(),
-      townsVisited: [for (final t in (pas['visited'] as List? ?? const [])) '$t'],
+      townsVisited: [
+        for (final t in (pas['visited'] as List? ?? const [])) '$t'
+      ],
       townsTotal: n(pas['total']) == 0 ? 48 : n(pas['total']),
       journey: [
         for (final s in (j['latest_journey'] as List? ?? const []))
@@ -105,11 +120,16 @@ class ProfileShowcase {
 }
 
 /// Key: '' for your own profile, else the handle.
-final showcaseProvider = FutureProvider.autoDispose.family<ProfileShowcase?, String>((ref, handle) async {
+final showcaseProvider = FutureProvider.autoDispose
+    .family<ProfileShowcase?, String>((ref, handle) async {
   final dio = ref.watch(apiClientProvider).dio;
-  final res = await dio.get(handle.isEmpty ? '/me/showcase' : '/users/${Uri.encodeComponent(handle)}/showcase');
+  final res = await dio.get(handle.isEmpty
+      ? '/me/showcase'
+      : '/users/${Uri.encodeComponent(handle)}/showcase');
   final data = res.data is Map ? res.data['data'] : null;
-  return data is Map ? ProfileShowcase.fromJson(Map<String, dynamic>.from(data)) : null;
+  return data is Map
+      ? ProfileShowcase.fromJson(Map<String, dynamic>.from(data))
+      : null;
 });
 
 /// Server badges: what you earned and the whole catalog (Badges screen, picker).
@@ -120,7 +140,8 @@ class AchievementsData {
   bool has(String id) => earned.any((b) => b.id == id);
 }
 
-final achievementsProvider = FutureProvider.autoDispose<AchievementsData>((ref) async {
+final achievementsProvider =
+    FutureProvider.autoDispose<AchievementsData>((ref) async {
   final dio = ref.watch(apiClientProvider).dio;
   final res = await dio.get('/me/achievements');
   final data = res.data is Map ? res.data['data'] : null;
@@ -131,7 +152,9 @@ final achievementsProvider = FutureProvider.autoDispose<AchievementsData>((ref) 
             ShowcaseBadge.fromJson(award
                 ? {
                     'id': e['achievement_id'] ?? e['id'],
-                    'title': e['title'] ?? e['achievement_title'] ?? e['achievement_id'],
+                    'title': e['title'] ??
+                        e['achievement_title'] ??
+                        e['achievement_id'],
                     'description': e['description'] ?? '',
                   }
                 : Map<String, dynamic>.from(e)),
@@ -164,7 +187,8 @@ const showcaseMedal = PixelArt('showcaseMedal', [
 /// Everything under the name: bio, home town, equipped badges, stats,
 /// Pasaporte, favourite spot and latest journey.
 class ProfileShowcaseSection extends ConsumerWidget {
-  const ProfileShowcaseSection({super.key, required this.showcase, required this.isMine});
+  const ProfileShowcaseSection(
+      {super.key, required this.showcase, required this.isMine});
   final ProfileShowcase showcase;
   final bool isMine;
 
@@ -173,22 +197,36 @@ class ProfileShowcaseSection extends ConsumerWidget {
     final grid = PixelGrid.of(context);
     final s = showcase;
     final gap = SizedBox(height: grid.px(3));
-    return Column(key: const ValueKey('profile_showcase'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _bio(context, ref, grid),
-      gap,
-      _badges(context, ref, grid),
-      gap,
-      _stats(context, grid),
-      gap,
-      _pasaporte(context, grid),
-      if (s.favorite != null || isMine) ...[gap, _favorite(context, ref, grid)],
-      if (s.journey.isNotEmpty) ...[gap, _journey(context, grid)],
-    ]);
+    return Column(
+        key: const ValueKey('profile_showcase'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _bio(context, ref, grid),
+          gap,
+          _badges(context, ref, grid),
+          gap,
+          _stats(context, grid),
+          gap,
+          _pasaporte(context, grid),
+          if (s.favorite != null || isMine) ...[
+            gap,
+            _favorite(context, ref, grid)
+          ],
+          if (s.journey.isNotEmpty) ...[gap, _journey(context, grid)],
+        ]);
   }
 
-  Widget _header(BuildContext context, String title, {VoidCallback? onEdit, Key? editKey}) => Row(children: [
-        Expanded(child: Text(title, style: PixelType.title(context))),
-        if (onEdit != null) PixelChip('EDIT', key: editKey, style: PixelBoxStyle.parchment, onTap: onEdit),
+  // v0.3 (owner 2026-11-16): lettered section titles, live values beside
+  // them, one panel per section with plain rows inside.
+  Widget _header(BuildContext context, String title,
+          {VoidCallback? onEdit, Key? editKey, String? value}) =>
+      Row(children: [
+        Expanded(
+            child: PixelSectionTitle(title,
+                value: value, valueColor: PixelPalette.greenDark)),
+        if (onEdit != null)
+          PixelChip('EDIT',
+              key: editKey, style: PixelBoxStyle.parchment, onTap: onEdit),
       ]);
 
   Widget _bio(BuildContext context, WidgetRef ref, PixelGrid grid) {
@@ -207,12 +245,14 @@ class ProfileShowcaseSection extends ConsumerWidget {
               (isMine
                   ? 'Tell other explorers about you: your favourite food, places, or why you travel.'
                   : 'No bio yet.'),
-          style: PixelType.body(context, color: bio == null ? PixelPalette.slate : PixelPalette.ink),
+          style: PixelType.body(context,
+              color: bio == null ? PixelPalette.slate : PixelPalette.ink),
         ),
         if (town != null) ...[
           SizedBox(height: grid.px(1)),
           Text(tr(context, en: 'From $town', tl: 'Taga-$town'),
-              key: const ValueKey('profile_home_town'), style: PixelType.small(context, color: PixelPalette.greenDark)),
+              key: const ValueKey('profile_home_town'),
+              style: PixelType.small(context, color: PixelPalette.greenDark)),
         ],
       ]),
     );
@@ -223,14 +263,18 @@ class ProfileShowcaseSection extends ConsumerWidget {
     Widget slot(int i) {
       final badge = i < b.length ? b[i] : null;
       return Expanded(
-        child: PixelPanel(
+        child: KeyedSubtree(
           key: ValueKey('profile_badge_slot_$i'),
-          style: badge == null ? PixelBoxStyle.slot : PixelBoxStyle.gold,
-          padding: 1,
           child: SizedBox(
             height: grid.px(22),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              if (badge != null) const PixelSprite(showcaseMedal, scale: 2),
+            child:
+                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              badge != null
+                  ? const PixelSprite(showcaseMedal, scale: 2)
+                  : Container(
+                      width: grid.px(8),
+                      height: grid.px(8),
+                      color: PixelPalette.paperDim),
               SizedBox(height: grid.px(1)),
               Flexible(
                 child: Text(
@@ -238,7 +282,10 @@ class ProfileShowcaseSection extends ConsumerWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: PixelType.small(context, color: badge == null ? PixelPalette.slate : PixelPalette.ink),
+                  style: PixelType.small(context,
+                      color: badge == null
+                          ? PixelPalette.slate
+                          : PixelPalette.ink),
                 ),
               ),
             ]),
@@ -247,20 +294,34 @@ class ProfileShowcaseSection extends ConsumerWidget {
       );
     }
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _header(context, 'Equipped badges',
-          editKey: const ValueKey('profile_edit_badges'),
-          onEdit: isMine ? () => showBadgePicker(context, ref, [for (final x in b) x.id]) : null),
-      SizedBox(height: grid.px(1)),
-      Row(children: [slot(0), SizedBox(width: grid.px(1)), slot(1), SizedBox(width: grid.px(1)), slot(2)]),
-    ]);
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _header(context, 'Equipped badges',
+            editKey: const ValueKey('profile_edit_badges'),
+            onEdit: isMine
+                ? () => showBadgePicker(context, ref, [for (final x in b) x.id])
+                : null),
+        SizedBox(height: grid.px(1)),
+        Row(children: [
+          slot(0),
+          SizedBox(width: grid.px(1)),
+          slot(1),
+          SizedBox(width: grid.px(1)),
+          slot(2)
+        ]),
+      ]),
+    );
   }
 
   Widget _stats(BuildContext context, PixelGrid grid) {
     final s = showcase;
     Widget stat(String value, String label) => Expanded(
           child: Column(children: [
-            FittedBox(child: Text(value, style: PixelType.numbers(context, color: PixelPalette.greenDark))),
+            FittedBox(
+                child: Text(value,
+                    style: PixelType.numbers(context,
+                        color: PixelPalette.greenDark))),
             Text(label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -274,7 +335,8 @@ class ProfileShowcaseSection extends ConsumerWidget {
         stat('${s.quests}', 'Quests'),
         stat('${s.spotsPosted}', 'Spots'),
         stat('${s.trails}', 'Trails'),
-        stat(s.bestWeeklyRank == null ? '—' : '#${s.bestWeeklyRank}', 'Best week'),
+        stat(s.bestWeeklyRank == null ? '—' : '#${s.bestWeeklyRank}',
+            'Best week'),
       ]),
     );
   }
@@ -286,26 +348,31 @@ class ProfileShowcaseSection extends ConsumerWidget {
       key: const ValueKey('profile_pasaporte'),
       style: PixelBoxStyle.parchment,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Expanded(child: Text(tr(context, en: 'Passport', tl: 'Pasaporte'), style: PixelType.title(context))),
-          PixelChip('${s.townsVisited.length} / ${s.townsTotal}', style: PixelBoxStyle.gold),
-        ]),
+        _header(context, tr(context, en: 'Passport', tl: 'Pasaporte'),
+            value: '${s.townsVisited.length}/${s.townsTotal}'),
         SizedBox(height: grid.px(1)),
-        Text(tr(context, en: 'Pangasinan towns stamped', tl: 'Mga bayan sa Pangasinan na may tatak'), style: PixelType.small(context, color: PixelPalette.slate)),
+        Text(
+            tr(context,
+                en: 'Pangasinan towns stamped',
+                tl: 'Mga bayan sa Pangasinan na may tatak'),
+            style: PixelType.small(context, color: PixelPalette.slate)),
         SizedBox(height: grid.px(1)),
         SizedBox(
           height: grid.px(3),
           child: LayoutBuilder(
             builder: (context, box) => Stack(children: [
               Container(color: PixelPalette.paperDim),
-              Container(width: box.maxWidth * frac, color: PixelPalette.greenBright),
+              Container(
+                  width: box.maxWidth * frac, color: PixelPalette.greenBright),
             ]),
           ),
         ),
         if (s.townsVisited.isNotEmpty) ...[
           SizedBox(height: grid.px(2)),
           Wrap(spacing: grid.px(1), runSpacing: grid.px(1), children: [
-            for (final t in s.townsVisited) PixelChip(t, style: PixelBoxStyle.green, textColor: PixelPalette.white),
+            for (final t in s.townsVisited)
+              PixelChip(t,
+                  style: PixelBoxStyle.green, textColor: PixelPalette.white),
           ]),
         ],
       ]),
@@ -314,23 +381,30 @@ class ProfileShowcaseSection extends ConsumerWidget {
 
   Widget _favorite(BuildContext context, WidgetRef ref, PixelGrid grid) {
     final f = showcase.favorite;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _header(context, tr(context, en: 'Favorite spot', tl: 'Paborito ko'),
-          editKey: const ValueKey('profile_edit_favorite'),
-          onEdit: isMine ? () => showFavoritePicker(context, ref) : null),
-      SizedBox(height: grid.px(1)),
-      PixelPanel(
-        key: const ValueKey('profile_favorite'),
-        style: f == null ? PixelBoxStyle.slot : PixelBoxStyle.parchment,
-        child: InkWell(
-          onTap: f == null ? () => showFavoritePicker(context, ref) : () => context.push('/explore/${f.slug}'),
-          child: Text(
-            f == null ? 'Pick a destination you love from your saved places.' : '${f.name} · ${f.municipality}',
-            style: PixelType.body(context, color: f == null ? PixelPalette.slate : PixelPalette.ink),
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _header(context, tr(context, en: 'Favorite spot', tl: 'Paborito ko'),
+            editKey: const ValueKey('profile_edit_favorite'),
+            onEdit: isMine ? () => showFavoritePicker(context, ref) : null),
+        SizedBox(height: grid.px(1)),
+        KeyedSubtree(
+          key: const ValueKey('profile_favorite'),
+          child: InkWell(
+            onTap: f == null
+                ? () => showFavoritePicker(context, ref)
+                : () => context.push('/explore/${f.slug}'),
+            child: Text(
+              f == null
+                  ? 'Pick a destination you love from your saved places.'
+                  : '${f.name} · ${f.municipality}',
+              style: PixelType.body(context,
+                  color: f == null ? PixelPalette.slate : PixelPalette.ink),
+            ),
           ),
         ),
-      ),
-    ]);
+      ]),
+    );
   }
 
   Widget _journey(BuildContext context, PixelGrid grid) {
@@ -344,27 +418,40 @@ class ProfileShowcaseSection extends ConsumerWidget {
               : '$days days ago';
     }
 
-    return Column(key: const ValueKey('profile_journey'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('Latest journey', style: PixelType.title(context)),
-      SizedBox(height: grid.px(1)),
-      for (final j in showcase.journey) ...[
-        PixelPanel(
-          style: PixelBoxStyle.parchment,
-          child: Row(children: [
-            const PixelSprite(showcaseMedal, scale: 1),
-            SizedBox(width: grid.px(2)),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(j.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: PixelType.body(context)),
-                Text([if (j.municipality != null) j.municipality!, when(j.at)].where((x) => x.isNotEmpty).join(' · '),
-                    style: PixelType.small(context, color: PixelPalette.slate)),
-              ]),
-            ),
-          ]),
-        ),
-        SizedBox(height: grid.px(1)),
-      ],
-    ]);
+    return PixelPanel(
+      key: const ValueKey('profile_journey'),
+      style: PixelBoxStyle.parchment,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _header(context, 'Latest journey'),
+        for (final (i, j) in showcase.journey.indexed) ...[
+          if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+            child: Row(children: [
+              const PixelSprite(showcaseMedal, scale: 1),
+              SizedBox(width: grid.px(2)),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(j.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: PixelType.body(context)),
+                      Text(
+                          [
+                            if (j.municipality != null) j.municipality!,
+                            when(j.at)
+                          ].where((x) => x.isNotEmpty).join(' · '),
+                          style: PixelType.small(context,
+                              color: PixelPalette.slate)),
+                    ]),
+              ),
+            ]),
+          ),
+        ],
+      ]),
+    );
   }
 }
 
@@ -374,7 +461,8 @@ void _refresh(WidgetRef ref) {
 }
 
 /// Edit the bio (300 characters, as the server allows).
-Future<void> showBioEditor(BuildContext context, WidgetRef ref, String? current) async {
+Future<void> showBioEditor(
+    BuildContext context, WidgetRef ref, String? current) async {
   final controller = TextEditingController(text: current ?? '');
   final saved = await showPixelDialog<bool>(
     context: context,
@@ -384,36 +472,48 @@ Future<void> showBioEditor(BuildContext context, WidgetRef ref, String? current)
       controller: controller,
       maxLength: 300,
       maxLines: 4,
-      decoration: const InputDecoration(hintText: 'e.g. Bangus lover from Dagupan. Chasing every sunset in Bolinao.'),
+      decoration: const InputDecoration(
+          hintText:
+              'e.g. Bangus lover from Dagupan. Chasing every sunset in Bolinao.'),
     ),
     actions: [
       PixelButton(
           label: 'Cancel',
           variant: PixelButtonVariant.secondary,
-          onPressed: () => Navigator.of(context, rootNavigator: true).pop(false)),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: true).pop(false)),
       PixelButton(
           key: const ValueKey('bio_save'),
           label: 'Save',
-          onPressed: () => Navigator.of(context, rootNavigator: true).pop(true)),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: true).pop(true)),
     ],
   );
   if (saved != true) return;
   final text = controller.text.trim();
   try {
-    await ref.read(apiClientProvider).dio.patch('/users/me/profile', data: {'bio': text.isEmpty ? null : text});
+    await ref
+        .read(apiClientProvider)
+        .dio
+        .patch('/users/me/profile', data: {'bio': text.isEmpty ? null : text});
     _refresh(ref);
   } catch (_) {
-    if (context.mounted) showPixelToast(context, 'Could not save your bio. Try again.');
+    if (context.mounted) {
+      showPixelToast(context, 'Could not save your bio. Try again.');
+    }
   }
 }
 
 /// Choose up to 3 earned badges to equip, in tap order.
-Future<void> showBadgePicker(BuildContext context, WidgetRef ref, List<String> current) async {
+Future<void> showBadgePicker(
+    BuildContext context, WidgetRef ref, List<String> current) async {
   AchievementsData data;
   try {
     data = await ref.read(achievementsProvider.future);
   } catch (_) {
-    if (context.mounted) showPixelToast(context, 'Could not load your badges. Try again.');
+    if (context.mounted) {
+      showPixelToast(context, 'Could not load your badges. Try again.');
+    }
     return;
   }
   if (!context.mounted) return;
@@ -425,26 +525,32 @@ Future<void> showBadgePicker(BuildContext context, WidgetRef ref, List<String> c
         ? 'Earn badges by visiting places and finishing quests.'
         : 'Pick up to 3. Tap again to remove.',
     content: StatefulBuilder(
-      builder: (context, setState) =>
-          Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        for (final b in data.earned)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: PixelButton(
-              key: ValueKey('equip_${b.id}'),
-              label: picked.contains(b.id) ? '${picked.indexOf(b.id) + 1}. ${b.title}' : b.title,
-              variant: picked.contains(b.id) ? PixelButtonVariant.primary : PixelButtonVariant.secondary,
-              expand: true,
-              onPressed: () => setState(() {
-                if (picked.contains(b.id)) {
-                  picked.remove(b.id);
-                } else if (picked.length < 3) {
-                  picked.add(b.id);
-                }
-              }),
-            ),
-          ),
-      ]),
+      builder: (context, setState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final b in data.earned)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: PixelButton(
+                  key: ValueKey('equip_${b.id}'),
+                  label: picked.contains(b.id)
+                      ? '${picked.indexOf(b.id) + 1}. ${b.title}'
+                      : b.title,
+                  variant: picked.contains(b.id)
+                      ? PixelButtonVariant.primary
+                      : PixelButtonVariant.secondary,
+                  expand: true,
+                  onPressed: () => setState(() {
+                    if (picked.contains(b.id)) {
+                      picked.remove(b.id);
+                    } else if (picked.length < 3) {
+                      picked.add(b.id);
+                    }
+                  }),
+                ),
+              ),
+          ]),
     ),
     actions: [
       PixelButton(
@@ -454,21 +560,28 @@ Future<void> showBadgePicker(BuildContext context, WidgetRef ref, List<String> c
       PixelButton(
           key: const ValueKey('equip_save'),
           label: 'Save',
-          onPressed: () => Navigator.of(context, rootNavigator: true).pop(picked)),
+          onPressed: () =>
+              Navigator.of(context, rootNavigator: true).pop(picked)),
     ],
   );
   if (result == null) return;
   try {
-    await ref.read(apiClientProvider).dio.put('/me/featured-badges', data: {'badge_ids': result});
+    await ref
+        .read(apiClientProvider)
+        .dio
+        .put('/me/featured-badges', data: {'badge_ids': result});
     _refresh(ref);
   } catch (_) {
-    if (context.mounted) showPixelToast(context, 'Could not equip those badges. Try again.');
+    if (context.mounted) {
+      showPixelToast(context, 'Could not equip those badges. Try again.');
+    }
   }
 }
 
 /// Pick the favourite destination from your saved places.
 Future<void> showFavoritePicker(BuildContext context, WidgetRef ref) async {
-  final saved = ref.read(spotDiscoveryProvider).spots.where((s) => s.saved).toList();
+  final saved =
+      ref.read(spotDiscoveryProvider).spots.where((s) => s.saved).toList();
   // '' = no favourite.
   final picked = await showPixelDialog<String>(
     context: context,
@@ -476,32 +589,41 @@ Future<void> showFavoritePicker(BuildContext context, WidgetRef ref) async {
     message: saved.isEmpty
         ? 'Save a destination first (the heart on a spot), then pick it here.'
         : 'Your favourite destination.',
-    content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final s in saved.take(20))
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
-          child: PixelButton(
-            key: ValueKey('favorite_${s.id}'),
-            label: '${s.name} · ${s.municipality}',
-            variant: PixelButtonVariant.secondary,
-            expand: true,
-            onPressed: () => Navigator.of(context, rootNavigator: true).pop(s.id),
-          ),
-        ),
-    ]),
+    content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final s in saved.take(20))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: PixelButton(
+                key: ValueKey('favorite_${s.id}'),
+                label: '${s.name} · ${s.municipality}',
+                variant: PixelButtonVariant.secondary,
+                expand: true,
+                onPressed: () =>
+                    Navigator.of(context, rootNavigator: true).pop(s.id),
+              ),
+            ),
+        ]),
     actions: [
       PixelButton(
           label: 'Remove',
           variant: PixelButtonVariant.secondary,
           onPressed: () => Navigator.of(context, rootNavigator: true).pop('')),
-      PixelButton(label: 'Close', onPressed: () => Navigator.of(context, rootNavigator: true).pop()),
+      PixelButton(
+          label: 'Close',
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop()),
     ],
   );
   if (picked == null) return;
   try {
-    await ref.read(apiClientProvider).dio.put('/me/favorite-spot', data: {'spot_id': picked.isEmpty ? null : picked});
+    await ref.read(apiClientProvider).dio.put('/me/favorite-spot',
+        data: {'spot_id': picked.isEmpty ? null : picked});
     _refresh(ref);
   } catch (_) {
-    if (context.mounted) showPixelToast(context, 'Could not save your favourite. Try again.');
+    if (context.mounted) {
+      showPixelToast(context, 'Could not save your favourite. Try again.');
+    }
   }
 }

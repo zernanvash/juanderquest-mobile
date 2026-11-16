@@ -179,7 +179,8 @@ GoRouter _router(Widget home, {String initial = '/'}) => GoRouter(
         GoRoute(path: '/explore', builder: (_, __) => const _Probe('/explore')),
         GoRoute(path: '/shop', builder: (_, __) => const _Probe('/shop')),
         GoRoute(path: '/plaza', builder: (_, __) => const _Probe('/plaza')),
-        GoRoute(path: '/settings', builder: (_, __) => const _Probe('/settings')),
+        GoRoute(
+            path: '/settings', builder: (_, __) => const _Probe('/settings')),
         GoRoute(
             path: '/settings/appearance',
             builder: (_, __) => const _Probe('/settings/appearance')),
@@ -237,7 +238,9 @@ const _frame = CosmeticItem(
   kind: 'frame',
   name: 'Bamboo Frame',
   rarity: 'rare',
-  asset: {'colors': ['#ffd166']},
+  asset: {
+    'colors': ['#ffd166']
+  },
   owned: false,
   equipped: false,
   buyable: true,
@@ -338,8 +341,7 @@ Future<void> _pump(
         profileStatsProvider.overrideWithValue(stats ?? _stats),
         showcaseProvider.overrideWith((ref, key) async => _showcase),
         cosmeticsProvider.overrideWith((ref) =>
-            cosmeticsNotifier?.call(ref) ??
-            _CosmeticsFixture(ref, cosmetics)),
+            cosmeticsNotifier?.call(ref) ?? _CosmeticsFixture(ref, cosmetics)),
         voucherProvider.overrideWith((ref) =>
             voucherNotifier?.call(ref) ??
             _VoucherFixture(ref, vouchers ?? VoucherState())),
@@ -347,8 +349,8 @@ Future<void> _pump(
             submissionNotifier?.call(ref.read(apiClientProvider)) ??
             _SubmissionFixture(
                 ref.read(apiClientProvider), submissions ?? SubmissionState())),
-        spotDiscoveryProvider.overrideWith((ref) =>
-            spotsNotifier?.call(ref) ?? _SpotsFixture(ref, spots)),
+        spotDiscoveryProvider.overrideWith(
+            (ref) => spotsNotifier?.call(ref) ?? _SpotsFixture(ref, spots)),
         userSpotsProvider.overrideWith((ref, handle) => Future.value(const [])),
         ...extraOverrides,
       ],
@@ -371,7 +373,9 @@ void _useTallView(WidgetTester tester) {
 
 void main() {
   group('ProfileScreen', () {
-    testWidgets('renders identity, badges button, saved places and posted spots', (tester) async {
+    testWidgets(
+        'renders identity, badges button, saved places and posted spots',
+        (tester) async {
       _useTallView(tester);
       await _pump(tester, const ProfileScreen(), user: _user);
       expect(find.text('Juan Dela Cruz'), findsOneWidget);
@@ -379,7 +383,7 @@ void main() {
       expect(find.byKey(const ValueKey('profile_badges')), findsOneWidget);
       expect(find.byKey(const ValueKey('profile_saved')), findsOneWidget);
       expect(find.byKey(const ValueKey('profile_customize')), findsOneWidget);
-      expect(find.textContaining('Posted Destinations'), findsOneWidget);
+      expect(find.text('POSTED SPOTS'), findsOneWidget);
     });
 
     testWidgets('empty profile shows the fallback identity', (tester) async {
@@ -451,15 +455,16 @@ void main() {
 
     testWidgets('guest profile shows follow', (tester) async {
       _useTallView(tester);
-      await _pump(tester, const ProfileScreen(username: 'maya'),
-          user: _user);
+      await _pump(tester, const ProfileScreen(username: 'maya'), user: _user);
       expect(find.text('@maya'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('profile_follow')));
       await tester.pump();
       expect(find.text('Following'), findsOneWidget);
     });
 
-    testWidgets('own profile loads posted destinations and tap opens /explore/:slug', (tester) async {
+    testWidgets(
+        'own profile loads posted destinations and tap opens /explore/:slug',
+        (tester) async {
       _useTallView(tester);
       await _pump(
         tester,
@@ -472,7 +477,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Posted Destinations (1)'), findsOneWidget);
+      expect(find.text('POSTED SPOTS'), findsOneWidget);
+      expect(find.text('1'), findsWidgets);
       expect(find.text('Hundred Islands National Park'), findsOneWidget);
       expect(find.byKey(const ValueKey('profile_post_spot')), findsOneWidget);
 
@@ -482,7 +488,8 @@ void main() {
       expect(find.text('route:/explore'), findsOneWidget);
     });
 
-    testWidgets('own profile empty state shows + Post a Destination CTA', (tester) async {
+    testWidgets('own profile empty state shows + Post a Destination CTA',
+        (tester) async {
       _useTallView(tester);
       await _pump(
         tester,
@@ -495,10 +502,15 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Posted Destinations (0)'), findsOneWidget);
+      expect(find.text('POSTED SPOTS'), findsOneWidget);
+      expect(find.text('0'), findsWidgets);
       expect(find.byKey(const ValueKey('profile_no_spots')), findsOneWidget);
-      expect(find.text('No destinations posted yet. Share a hidden spot in Pangasinan!'), findsOneWidget);
-      expect(find.byKey(const ValueKey('profile_post_spot_empty')), findsOneWidget);
+      expect(
+          find.text(
+              'No destinations posted yet. Share a hidden spot in Pangasinan!'),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('profile_post_spot_empty')),
+          findsOneWidget);
     });
 
     testWidgets('own profile error state shows retry button', (tester) async {
@@ -508,7 +520,8 @@ void main() {
         const ProfileScreen(),
         user: _user,
         extraOverrides: [
-          userSpotsProvider('u1').overrideWith((ref) => Future.error(Exception('network error'))),
+          userSpotsProvider('u1')
+              .overrideWith((ref) => Future.error(Exception('network error'))),
         ],
       );
       await tester.pump();
@@ -519,20 +532,24 @@ void main() {
       expect(find.byKey(const ValueKey('profile_spots_retry')), findsOneWidget);
     });
 
-    testWidgets('other profile loads posted destinations and tap opens /explore/:slug', (tester) async {
+    testWidgets(
+        'other profile loads posted destinations and tap opens /explore/:slug',
+        (tester) async {
       _useTallView(tester);
       await _pump(
         tester,
         const ProfileScreen(username: 'maya'),
         user: _user,
         extraOverrides: [
-          userSpotsProvider('maya').overrideWith((ref) => Future.value([_spot])),
+          userSpotsProvider('maya')
+              .overrideWith((ref) => Future.value([_spot])),
         ],
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Posted Destinations (1)'), findsOneWidget);
+      expect(find.text('POSTED SPOTS'), findsOneWidget);
+      expect(find.text('1'), findsWidgets);
       expect(find.text('Hundred Islands National Park'), findsOneWidget);
       expect(find.byKey(const ValueKey('profile_post_spot')), findsNothing);
 
@@ -542,7 +559,9 @@ void main() {
       expect(find.text('route:/explore'), findsOneWidget);
     });
 
-    testWidgets('other profile empty state shows no destinations by this explorer and no CTA', (tester) async {
+    testWidgets(
+        'other profile empty state shows no destinations by this explorer and no CTA',
+        (tester) async {
       _useTallView(tester);
       await _pump(
         tester,
@@ -555,16 +574,22 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Posted Destinations (0)'), findsOneWidget);
+      expect(find.text('POSTED SPOTS'), findsOneWidget);
+      expect(find.text('0'), findsWidgets);
       expect(find.byKey(const ValueKey('profile_no_spots')), findsOneWidget);
-      expect(find.text('No destinations posted yet by this explorer.'), findsOneWidget);
-      expect(find.byKey(const ValueKey('profile_post_spot_empty')), findsNothing);
+      expect(find.text('No destinations posted yet by this explorer.'),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('profile_post_spot_empty')), findsNothing);
     });
   });
   group('ShopScreen', () {
     // Plan 93b WP-4: the Shop opens on a category hub.
     Future<void> openCategory(WidgetTester tester, int id) async {
-      if (find.byKey(const ValueKey('shop_back_to_hub')).evaluate().isNotEmpty) {
+      if (find
+          .byKey(const ValueKey('shop_back_to_hub'))
+          .evaluate()
+          .isNotEmpty) {
         await tester.tap(find.byKey(const ValueKey('shop_back_to_hub')));
         await tester.pump();
       }
@@ -583,8 +608,7 @@ void main() {
     testWidgets('hub opens cosmetics, vouchers, coming soon and inventory',
         (tester) async {
       await _pump(tester, const ShopScreen(),
-          cosmetics: cosmetics,
-          vouchers: VoucherState(vouchers: [_voucher]));
+          cosmetics: cosmetics, vouchers: VoucherState(vouchers: [_voucher]));
       // Hub: four category cards plus the merchant hub, no duplicate banner.
       for (final id in const [0, 1, 2, 3]) {
         expect(find.byKey(ValueKey('shop_tab_$id')), findsOneWidget);
@@ -619,11 +643,10 @@ void main() {
     testWidgets('empty shop shows every empty state', (tester) async {
       await _pump(tester, const ShopScreen());
       await openCategory(tester, 0);
-      expect(find.byKey(const ValueKey('shop_cosmetics_empty')),
-          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('shop_cosmetics_empty')), findsOneWidget);
       await openCategory(tester, 1);
-      expect(find.byKey(const ValueKey('shop_vouchers_empty')),
-          findsOneWidget);
+      expect(find.byKey(const ValueKey('shop_vouchers_empty')), findsOneWidget);
       await openCategory(tester, 2);
       expect(find.byKey(const ValueKey('shop_teasers_empty')), findsOneWidget);
       await openCategory(tester, 3);
@@ -692,8 +715,7 @@ void main() {
         const ShopScreen(),
         user: _user,
         cosmetics: cosmetics,
-        cosmeticsNotifier: (ref) =>
-            fixture = _CosmeticsFixture(ref, cosmetics),
+        cosmeticsNotifier: (ref) => fixture = _CosmeticsFixture(ref, cosmetics),
       );
       await openCategory(tester, 0);
       await tester.tap(find.byKey(const ValueKey('shop_filter_frame')));
@@ -710,8 +732,7 @@ void main() {
         tester,
         const ShopScreen(),
         cosmetics: cosmetics,
-        cosmeticsNotifier: (ref) =>
-            fixture = _CosmeticsFixture(ref, cosmetics),
+        cosmeticsNotifier: (ref) => fixture = _CosmeticsFixture(ref, cosmetics),
       );
       await openCategory(tester, 0);
       await tester.tap(find.byKey(const ValueKey('shop_cosmetic_banner-1')));
@@ -729,8 +750,8 @@ void main() {
         const ShopScreen(),
         user: _user,
         vouchers: VoucherState(vouchers: [_voucher]),
-        voucherNotifier: (ref) => fixture = _VoucherFixture(
-            ref, VoucherState(vouchers: [_voucher])),
+        voucherNotifier: (ref) =>
+            fixture = _VoucherFixture(ref, VoucherState(vouchers: [_voucher])),
       );
       await openCategory(tester, 1);
       await tester.tap(find.byKey(const ValueKey('shop_redeem_v1')));
@@ -825,8 +846,8 @@ void main() {
       await _pump(tester, const WalletConnectScreen(),
           initial: '/wallet/connect', user: null);
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.byKey(const ValueKey('wallet_connect_error')),
-          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('wallet_connect_error')), findsOneWidget);
       expect(find.text('Juan Dela Cruz'), findsNothing);
     });
   });
@@ -901,10 +922,10 @@ void main() {
       );
       expect(find.textContaining('Alaminos City'), findsOneWidget);
       expect(find.textContaining('Alaminos City · NATURE'), findsOneWidget);
-      await tester.enterText(
-          find.byKey(const ValueKey('saved_search')), 'zzz');
+      await tester.enterText(find.byKey(const ValueKey('saved_search')), 'zzz');
       await tester.pump();
-      expect(find.textContaining('No saved destination matches'), findsOneWidget);
+      expect(
+          find.textContaining('No saved destination matches'), findsOneWidget);
       await tester.enterText(
           find.byKey(const ValueKey('saved_search')), 'hundred');
       await tester.pump();
