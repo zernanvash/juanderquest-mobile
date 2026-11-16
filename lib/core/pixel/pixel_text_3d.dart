@@ -418,6 +418,7 @@ class PixelSectionTitle extends StatelessWidget {
           SizedBox(width: grid.px(1)),
         ],
         Flexible(
+          flex: 3,
           child: Align(
             alignment: Alignment.centerLeft,
             child: FittedBox(
@@ -433,11 +434,15 @@ class PixelSectionTitle extends StatelessWidget {
         if (value != null) ...[
           SizedBox(width: grid.px(2)),
           // Long values ("Today's mission") shrink rather than overflow.
+          // Right end of the row; the title keeps at least 3/5 of it.
           Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
+            flex: 2,
+            child: Align(
               alignment: Alignment.centerRight,
-              child: PixelValuePop(value!, color: valueColor),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: PixelValuePop(value!, color: valueColor),
+              ),
             ),
           ),
         ],
