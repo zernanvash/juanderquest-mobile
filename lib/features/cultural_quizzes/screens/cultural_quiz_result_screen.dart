@@ -13,6 +13,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_rpg.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/cultural_quiz_model.dart';
@@ -194,14 +195,37 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
                           ),
                         ),
                         SizedBox(height: grid.px(3)),
-                        Text('Review & explanations',
-                            style: PixelType.title(context)),
-                        SizedBox(height: grid.px(2)),
-                        for (final entry in result.breakdown.asMap().entries) ...[
-                          _breakdown(context, grid, entry.key + 1, entry.value),
-                          SizedBox(height: grid.px(2)),
-                        ],
-                        SizedBox(height: grid.px(2)),
+                        PixelPanel(
+                          style: PixelBoxStyle.parchment,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              PixelSectionTitle(
+                                'Review & explanations',
+                                icon: DesignerArt.questionMark,
+                                value: '${result.breakdown.length}',
+                                valueColor: PixelPalette.greenDark,
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              for (var i = 0;
+                                  i < result.breakdown.length;
+                                  i++) ...[
+                                if (i > 0)
+                                  Container(
+                                    height: grid.unit,
+                                    color: PixelPalette.paperDim,
+                                  ),
+                                _breakdown(
+                                  context,
+                                  grid,
+                                  i + 1,
+                                  result.breakdown[i],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: grid.px(3)),
                         PixelButton(
                           key: const ValueKey('quiz_result_explore'),
                           label: 'Return to Explore',
@@ -226,8 +250,8 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
     int index,
     CulturalQuizGradeBreakdownItem item,
   ) {
-    return PixelPanel(
-      style: item.isCorrect ? PixelBoxStyle.parchment : PixelBoxStyle.red,
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -236,10 +260,8 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
             children: [
               PixelChip(
                 item.isCorrect ? 'Correct' : 'Wrong',
-                style:
-                    item.isCorrect ? PixelBoxStyle.green : PixelBoxStyle.gold,
-                textColor:
-                    item.isCorrect ? PixelPalette.white : PixelPalette.ink,
+                style: item.isCorrect ? PixelBoxStyle.green : PixelBoxStyle.red,
+                textColor: PixelPalette.white,
               ),
               SizedBox(width: grid.px(2)),
               Expanded(
@@ -247,8 +269,9 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
                   '$index. ${item.questionText}',
                   style: PixelType.title(
                     context,
-                    color:
-                        item.isCorrect ? PixelPalette.ink : PixelPalette.white,
+                    color: item.isCorrect
+                        ? PixelPalette.ink
+                        : PixelPalette.redDeep,
                   ),
                 ),
               ),
@@ -262,7 +285,7 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
                 context,
                 color: item.isCorrect
                     ? PixelPalette.greenDark
-                    : PixelPalette.sun,
+                    : PixelPalette.redDeep,
               ),
             ),
             SizedBox(height: grid.px(1)),
@@ -271,9 +294,7 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
             'Explanation:',
             style: PixelType.small(
               context,
-              color: item.isCorrect
-                  ? PixelPalette.slate
-                  : PixelPalette.cream,
+              color: PixelPalette.slate,
             ),
           ),
           SizedBox(height: grid.px(1)),
@@ -281,8 +302,7 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
             item.explanation,
             style: PixelType.body(
               context,
-              color:
-                  item.isCorrect ? PixelPalette.slate : PixelPalette.white,
+              color: PixelPalette.slate,
             ),
           ),
           if (item.sourceUrl != null && item.sourceUrl!.isNotEmpty) ...[
@@ -291,9 +311,7 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
               'Source: ${item.sourceUrl}',
               style: PixelType.small(
                 context,
-                color: item.isCorrect
-                    ? PixelPalette.greenDark
-                    : PixelPalette.sun,
+                color: PixelPalette.greenDark,
               ),
             ),
           ],

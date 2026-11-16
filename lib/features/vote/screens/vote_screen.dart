@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -9,6 +10,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../wallet/providers/wallet_provider.dart';
@@ -90,33 +92,39 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                             onPressed: () => context.push('/choice'),
                           ),
                           SizedBox(height: grid.px(3)),
-                          Text('Historical Proposals (Archive)',
-                              style: PixelType.title(context)),
-                          SizedBox(height: grid.px(1)),
-                          Text(
-                            'Past governance proposals recorded for transparency and auditability.',
-                            style: PixelType.body(
-                              context,
-                              color: PixelPalette.slate,
-                            ),
-                          ),
-                          SizedBox(height: grid.px(3)),
-                          if (govState.isLoading)
-                            const Center(
-                                child:
-                                    PixelLoader(label: 'Loading proposals'))
-                          else if (govState.error != null &&
-                              govState.proposals.isEmpty)
-                            PixelPanel(
-                              style: PixelBoxStyle.red,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                          PixelPanel(
+                            style: PixelBoxStyle.parchment,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                PixelSectionTitle(
+                                  'Historical proposals',
+                                  icon: Wave3Art.list,
+                                  value: govState.proposals.isNotEmpty
+                                      ? '${govState.proposals.length}'
+                                      : null,
+                                  valueColor: PixelPalette.greenDark,
+                                ),
+                                SizedBox(height: grid.px(1)),
+                                Text(
+                                  'Past governance proposals recorded for transparency and auditability.',
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.slate,
+                                  ),
+                                ),
+                                SizedBox(height: grid.px(2)),
+                                if (govState.isLoading)
+                                  const Center(
+                                      child: PixelLoader(
+                                          label: 'Loading proposals'))
+                                else if (govState.error != null &&
+                                    govState.proposals.isEmpty) ...[
                                   Text(
                                     govState.error!,
                                     style: PixelType.body(
                                       context,
-                                      color: PixelPalette.white,
+                                      color: PixelPalette.red,
                                     ),
                                   ),
                                   SizedBox(height: grid.px(2)),
@@ -130,21 +138,28 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                                           .loadGovernanceData(),
                                     ),
                                   ),
-                                ],
-                              ),
-                            )
-                          else if (govState.proposals.isEmpty)
-                            const PixelEmptyState(
-                              key: ValueKey('vote_empty'),
-                              title: 'No active proposals',
-                              message:
-                                  'Be the first to suggest a new destination spot!',
-                            )
-                          else
-                            for (final proposal in govState.proposals) ...[
-                              _proposal(context, grid, proposal),
-                              SizedBox(height: grid.px(2)),
-                            ],
+                                ] else if (govState.proposals.isEmpty)
+                                  const PixelEmptyState(
+                                    key: ValueKey('vote_empty'),
+                                    title: 'No active proposals',
+                                    message:
+                                        'Be the first to suggest a new destination spot!',
+                                  )
+                                else
+                                  for (var i = 0;
+                                      i < govState.proposals.length;
+                                      i++) ...[
+                                    if (i > 0)
+                                      Container(
+                                        height: grid.unit,
+                                        color: PixelPalette.paperDim,
+                                      ),
+                                    _proposal(
+                                        context, grid, govState.proposals[i]),
+                                  ],
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -164,7 +179,10 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Voting System Retired', style: PixelType.title(context)),
+          const PixelSectionTitle(
+            'Voting system retired',
+            icon: DesignerArt.juanChoice,
+          ),
           SizedBox(height: grid.px(1)),
           Text(
             'Destination approval and proposal voting have been retired. All destination posts are published immediately. Community voting is now conducted exclusively in JuanChoice.',
@@ -179,65 +197,62 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
       BuildContext context, PixelGrid grid, GovernanceProposalModel prop) {
     final total = prop.yesVotes + prop.noVotes;
     final yesPercent = total > 0 ? prop.yesVotes / total : 0.5;
-    return PixelPanel(
+    return KeyedSubtree(
       key: ValueKey('proposal_${prop.id}'),
-      style: PixelBoxStyle.parchment,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              PixelChip(prop.category.toUpperCase()),
-              PixelChip(prop.status.toUpperCase(),
-                  style: PixelBoxStyle.slot),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          Text(prop.title, style: PixelType.title(context)),
-          SizedBox(height: grid.px(1)),
-          Text(
-            prop.locationName,
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-          SizedBox(height: grid.px(2)),
-          Text(
-            prop.description,
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-          SizedBox(height: grid.px(2)),
-          PixelProgressBar(value: yesPercent),
-          SizedBox(height: grid.px(1)),
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            children: [
-              Text(
-                'Yes: ${prop.yesVotes} (${(yesPercent * 100).toInt()}%)',
-                style: PixelType.small(
-                  context,
-                  color: PixelPalette.greenDark,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: grid.px(2),
+              runSpacing: grid.px(1),
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                PixelChip(prop.category.toUpperCase()),
+                PixelChip(prop.status.toUpperCase(),
+                    style: PixelBoxStyle.slot),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(prop.title, style: PixelType.title(context)),
+            SizedBox(height: grid.px(1)),
+            Text(
+              prop.locationName,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(1)),
+            Text(
+              prop.description,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(2)),
+            PixelProgressBar(value: yesPercent),
+            SizedBox(height: grid.px(1)),
+            Wrap(
+              spacing: grid.px(2),
+              runSpacing: grid.px(1),
+              children: [
+                Text(
+                  'Yes: ${prop.yesVotes} (${(yesPercent * 100).toInt()}%)',
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.greenDark,
+                  ),
                 ),
-              ),
-              Text(
-                'No: ${prop.noVotes} (${(100 - yesPercent * 100).toInt()}%)',
-                style: PixelType.small(context, color: PixelPalette.redDeep),
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          PixelPanel(
-            style: PixelBoxStyle.slot,
-            padding: 2,
-            child: Text(
+                Text(
+                  'No: ${prop.noVotes} (${(100 - yesPercent * 100).toInt()}%)',
+                  style: PixelType.small(context, color: PixelPalette.redDeep),
+                ),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(
               'Archived Proposal · Voting Closed',
-              textAlign: TextAlign.center,
               style: PixelType.small(context, color: PixelPalette.slate),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

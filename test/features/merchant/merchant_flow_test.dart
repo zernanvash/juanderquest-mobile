@@ -178,7 +178,7 @@ void main() {
           _api({'GET /affiliate/applications/me': _me(_application)}, calls),
           initial: '/affiliate');
       await _settle(tester);
-      expect(find.text('In review by tourism team'), findsOneWidget);
+      expect(find.text('IN REVIEW BY TOURISM TEAM'), findsOneWidget);
       expect(find.text('RECEIVED'), findsOneWidget);
     });
 
@@ -212,7 +212,7 @@ void main() {
           initial: '/affiliate?edit=1');
       await _settle(tester);
       expect(find.text('Resubmit Revised Application'), findsOneWidget);
-      expect(find.text('1. Business identity'), findsOneWidget);
+      expect(find.text('1. BUSINESS IDENTITY'), findsOneWidget);
     });
 
     testWidgets(
@@ -270,7 +270,7 @@ void main() {
       expect(body['preferred_contact_method'], 'sms');
       expect(body['contact_name'], 'Maria Santos');
       expect(body['gps_lat'], closeTo(16.0754, 1e-6));
-      expect(find.text('In review by tourism team'), findsOneWidget);
+      expect(find.text('IN REVIEW BY TOURISM TEAM'), findsOneWidget);
     });
   });
 

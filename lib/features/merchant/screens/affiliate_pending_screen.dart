@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/merchant_models.dart';
@@ -158,37 +158,26 @@ class AffiliatePendingScreen extends ConsumerWidget {
     ].where((v) => (v?.toString() ?? '').isNotEmpty).join(', ');
     return PixelPanel(
       style: PixelBoxStyle.wood,
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox.square(
-            dimension: 24,
-            child: FittedBox(child: PixelSprite(DesignerArt.salakot, scale: 1)),
+          PixelSectionTitle(
+            title,
+            icon: DesignerArt.salakot,
+            colors: PixelText3DColors.cream,
           ),
-          SizedBox(width: grid.px(2)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: PixelType.title(context, color: PixelPalette.paper),
-                ),
-                SizedBox(height: grid.px(1)),
-                Text(
-                  hub.merchantName ?? '${app['business_name'] ?? ''}',
-                  style: PixelType.body(context, color: PixelPalette.cream),
-                ),
-                if (place.isNotEmpty)
-                  Text(
-                    '$place · ${app['category'] ?? ''}',
-                    style: PixelType.small(context, color: PixelPalette.cream),
-                  ),
-                SizedBox(height: grid.px(1)),
-                PixelChip(chip, key: const ValueKey('affiliate_pending_chip')),
-              ],
+          SizedBox(height: grid.px(1)),
+          Text(
+            hub.merchantName ?? '${app['business_name'] ?? ''}',
+            style: PixelType.body(context, color: PixelPalette.cream),
+          ),
+          if (place.isNotEmpty)
+            Text(
+              '$place · ${app['category'] ?? ''}',
+              style: PixelType.small(context, color: PixelPalette.cream),
             ),
-          ),
+          SizedBox(height: grid.px(1)),
+          PixelChip(chip, key: const ValueKey('affiliate_pending_chip')),
         ],
       ),
     );
@@ -208,9 +197,15 @@ class AffiliatePendingScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (var i = 0; i < steps.length; i++)
+          const PixelSectionTitle(
+            'Review progress',
+            icon: DesignerArt.questMarker,
+          ),
+          SizedBox(height: grid.px(1)),
+          for (var i = 0; i < steps.length; i++) ...[
+            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
             Padding(
-              padding: EdgeInsets.symmetric(vertical: grid.px(1)),
+              padding: EdgeInsets.symmetric(vertical: grid.px(2)),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -245,6 +240,7 @@ class AffiliatePendingScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          ],
         ],
       ),
     );
@@ -264,12 +260,10 @@ class AffiliatePendingScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            rejected ? 'REVIEWER NOTE' : 'REVIEWER FEEDBACK (ACTION NEEDED)',
-            style: PixelType.title(
-              context,
-              color: rejected ? PixelPalette.white : PixelPalette.ink,
-            ),
+          PixelSectionTitle(
+            rejected ? 'Reviewer note' : 'Reviewer feedback',
+            icon: DesignerArt.notifBell,
+            colors: rejected ? PixelText3DColors.cream : PixelText3DColors.gold,
           ),
           if (note.isNotEmpty) ...[
             SizedBox(height: grid.px(1)),
@@ -299,9 +293,10 @@ class AffiliatePendingScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          const PixelSectionTitle(
             'Your merchant workspace is ready!',
-            style: PixelType.title(context, color: PixelPalette.white),
+            icon: DesignerArt.salakot,
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(2)),
           PixelButton(
@@ -338,24 +333,31 @@ class AffiliatePendingScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final row in rows)
+          const PixelSectionTitle(
+            'Application details',
+            icon: DesignerArt.handshake,
+          ),
+          SizedBox(height: grid.px(1)),
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
             Padding(
-              padding: EdgeInsets.only(bottom: grid.px(1)),
+              padding: EdgeInsets.symmetric(vertical: grid.px(2)),
               child: Text.rich(
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: '${row.$1}: ',
+                      text: '${rows[i].$1}: ',
                       style: PixelType.small(
                         context,
                         color: PixelPalette.slate,
                       ),
                     ),
-                    TextSpan(text: row.$2, style: PixelType.body(context)),
+                    TextSpan(text: rows[i].$2, style: PixelType.body(context)),
                   ],
                 ),
               ),
             ),
+          ],
         ],
       ),
     );

@@ -470,7 +470,7 @@ void main() {
       late _UpdateFixture fixture;
       await _pump(tester, const SettingsUpdatesScreen(),
           appUpdate: () => fixture = _UpdateFixture());
-      expect(find.text('App System & Updates'), findsOneWidget);
+      expect(find.text('APP SYSTEM & UPDATES'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('settings_updates_check')));
       await tester.pump(const Duration(milliseconds: 100));
       expect(fixture.checks, greaterThanOrEqualTo(1));

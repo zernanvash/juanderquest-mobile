@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -10,6 +11,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -193,9 +195,10 @@ class _CulturalQuizDetailScreenState
                 style: PixelType.small(context, color: PixelPalette.sun),
               ),
               SizedBox(height: grid.px(1)),
-              Text(
+              PixelSectionTitle(
                 quiz.title,
-                style: PixelType.title(context, color: PixelPalette.paper),
+                icon: DesignerArt.questionMark,
+                colors: PixelText3DColors.cream,
               ),
               SizedBox(height: grid.px(1)),
               Text(
@@ -209,7 +212,13 @@ class _CulturalQuizDetailScreenState
         PixelPanel(
           style: PixelBoxStyle.parchment,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const PixelSectionTitle(
+                'Quiz details',
+                icon: DesignerArt.questMarker,
+              ),
+              SizedBox(height: grid.px(1)),
               _param(
                 context,
                 grid,
@@ -267,7 +276,8 @@ class _CulturalQuizDetailScreenState
     );
   }
 
-  Widget _divider(PixelGrid grid) => SizedBox(height: grid.px(2));
+  Widget _divider(PixelGrid grid) =>
+      Container(height: grid.unit, color: PixelPalette.paperDim);
 
   Widget _param(
     BuildContext context,
@@ -275,7 +285,9 @@ class _CulturalQuizDetailScreenState
     String title,
     String value,
   ) {
-    return Row(
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+      child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
@@ -291,6 +303,7 @@ class _CulturalQuizDetailScreenState
           ),
         ),
       ],
+    ),
     );
   }
 }

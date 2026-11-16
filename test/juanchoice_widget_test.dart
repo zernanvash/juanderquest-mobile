@@ -81,7 +81,7 @@ void main() {
         expiresAt:DateTime.now().add(const Duration(days:1)),explorerXp:300,claimed:false)),
     ], child: const MaterialApp(home: JuanChoiceScreen())));
     await tester.pumpAndSettle();
-    expect(find.text('Visit the community winner'),findsOneWidget);
+    expect(find.text('VISIT THE COMMUNITY WINNER'), findsOneWidget);
     expect(find.text('Open destination quest'),findsOneWidget);
     expect(find.textContaining('AR'),findsNothing);
   });
@@ -137,7 +137,7 @@ void main() {
     await tester.tap(find.text('Retry journey'));
     await tester.pumpAndSettle();
     expect(attempts, 2);
-    expect(find.text('Your community journey'), findsOneWidget);
+    expect(find.text('YOUR COMMUNITY JOURNEY'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

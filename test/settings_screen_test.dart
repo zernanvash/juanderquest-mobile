@@ -73,8 +73,8 @@ void main() {
     expect(find.text('Developer tools', skipOffstage: false), findsOneWidget);
     // Detail now lives on the sub-pages, not on the home list.
     expect(
-        find.text('App System & Updates', skipOffstage: false), findsNothing);
-    expect(find.text('Developer & UI Designer Mode', skipOffstage: false),
+        find.text('APP SYSTEM & UPDATES', skipOffstage: false), findsNothing);
+    expect(find.text('DEVELOPER & UI DESIGNER MODE', skipOffstage: false),
         findsNothing);
     // Plan 47: the AR calibration/test studio is gone; travelers never calibrate.
     expect(find.text('Augmented Reality Studio', skipOffstage: false),

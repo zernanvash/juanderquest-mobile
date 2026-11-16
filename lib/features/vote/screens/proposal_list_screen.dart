@@ -7,9 +7,11 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/governance_proposal_model.dart';
+import '../pixel/wave3_art.dart';
 import '../providers/governance_provider.dart';
 
 class ProposalListScreen extends ConsumerStatefulWidget {
@@ -118,7 +120,7 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
                                         ),
                                       ],
                                     )
-                                  : ListView.builder(
+                                  : ListView(
                                       padding: EdgeInsets.fromLTRB(
                                         grid.px(4),
                                         grid.px(3),
@@ -127,17 +129,43 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
                                             MediaQuery.paddingOf(context)
                                                 .bottom,
                                       ),
-                                      itemCount: govState.proposals.length,
-                                      itemBuilder: (context, index) {
-                                        final prop =
-                                            govState.proposals[index];
-                                        return Padding(
-                                          padding: EdgeInsets.only(
-                                              bottom: grid.px(2)),
-                                          child: _proposalCard(
-                                              context, grid, prop),
-                                        );
-                                      },
+                                      children: [
+                                        PixelPanel(
+                                          style: PixelBoxStyle.parchment,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              PixelSectionTitle(
+                                                'Proposals',
+                                                icon: Wave3Art.list,
+                                                value:
+                                                    '${govState.proposals.length}',
+                                                valueColor:
+                                                    PixelPalette.greenDark,
+                                              ),
+                                              SizedBox(height: grid.px(1)),
+                                              for (var i = 0;
+                                                  i <
+                                                      govState
+                                                          .proposals.length;
+                                                  i++) ...[
+                                                if (i > 0)
+                                                  Container(
+                                                    height: grid.unit,
+                                                    color:
+                                                        PixelPalette.paperDim,
+                                                  ),
+                                                _proposalCard(
+                                                  context,
+                                                  grid,
+                                                  govState.proposals[i],
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                     ),
                   ),
@@ -159,82 +187,76 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
         : prop.status == 'voting'
             ? PixelBoxStyle.gold
             : PixelBoxStyle.slot;
-    return PixelPanel(
+    return KeyedSubtree(
       key: ValueKey('proposal_card_${prop.id}'),
-      style: PixelBoxStyle.parchment,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            children: [
-              PixelChip(prop.categoryDisplay),
-              PixelChip(
-                prop.status.toUpperCase(),
-                style: statusStyle,
-                textColor: prop.status == 'approved'
-                    ? PixelPalette.white
-                    : PixelPalette.ink,
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          Text(prop.title, style: PixelType.title(context)),
-          SizedBox(height: grid.px(1)),
-          Text(
-            prop.locationName,
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-          SizedBox(height: grid.px(2)),
-          Text(
-            prop.description,
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-          SizedBox(height: grid.px(2)),
-          Wrap(
-            spacing: grid.px(3),
-            runSpacing: grid.px(1),
-            children: [
-              Text(
-                'YES: ${prop.yesVotes} (${prop.yesPercentage.toStringAsFixed(0)}%)',
-                style: PixelType.small(
-                  context,
-                  color: PixelPalette.greenDark,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: grid.px(2),
+              runSpacing: grid.px(1),
+              children: [
+                PixelChip(prop.categoryDisplay),
+                PixelChip(
+                  prop.status.toUpperCase(),
+                  style: statusStyle,
+                  textColor: prop.status == 'approved'
+                      ? PixelPalette.white
+                      : PixelPalette.ink,
                 ),
-              ),
-              Text(
-                'NO: ${prop.noVotes} (${prop.noPercentage.toStringAsFixed(0)}%)',
-                style: PixelType.small(context, color: PixelPalette.redDeep),
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          PixelProgressBar(
-            value: prop.yesPercentage / 100,
-            color: PixelPalette.greenBright,
-          ),
-          SizedBox(height: grid.px(2)),
-          if (hasVoted)
-            PixelPanel(
-              style: PixelBoxStyle.green,
-              child: Text(
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(prop.title, style: PixelType.title(context)),
+            SizedBox(height: grid.px(1)),
+            Text(
+              prop.locationName,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(
+              prop.description,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(2)),
+            Wrap(
+              spacing: grid.px(3),
+              runSpacing: grid.px(1),
+              children: [
+                Text(
+                  'YES: ${prop.yesVotes} (${prop.yesPercentage.toStringAsFixed(0)}%)',
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.greenDark,
+                  ),
+                ),
+                Text(
+                  'NO: ${prop.noVotes} (${prop.noPercentage.toStringAsFixed(0)}%)',
+                  style: PixelType.small(context, color: PixelPalette.redDeep),
+                ),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            PixelProgressBar(
+              value: prop.yesPercentage / 100,
+              color: PixelPalette.greenBright,
+            ),
+            SizedBox(height: grid.px(2)),
+            if (hasVoted)
+              PixelChip(
                 'Vote Cast: ${userVote.toUpperCase()}',
-                textAlign: TextAlign.center,
-                style: PixelType.body(context, color: PixelPalette.white),
-              ),
-            )
-          else
-            PixelPanel(
-              style: PixelBoxStyle.slot,
-              padding: 2,
-              child: Text(
+                style: PixelBoxStyle.green,
+                textColor: PixelPalette.white,
+              )
+            else
+              Text(
                 'Archived Proposal · Voting Closed',
-                textAlign: TextAlign.center,
                 style: PixelType.small(context, color: PixelPalette.slate),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

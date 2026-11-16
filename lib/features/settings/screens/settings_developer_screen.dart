@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/server_override.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -13,6 +14,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/dev/test_content.dart';
@@ -59,12 +61,10 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const PixelSectionTitle(
                                 'Developer & UI Designer Mode',
-                                style: PixelType.title(
-                                  context,
-                                  color: PixelPalette.paper,
-                                ),
+                                icon: DesignerArt.navSettings,
+                                colors: PixelText3DColors.cream,
                               ),
                               SizedBox(height: grid.px(1)),
                               Text(
@@ -80,135 +80,168 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                         SizedBox(height: grid.px(3)),
                         PixelPanel(
                           style: PixelBoxStyle.parchment,
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              const PixelSectionTitle(
+                                'Inspector & QA',
+                                icon: DesignerArt.navSettings,
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: grid.px(2)),
+                                child: Row(
                                   children: [
-                                    Text('Designer Guide Mode',
-                                        style: PixelType.title(context)),
-                                    SizedBox(height: grid.px(1)),
-                                    Text(
-                                      isGuideEnabled
-                                          ? 'Blueprint outlines and Figma component tags are ACTIVE.'
-                                          : 'Show UI wireframe boundaries and Figma element specs.',
-                                      style: PixelType.body(
-                                        context,
-                                        color: PixelPalette.slate,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Designer Guide Mode',
+                                              style: PixelType.title(context)),
+                                          SizedBox(height: grid.px(1)),
+                                          Text(
+                                            isGuideEnabled
+                                                ? 'Blueprint outlines and Figma component tags are ACTIVE.'
+                                                : 'Show UI wireframe boundaries and Figma element specs.',
+                                            style: PixelType.body(
+                                              context,
+                                              color: PixelPalette.slate,
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                    ),
+                                    SizedBox(width: grid.px(2)),
+                                    PixelSwitch(
+                                      key: const ValueKey(
+                                          'designer_guide_switch'),
+                                      value: isGuideEnabled,
+                                      semanticLabel: 'Designer Guide Mode',
+                                      onChanged: (value) => ref
+                                          .read(designerGuideProvider.notifier)
+                                          .state = value,
                                     ),
                                   ],
                                 ),
                               ),
-                              SizedBox(width: grid.px(2)),
-                              PixelSwitch(
-                                key: const ValueKey('designer_guide_switch'),
-                                value: isGuideEnabled,
-                                semanticLabel: 'Designer Guide Mode',
-                                onChanged: (value) => ref
-                                    .read(designerGuideProvider.notifier)
-                                    .state = value,
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: grid.px(3)),
-                        // Plan 75n: QA/test quests and spots are hidden from
-                        // travelers unless this is on (session only).
-                        PixelPanel(
-                          style: PixelBoxStyle.parchment,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              Container(
+                                  height: grid.unit,
+                                  color: PixelPalette.paperDim),
+                              // Plan 75n: QA/test quests and spots are hidden from
+                              // travelers unless this is on (session only).
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: grid.px(2)),
+                                child: Row(
                                   children: [
-                                    Text('Show test content',
-                                        style: PixelType.title(context)),
-                                    SizedBox(height: grid.px(1)),
-                                    Text(
-                                      'SIM quests and test spots in Explore and Quests. Resets on restart.',
-                                      style: PixelType.body(
-                                        context,
-                                        color: PixelPalette.slate,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Show test content',
+                                              style: PixelType.title(context)),
+                                          SizedBox(height: grid.px(1)),
+                                          Text(
+                                            'SIM quests and test spots in Explore and Quests. Resets on restart.',
+                                            style: PixelType.body(
+                                              context,
+                                              color: PixelPalette.slate,
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                    ),
+                                    SizedBox(width: grid.px(2)),
+                                    PixelSwitch(
+                                      key: const ValueKey(
+                                          'show_test_content_switch'),
+                                      value: ref.watch(showTestContentProvider),
+                                      semanticLabel: 'Show test content',
+                                      onChanged: (value) => ref
+                                          .read(
+                                              showTestContentProvider.notifier)
+                                          .state = value,
                                     ),
                                   ],
                                 ),
-                              ),
-                              SizedBox(width: grid.px(2)),
-                              PixelSwitch(
-                                key: const ValueKey('show_test_content_switch'),
-                                value: ref.watch(showTestContentProvider),
-                                semanticLabel: 'Show test content',
-                                onChanged: (value) => ref
-                                    .read(showTestContentProvider.notifier)
-                                    .state = value,
                               ),
                             ],
                           ),
                         ),
                         if (ServerOverrideStore.isAvailable) ...[
-                          SizedBox(height: grid.px(4)),
-                          Text(
-                            'Developer — API server',
-                            style: PixelType.title(context),
-                          ),
-                          SizedBox(height: grid.px(1)),
-                          Text(
-                            'Debug and profile builds only. Point this device at another backend.',
-                            style: PixelType.body(
-                              context,
-                              color: PixelPalette.slate,
-                            ),
-                          ),
-                          SizedBox(height: grid.px(2)),
+                          SizedBox(height: grid.px(3)),
                           const _ApiServerOverrideCard(),
                           if (kDebugMode) ...[
-                            SizedBox(height: grid.px(2)),
+                            SizedBox(height: grid.px(3)),
                             const MapOriginCard(),
                           ],
-                          SizedBox(height: grid.px(2)),
-                          _link(
-                            context,
-                            grid,
-                            key: const ValueKey('settings_ar_diagnostics'),
-                            title: 'AR diagnostics',
-                            subtitle: 'Live sensor readout and a test object.',
-                            onTap: () => context.push('/ar-diagnostics'),
-                          ),
-                          SizedBox(height: grid.px(2)),
-                          _link(
-                            context,
-                            grid,
-                            key: const ValueKey('settings_pixel_lab'),
-                            title: 'Pixel lab',
-                            subtitle:
-                                'Designer pixel art in the brand palette.',
-                            onTap: () => context.push('/settings/pixel-lab'),
-                          ),
-                          SizedBox(height: grid.px(2)),
-                          // Plan 101: preview of the v0.3 look.
-                          _link(
-                            context,
-                            grid,
-                            key: const ValueKey('settings_pixel_lab_v03'),
-                            title: 'Pixel lab v0.3 (new UI)',
-                            subtitle:
-                                'Preview: no boxes, 2.5D text, sharp icons.',
-                            onTap: () => context.push('/settings/pixel-lab-v03'),
-                          ),
                         ],
-                        SizedBox(height: grid.px(2)),
-                        _link(
-                          context,
-                          grid,
-                          key: const ValueKey('settings_governance'),
-                          title: 'Governance prototype',
-                          subtitle:
-                              'Separate from JuanChoice community voting',
-                          onTap: () => context.push('/vote'),
+                        SizedBox(height: grid.px(3)),
+                        PixelPanel(
+                          style: PixelBoxStyle.parchment,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const PixelSectionTitle(
+                                'Tools & labs',
+                                icon: DesignerArt.search,
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              if (ServerOverrideStore.isAvailable) ...[
+                                _link(
+                                  context,
+                                  grid,
+                                  key: const ValueKey('settings_ar_diagnostics'),
+                                  title: 'AR diagnostics',
+                                  subtitle:
+                                      'Live sensor readout and a test object.',
+                                  onTap: () => context.push('/ar-diagnostics'),
+                                ),
+                                Container(
+                                    height: grid.unit,
+                                    color: PixelPalette.paperDim),
+                                _link(
+                                  context,
+                                  grid,
+                                  key: const ValueKey('settings_pixel_lab'),
+                                  title: 'Pixel lab',
+                                  subtitle:
+                                      'Designer pixel art in the brand palette.',
+                                  onTap: () =>
+                                      context.push('/settings/pixel-lab'),
+                                ),
+                                Container(
+                                    height: grid.unit,
+                                    color: PixelPalette.paperDim),
+                                // Plan 101: preview of the v0.3 look.
+                                _link(
+                                  context,
+                                  grid,
+                                  key: const ValueKey('settings_pixel_lab_v03'),
+                                  title: 'Pixel lab v0.3 (new UI)',
+                                  subtitle:
+                                      'Preview: no boxes, 2.5D text, sharp icons.',
+                                  onTap: () =>
+                                      context.push('/settings/pixel-lab-v03'),
+                                ),
+                                Container(
+                                    height: grid.unit,
+                                    color: PixelPalette.paperDim),
+                              ],
+                              _link(
+                                context,
+                                grid,
+                                key: const ValueKey('settings_governance'),
+                                title: 'Governance prototype',
+                                subtitle:
+                                    'Separate from JuanChoice community voting',
+                                onTap: () => context.push('/vote'),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -232,9 +265,10 @@ class SettingsDeveloperScreen extends ConsumerWidget {
   }) {
     return GestureDetector(
       key: key,
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: PixelPanel(
-        style: PixelBoxStyle.parchment,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
         child: Row(
           children: [
             Expanded(
@@ -366,6 +400,19 @@ class _ApiServerOverrideCardState extends State<_ApiServerOverrideCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const PixelSectionTitle(
+            'API server',
+            icon: DesignerArt.navSettings,
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            'Debug and profile builds only. Point this device at another backend.',
+            style: PixelType.body(
+              context,
+              color: PixelPalette.slate,
+            ),
+          ),
+          SizedBox(height: grid.px(2)),
           PixelTextField(
             key: const ValueKey('dev_api_url'),
             controller: _controller,
