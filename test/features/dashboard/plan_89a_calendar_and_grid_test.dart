@@ -305,7 +305,8 @@ void main() {
       ),
     );
 
-    expect(find.text('IN YOUR TOWN'), findsOneWidget);
+    expect(find.text('MISSION'), findsOneWidget);
+    expect(find.text('In your town'), findsOneWidget);
     expect(find.text('Capitol Beach Walk'), findsOneWidget);
     expect(
         find.byKey(const ValueKey('home_daily_claim_button')), findsOneWidget);

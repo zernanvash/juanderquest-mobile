@@ -432,7 +432,14 @@ class PixelSectionTitle extends StatelessWidget {
         ),
         if (value != null) ...[
           SizedBox(width: grid.px(2)),
-          PixelValuePop(value!, color: valueColor),
+          // Long values ("Today's mission") shrink rather than overflow.
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: PixelValuePop(value!, color: valueColor),
+            ),
+          ),
         ],
       ],
     );

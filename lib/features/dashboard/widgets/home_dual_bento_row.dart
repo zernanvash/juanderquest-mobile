@@ -181,11 +181,12 @@ class _MissionBentoBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final quest = activeQuest ?? recommendedQuest;
     final isActive = activeQuest != null;
-    final badgeText = isActive
-        ? 'ACTIVE'
-        : (recommendedReason?.isNotEmpty == true
-            ? recommendedReason!
-            : 'MISSION');
+    // The lettered title stays fixed; the changing reason ("0.0 km away",
+    // "In your town") is the live value beside it (owner 2026-11-16).
+    final badgeText = isActive ? 'ACTIVE QUEST' : 'MISSION';
+    final reason = isActive || recommendedReason?.isNotEmpty != true
+        ? null
+        : recommendedReason;
 
     return PixelPanel(
       style: style,
@@ -197,7 +198,11 @@ class _MissionBentoBox extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PixelSectionTitle(badgeText, icon: DesignerArt.questMarker),
+              PixelSectionTitle(
+                badgeText,
+                icon: DesignerArt.questMarker,
+                value: reason,
+              ),
               const SizedBox(height: 4),
               if (quest != null) ...[
                 Text(
