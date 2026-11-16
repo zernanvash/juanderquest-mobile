@@ -1567,7 +1567,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     highlight: PixelPalette.cream,
     shade: PixelPalette.sun,
     outline: PixelPalette.sun,
-    corner: 1,
+    corner: 2,
     shadowPx: 0,
   );
 

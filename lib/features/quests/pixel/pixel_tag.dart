@@ -23,7 +23,7 @@ class PixelTag extends StatelessWidget {
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth ?? double.infinity),
       child: PixelPanel(
-        style: style.copyWith(corner: 1, shadowPx: 0),
+        style: style.copyWith(corner: 2, shadowPx: 0),
         padding: 1,
         child: Text(
           label,

@@ -106,7 +106,7 @@ class PixelBoxStyle {
     fill: PixelPalette.paperDim,
     highlight: PixelPalette.white,
     shade: PixelPalette.mist,
-    corner: 1,
+    corner: 2,
     shadowPx: 0,
   );
 }

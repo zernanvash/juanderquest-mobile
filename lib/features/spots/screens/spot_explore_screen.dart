@@ -169,7 +169,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   if (state.isOfflineFallback) ...[
                     PixelPanel(
                       style:
-                          PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0),
+                          PixelBoxStyle.gold.copyWith(corner: 2, shadowPx: 0),
                       padding: 2,
                       child: Text(
                         'OFFLINE MODE • VIEWING CACHED DESTINATIONS FROM DEVICE STORAGE. CONNECT TO REFRESH.',
@@ -353,7 +353,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
         SizedBox(height: grid.px(2)),
         for (var i = 0; i < 2; i++) ...[
           PixelPanel(
-            style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+            style: PixelBoxStyle.parchment.copyWith(corner: 2, shadowPx: 1),
             padding: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,7 +383,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
   Widget _buildErrorCard(BuildContext context, PixelGrid grid, String message) {
     return PixelPanel(
-      style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+      style: PixelBoxStyle.parchment.copyWith(corner: 2, shadowPx: 1),
       padding: 3,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -417,7 +417,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
   Widget _buildEmptyCard(BuildContext context, PixelGrid grid) {
     return PixelPanel(
-      style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+      style: PixelBoxStyle.parchment.copyWith(corner: 2, shadowPx: 1),
       padding: 3,
       child: Column(
         mainAxisSize: MainAxisSize.min,

@@ -289,7 +289,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       SizedBox(height: grid.px(1)),
                       PixelPanel(
                         style: PixelBoxStyle.gold.copyWith(
-                          corner: 1,
+                          corner: 2,
                           shadowPx: 0,
                         ),
                         padding: 1,

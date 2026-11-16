@@ -91,7 +91,7 @@ class _AlternativeRow extends StatelessWidget {
           style: PixelBoxStyle.inkDialogue.copyWith(
             fill: PixelPalette.ink,
             outline: PixelPalette.slate,
-            corner: 0,
+            corner: 2,
             shadowPx: 0,
           ),
           padding: 1,
@@ -107,7 +107,7 @@ class _AlternativeRow extends StatelessWidget {
                     style: PixelBoxStyle.slot.copyWith(
                       fill: PixelPalette.ink,
                       outline: PixelPalette.stone,
-                      corner: 0,
+                      corner: 2,
                       shadowPx: 0,
                     ),
                     padding: 0,
@@ -183,7 +183,7 @@ class _AlternativeRow extends StatelessWidget {
                                 style: PixelBoxStyle.stone.copyWith(
                                   fill: PixelPalette.slate,
                                   outline: PixelPalette.mist,
-                                  corner: 1,
+                                  corner: 2,
                                   shadowPx: 0,
                                 ),
                                 textColor: PixelPalette.paper,

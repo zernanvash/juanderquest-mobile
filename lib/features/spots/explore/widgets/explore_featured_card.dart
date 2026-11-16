@@ -37,7 +37,7 @@ class ExploreFeaturedCard extends StatelessWidget {
           onTap();
         },
         child: PixelPanel(
-          style: PixelBoxStyle.inkDialogue.copyWith(corner: 1, shadowPx: 2),
+          style: PixelBoxStyle.inkDialogue.copyWith(corner: 2, shadowPx: 2),
           padding: 2,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

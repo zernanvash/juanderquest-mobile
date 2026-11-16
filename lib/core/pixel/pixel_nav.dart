@@ -291,7 +291,7 @@ class _Badge extends StatelessWidget {
     final grid = PixelGrid.of(context);
     return PixelPanel(
       style: (alert ? PixelBoxStyle.red : PixelBoxStyle.gold)
-          .copyWith(corner: 1, shadowPx: 0),
+          .copyWith(corner: 2, shadowPx: 0),
       padding: 0,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: grid.px(1)),

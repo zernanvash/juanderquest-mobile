@@ -166,7 +166,7 @@ class TheaterAboutSection extends StatelessWidget {
                       style: PixelBoxStyle.stone.copyWith(
                         fill: PixelPalette.slate,
                         outline: PixelPalette.mist,
-                        corner: 1,
+                        corner: 2,
                         shadowPx: 0,
                       ),
                       textColor: PixelPalette.paper,

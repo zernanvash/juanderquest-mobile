@@ -295,11 +295,11 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                     alignment: Alignment.center,
                     child: PixelPanel(
                       style: _liked
-                          ? PixelBoxStyle.red.copyWith(corner: 0, shadowPx: 0)
+                          ? PixelBoxStyle.red.copyWith(corner: 2, shadowPx: 0)
                           : PixelBoxStyle.inkDialogue.copyWith(
                               fill: PixelPalette.ink,
                               outline: PixelPalette.paper,
-                              corner: 0,
+                              corner: 2,
                               shadowPx: 0,
                             ),
                       padding: 1,
@@ -381,7 +381,7 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
       style: PixelBoxStyle.inkDialogue.copyWith(
         fill: PixelPalette.ink,
         outline: PixelPalette.paper,
-        corner: 0,
+        corner: 2,
         shadowPx: 0,
       ),
       padding: 1,
@@ -463,7 +463,7 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
       style: PixelBoxStyle.inkDialogue.copyWith(
         fill: PixelPalette.ink,
         outline: PixelPalette.slate,
-        corner: 0,
+        corner: 2,
         shadowPx: 0,
       ),
       padding: 1,
@@ -513,11 +513,11 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                     alignment: Alignment.center,
                     child: PixelPanel(
                       style: voted
-                          ? PixelBoxStyle.gold.copyWith(corner: 0, shadowPx: 0)
+                          ? PixelBoxStyle.gold.copyWith(corner: 2, shadowPx: 0)
                           : PixelBoxStyle.inkDialogue.copyWith(
                               fill: PixelPalette.slate,
                               outline: PixelPalette.mist,
-                              corner: 0,
+                              corner: 2,
                               shadowPx: 0,
                             ),
                       padding: 1,
@@ -665,7 +665,7 @@ class _SpotReportSheetState extends State<SpotReportSheet> {
               style: PixelBoxStyle.inkDialogue.copyWith(
                 fill: PixelPalette.ink,
                 outline: PixelPalette.slate,
-                corner: 0,
+                corner: 2,
                 shadowPx: 0,
               ),
               padding: 1,

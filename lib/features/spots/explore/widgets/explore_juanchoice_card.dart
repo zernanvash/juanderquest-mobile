@@ -35,7 +35,7 @@ class ExploreJuanChoiceCard extends StatelessWidget {
           highlight: PixelPalette.sun,
           shade: PixelPalette.goldDeep,
           outline: PixelPalette.goldDeep,
-          corner: 1,
+          corner: 2,
           shadowPx: 2,
         ),
         padding: 2,

@@ -28,7 +28,7 @@ const _ghostStyle = PixelBoxStyle(
   highlight: PixelPalette.paper,
   shade: PixelPalette.paperDim,
   outline: PixelPalette.ink,
-  corner: 1,
+  corner: 2,
   shadowPx: 0,
   bevel: false,
 );
@@ -38,7 +38,7 @@ const _disabledStyle = PixelBoxStyle(
   highlight: PixelPalette.paperDim,
   shade: PixelPalette.mist,
   outline: PixelPalette.stone,
-  corner: 1,
+  corner: 2,
   shadowPx: 0,
   bevel: false,
 );
@@ -285,14 +285,14 @@ class PixelChip extends StatelessWidget {
     );
     if (onTap == null) {
       return PixelPanel(
-        style: style.copyWith(corner: 1, shadowPx: 0),
+        style: style.copyWith(corner: 2, shadowPx: 0),
         padding: 2,
         child: content,
       );
     }
     // Plan 75k: tappable chips press like inventory slots.
     return PixelTappableSlot(
-      style: style.copyWith(corner: 1, shadowPx: 1),
+      style: style.copyWith(corner: 2, shadowPx: 1),
       padding: 2,
       semanticLabel: label,
       onTap: onTap,

@@ -240,7 +240,7 @@ class MjdqChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PixelPanel(
-      style: style.copyWith(corner: 1, shadowPx: 0),
+      style: style.copyWith(corner: 2, shadowPx: 0),
       padding: 2,
       child: MjdqAmount(
         amount,

@@ -443,7 +443,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         setState(() => _selectedTab = category.$1);
       },
       child: PixelPanel(
-        style: PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 1),
+        style: PixelBoxStyle.parchment.copyWith(corner: 2, shadowPx: 1),
         padding: 2,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -527,7 +527,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         constraints: const BoxConstraints(minHeight: 40),
         child: PixelPanel(
           style: (active ? PixelBoxStyle.gold : PixelBoxStyle.slot)
-              .copyWith(corner: 1, shadowPx: 0),
+              .copyWith(corner: 2, shadowPx: 0),
           padding: 1,
           child: Padding(
             padding: EdgeInsets.symmetric(
@@ -557,7 +557,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         context.push(hub.route);
       },
       child: PixelPanel(
-        style: PixelBoxStyle.wood.copyWith(corner: 1, shadowPx: 1),
+        style: PixelBoxStyle.wood.copyWith(corner: 2, shadowPx: 1),
         padding: 1,
         child: Container(
           constraints: const BoxConstraints(minHeight: 48),

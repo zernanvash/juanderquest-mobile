@@ -112,7 +112,7 @@ class _TheaterVenueSectionState extends ConsumerState<TheaterVenueSection> {
               style: PixelBoxStyle.inkDialogue.copyWith(
                 fill: PixelPalette.ink,
                 outline: PixelPalette.paper,
-                corner: 0,
+                corner: 2,
                 shadowPx: 0,
               ),
               padding: 0,

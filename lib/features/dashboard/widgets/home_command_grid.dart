@@ -209,7 +209,7 @@ class _MenuIconTileState extends State<_MenuIconTile> {
     highlight: PixelPalette.white,
     shade: PixelPalette.woodLight,
     outline: PixelPalette.ink,
-    corner: 0,
+    corner: 2,
     shadowPx: 0,
   );
 
@@ -218,7 +218,7 @@ class _MenuIconTileState extends State<_MenuIconTile> {
     highlight: PixelPalette.woodLight,
     shade: PixelPalette.white,
     outline: PixelPalette.ink,
-    corner: 0,
+    corner: 2,
     shadowPx: 0,
   );
 
