@@ -188,6 +188,17 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                                 'Designer pixel art in the brand palette.',
                             onTap: () => context.push('/settings/pixel-lab'),
                           ),
+                          SizedBox(height: grid.px(2)),
+                          // Plan 101: preview of the v0.3 look.
+                          _link(
+                            context,
+                            grid,
+                            key: const ValueKey('settings_pixel_lab_v03'),
+                            title: 'Pixel lab v0.3 (new UI)',
+                            subtitle:
+                                'Preview: no boxes, 2.5D text, sharp icons.',
+                            onTap: () => context.push('/settings/pixel-lab-v03'),
+                          ),
                         ],
                         SizedBox(height: grid.px(2)),
                         _link(

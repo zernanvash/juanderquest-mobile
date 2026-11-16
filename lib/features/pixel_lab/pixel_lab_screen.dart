@@ -87,10 +87,6 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                         padding: EdgeInsets.all(grid.px(4)),
                         children: [
                           _intro(context, grid),
-                          SizedBox(height: grid.px(3)),
-                          // Plan 101: pick a menu style and the 2.5D text.
-                          _section(context, 'UI prototypes (Plan 101)',
-                              const UiPrototypesSection()),
                           if (!kReleaseMode) ...[
                             SizedBox(height: grid.px(3)),
                             _kit(context, grid, settings, notifier),
@@ -127,6 +123,11 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           _celebrations(context, grid),
                           SizedBox(height: grid.px(3)),
                           _tutorials(context, grid),
+                          SizedBox(height: grid.px(3)),
+                          // Plan 101: menu styles and 2.5D text (the full
+                          // preview is Settings → Developer → Pixel lab v0.3).
+                          _section(context, 'UI prototypes (Plan 101)',
+                              const UiPrototypesSection()),
                           SizedBox(height: grid.px(6)),
                         ],
                       ),

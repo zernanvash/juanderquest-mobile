@@ -26,6 +26,7 @@ import '../features/settings/screens/settings_screen.dart';
 import '../features/settings/screens/settings_notifications_screen.dart';
 import '../features/settings/screens/settings_updates_screen.dart';
 import '../features/settings/screens/settings_developer_screen.dart';
+import '../features/pixel_lab/v03/pixel_lab_v03_screen.dart';
 import '../features/pixel_lab/pixel_lab_screen.dart';
 import '../features/cosmetics/screens/appearance_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
@@ -381,6 +382,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: 'pixel-lab',
               builder: (context, state) => const PixelLabScreen()),
+          // Plan 101: v0.3 UI preview.
+          GoRoute(
+              path: 'pixel-lab-v03',
+              builder: (context, state) => const PixelLabV03Screen()),
         ],
       ),
       GoRoute(
