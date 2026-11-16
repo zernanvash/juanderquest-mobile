@@ -50,6 +50,7 @@ class PixelSettings {
     this.language = AppLanguage.english,
     this.music = true,
     this.sounds = true,
+    this.reduceMotion = false,
   }) : _artPx = artPx;
 
   static const double defaultArtPx = 2;
@@ -83,6 +84,11 @@ class PixelSettings {
   final bool music;
   final bool sounds;
 
+  /// Owner 2026-11-17: the app's effects (menu embers, idle loops, party
+  /// poppers) play even when the phone's animation scale is off; this
+  /// in-app switch turns them off.
+  final bool reduceMotion;
+
   double resolveArtPx([double shortestSide = 400]) {
     final art = _artPx;
     if (art != null && artSizes.contains(art)) return art;
@@ -113,6 +119,7 @@ class PixelSettings {
     AppLanguage? language,
     bool? music,
     bool? sounds,
+    bool? reduceMotion,
   }) =>
       PixelSettings(
         artPx: artPx ?? _artPx,
@@ -122,6 +129,7 @@ class PixelSettings {
         language: language ?? this.language,
         music: music ?? this.music,
         sounds: sounds ?? this.sounds,
+        reduceMotion: reduceMotion ?? this.reduceMotion,
       );
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -133,6 +141,7 @@ class PixelSettings {
         'language': language.name,
         'music': music,
         'sounds': sounds,
+        'reduceMotion': reduceMotion,
       };
 
   static PixelSettings? fromJson(String raw) {
@@ -169,6 +178,7 @@ class PixelSettings {
         language: language,
         music: decoded['music'] is bool ? decoded['music'] as bool : true,
         sounds: decoded['sounds'] is bool ? decoded['sounds'] as bool : true,
+        reduceMotion: decoded['reduceMotion'] == true,
       );
     } catch (_) {
       return null;
@@ -184,11 +194,12 @@ class PixelSettings {
       other.textSize == textSize &&
       other.language == language &&
       other.music == music &&
-      other.sounds == sounds;
+      other.sounds == sounds &&
+      other.reduceMotion == reduceMotion;
 
   @override
-  int get hashCode =>
-      Object.hash(_artPx, font, haptics, textSize, language, music, sounds);
+  int get hashCode => Object.hash(
+      _artPx, font, haptics, textSize, language, music, sounds, reduceMotion);
 }
 
 class PixelScope extends StatelessWidget {
@@ -232,7 +243,12 @@ class PixelScope extends StatelessWidget {
 
     if (media != null && clampedScaler != null) {
       result = MediaQuery(
-        data: media.copyWith(textScaler: clampedScaler),
+        // Our own setting decides animations, not the phone's transition
+        // scale (owner 2026-11-17: "always play our effects").
+        data: media.copyWith(
+          textScaler: clampedScaler,
+          disableAnimations: settings.reduceMotion,
+        ),
         child: result,
       );
     }
@@ -372,6 +388,11 @@ class PixelSettingsNotifier extends Notifier<PixelSettings> {
 
   void setSounds(bool value) {
     state = state.copyWith(sounds: value);
+    unawaited(_persist());
+  }
+
+  void setReduceMotion(bool value) {
+    state = state.copyWith(reduceMotion: value);
     unawaited(_persist());
   }
 

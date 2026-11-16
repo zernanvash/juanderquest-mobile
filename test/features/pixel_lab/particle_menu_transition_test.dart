@@ -88,8 +88,9 @@ void main() {
           child: MaterialApp(
             home: MediaQuery(
               data: MediaQueryData(disableAnimations: true),
+              // Owner 2026-11-17: reduce motion is the in-app setting.
               child: PixelScope(
-                settings: PixelSettings(),
+                settings: PixelSettings(reduceMotion: true),
                 child: Scaffold(
                   body: SingleChildScrollView(
                     child: ParticleMenuTransitionSection(),

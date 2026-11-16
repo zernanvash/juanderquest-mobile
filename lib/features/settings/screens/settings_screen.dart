@@ -54,8 +54,7 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title:
-                        tr(context, en: 'Settings', tl: 'Mga Setting'),
+                    title: tr(context, en: 'Settings', tl: 'Mga Setting'),
                     onBack:
                         canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
@@ -183,6 +182,23 @@ class SettingsScreen extends ConsumerWidget {
                                           .sounds),
                                 ),
                                 _SettingsTile(
+                                  key: const ValueKey('settings_reduce_motion'),
+                                  pixelIcon: DesignerArt.navMap,
+                                  title: tr(context,
+                                      en: 'Reduce motion',
+                                      tl: 'Bawasan ang galaw'),
+                                  value: ref
+                                          .watch(pixelSettingsProvider)
+                                          .reduceMotion
+                                      ? tr(context, en: 'On', tl: 'Bukas')
+                                      : tr(context, en: 'Off', tl: 'Sarado'),
+                                  onTap: () => ref
+                                      .read(pixelSettingsProvider.notifier)
+                                      .setReduceMotion(!ref
+                                          .read(pixelSettingsProvider)
+                                          .reduceMotion),
+                                ),
+                                _SettingsTile(
                                   key: const ValueKey('settings_text_size'),
                                   pixelIcon: DesignerArt.search,
                                   title: tr(context,
@@ -286,8 +302,7 @@ class SettingsScreen extends ConsumerWidget {
             name: user?.displayName ?? 'Traveler',
             imageUrl: user?.avatarUrl,
             size: grid.px(22),
-            frame:
-                user?.cosmetics?['frame']?['asset'] as Map<String, dynamic>?,
+            frame: user?.cosmetics?['frame']?['asset'] as Map<String, dynamic>?,
           ),
           SizedBox(width: grid.px(2)),
           Expanded(
