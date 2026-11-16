@@ -1793,6 +1793,33 @@ abstract final class DesignerArt {
     '........................',
   ]);
 
+  static const navCompass = PixelArt('navCompass', [
+    '..........0000..........',
+    '.........0hhhh0.........',
+    '.........0....0.........',
+    '........00000000........',
+    '......000iiiiih000......',
+    '.....00iiiiiihhhh00.....',
+    '....0iii00000000hhh0....',
+    '...00ii0jjj11jjj0hh00...',
+    '...0ii0jjjjsrjjjj0hh0...',
+    '..0ii0jjjjjsrjjjjj0hh0..',
+    '..0ii0jjjjssrrjjjj0hf0..',
+    '..0i0jjjjjssrrjjjjp0f0..',
+    '.0ii01jjjjsh0rjjjp10ff0.',
+    '.0ii01jjjj3001jjpp10ff0.',
+    '.0ii0jjjjj3311jpppp0ff0.',
+    '..0h0jjjjj3311ppppp0f0..',
+    '..0hh0jjjjj31ppppp0ff0..',
+    '..0hh0jjjjj31ppppp0ff0..',
+    '...0hh0jjjjpppppp0ff0...',
+    '...00hh0jjp11ppp0ff00...',
+    '....0hhh00000000fff0....',
+    '.....00hhffffffff00.....',
+    '......000ffffff000......',
+    '........00000000........',
+  ]);
+
   static const navProfile = PixelArt('navProfile', [
     '........................',
     '........................',
@@ -2871,6 +2898,7 @@ abstract final class DesignerArt {
     'navExplore': navExplore,
     'navMap': navMap,
     'navHome': navHome,
+    'navCompass': navCompass,
     'navProfile': navProfile,
     'navSettings': navSettings,
     'navShop': navShop,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/l10n/app_language.dart';
 import '../../core/pixel/generated/pixel_palette.g.dart';
 import '../../core/pixel/pixel_art.dart';
 import '../../core/pixel/pixel_box.dart';
@@ -210,7 +211,7 @@ class ProfileShowcaseSection extends ConsumerWidget {
         ),
         if (town != null) ...[
           SizedBox(height: grid.px(1)),
-          Text('Taga-$town',
+          Text(tr(context, en: 'From $town', tl: 'Taga-$town'),
               key: const ValueKey('profile_home_town'), style: PixelType.small(context, color: PixelPalette.greenDark)),
         ],
       ]),
@@ -286,11 +287,11 @@ class ProfileShowcaseSection extends ConsumerWidget {
       style: PixelBoxStyle.parchment,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: Text('Pasaporte', style: PixelType.title(context))),
+          Expanded(child: Text(tr(context, en: 'Passport', tl: 'Pasaporte'), style: PixelType.title(context))),
           PixelChip('${s.townsVisited.length} / ${s.townsTotal}', style: PixelBoxStyle.gold),
         ]),
         SizedBox(height: grid.px(1)),
-        Text('Pangasinan towns stamped', style: PixelType.small(context, color: PixelPalette.slate)),
+        Text(tr(context, en: 'Pangasinan towns stamped', tl: 'Mga bayan sa Pangasinan na may tatak'), style: PixelType.small(context, color: PixelPalette.slate)),
         SizedBox(height: grid.px(1)),
         SizedBox(
           height: grid.px(3),
@@ -314,7 +315,7 @@ class ProfileShowcaseSection extends ConsumerWidget {
   Widget _favorite(BuildContext context, WidgetRef ref, PixelGrid grid) {
     final f = showcase.favorite;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _header(context, 'Paborito ko',
+      _header(context, tr(context, en: 'Favorite spot', tl: 'Paborito ko'),
           editKey: const ValueKey('profile_edit_favorite'),
           onEdit: isMine ? () => showFavoritePicker(context, ref) : null),
       SizedBox(height: grid.px(1)),
@@ -471,7 +472,7 @@ Future<void> showFavoritePicker(BuildContext context, WidgetRef ref) async {
   // '' = no favourite.
   final picked = await showPixelDialog<String>(
     context: context,
-    title: 'Paborito ko',
+    title: tr(context, en: 'Favorite spot', tl: 'Paborito ko'),
     message: saved.isEmpty
         ? 'Save a destination first (the heart on a spot), then pick it here.'
         : 'Your favourite destination.',

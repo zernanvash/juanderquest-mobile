@@ -126,8 +126,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final savedSpots = spotsState.spots.where((s) => s.saved).length;
 
+    // Plan 100 WP-1: your own spots by account id (a wallet account's seed id
+    // `wallet:0x…` matched no account, so the list failed to load).
     final targetHandle = isMine
-        ? (currentUser?.handle.replaceFirst('@', '') ?? currentUser?.id ?? '')
+        ? (currentUser?.id ?? '')
         : (widget.username ?? '').replaceFirst('@', '');
     final userSpotsAsync = targetHandle.isNotEmpty
         ? ref.watch(userSpotsProvider(targetHandle))

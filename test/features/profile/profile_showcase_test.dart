@@ -52,7 +52,7 @@ void main() {
 
   testWidgets('your own profile has edit buttons and an empty slot to equip', (tester) async {
     await tester.pumpWidget(host(full, mine: true));
-    expect(find.text('Taga-San Carlos City'), findsOneWidget);
+    expect(find.text('From San Carlos City'), findsOneWidget);
     expect(find.text('Pangasinan Pioneer'), findsOneWidget);
     expect(find.text('+ Equip'), findsOneWidget);
     expect(find.text('5 / 48'), findsOneWidget);

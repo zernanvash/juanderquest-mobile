@@ -10,11 +10,16 @@ final userSpotsProvider =
 
   final response = await ref.read(apiClientProvider).dio.get('/users/$cleanHandle/spots');
   final data = response.data;
-  final rawList = (data is Map && data['spots'] is List)
-      ? data['spots'] as List
-      : (data is Map && data['data'] is List)
-          ? data['data'] as List
-          : const [];
+  // The API answers {success, data: {spots: [...]}} (Plan 100 WP-1: the old
+  // parser only looked at the top level and always showed an empty list).
+  final inner = data is Map ? data['data'] : null;
+  final rawList = (inner is Map && inner['spots'] is List)
+      ? inner['spots'] as List
+      : (inner is List)
+          ? inner
+          : (data is Map && data['spots'] is List)
+              ? data['spots'] as List
+              : const [];
 
   return rawList
       .whereType<Map>()
