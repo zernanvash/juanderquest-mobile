@@ -27,7 +27,7 @@ void main() {
     expect(find.text('TAPPED PLAZA'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, 6000));
     await tester.pump(const Duration(milliseconds: 200));
-    for (final k in ['v03_look_FLAT OUTLINE', 'v03_look_BANDED', 'v03_look_CHUNKY', 'v03_look_DROP SHADOW', 'v03_font_PRESSSTART2P', 'v03_colour_GOLD']) {
+    for (final k in ['v03_look_FLAT OUTLINE', 'v03_look_BANDED', 'v03_look_CHUNKY', 'v03_look_DROP SHADOW', 'v03_font_PRESSSTART2P', 'v03_dark']) {
       await _tapKey(tester, k);
       expect(tester.takeException(), isNull);
     }

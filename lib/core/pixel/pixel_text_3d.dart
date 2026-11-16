@@ -13,9 +13,13 @@ class PixelText3DColors {
     required this.face,
     required this.bevel,
     required this.side,
+    required this.band,
     this.outline = PixelPalette.ink,
   });
 
+  /// Lower band of the banded look: one step darker than [face], softer
+  /// than [side].
+  final Color band;
   final Color face;
   final Color bevel;
   final Color side;
@@ -23,21 +27,25 @@ class PixelText3DColors {
 
   static const gold = PixelText3DColors(
     face: PixelPalette.sun,
+    band: PixelPalette.flame,
     bevel: PixelPalette.sunLight,
     side: PixelPalette.gold,
   );
   static const cream = PixelText3DColors(
     face: PixelPalette.cream,
+    band: PixelPalette.sunLight,
     bevel: PixelPalette.white,
     side: PixelPalette.woodMid,
   );
   static const green = PixelText3DColors(
     face: PixelPalette.greenMid,
+    band: PixelPalette.green,
     bevel: PixelPalette.greenLight,
     side: PixelPalette.greenDeep,
   );
   static const red = PixelText3DColors(
     face: PixelPalette.redBright,
+    band: PixelPalette.red,
     bevel: PixelPalette.redSoft,
     side: PixelPalette.redDeep,
   );
@@ -160,12 +168,12 @@ class PixelText3D extends StatelessWidget {
       PixelTextLook.banded => [
           for (var i = d; i >= 0; i--) at(0, i * u, text_(stroke(2 * u))),
           for (var i = d; i >= 1; i--) at(0, i * u, text_(base.copyWith(color: colors.outline))),
-          at(0, 0, bands([colors.bevel, colors.face, colors.side])),
+          at(0, 0, bands([colors.bevel, colors.face, colors.band])),
         ],
       PixelTextLook.chunky => [
           for (var i = d; i >= 1; i--) at(i * u, i * u, text_(stroke(3 * u))),
           at(0, 0, text_(stroke(3 * u))),
-          at(0, 0, bands([colors.face, colors.side])),
+          at(0, 0, bands([colors.face, colors.band])),
         ],
       PixelTextLook.shadow => [
           for (var i = d; i >= 1; i--) at(i * u, i * u, text_(base.copyWith(color: colors.outline))),

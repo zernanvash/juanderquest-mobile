@@ -30,13 +30,11 @@ class _PixelLabV03ScreenState extends State<PixelLabV03Screen> {
   ProtoMenuStyle _menu = ProtoMenuStyle.noBoxes;
   PixelTextLook _look = PixelTextLook.extruded;
   String _font = PixelFonts.families.first;
-  PixelText3DColors _colors = PixelText3DColors.cream;
-  static const _colorSets = <(String, PixelText3DColors)>[
-    ('CREAM', PixelText3DColors.cream),
-    ('GOLD', PixelText3DColors.gold),
-    ('GREEN', PixelText3DColors.green),
-    ('RED', PixelText3DColors.red),
-  ];
+  // Lettering colours follow the page: gold on the light page, cream on
+  // dark wood (owner 2026-11-16: "dark mode and light mode toggle auto
+  // selecting whats appropriate combo").
+  PixelText3DColors get _colors =>
+      _dark ? PixelText3DColors.cream : PixelText3DColors.gold;
   static const _lookNames = <PixelTextLook, String>{
     PixelTextLook.extruded: '2.5D',
     PixelTextLook.flat: 'FLAT OUTLINE',
@@ -198,11 +196,7 @@ class _PixelLabV03ScreenState extends State<PixelLabV03Screen> {
             for (final f in PixelFonts.families)
               (f.toUpperCase(), _font == f, () => setState(() => _font = f)),
           ]),
-          SizedBox(height: grid.px(1)),
-          _chips(grid, 'colour', [
-            for (final (name, c) in _colorSets)
-              (name, _colors == c, () => setState(() => _colors = c)),
-          ]),
+
         ],
       );
 
@@ -241,11 +235,18 @@ class _PixelLabV03ScreenState extends State<PixelLabV03Screen> {
                       _font = f;
                       _menu = ProtoMenuStyle.noBoxes;
                     }),
-                    child: PixelText3D('QUESTS',
-                        size: 16,
-                        look: l,
-                        font: f,
-                        colors: _look == l && _font == f ? PixelText3DColors.gold : _colors),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PixelText3D('QUESTS', size: 16, look: l, font: f, colors: _colors),
+                        // Marks the combination the menu uses.
+                        Container(
+                          width: grid.px(16),
+                          height: grid.unit * 2,
+                          color: _look == l && _font == f ? PixelPalette.greenMid : const Color(0x00000000),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
