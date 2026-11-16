@@ -21,9 +21,9 @@ class AlmanacScreen extends StatelessWidget {
           Expanded(
             child: ListView(
               padding: EdgeInsets.fromLTRB(
-                grid.px(4),
+                grid.gutter,
                 grid.px(3),
-                grid.px(4),
+                grid.gutter,
                 grid.px(8) + MediaQuery.paddingOf(context).bottom,
               ),
               children: const [HomeAdventureCalendar()],

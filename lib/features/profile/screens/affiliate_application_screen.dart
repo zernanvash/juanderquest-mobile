@@ -419,9 +419,8 @@ class _AffiliateApplicationScreenState
                 children: [
                   PixelAppBar(
                     title: 'Be a partner',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
                   Expanded(
                     child: _loading
@@ -431,9 +430,9 @@ class _AffiliateApplicationScreenState
                             key: _formKey,
                             child: ListView(
                               padding: EdgeInsets.fromLTRB(
+                                grid.gutter,
                                 grid.px(4),
-                                grid.px(4),
-                                grid.px(4),
+                                grid.gutter,
                                 grid.px(8) +
                                     MediaQuery.paddingOf(context).bottom,
                               ),
@@ -444,7 +443,8 @@ class _AffiliateApplicationScreenState
                                   _statusCard(context, grid, status),
                                 ],
                                 SizedBox(height: grid.px(3)),
-                                _section(context, grid, 1, 'Business identity', [
+                                _section(
+                                    context, grid, 1, 'Business identity', [
                                   PixelTextField(
                                     controller: _business,
                                     label: 'Business name',
@@ -468,10 +468,12 @@ class _AffiliateApplicationScreenState
                                     onChanged: (_) => setState(() {}),
                                   ),
                                 ]),
-                                _section(context, grid, 2, 'Location & map pin', [
+                                _section(
+                                    context, grid, 2, 'Location & map pin', [
                                   _location(context, grid),
                                 ]),
-                                _section(context, grid, 3, 'Contact & participation', [
+                                _section(context, grid, 3,
+                                    'Contact & participation', [
                                   PixelTextField(
                                     controller: _contact,
                                     label: 'Contact person',
@@ -504,7 +506,8 @@ class _AffiliateApplicationScreenState
                                       for (final m in _contactMethods.entries)
                                         PixelChip(
                                           m.value,
-                                          key: ValueKey('affiliate_contact_${m.key}'),
+                                          key: ValueKey(
+                                              'affiliate_contact_${m.key}'),
                                           style: _contactMethod == m.key
                                               ? PixelBoxStyle.green
                                               : PixelBoxStyle.parchment,
@@ -528,8 +531,8 @@ class _AffiliateApplicationScreenState
                                           'affiliate_goal_${entry.key}'),
                                       value: _goals.contains(entry.key),
                                       label: entry.value,
-                                      onChanged: (selected) => setState(
-                                          () => selected == true
+                                      onChanged: (selected) => setState(() =>
+                                          selected == true
                                               ? _goals.add(entry.key)
                                               : _goals.remove(entry.key)),
                                     ),
@@ -540,7 +543,8 @@ class _AffiliateApplicationScreenState
                                     maxLines: 4,
                                   ),
                                 ]),
-                                _section(context, grid, 4, 'Declaration & submit', [
+                                _section(
+                                    context, grid, 4, 'Declaration & submit', [
                                   PixelCheckbox(
                                     key: const ValueKey(
                                         'affiliate_declaration_checkbox'),
@@ -644,10 +648,8 @@ class _AffiliateApplicationScreenState
                     ),
                     PixelChip(
                       done ? 'DONE' : 'OPEN',
-                      style:
-                          done ? PixelBoxStyle.green : PixelBoxStyle.gold,
-                      textColor:
-                          done ? PixelPalette.white : PixelPalette.ink,
+                      style: done ? PixelBoxStyle.green : PixelBoxStyle.gold,
+                      textColor: done ? PixelPalette.white : PixelPalette.ink,
                     ),
                     SizedBox(width: grid.px(1)),
                     Text(open ? '-' : '+', style: PixelType.title(context)),
@@ -879,8 +881,7 @@ class _AffiliateApplicationScreenState
   }
 
   String? Function(String?) _required(String label) {
-    return (value) => value == null || value.trim().length < 2
-        ? 'Enter $label'
-        : null;
+    return (value) =>
+        value == null || value.trim().length < 2 ? 'Enter $label' : null;
   }
 }

@@ -72,7 +72,8 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Saved Places',
-                    onBack: canPop ? () => Navigator.of(context).maybePop() : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                     actions: [
                       PixelChip('${saved.length} saved',
                           style: PixelBoxStyle.gold),
@@ -114,7 +115,8 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
     if (state.failure != null && saved.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.all(grid.px(4)),
+        padding:
+            EdgeInsets.symmetric(horizontal: grid.gutter, vertical: grid.px(4)),
         children: [
           PixelPanel(
             style: PixelBoxStyle.red,
@@ -165,9 +167,9 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(
-        grid.px(4),
+        grid.gutter,
         grid.px(3),
-        grid.px(4),
+        grid.gutter,
         grid.px(8) + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
@@ -257,9 +259,8 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
               key: const ValueKey('saved_remove'),
               icon: _bookmarkArt,
               semanticLabel: 'Remove saved destination',
-              onPressed: () async => ref
-                  .read(spotDiscoveryProvider.notifier)
-                  .toggleSaved(spot),
+              onPressed: () async =>
+                  ref.read(spotDiscoveryProvider.notifier).toggleSaved(spot),
             ),
           ],
         ),

@@ -132,9 +132,9 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: EdgeInsets.fromLTRB(
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(3),
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(10) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: _buildBody(

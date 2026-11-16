@@ -52,9 +52,8 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Governance',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                     actions: [
                       PixelIconButton(
                         icon: Wave3Art.list,
@@ -71,15 +70,13 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
                         await ref
                             .read(governanceProvider.notifier)
                             .loadGovernanceData();
-                        await ref
-                            .read(walletProvider.notifier)
-                            .fetchWallet();
+                        await ref.read(walletProvider.notifier).fetchWallet();
                       },
                       child: ListView(
                         padding: EdgeInsets.fromLTRB(
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(3),
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(8) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
@@ -210,8 +207,7 @@ class _VoteScreenState extends ConsumerState<VoteScreen> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 PixelChip(prop.category.toUpperCase()),
-                PixelChip(prop.status.toUpperCase(),
-                    style: PixelBoxStyle.slot),
+                PixelChip(prop.status.toUpperCase(), style: PixelBoxStyle.slot),
               ],
             ),
             SizedBox(height: grid.px(2)),

@@ -53,7 +53,8 @@ class _TutorialPreviewScreenState extends ConsumerState<TutorialPreviewScreen> {
                         ),
                         Expanded(
                           child: ListView(
-                            padding: EdgeInsets.all(grid.px(4)),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: grid.gutter, vertical: grid.px(4)),
                             children: [
                               PixelPanel(
                                 key: _hero,

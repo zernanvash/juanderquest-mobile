@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -23,7 +23,8 @@ class CampaignDetailScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<CampaignDetailScreen> createState() => _CampaignDetailScreenState();
+  ConsumerState<CampaignDetailScreen> createState() =>
+      _CampaignDetailScreenState();
 }
 
 class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
@@ -81,9 +82,8 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Event Campaign',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
                   Expanded(
                     child: campaign == null
@@ -99,14 +99,14 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     );
   }
 
-  Widget _missing(
-      BuildContext context, PixelGrid grid, CampaignState state) {
+  Widget _missing(BuildContext context, PixelGrid grid, CampaignState state) {
     if (!state.hasLoaded || state.isLoading) {
       return const Center(child: PixelLoader(label: 'Loading campaign'));
     }
     if (state.failure != null) {
       return ListView(
-        padding: EdgeInsets.all(grid.px(4)),
+        padding:
+            EdgeInsets.symmetric(horizontal: grid.gutter, vertical: grid.px(4)),
         children: [
           PixelPanel(
             style: PixelBoxStyle.red,
@@ -148,9 +148,9 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(
-        grid.px(4),
+        grid.gutter,
         grid.px(3),
-        grid.px(4),
+        grid.gutter,
         grid.px(8) + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
@@ -247,8 +247,7 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
           ),
         ),
         SizedBox(height: grid.px(3)),
-        Text('About this Event Campaign',
-            style: PixelType.title(context)),
+        Text('About this Event Campaign', style: PixelType.title(context)),
         SizedBox(height: grid.px(1)),
         Text(
           campaign.description,
@@ -265,7 +264,8 @@ class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const PixelChip('Check', style: PixelBoxStyle.green,
+                  const PixelChip('Check',
+                      style: PixelBoxStyle.green,
                       textColor: PixelPalette.white),
                   SizedBox(width: grid.px(2)),
                   Expanded(

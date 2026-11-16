@@ -150,7 +150,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('auth_error')), findsOneWidget);
-      expect(find.text('Enter a valid email and your password.'), findsOneWidget);
+      expect(
+          find.text('Enter a valid email and your password.'), findsOneWidget);
     });
 
     testWidgets('switches to sign up tab and validates empty fields and terms',
@@ -169,20 +170,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('auth_display_name')), findsOneWidget);
-      expect(find.byKey(const ValueKey('auth_age_eligibility')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('auth_age_eligibility')), findsOneWidget);
       expect(find.byKey(const ValueKey('auth_terms')), findsOneWidget);
       expect(find.byKey(const ValueKey('auth_create_account')), findsOneWidget);
 
       // Tap submit with empty name
-      await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('auth_create_account')));
       await tester.tap(find.byKey(const ValueKey('auth_create_account')));
       await tester.pumpAndSettle();
-      expect(find.text('Enter your name (at least 2 characters).'), findsOneWidget);
+      expect(find.text('Enter your name (at least 2 characters).'),
+          findsOneWidget);
 
       // Enter name, tap submit without email
       await tester.enterText(
           find.byKey(const ValueKey('auth_display_name')), 'Juan Dela Cruz');
-      await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('auth_create_account')));
       await tester.tap(find.byKey(const ValueKey('auth_create_account')));
       await tester.pumpAndSettle();
       expect(find.text('Enter a valid email address.'), findsOneWidget);
@@ -190,7 +195,8 @@ void main() {
       // Enter email, tap submit without password
       await tester.enterText(
           find.byKey(const ValueKey('auth_email')), 'juan@example.com');
-      await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('auth_create_account')));
       await tester.tap(find.byKey(const ValueKey('auth_create_account')));
       await tester.pumpAndSettle();
       const weak =
@@ -201,9 +207,11 @@ void main() {
       await tester.enterText(
           find.byKey(const ValueKey('auth_password')), 'securepass123');
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('password_strength_meter')), findsOneWidget);
+      expect(find.byKey(const ValueKey('password_strength_meter')),
+          findsOneWidget);
       expect(find.text('Strength: fair'), findsOneWidget);
-      await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('auth_create_account')));
       await tester.tap(find.byKey(const ValueKey('auth_create_account')));
       await tester.pumpAndSettle();
       expect(find.text(weak), findsOneWidget);
@@ -213,11 +221,13 @@ void main() {
           find.byKey(const ValueKey('auth_password')), 'Tr4vel-Bolinao!');
       await tester.pumpAndSettle();
       expect(find.text('Strength: strong'), findsOneWidget);
-      await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('auth_create_account')));
       await tester.tap(find.byKey(const ValueKey('auth_create_account')));
       await tester.pumpAndSettle();
       expect(
-          find.text('Confirm age eligibility and accept the terms to continue.'),
+          find.text(
+              'Confirm age eligibility and accept the terms to continue.'),
           findsOneWidget);
     });
 
@@ -237,7 +247,8 @@ void main() {
         await tester.enterText(
             find.byKey(const ValueKey('auth_password')), 'abc');
         await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('password_strength_meter')), findsOneWidget);
+        expect(find.byKey(const ValueKey('password_strength_meter')),
+            findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     }
@@ -264,13 +275,15 @@ void main() {
           find.byKey(const ValueKey('auth_email')), 'juan@example.com');
       await tester.enterText(
           find.byKey(const ValueKey('auth_password')), 'Tr4vel-Bolinao!');
-      await tester.ensureVisible(find.byKey(const ValueKey('auth_age_eligibility')));
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('auth_age_eligibility')));
       await tester.tap(find.byKey(const ValueKey('auth_age_eligibility')));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const ValueKey('auth_terms')));
       await tester.tap(find.byKey(const ValueKey('auth_terms')));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(const ValueKey('auth_create_account')));
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('auth_create_account')));
       await tester.tap(find.byKey(const ValueKey('auth_create_account')));
       await tester.pumpAndSettle();
       expect(fake.registerCalls, 1);
@@ -302,6 +315,9 @@ void main() {
       await tester.pumpWidget(_buildAuthTestApp(child: const LoginScreen()));
       await tester.pumpAndSettle();
 
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('auth_wallet_sign_in')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('auth_wallet_sign_in')));
       await tester.pumpAndSettle();
 
@@ -355,7 +371,8 @@ void main() {
 
       expect(find.text('UPDATE AVAILABLE!'), findsOneWidget);
       expect(find.text("WHAT'S NEW:"), findsOneWidget);
-      expect(find.text('Awesome pixel redesign features added.'), findsOneWidget);
+      expect(
+          find.text('Awesome pixel redesign features added.'), findsOneWidget);
       expect(find.text('Later'), findsOneWidget);
       expect(find.text('Update Now'), findsOneWidget);
 
@@ -453,7 +470,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Package downloaded and ready to install.'), findsOneWidget);
+      expect(find.text('Package downloaded and ready to install.'),
+          findsOneWidget);
       expect(find.text('Install Now'), findsOneWidget);
       expect(find.text('Re-download update package'), findsOneWidget);
 
@@ -580,7 +598,8 @@ void main() {
       await tester.pump();
 
       expect(find.text('JUANDERQUEST'), findsOneWidget);
-      expect(find.text('Connecting to JuanderQuest services...'), findsOneWidget);
+      expect(
+          find.text('Connecting to JuanderQuest services...'), findsOneWidget);
       expect(find.textContaining('Build 100'), findsOneWidget);
       expect(find.text('APP CONTENT READY'), findsNothing);
     });

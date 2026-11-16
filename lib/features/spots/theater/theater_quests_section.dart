@@ -246,12 +246,16 @@ class _SpotQuestRow extends StatelessWidget {
                         color: PixelPalette.sun,
                       ).copyWith(fontWeight: FontWeight.w700),
                     ),
-                    Text(
-                      ' · $stepLabel',
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.mist,
-                      ).copyWith(fontWeight: FontWeight.w700),
+                    Flexible(
+                      child: Text(
+                        ' · $stepLabel',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.mist,
+                        ).copyWith(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ],
                 ),

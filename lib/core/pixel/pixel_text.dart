@@ -11,12 +11,15 @@ abstract final class PixelType {
     Color color = PixelPalette.ink,
     bool bold = false,
     FontFeature? feature,
+    bool plain = false,
   }) {
     final settings = PixelScope.of(context);
+    // Owner 2026-11-17: plain text (body, small, numbers) uses VT323; the
+    // chosen pixel font stays for headings, which are bigger than body.
     return TextStyle(
-      fontFamily: settings.font,
+      fontFamily: plain ? plainFont : settings.font,
       fontFamilyFallback: PixelFonts.fallback,
-      fontSize: size * settings.fontScale(),
+      fontSize: plain ? size * plainScale : size * settings.fontScale(),
       height: 1.25,
       color: color,
       fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
@@ -25,21 +28,27 @@ abstract final class PixelType {
     );
   }
 
+  static const plainFont = 'VT323';
+
+  /// VT323 draws small for its size; this matches its letters to the
+  /// pixel fonts' size scale.
+  static const plainScale = 1.2;
+
   static TextStyle display(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 20, color: color, bold: true);
+      _base(context, 22, color: color, bold: true);
 
   static TextStyle title(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 16, color: color, bold: true);
+      _base(context, 17, color: color, bold: true);
 
   static TextStyle body(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 13, color: color);
+      _base(context, 13, color: color, plain: true);
 
   static TextStyle small(BuildContext context,
           {Color color = PixelPalette.ink}) =>
-      _base(context, 11, color: color);
+      _base(context, 11.5, color: color, plain: true);
 
   static TextStyle numbers(BuildContext context,
           {Color color = PixelPalette.ink}) =>
@@ -49,6 +58,7 @@ abstract final class PixelType {
         color: color,
         bold: true,
         feature: const FontFeature.tabularFigures(),
+        plain: true,
       );
 }
 
@@ -131,7 +141,8 @@ class PixelText extends StatelessWidget {
   final bool? softWrap;
   final bool isRich;
 
-  static Color tokenColor(String token, [Color defaultColor = PixelPalette.ink]) {
+  static Color tokenColor(String token,
+      [Color defaultColor = PixelPalette.ink]) {
     return switch (token.toLowerCase()) {
       'gold' => PixelPalette.gold,
       'green' => PixelPalette.greenBright,

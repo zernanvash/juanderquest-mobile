@@ -430,9 +430,9 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(3),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(6) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [

@@ -170,9 +170,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       onRefresh: _refresh,
                       child: ListView(
                         padding: EdgeInsets.fromLTRB(
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(3),
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(8) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [

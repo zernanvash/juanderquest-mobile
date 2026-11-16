@@ -120,18 +120,19 @@ class _CulturalQuizDetailScreenState
                 children: [
                   PixelAppBar(
                     title: 'Cultural quiz',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
                   Expanded(
                     child: quizAsync.when(
-                      loading: () =>
-                          const Center(child: PixelLoader(label: 'Loading quiz')),
-                      error: (err, _) => _error(context, grid, 'Failed to load quiz: $err'),
+                      loading: () => const Center(
+                          child: PixelLoader(label: 'Loading quiz')),
+                      error: (err, _) =>
+                          _error(context, grid, 'Failed to load quiz: $err'),
                       data: (quiz) {
                         if (quiz == null) {
-                          return _error(context, grid, 'Cultural Quiz not found.');
+                          return _error(
+                              context, grid, 'Cultural Quiz not found.');
                         }
                         return _quiz(context, grid, quiz);
                       },
@@ -148,7 +149,8 @@ class _CulturalQuizDetailScreenState
 
   Widget _error(BuildContext context, PixelGrid grid, String message) {
     return ListView(
-      padding: EdgeInsets.all(grid.px(4)),
+      padding:
+          EdgeInsets.symmetric(horizontal: grid.gutter, vertical: grid.px(4)),
       children: [
         PixelPanel(
           style: PixelBoxStyle.red,
@@ -179,9 +181,9 @@ class _CulturalQuizDetailScreenState
     final isCooldownActive = quiz.cooldownUntil != null;
     return ListView(
       padding: EdgeInsets.fromLTRB(
-        grid.px(4),
+        grid.gutter,
         grid.px(3),
-        grid.px(4),
+        grid.gutter,
         grid.px(8) + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
@@ -288,22 +290,22 @@ class _CulturalQuizDetailScreenState
     return Padding(
       padding: EdgeInsets.symmetric(vertical: grid.px(2)),
       child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: grid.px(26),
-          child: Text(title, style: PixelType.body(context)),
-        ),
-        SizedBox(width: grid.px(2)),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: PixelType.body(context, color: PixelPalette.slate),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: grid.px(26),
+            child: Text(title, style: PixelType.body(context)),
           ),
-        ),
-      ],
-    ),
+          SizedBox(width: grid.px(2)),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

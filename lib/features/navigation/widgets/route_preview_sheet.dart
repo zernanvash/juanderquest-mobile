@@ -88,8 +88,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
   List<double> _thinnedRoute = const [];
   List<double> _cachedDirectRoute = const [];
 
-  static List<double> _thinCoords(List<LatLng> coords,
-      {int maxPoints = 200}) {
+  static List<double> _thinCoords(List<LatLng> coords, {int maxPoints = 200}) {
     if (coords.isEmpty) return const [];
     final n = coords.length;
     if (n <= maxPoints) {
@@ -457,8 +456,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
     final trail = navState.selectedTrail;
     if (!identical(route?.coordinates, _lastRouteCoordsRef)) {
       _lastRouteCoordsRef = route?.coordinates;
-      _thinnedRoute =
-          route != null ? _thinCoords(route.coordinates) : const [];
+      _thinnedRoute = route != null ? _thinCoords(route.coordinates) : const [];
       if (trail == null && _thinnedRoute.isNotEmpty) {
         _cachedDirectRoute = _thinnedRoute;
       }
@@ -658,86 +656,89 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet>
                         itemCount: cardCount,
                         onPageChanged: (p) => _onPageChanged(p, sortedTrails),
                         itemBuilder: (context, index) {
-                        final thumbSize = isShort ? 48.0 : 68.0;
-                        if (index == 0) {
-                          final detourCount = navState.selectedDetours.length;
-                          final meta = detourCount > 0
-                              ? '$detourCount DETOUR${detourCount > 1 ? 'S' : ''}'
-                              : 'FASTEST';
+                          final thumbSize = isShort ? 48.0 : 68.0;
+                          if (index == 0) {
+                            final detourCount = navState.selectedDetours.length;
+                            final meta = detourCount > 0
+                                ? '$detourCount DETOUR${detourCount > 1 ? 'S' : ''}'
+                                : 'FASTEST';
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              child: _DirectCarouselCard(
+                                key: const ValueKey('nav_route_direct'),
+                                meta: meta,
+                                picked: navState.selectedTrail == null,
+                                thumbSize: thumbSize,
+                                routePoints: directRoutePoints,
+                                onTap: () {
+                                  if (_centredPage != 0) {
+                                    _jumpToCard(0);
+                                  } else if (navState.selectedTrail != null) {
+                                    widget.onSelectDirect();
+                                  }
+                                },
+                              ),
+                            );
+                          }
+
+                          final trailIdx = index - 1;
+                          if (trailIdx < sortedTrails.length) {
+                            final t = sortedTrails[trailIdx];
+                            final isPicked = navState.selectedTrail?.id == t.id;
+                            final isCentredLocked =
+                                !t.isUnlocked && _centredPage == index;
+                            final flatStops = isPicked &&
+                                    navState.selectedTrail != null &&
+                                    navState.selectedTrail!.stops.isNotEmpty
+                                ? <double>[
+                                    for (final s in navState.selectedTrail!
+                                        .stops) ...[s.lng, s.lat],
+                                  ]
+                                : const <double>[];
+                            // Until the trail's own route arrives, navState.route is
+                            // still the direct one; don't draw it on the trail card.
+                            final trailRoutePoints = isPicked &&
+                                    _thinnedRoute.isNotEmpty &&
+                                    !identical(
+                                        _thinnedRoute, _cachedDirectRoute)
+                                ? _thinnedRoute
+                                : flatStops;
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              child: _TrailCarouselCard(
+                                key: ValueKey('nav_route_trail_${t.id}'),
+                                trail: t,
+                                picked: isPicked,
+                                centredLocked: isCentredLocked,
+                                thumbSize: thumbSize,
+                                durationLabel:
+                                    _formatTrailDuration(t.totalMinutes),
+                                kmLabel: '${_formatKm(t.totalKm)} KM',
+                                routePoints: trailRoutePoints,
+                                stopPoints: flatStops,
+                                onTap: () {
+                                  if (_centredPage != index) {
+                                    _jumpToCard(index);
+                                  } else {
+                                    widget.onInspectTrail(t);
+                                  }
+                                },
+                              ),
+                            );
+                          }
+
+                          // Ghost card (loading / error / empty)
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: _DirectCarouselCard(
-                              key: const ValueKey('nav_route_direct'),
-                              meta: meta,
-                              picked: navState.selectedTrail == null,
-                              thumbSize: thumbSize,
-                              routePoints: directRoutePoints,
-                              onTap: () {
-                                if (_centredPage != 0) {
-                                  _jumpToCard(0);
-                                } else if (navState.selectedTrail != null) {
-                                  widget.onSelectDirect();
-                                }
-                              },
+                            child: _GhostCarouselCard(
+                              isLoading: navState.isLoadingTrails,
+                              error: navState.trailsError,
+                              onRetry: widget.onRetryTrails ?? widget.onRetry,
                             ),
                           );
-                        }
-
-                        final trailIdx = index - 1;
-                        if (trailIdx < sortedTrails.length) {
-                          final t = sortedTrails[trailIdx];
-                          final isPicked = navState.selectedTrail?.id == t.id;
-                          final isCentredLocked =
-                              !t.isUnlocked && _centredPage == index;
-                          final flatStops = isPicked &&
-                                  navState.selectedTrail != null &&
-                                  navState.selectedTrail!.stops.isNotEmpty
-                              ? <double>[
-                                  for (final s in navState.selectedTrail!.stops)
-                                    ...[s.lng, s.lat],
-                                ]
-                              : const <double>[];
-                          // Until the trail's own route arrives, navState.route is
-                          // still the direct one; don't draw it on the trail card.
-                          final trailRoutePoints = isPicked &&
-                                  _thinnedRoute.isNotEmpty &&
-                                  !identical(_thinnedRoute, _cachedDirectRoute)
-                              ? _thinnedRoute
-                              : flatStops;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: _TrailCarouselCard(
-                              key: ValueKey('nav_route_trail_${t.id}'),
-                              trail: t,
-                              picked: isPicked,
-                              centredLocked: isCentredLocked,
-                              thumbSize: thumbSize,
-                              durationLabel:
-                                  _formatTrailDuration(t.totalMinutes),
-                              kmLabel: '${_formatKm(t.totalKm)} KM',
-                              routePoints: trailRoutePoints,
-                              stopPoints: flatStops,
-                              onTap: () {
-                                if (_centredPage != index) {
-                                  _jumpToCard(index);
-                                } else {
-                                  widget.onInspectTrail(t);
-                                }
-                              },
-                            ),
-                          );
-                        }
-
-                        // Ghost card (loading / error / empty)
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: _GhostCarouselCard(
-                            isLoading: navState.isLoadingTrails,
-                            error: navState.trailsError,
-                            onRetry: widget.onRetryTrails ?? widget.onRetry,
-                          ),
-                        );
-                      },
+                        },
                       ),
                     ),
                   ),
@@ -1005,8 +1006,7 @@ class _TrailCarouselCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        centredLocked ? PixelPalette.sun : PixelPalette.ink;
+    final borderColor = centredLocked ? PixelPalette.sun : PixelPalette.ink;
     final price = trail.unlockRule.pricePoints ?? 0;
 
     return GestureDetector(
@@ -1050,96 +1050,103 @@ class _TrailCarouselCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _CardChip(
-                            label: trail.tier.isHiyas ? 'HIYAS' : 'STARTER',
-                            bg: trail.tier.isHiyas
-                                ? PixelPalette.sunLight
-                                : PixelPalette.wood,
-                            fg: trail.tier.isHiyas
-                                ? PixelPalette.ink
-                                : PixelPalette.paper,
-                          ),
-                          if (trail.passesHere) ...[
-                            const SizedBox(width: 4),
-                            const _CardChip(
-                              label: 'PASSES HERE',
-                              bg: PixelPalette.paper,
-                              fg: PixelPalette.ink,
-                            ),
-                          ],
-                          const SizedBox(width: 4),
-                          if (trail.isUnlocked)
-                            const _CardChip(
-                              label: 'UNLOCKED',
-                              bg: PixelPalette.green,
-                              fg: PixelPalette.paper,
-                            )
-                          else
-                            _CardChip(
-                              label: price == 0 ? 'FREE' : '$price',
-                              bg: PixelPalette.paper,
-                              fg: PixelPalette.ink,
-                              leading: const NavPixelIcon(
-                                NavPixelArt.lock,
-                                size: 10,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: FittedBox(
+                          FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  '${trail.stopCount} STOPS · $durationLabel',
-                                  style: PixelType.small(
-                                    context,
-                                    color: PixelPalette.ink,
-                                  ),
-                                  maxLines: 1,
+                                _CardChip(
+                                  label:
+                                      trail.tier.isHiyas ? 'HIYAS' : 'STARTER',
+                                  bg: trail.tier.isHiyas
+                                      ? PixelPalette.sunLight
+                                      : PixelPalette.wood,
+                                  fg: trail.tier.isHiyas
+                                      ? PixelPalette.ink
+                                      : PixelPalette.paper,
                                 ),
-                                Text(
-                                  kmLabel,
-                                  style: PixelType.small(
-                                    context,
-                                    color: PixelPalette.slate,
+                                if (trail.passesHere) ...[
+                                  const SizedBox(width: 4),
+                                  const _CardChip(
+                                    label: 'PASSES HERE',
+                                    bg: PixelPalette.paper,
+                                    fg: PixelPalette.ink,
                                   ),
-                                  maxLines: 1,
-                                ),
+                                ],
+                                const SizedBox(width: 4),
+                                if (trail.isUnlocked)
+                                  const _CardChip(
+                                    label: 'UNLOCKED',
+                                    bg: PixelPalette.green,
+                                    fg: PixelPalette.paper,
+                                  )
+                                else
+                                  _CardChip(
+                                    label: price == 0 ? 'FREE' : '$price',
+                                    bg: PixelPalette.paper,
+                                    fg: PixelPalette.ink,
+                                    leading: const NavPixelIcon(
+                                      NavPixelArt.lock,
+                                      size: 10,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
-                        ),
-                          if (trail.rewardPoints > 0) ...[
-                            const SizedBox(width: 4),
-                            _CardChip(
-                              label: '+${trail.rewardPoints} PTS',
-                              bg: PixelPalette.sunLight,
-                              fg: PixelPalette.ink,
-                            ),
-                          ],
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${trail.stopCount} STOPS · $durationLabel',
+                                        style: PixelType.small(
+                                          context,
+                                          color: PixelPalette.ink,
+                                        ),
+                                        maxLines: 1,
+                                      ),
+                                      Text(
+                                        kmLabel,
+                                        style: PixelType.small(
+                                          context,
+                                          color: PixelPalette.slate,
+                                        ),
+                                        maxLines: 1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (trail.rewardPoints > 0) ...[
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: _CardChip(
+                                      label: '+${trail.rewardPoints} PTS',
+                                      bg: PixelPalette.sunLight,
+                                      fg: PixelPalette.ink,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
             ],
           ),
         ),

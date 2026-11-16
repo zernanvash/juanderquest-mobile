@@ -156,9 +156,7 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
       _createError = null;
     });
     try {
-      await ref
-          .read(trailsApiProvider)
-          .createPersonalTrail(
+      await ref.read(trailsApiProvider).createPersonalTrail(
             idempotencyKey: _createKey,
             text: _text.text,
             themes: _themes.toList(),
@@ -208,9 +206,8 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Trails',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
@@ -229,9 +226,9 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(3),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: _tab == 2
@@ -273,8 +270,8 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
     final shown = _tab == 0
         ? items.where((t) => t.tier != TrailTier.personal).toList()
         : items
-              .where((t) => t.tier == TrailTier.personal || t.isUnlocked)
-              .toList();
+            .where((t) => t.tier == TrailTier.personal || t.isUnlocked)
+            .toList();
     if (shown.isEmpty) {
       return [
         PixelPanel(
@@ -428,8 +425,8 @@ class _TrailCard extends StatelessWidget {
     final status = trail.isUnlocked
         ? 'START'
         : (trail.unlockRule.type == 'free' || price == 0)
-        ? 'FREE'
-        : '$price PTS';
+            ? 'FREE'
+            : '$price PTS';
     final hours = (trail.totalMinutes / 60).toStringAsFixed(1);
     return Semantics(
       button: true,
@@ -439,9 +436,8 @@ class _TrailCard extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: busy ? null : onTap,
         child: PixelPanel(
-          style: trail.tier.isHiyas
-              ? PixelBoxStyle.wood
-              : PixelBoxStyle.parchment,
+          style:
+              trail.tier.isHiyas ? PixelBoxStyle.wood : PixelBoxStyle.parchment,
           child: Row(
             children: [
               Expanded(

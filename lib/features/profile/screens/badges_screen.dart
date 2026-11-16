@@ -63,7 +63,8 @@ class BadgesScreen extends ConsumerWidget {
     final dailyAsync = ref.watch(homeDailyProvider);
     // Owner 2026-11-08: the real server badges (the same ones you can equip on
     // your profile), not a list worked out on the phone.
-    final achievements = ref.watch(achievementsProvider).valueOrNull ?? const AchievementsData();
+    final achievements =
+        ref.watch(achievementsProvider).valueOrNull ?? const AchievementsData();
 
     final badges = [
       for (final b in achievements.catalog)
@@ -73,7 +74,8 @@ class BadgesScreen extends ConsumerWidget {
           state: achievements.has(b.id) ? BadgeState.earned : BadgeState.locked,
         ),
     ];
-    final earnedCount = badges.where((b) => b.state == BadgeState.earned).length;
+    final earnedCount =
+        badges.where((b) => b.state == BadgeState.earned).length;
 
     return Theme(
       data: AppTheme.pixel,
@@ -98,15 +100,17 @@ class BadgesScreen extends ConsumerWidget {
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(3),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [
                         dailyAsync.when(
-                          data: (daily) => _stampsSummaryCard(context, grid, daily, earnedCount, badges.length),
-                          loading: () => const Center(child: PixelLoader(label: 'Loading stamps')),
+                          data: (daily) => _stampsSummaryCard(
+                              context, grid, daily, earnedCount, badges.length),
+                          loading: () => const Center(
+                              child: PixelLoader(label: 'Loading stamps')),
                           error: (_, __) => _stampsSummaryCard(
                             context,
                             grid,
@@ -188,11 +192,13 @@ class BadgesScreen extends ConsumerWidget {
                     children: [
                       Text(
                         '$stamps',
-                        style: PixelType.numbers(context, color: PixelPalette.ink),
+                        style:
+                            PixelType.numbers(context, color: PixelPalette.ink),
                       ),
                       Text(
                         stamps == 1 ? 'Stamp' : 'Stamps',
-                        style: PixelType.small(context, color: PixelPalette.woodNight),
+                        style: PixelType.small(context,
+                            color: PixelPalette.woodNight),
                       ),
                     ],
                   ),
@@ -207,11 +213,13 @@ class BadgesScreen extends ConsumerWidget {
                     children: [
                       Text(
                         '$streak ${streak == 1 ? 'Day' : 'Days'}',
-                        style: PixelType.numbers(context, color: PixelPalette.greenDark),
+                        style: PixelType.numbers(context,
+                            color: PixelPalette.greenDark),
                       ),
                       Text(
                         'Streak',
-                        style: PixelType.small(context, color: PixelPalette.slate),
+                        style:
+                            PixelType.small(context, color: PixelPalette.slate),
                       ),
                     ],
                   ),
@@ -226,11 +234,13 @@ class BadgesScreen extends ConsumerWidget {
                     children: [
                       Text(
                         '$earnedBadges / $totalBadges',
-                        style: PixelType.numbers(context, color: PixelPalette.ink),
+                        style:
+                            PixelType.numbers(context, color: PixelPalette.ink),
                       ),
                       Text(
                         totalBadges == 1 ? 'Badge' : 'Badges',
-                        style: PixelType.small(context, color: PixelPalette.slate),
+                        style:
+                            PixelType.small(context, color: PixelPalette.slate),
                       ),
                     ],
                   ),

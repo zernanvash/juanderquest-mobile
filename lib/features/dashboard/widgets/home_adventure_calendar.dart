@@ -307,31 +307,37 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 1,
+                              Flexible(
+                                flex: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  color: _badgeColor(item.kind),
+                                  child: item.rewardMjdq != null
+                                      ? MjdqAmount(
+                                          item.rewardMjdq!,
+                                          sign: true,
+                                          style: PixelType.small(
+                                            context,
+                                            color: PixelPalette.ink,
+                                          ).copyWith(
+                                              fontWeight: FontWeight.w700),
+                                        )
+                                      : Text(
+                                          item.shortBadge,
+                                          style: PixelType.small(
+                                            context,
+                                            color: PixelPalette.ink,
+                                          ).copyWith(
+                                              fontWeight: FontWeight.w700),
+                                        ),
                                 ),
-                                color: _badgeColor(item.kind),
-                                child: item.rewardMjdq != null
-                                    ? MjdqAmount(
-                                        item.rewardMjdq!,
-                                        sign: true,
-                                        style: PixelType.small(
-                                          context,
-                                          color: PixelPalette.ink,
-                                        ).copyWith(fontWeight: FontWeight.w700),
-                                      )
-                                    : Text(
-                                        item.shortBadge,
-                                        style: PixelType.small(
-                                          context,
-                                          color: PixelPalette.ink,
-                                        ).copyWith(fontWeight: FontWeight.w700),
-                                      ),
                               ),
                               const SizedBox(width: 6),
                               Expanded(
+                                flex: 3,
                                 child: Text(
                                   item.title,
                                   maxLines: 1,

@@ -62,9 +62,9 @@ class AffiliatePendingScreen extends ConsumerWidget {
                         data: (hub) => ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: EdgeInsets.fromLTRB(
+                            grid.gutter,
                             grid.px(4),
-                            grid.px(4),
-                            grid.px(4),
+                            grid.gutter,
                             grid.px(8) + MediaQuery.paddingOf(context).bottom,
                           ),
                           children: _body(context, grid, hub),
@@ -148,9 +148,9 @@ class AffiliatePendingScreen extends ConsumerWidget {
       MerchantHubState.rejected => ('Not approved', 'CLOSED'),
       MerchantHubState.approvedMerchant => ('Approved', 'APPROVED'),
       _ => (
-        'In review by tourism team',
-        app['status'] == 'in_review' ? 'IN REVIEW' : 'RECEIVED',
-      ),
+          'In review by tourism team',
+          app['status'] == 'in_review' ? 'IN REVIEW' : 'RECEIVED',
+        ),
     };
     final place = [
       app['municipality'],
@@ -203,7 +203,8 @@ class AffiliatePendingScreen extends ConsumerWidget {
           ),
           SizedBox(height: grid.px(1)),
           for (var i = 0; i < steps.length; i++) ...[
-            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+            if (i > 0)
+              Container(height: grid.unit, color: PixelPalette.paperDim),
             Padding(
               padding: EdgeInsets.symmetric(vertical: grid.px(2)),
               child: Row(
@@ -339,7 +340,8 @@ class AffiliatePendingScreen extends ConsumerWidget {
           ),
           SizedBox(height: grid.px(1)),
           for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+            if (i > 0)
+              Container(height: grid.unit, color: PixelPalette.paperDim),
             Padding(
               padding: EdgeInsets.symmetric(vertical: grid.px(2)),
               child: Text.rich(

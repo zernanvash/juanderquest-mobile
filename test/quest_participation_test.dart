@@ -250,7 +250,7 @@ void main() {
 
     final qrAction = find.byKey(const ValueKey('quest_task_action_1'));
     expect(qrAction, findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1200));
+    await tester.ensureVisible(qrAction);
     await tester.pumpAndSettle();
     await tester.tap(qrAction);
     await tester.pumpAndSettle();
@@ -345,7 +345,7 @@ void main() {
 
     final photoAction = find.byKey(const ValueKey('quest_task_action_1'));
     expect(photoAction, findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1200));
+    await tester.ensureVisible(photoAction);
     await tester.pumpAndSettle();
     await tester.tap(photoAction);
     await tester.pumpAndSettle();

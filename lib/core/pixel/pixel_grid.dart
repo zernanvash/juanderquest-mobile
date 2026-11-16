@@ -293,6 +293,10 @@ class PixelGrid {
   double snap(double v) => (v * dpr).roundToDouble() / dpr;
 
   double px(num artPixels) => artPixels * unit;
+
+  /// Side padding for page content (owner 2026-11-17: more room at the
+  /// screen edges, everywhere).
+  double get gutter => px(7);
 }
 
 abstract interface class PixelSettingsStore {

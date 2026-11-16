@@ -85,7 +85,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                     ),
                     Expanded(
                       child: ListView(
-                        padding: EdgeInsets.all(grid.px(4)),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: grid.gutter, vertical: grid.px(4)),
                         children: [
                           _intro(context, grid),
                           if (!kReleaseMode) ...[
@@ -459,7 +460,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                             ),
                           ),
                           SizedBox(height: grid.px(1)),
-                          Divider(height: grid.px(1), color: PixelPalette.stone),
+                          Divider(
+                              height: grid.px(1), color: PixelPalette.stone),
                           SizedBox(height: grid.px(1)),
                           Text.rich(
                             TextSpan(
@@ -509,7 +511,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                             ),
                           ),
                           SizedBox(height: grid.px(1)),
-                          Divider(height: grid.px(1), color: PixelPalette.stone),
+                          Divider(
+                              height: grid.px(1), color: PixelPalette.stone),
                           SizedBox(height: grid.px(1)),
                           Text(
                             'Click to cast your vote for Cole!',

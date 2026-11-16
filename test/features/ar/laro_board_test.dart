@@ -28,18 +28,21 @@ void main() {
 
   Widget app(LaroBoard board, Size size) => ProviderScope(
         overrides: [
-          laroBoardProvider.overrideWith((ref, key) async => key.startsWith('week:') ? board : const LaroBoard())
+          laroBoardProvider.overrideWith((ref, key) async =>
+              key.startsWith('week:') ? board : const LaroBoard())
         ],
         child: MaterialApp(
           home: MediaQuery(
-            data: MediaQueryData(size: size, textScaler: const TextScaler.linear(2)),
+            data: MediaQueryData(
+                size: size, textScaler: const TextScaler.linear(2)),
             child: const LaroBoardScreen(initialGame: 'pabitin_palayok'),
           ),
         ),
       );
 
   for (final size in const [Size(320, 568), Size(568, 320)]) {
-    testWidgets('the weekly board fits at ${size.width.toInt()}x${size.height.toInt()} with 2x text and shows you',
+    testWidgets(
+        'the weekly board fits at ${size.width.toInt()}x${size.height.toInt()} with 2x text and shows you',
         (tester) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
@@ -47,11 +50,18 @@ void main() {
       await tester.pumpWidget(app(week, size));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      // Bigger plain text (owner 2026-11-17) can push the first row below a
+      // short landscape screen; scroll to it.
+      await tester.scrollUntilVisible(find.text('@clara'), 100,
+          scrollable: find.descendant(
+              of: find.byKey(const ValueKey('laro_board_list')),
+              matching: find.byType(Scrollable)));
       expect(find.text('@clara'), findsOneWidget);
       expect(find.text('4.2 s'), findsOneWidget);
       await tester.scrollUntilVisible(find.textContaining('(you)'), 100,
-          scrollable:
-              find.descendant(of: find.byKey(const ValueKey('laro_board_list')), matching: find.byType(Scrollable)));
+          scrollable: find.descendant(
+              of: find.byKey(const ValueKey('laro_board_list')),
+              matching: find.byType(Scrollable)));
       expect(find.text('15.0 s'), findsOneWidget);
     });
   }

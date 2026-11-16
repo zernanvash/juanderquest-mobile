@@ -51,9 +51,8 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
                 children: [
                   PixelAppBar(
                     title: 'All Proposals',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                     actions: [
                       PixelButton(
                         label: 'Refresh',
@@ -78,7 +77,9 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
                             )
                           : govState.error != null && govState.proposals.isEmpty
                               ? ListView(
-                                  padding: EdgeInsets.all(grid.px(4)),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: grid.gutter,
+                                      vertical: grid.px(4)),
                                   children: [
                                     PixelPanel(
                                       style: PixelBoxStyle.red,
@@ -122,9 +123,9 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
                                     )
                                   : ListView(
                                       padding: EdgeInsets.fromLTRB(
-                                        grid.px(4),
+                                        grid.gutter,
                                         grid.px(3),
-                                        grid.px(4),
+                                        grid.gutter,
                                         grid.px(8) +
                                             MediaQuery.paddingOf(context)
                                                 .bottom,
@@ -146,9 +147,7 @@ class _ProposalListScreenState extends ConsumerState<ProposalListScreen> {
                                               ),
                                               SizedBox(height: grid.px(1)),
                                               for (var i = 0;
-                                                  i <
-                                                      govState
-                                                          .proposals.length;
+                                                  i < govState.proposals.length;
                                                   i++) ...[
                                                 if (i > 0)
                                                   Container(

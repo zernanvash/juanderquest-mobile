@@ -289,8 +289,7 @@ class _SpotDiscoveryStudioScreenState
                               footerBuilder: (draft, media, isVideo) =>
                                   SpotPostcard(
                                 draft: draft,
-                                handle:
-                                    user?.publicHandle ?? user?.displayName,
+                                handle: user?.publicHandle ?? user?.displayName,
                                 coverPath: isVideo ? null : media?.path,
                               ),
                               onDraftChanged: _onDraftChanged,
@@ -523,7 +522,8 @@ class _Celebration extends ConsumerWidget {
     final lat = spot.gpsLat, lng = spot.gpsLng;
     return SingleChildScrollView(
       key: const ValueKey('studio_celebration'),
-      padding: EdgeInsets.all(grid.px(4)),
+      padding:
+          EdgeInsets.symmetric(horizontal: grid.gutter, vertical: grid.px(4)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('Pinned to the Pangasinan atlas',
             textAlign: TextAlign.center,

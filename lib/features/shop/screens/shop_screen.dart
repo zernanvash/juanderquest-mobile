@@ -100,8 +100,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   spacing: PixelGrid.of(context).px(2),
                   runSpacing: PixelGrid.of(context).px(1),
                   children: [
-                    Text('Cost deduction',
-                        style: PixelType.body(context)),
+                    Text('Cost deduction', style: PixelType.body(context)),
                     Text(
                       '-${voucher.costPoints} pts',
                       style: PixelType.numbers(
@@ -327,9 +326,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(3),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [
@@ -352,9 +351,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                         else if (_selectedTab == 2)
                           _teasers(context, grid, cosmeticsState)
                         else
-                          _myItems(context, grid, cosmeticsState,
-                              voucherState, user?.displayName ?? 'Traveler',
-                              user?.avatarUrl),
+                          _myItems(context, grid, cosmeticsState, voucherState,
+                              user?.displayName ?? 'Traveler', user?.avatarUrl),
                       ],
                     ),
                   ),
@@ -405,9 +403,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _categoryCard(context, grid, _categories[a], count)),
+              Expanded(
+                  child: _categoryCard(context, grid, _categories[a], count)),
               SizedBox(width: grid.px(2)),
-              Expanded(child: _categoryCard(context, grid, _categories[b], count)),
+              Expanded(
+                  child: _categoryCard(context, grid, _categories[b], count)),
             ],
           ),
         );
@@ -482,8 +482,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   }
 
   Widget _categoryHeader(BuildContext context, PixelGrid grid) {
-    final title =
-        _categories.firstWhere((c) => c.$1 == _selectedTab).$2;
+    final title = _categories.firstWhere((c) => c.$1 == _selectedTab).$2;
     return Row(
       children: [
         PixelButton(
@@ -549,8 +548,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   /// Plan 95: the 5th storefront card opens the merchant journey at the
   /// step this traveler is on.
   Widget _merchantHubCard(BuildContext context, PixelGrid grid) {
-    final hub =
-        ref.watch(merchantHubStatusProvider).valueOrNull ?? MerchantHubStatus.none;
+    final hub = ref.watch(merchantHubStatusProvider).valueOrNull ??
+        MerchantHubStatus.none;
     return GestureDetector(
       key: const ValueKey('shop_merchant_hub_button'),
       onTap: () {
@@ -615,9 +614,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       );
     }
     final live = _liveGrid ?? !MediaQuery.of(context).disableAnimations;
-    final visibleItems = state.items
-        .where((item) => item.kind == _filter)
-        .toList();
+    final visibleItems =
+        state.items.where((item) => item.kind == _filter).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -736,8 +734,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             ),
           ),
           if (item.equipped)
-            const PixelChip('Equipped', style: PixelBoxStyle.green,
-                textColor: PixelPalette.white)
+            const PixelChip('Equipped',
+                style: PixelBoxStyle.green, textColor: PixelPalette.white)
           else
             const PixelChip('PREVIEW >', style: PixelBoxStyle.parchment),
         ],
@@ -949,8 +947,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                           context.go('/profile');
                         },
                         child: Padding(
-                          padding: EdgeInsets.all(
-                              PixelGrid.of(context).px(2)),
+                          padding: EdgeInsets.all(PixelGrid.of(context).px(2)),
                           child: Text(
                             'View on my profile',
                             style: PixelType.body(
@@ -1000,8 +997,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         action: PixelButton(
           label: 'Refresh',
           variant: PixelButtonVariant.secondary,
-          onPressed: () =>
-              ref.read(voucherProvider.notifier).fetchVouchers(),
+          onPressed: () => ref.read(voucherProvider.notifier).fetchVouchers(),
         ),
       );
     }
@@ -1018,7 +1014,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ),
           SizedBox(height: grid.px(1)),
           for (var i = 0; i < state.vouchers.length; i++) ...[
-            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+            if (i > 0)
+              Container(height: grid.unit, color: PixelPalette.paperDim),
             _voucherCard(context, grid, state.vouchers[i], points),
           ],
         ],
@@ -1055,9 +1052,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     style: PixelBoxStyle.slot),
                 MjdqChip(
                   voucher.costPoints,
-                  style: canAfford
-                      ? PixelBoxStyle.gold
-                      : PixelBoxStyle.slot,
+                  style: canAfford ? PixelBoxStyle.gold : PixelBoxStyle.slot,
                 ),
               ],
             ),
@@ -1115,8 +1110,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     );
   }
 
-  Widget _teasers(
-      BuildContext context, PixelGrid grid, CosmeticsState state) {
+  Widget _teasers(BuildContext context, PixelGrid grid, CosmeticsState state) {
     if (state.isLoading && state.teasers.isEmpty) {
       return const Center(child: PixelLoader(label: 'Loading teasers'));
     }
@@ -1140,7 +1134,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ),
           SizedBox(height: grid.px(1)),
           for (var i = 0; i < state.teasers.length; i++) ...[
-            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+            if (i > 0)
+              Container(height: grid.unit, color: PixelPalette.paperDim),
             _teaserCard(context, grid, state.teasers[i]),
           ],
         ],
@@ -1246,14 +1241,12 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                       GestureDetector(
                         key: ValueKey('shop_owned_${entry.value.item.id}'),
                         behavior: HitTestBehavior.opaque,
-                        onTap: () =>
-                            _showCosmeticPreview(entry.value.item, 0),
+                        onTap: () => _showCosmeticPreview(entry.value.item, 0),
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: grid.px(2)),
                           child: Row(
                             children: [
-                              _cosmeticSwatch(
-                                  context, grid, entry.value.item),
+                              _cosmeticSwatch(context, grid, entry.value.item),
                               SizedBox(width: grid.px(2)),
                               Expanded(
                                 child: Column(
@@ -1363,8 +1356,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               runSpacing: grid.px(1),
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const PixelChip('Active voucher', style: PixelBoxStyle.green,
-                    textColor: PixelPalette.white),
+                const PixelChip('Active voucher',
+                    style: PixelBoxStyle.green, textColor: PixelPalette.white),
                 Text(
                   'Expires in 30 days',
                   style: PixelType.small(context, color: PixelPalette.slate),
@@ -1391,8 +1384,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   key: ValueKey('shop_show_barcode_${redeemed.code}'),
                   label: 'Show Barcode',
                   variant: PixelButtonVariant.secondary,
-                  onPressed: () =>
-                      _showRedeemedVoucherModal(context, redeemed),
+                  onPressed: () => _showRedeemedVoucherModal(context, redeemed),
                 ),
               ],
             ),

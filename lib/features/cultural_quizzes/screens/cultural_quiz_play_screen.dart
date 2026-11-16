@@ -78,7 +78,8 @@ class _CulturalQuizPlayScreenState
 
   bool _isQuestionAnswered(CulturalQuizQuestionModel q) {
     if (q.questionType == 'sequence_order') {
-      return (_orderedOptionIdsByQuestion[q.id]?.length ?? 0) == q.options.length;
+      return (_orderedOptionIdsByQuestion[q.id]?.length ?? 0) ==
+          q.options.length;
     }
     return _selectedOptionByQuestion.containsKey(q.id);
   }
@@ -87,13 +88,12 @@ class _CulturalQuizPlayScreenState
     if (_fiftyFiftyUsed || _isUsingLifeline) return;
     setState(() => _isUsingLifeline = true);
     try {
-      final eliminated = await ref
-          .read(culturalQuizControllerProvider.notifier)
-          .useFiftyFifty(
-            quizId: widget.quizId,
-            attemptId: widget.session.attempt.id,
-            questionId: question.id,
-          );
+      final eliminated =
+          await ref.read(culturalQuizControllerProvider.notifier).useFiftyFifty(
+                quizId: widget.quizId,
+                attemptId: widget.session.attempt.id,
+                questionId: question.id,
+              );
       if (!mounted) return;
       setState(() {
         _fiftyFiftyUsed = true;
@@ -124,7 +124,8 @@ class _CulturalQuizPlayScreenState
     });
 
     try {
-      final hasSequence = questions.any((q) => q.questionType == 'sequence_order');
+      final hasSequence =
+          questions.any((q) => q.questionType == 'sequence_order');
       final controller = ref.read(culturalQuizControllerProvider.notifier);
       final result = hasSequence
           ? await controller.submitAttemptAnswers(
@@ -180,8 +181,10 @@ class _CulturalQuizPlayScreenState
   Widget build(BuildContext context) {
     final questions = widget.session.questions;
     final currentQ = questions[_currentIndex];
-    final minutes = _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final minutes =
+        _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds =
+        _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
     return Theme(
       data: AppTheme.pixel,
       child: Builder(
@@ -198,16 +201,15 @@ class _CulturalQuizPlayScreenState
                   PixelAppBar(
                     title:
                         'Question ${_currentIndex + 1} of ${questions.length}',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(3),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(4),
                       ),
                       children: [
@@ -215,8 +217,7 @@ class _CulturalQuizPlayScreenState
                           children: [
                             Expanded(
                               child: PixelProgressBar(
-                                value:
-                                    (_currentIndex + 1) / questions.length,
+                                value: (_currentIndex + 1) / questions.length,
                                 segments: questions.length,
                               ),
                             ),
@@ -257,7 +258,8 @@ class _CulturalQuizPlayScreenState
                                 (currentQ.questionType == 'multiple_choice' ||
                                     currentQ.questionType == 'photo_clue'))
                               PixelButton(
-                                key: const ValueKey('quiz_lifeline_fifty_fifty'),
+                                key:
+                                    const ValueKey('quiz_lifeline_fifty_fifty'),
                                 label: _isUsingLifeline ? '...' : '50/50',
                                 variant: PixelButtonVariant.secondary,
                                 onPressed: _isUsingLifeline
@@ -366,7 +368,8 @@ class _CulturalQuizPlayScreenState
                     child: Center(
                       child: Text(
                         'Photo clue unavailable',
-                        style: PixelType.small(context, color: PixelPalette.slate),
+                        style:
+                            PixelType.small(context, color: PixelPalette.slate),
                       ),
                     ),
                   ),
@@ -512,13 +515,15 @@ class _CulturalQuizPlayScreenState
                   });
                 },
                 child: PixelPanel(
-                  style: isPicked ? PixelBoxStyle.green : PixelBoxStyle.parchment,
+                  style:
+                      isPicked ? PixelBoxStyle.green : PixelBoxStyle.parchment,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       PixelChip(
                         isPicked ? '${rankIndex + 1}' : '?',
-                        style: isPicked ? PixelBoxStyle.gold : PixelBoxStyle.slot,
+                        style:
+                            isPicked ? PixelBoxStyle.gold : PixelBoxStyle.slot,
                       ),
                       SizedBox(width: grid.px(2)),
                       Expanded(
@@ -526,7 +531,9 @@ class _CulturalQuizPlayScreenState
                           opt.optionText,
                           style: PixelType.body(
                             context,
-                            color: isPicked ? PixelPalette.white : PixelPalette.ink,
+                            color: isPicked
+                                ? PixelPalette.white
+                                : PixelPalette.ink,
                           ),
                         ),
                       ),

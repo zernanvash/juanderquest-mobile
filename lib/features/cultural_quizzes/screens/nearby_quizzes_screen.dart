@@ -65,190 +65,193 @@ class _NearbyQuizzesScreenState extends ConsumerState<NearbyQuizzesScreen> {
                     .refreshFromHome(force: true),
                 child: ListView(
                   padding: EdgeInsets.fromLTRB(
-                    grid.px(4),
+                    grid.gutter,
                     grid.px(3),
-                    grid.px(4),
+                    grid.gutter,
                     grid.px(8) + MediaQuery.paddingOf(context).bottom,
                   ),
-            children: [
-              _RadarHeaderPanel(
-                inRangeCount: inRange.length,
-                completedCount: completed.length,
-                originLabel: radar.originLabel,
-                loading: radar.loading,
-                onRefresh: () => ref
-                    .read(quizRadarProvider.notifier)
-                    .refreshFromHome(force: true),
+                  children: [
+                    _RadarHeaderPanel(
+                      inRangeCount: inRange.length,
+                      completedCount: completed.length,
+                      originLabel: radar.originLabel,
+                      loading: radar.loading,
+                      onRefresh: () => ref
+                          .read(quizRadarProvider.notifier)
+                          .refreshFromHome(force: true),
+                    ),
+                    SizedBox(height: grid.px(3)),
+                    if (radar.error != null) ...[
+                      PixelPanel(
+                        style: PixelBoxStyle.parchment,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              radar.error!,
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.redDeep,
+                              ),
+                            ),
+                            SizedBox(height: grid.px(2)),
+                            PixelButton(
+                              label: 'RETRY RADAR',
+                              variant: PixelButtonVariant.secondary,
+                              style: PixelBoxStyle.gold,
+                              onPressed: () => ref
+                                  .read(quizRadarProvider.notifier)
+                                  .refreshFromHome(force: true),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: grid.px(3)),
+                    ],
+                    if (radar.loading && radar.items.isEmpty) ...[
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child:
+                              PixelLoader(label: 'Scanning nearby quizzes...'),
+                        ),
+                      ),
+                    ] else if (inRange.isEmpty &&
+                        approaching.isEmpty &&
+                        completed.isEmpty) ...[
+                      PixelPanel(
+                        key: const ValueKey('quiz_radar_empty'),
+                        style: PixelBoxStyle.parchment,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const PixelSectionTitle(
+                              'No cultural quizzes nearby yet',
+                              icon: DesignerArt.questionMark,
+                            ),
+                            SizedBox(height: grid.px(1)),
+                            Text(
+                              'Visit heritage spots across Pangasinan to unlock on-site quizzes and earn Explorer XP.',
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.slate,
+                              ),
+                            ),
+                            SizedBox(height: grid.px(2)),
+                            PixelButton(
+                              label: 'EXPLORE SPOTS',
+                              variant: PixelButtonVariant.secondary,
+                              style: PixelBoxStyle.gold,
+                              expand: true,
+                              onPressed: () => context.go('/explore'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      if (inRange.isNotEmpty) ...[
+                        PixelPanel(
+                          style: PixelBoxStyle.parchment,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              PixelSectionTitle(
+                                'Ready to play',
+                                key: const ValueKey('quiz_radar_section_ready'),
+                                icon: DesignerArt.questMarker,
+                                value: '${inRange.length}',
+                                valueColor: PixelPalette.greenDark,
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              for (var i = 0; i < inRange.length; i++) ...[
+                                if (i > 0)
+                                  Container(
+                                    height: grid.unit,
+                                    color: PixelPalette.paperDim,
+                                  ),
+                                _QuizRadarRow(
+                                  quiz: inRange[i],
+                                  mode: _QuizCardMode.ready,
+                                  onAction: () => context.push(
+                                      '/cultural-quizzes/${inRange[i].quizId}'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: grid.px(3)),
+                      ],
+                      if (approaching.isNotEmpty) ...[
+                        PixelPanel(
+                          style: PixelBoxStyle.parchment,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              PixelSectionTitle(
+                                'Walk closer',
+                                key: const ValueKey(
+                                    'quiz_radar_section_approaching'),
+                                icon: DesignerArt.navMap,
+                                value: '${approaching.length}',
+                                valueColor: PixelPalette.greenDark,
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              for (var i = 0; i < approaching.length; i++) ...[
+                                if (i > 0)
+                                  Container(
+                                    height: grid.unit,
+                                    color: PixelPalette.paperDim,
+                                  ),
+                                _QuizRadarRow(
+                                  quiz: approaching[i],
+                                  mode: _QuizCardMode.approaching,
+                                  onAction: () => context.push(
+                                    '/navigate?name=${Uri.encodeComponent(approaching[i].destinationName)}&address=${Uri.encodeComponent(approaching[i].municipality)}',
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: grid.px(3)),
+                      ],
+                      if (completed.isNotEmpty) ...[
+                        PixelPanel(
+                          style: PixelBoxStyle.parchment,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              PixelSectionTitle(
+                                'Completed',
+                                key: const ValueKey(
+                                    'quiz_radar_section_completed'),
+                                icon: DesignerArt.plazaTrophy,
+                                value: '${completed.length}',
+                                valueColor: PixelPalette.greenDark,
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              for (var i = 0; i < completed.length; i++) ...[
+                                if (i > 0)
+                                  Container(
+                                    height: grid.unit,
+                                    color: PixelPalette.paperDim,
+                                  ),
+                                _QuizRadarRow(
+                                  quiz: completed[i],
+                                  mode: _QuizCardMode.completed,
+                                  onAction: () => context.push(
+                                      '/cultural-quizzes/${completed[i].quizId}'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
               ),
-              SizedBox(height: grid.px(3)),
-              if (radar.error != null) ...[
-                PixelPanel(
-                  style: PixelBoxStyle.parchment,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        radar.error!,
-                        style: PixelType.body(
-                          context,
-                          color: PixelPalette.redDeep,
-                        ),
-                      ),
-                      SizedBox(height: grid.px(2)),
-                      PixelButton(
-                        label: 'RETRY RADAR',
-                        variant: PixelButtonVariant.secondary,
-                        style: PixelBoxStyle.gold,
-                        onPressed: () => ref
-                            .read(quizRadarProvider.notifier)
-                            .refreshFromHome(force: true),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: grid.px(3)),
-              ],
-              if (radar.loading && radar.items.isEmpty) ...[
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: PixelLoader(label: 'Scanning nearby quizzes...'),
-                  ),
-                ),
-              ] else if (inRange.isEmpty &&
-                  approaching.isEmpty &&
-                  completed.isEmpty) ...[
-                PixelPanel(
-                  key: const ValueKey('quiz_radar_empty'),
-                  style: PixelBoxStyle.parchment,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const PixelSectionTitle(
-                        'No cultural quizzes nearby yet',
-                        icon: DesignerArt.questionMark,
-                      ),
-                      SizedBox(height: grid.px(1)),
-                      Text(
-                        'Visit heritage spots across Pangasinan to unlock on-site quizzes and earn Explorer XP.',
-                        style: PixelType.body(
-                          context,
-                          color: PixelPalette.slate,
-                        ),
-                      ),
-                      SizedBox(height: grid.px(2)),
-                      PixelButton(
-                        label: 'EXPLORE SPOTS',
-                        variant: PixelButtonVariant.secondary,
-                        style: PixelBoxStyle.gold,
-                        expand: true,
-                        onPressed: () => context.go('/explore'),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                if (inRange.isNotEmpty) ...[
-                  PixelPanel(
-                    style: PixelBoxStyle.parchment,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        PixelSectionTitle(
-                          'Ready to play',
-                          key: const ValueKey('quiz_radar_section_ready'),
-                          icon: DesignerArt.questMarker,
-                          value: '${inRange.length}',
-                          valueColor: PixelPalette.greenDark,
-                        ),
-                        SizedBox(height: grid.px(1)),
-                        for (var i = 0; i < inRange.length; i++) ...[
-                          if (i > 0)
-                            Container(
-                              height: grid.unit,
-                              color: PixelPalette.paperDim,
-                            ),
-                          _QuizRadarRow(
-                            quiz: inRange[i],
-                            mode: _QuizCardMode.ready,
-                            onAction: () => context
-                                .push('/cultural-quizzes/${inRange[i].quizId}'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: grid.px(3)),
-                ],
-                if (approaching.isNotEmpty) ...[
-                  PixelPanel(
-                    style: PixelBoxStyle.parchment,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        PixelSectionTitle(
-                          'Walk closer',
-                          key: const ValueKey('quiz_radar_section_approaching'),
-                          icon: DesignerArt.navMap,
-                          value: '${approaching.length}',
-                          valueColor: PixelPalette.greenDark,
-                        ),
-                        SizedBox(height: grid.px(1)),
-                        for (var i = 0; i < approaching.length; i++) ...[
-                          if (i > 0)
-                            Container(
-                              height: grid.unit,
-                              color: PixelPalette.paperDim,
-                            ),
-                          _QuizRadarRow(
-                            quiz: approaching[i],
-                            mode: _QuizCardMode.approaching,
-                            onAction: () => context.push(
-                              '/navigate?name=${Uri.encodeComponent(approaching[i].destinationName)}&address=${Uri.encodeComponent(approaching[i].municipality)}',
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: grid.px(3)),
-                ],
-                if (completed.isNotEmpty) ...[
-                  PixelPanel(
-                    style: PixelBoxStyle.parchment,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        PixelSectionTitle(
-                          'Completed',
-                          key: const ValueKey('quiz_radar_section_completed'),
-                          icon: DesignerArt.plazaTrophy,
-                          value: '${completed.length}',
-                          valueColor: PixelPalette.greenDark,
-                        ),
-                        SizedBox(height: grid.px(1)),
-                        for (var i = 0; i < completed.length; i++) ...[
-                          if (i > 0)
-                            Container(
-                              height: grid.unit,
-                              color: PixelPalette.paperDim,
-                            ),
-                          _QuizRadarRow(
-                            quiz: completed[i],
-                            mode: _QuizCardMode.completed,
-                            onAction: () => context.push(
-                                '/cultural-quizzes/${completed[i].quizId}'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ],
-          ),
-        ),
-      ),
+            ),
           ),
         ],
       ),

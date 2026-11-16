@@ -126,12 +126,13 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
         context.pop(true);
         return;
       }
-      setState(() =>
-          _error = ref.read(authProvider).error ?? 'Could not link the wallet.');
+      setState(() => _error =
+          ref.read(authProvider).error ?? 'Could not link the wallet.');
     } catch (error) {
       if (mounted) {
-        setState(() => _error =
-            error is StateError ? error.message : 'Signature was not completed.');
+        setState(() => _error = error is StateError
+            ? error.message
+            : 'Signature was not completed.');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -156,16 +157,15 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Connect Wallet',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
+                        grid.gutter,
                         grid.px(4),
-                        grid.px(4),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [

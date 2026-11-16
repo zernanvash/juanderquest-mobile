@@ -136,69 +136,72 @@ class _MerchantDashboardScreenState
                             child: PixelLoader(label: 'Loading workspace'),
                           )
                         : data == null
-                        ? PixelEmptyState(
-                            icon: DesignerArt.salakot,
-                            title: 'Workspace unavailable',
-                            message: _errorText(
-                              _error ?? '',
-                              'Check your connection and try again.',
-                            ),
-                            action: PixelButton(
-                              key: const ValueKey('merchant_retry'),
-                              label: 'Retry',
-                              onPressed: _load,
-                            ),
-                          )
-                        : ListView(
-                            padding: EdgeInsets.fromLTRB(
-                              grid.px(4),
-                              grid.px(4),
-                              grid.px(4),
-                              grid.px(8) + MediaQuery.paddingOf(context).bottom,
-                            ),
-                            children: [
-                              _identity(context, grid, data),
-                              SizedBox(height: grid.px(4)),
-                              MerchantTabbedPanel(
-                                selected: _tab,
-                                onSelect: (i) {
-                                  pixelTick(context);
-                                  setState(() => _tab = i);
-                                },
-                                tabs: [
-                                  const MerchantTab(
-                                    key: ValueKey('merchant_tab_overview'),
-                                    icon: DesignerArt.navShop,
-                                    label: 'Overview',
-                                  ),
-                                  const MerchantTab(
-                                    key: ValueKey('merchant_tab_profile'),
-                                    icon: DesignerArt.navProfile,
-                                    label: 'Profile',
-                                  ),
-                                  MerchantTab(
-                                    key: const ValueKey('merchant_tab_catalog'),
-                                    icon: merchantCatalogList,
-                                    label: 'Catalog',
-                                    badge: data.activeProducts > 0
-                                        ? '${data.activeProducts}'
-                                        : null,
-                                  ),
-                                  const MerchantTab(
-                                    key: ValueKey('merchant_tab_sponsorships'),
-                                    icon: DesignerArt.handshake,
-                                    label: 'Sponsorships & Points',
+                            ? PixelEmptyState(
+                                icon: DesignerArt.salakot,
+                                title: 'Workspace unavailable',
+                                message: _errorText(
+                                  _error ?? '',
+                                  'Check your connection and try again.',
+                                ),
+                                action: PixelButton(
+                                  key: const ValueKey('merchant_retry'),
+                                  label: 'Retry',
+                                  onPressed: _load,
+                                ),
+                              )
+                            : ListView(
+                                padding: EdgeInsets.fromLTRB(
+                                  grid.gutter,
+                                  grid.px(4),
+                                  grid.gutter,
+                                  grid.px(8) +
+                                      MediaQuery.paddingOf(context).bottom,
+                                ),
+                                children: [
+                                  _identity(context, grid, data),
+                                  SizedBox(height: grid.px(4)),
+                                  MerchantTabbedPanel(
+                                    selected: _tab,
+                                    onSelect: (i) {
+                                      pixelTick(context);
+                                      setState(() => _tab = i);
+                                    },
+                                    tabs: [
+                                      const MerchantTab(
+                                        key: ValueKey('merchant_tab_overview'),
+                                        icon: DesignerArt.navShop,
+                                        label: 'Overview',
+                                      ),
+                                      const MerchantTab(
+                                        key: ValueKey('merchant_tab_profile'),
+                                        icon: DesignerArt.navProfile,
+                                        label: 'Profile',
+                                      ),
+                                      MerchantTab(
+                                        key: const ValueKey(
+                                            'merchant_tab_catalog'),
+                                        icon: merchantCatalogList,
+                                        label: 'Catalog',
+                                        badge: data.activeProducts > 0
+                                            ? '${data.activeProducts}'
+                                            : null,
+                                      ),
+                                      const MerchantTab(
+                                        key: ValueKey(
+                                            'merchant_tab_sponsorships'),
+                                        icon: DesignerArt.handshake,
+                                        label: 'Sponsorships & Points',
+                                      ),
+                                    ],
+                                    child: switch (_tab) {
+                                      1 => _ProfileTab(onSaved: _load),
+                                      2 => _CatalogTab(onChanged: _load),
+                                      3 => const _SponsorshipsTab(),
+                                      _ => _overview(context, grid, data),
+                                    },
                                   ),
                                 ],
-                                child: switch (_tab) {
-                                  1 => _ProfileTab(onSaved: _load),
-                                  2 => _CatalogTab(onChanged: _load),
-                                  3 => const _SponsorshipsTab(),
-                                  _ => _overview(context, grid, data),
-                                },
                               ),
-                            ],
-                          ),
                   ),
                 ],
               ),
@@ -267,23 +270,24 @@ class _MerchantDashboardScreenState
     MerchantDashboardData data,
   ) {
     Widget metric(String label, String value) => Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: grid.px(1)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: PixelType.small(context, color: PixelPalette.slate),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: grid.px(1)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: PixelType.small(context, color: PixelPalette.slate),
+                ),
+                Text(
+                  value,
+                  style:
+                      PixelType.numbers(context, color: PixelPalette.greenDark),
+                ),
+              ],
             ),
-            Text(
-              value,
-              style: PixelType.numbers(context, color: PixelPalette.greenDark),
-            ),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -851,9 +855,9 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
                       onPressed: _busy
                           ? null
                           : () => _run(
-                              () => api.buyPoints(p),
-                              'Added $p simulated points.',
-                            ),
+                                () => api.buyPoints(p),
+                                'Added $p simulated points.',
+                              ),
                     ),
                 ],
               ),
@@ -881,7 +885,9 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
             'No sponsorship requests yet.',
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
-        for (var i = 0; i < (items ?? const <MerchantSponsorshipItem>[]).length; i++) ...[
+        for (var i = 0;
+            i < (items ?? const <MerchantSponsorshipItem>[]).length;
+            i++) ...[
           if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
           Builder(builder: (context) {
             final item = items![i];
@@ -890,88 +896,88 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: grid.px(2)),
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.questTitle, style: PixelType.title(context)),
-                  if (item.spotName.isNotEmpty)
-                    Text(
-                      item.spotName,
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.slate,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.questTitle, style: PixelType.title(context)),
+                    if (item.spotName.isNotEmpty)
+                      Text(
+                        item.spotName,
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
                       ),
-                    ),
-                  SizedBox(height: grid.px(1)),
-                  Wrap(
-                    spacing: grid.px(1),
-                    runSpacing: grid.px(1),
-                    children: [
-                      PixelChip(
-                        item.status.toUpperCase(),
-                        style: PixelBoxStyle.parchment,
-                      ),
-                      if (item.points > 0) PixelChip('${item.points} PTS'),
-                      if (item.voucherQty > 0)
-                        PixelChip('${item.voucherQty} VOUCHERS'),
-                      if (item.promo) const PixelChip('PROMO'),
-                    ],
-                  ),
-                  if (item.status == 'requested') ...[
                     SizedBox(height: grid.px(1)),
                     Wrap(
-                      spacing: grid.px(2),
+                      spacing: grid.px(1),
                       runSpacing: grid.px(1),
                       children: [
-                        PixelButton(
-                          key: ValueKey('merchant_accept_${item.id}'),
-                          label: 'Accept',
-                          onPressed: _busy
-                              ? null
-                              : () => _run(
-                                  () => api.accept(item),
-                                  'Sponsorship accepted.',
-                                ),
+                        PixelChip(
+                          item.status.toUpperCase(),
+                          style: PixelBoxStyle.parchment,
                         ),
-                        PixelButton(
-                          key: ValueKey('merchant_decline_${item.id}'),
-                          label: 'Decline',
-                          variant: PixelButtonVariant.danger,
-                          onPressed: _busy
-                              ? null
-                              : () => _run(
-                                  () => api.decline(item),
-                                  'Sponsorship declined.',
-                                ),
-                        ),
-                        PixelButton(
-                          key: ValueKey('merchant_counter_${item.id}'),
-                          label: 'Counter',
-                          variant: PixelButtonVariant.secondary,
-                          onPressed: _busy ? null : () => _counter(item),
-                        ),
+                        if (item.points > 0) PixelChip('${item.points} PTS'),
+                        if (item.voucherQty > 0)
+                          PixelChip('${item.voucherQty} VOUCHERS'),
+                        if (item.promo) const PixelChip('PROMO'),
                       ],
                     ),
+                    if (item.status == 'requested') ...[
+                      SizedBox(height: grid.px(1)),
+                      Wrap(
+                        spacing: grid.px(2),
+                        runSpacing: grid.px(1),
+                        children: [
+                          PixelButton(
+                            key: ValueKey('merchant_accept_${item.id}'),
+                            label: 'Accept',
+                            onPressed: _busy
+                                ? null
+                                : () => _run(
+                                      () => api.accept(item),
+                                      'Sponsorship accepted.',
+                                    ),
+                          ),
+                          PixelButton(
+                            key: ValueKey('merchant_decline_${item.id}'),
+                            label: 'Decline',
+                            variant: PixelButtonVariant.danger,
+                            onPressed: _busy
+                                ? null
+                                : () => _run(
+                                      () => api.decline(item),
+                                      'Sponsorship declined.',
+                                    ),
+                          ),
+                          PixelButton(
+                            key: ValueKey('merchant_counter_${item.id}'),
+                            label: 'Counter',
+                            variant: PixelButtonVariant.secondary,
+                            onPressed: _busy ? null : () => _counter(item),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (item.status == 'accepted' &&
+                        item.planStatus == 'active' &&
+                        item.planId.isNotEmpty) ...[
+                      SizedBox(height: grid.px(1)),
+                      PixelButton(
+                        key: ValueKey('merchant_topup_${item.id}'),
+                        label: 'Top up active round (+500)',
+                        variant: PixelButtonVariant.secondary,
+                        onPressed: _busy
+                            ? null
+                            : () => _run(
+                                  () => api.topUp(item.planId, 500),
+                                  'Added 500 points to the round.',
+                                ),
+                      ),
+                    ],
                   ],
-                  if (item.status == 'accepted' &&
-                      item.planStatus == 'active' &&
-                      item.planId.isNotEmpty) ...[
-                    SizedBox(height: grid.px(1)),
-                    PixelButton(
-                      key: ValueKey('merchant_topup_${item.id}'),
-                      label: 'Top up active round (+500)',
-                      variant: PixelButtonVariant.secondary,
-                      onPressed: _busy
-                          ? null
-                          : () => _run(
-                              () => api.topUp(item.planId, 500),
-                              'Added 500 points to the round.',
-                            ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          );
+            );
           }),
         ],
       ],

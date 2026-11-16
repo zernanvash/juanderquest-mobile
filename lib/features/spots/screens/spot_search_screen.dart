@@ -47,7 +47,6 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
   bool _quietOnly = false;
   bool _questsOnly = false;
 
-
   final List<Map<String, String>> _categories = const [
     {'id': 'all', 'label': 'All Destinations'},
     {'id': 'eat_drink', 'label': 'Food & Culinary'},
@@ -187,9 +186,9 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(3),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [

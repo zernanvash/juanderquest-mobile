@@ -64,9 +64,9 @@ class _QrSheetScreenState extends ConsumerState<QrSheetScreen> {
                       Expanded(
                         child: ListView(
                           padding: EdgeInsets.fromLTRB(
-                            grid.px(4),
+                            grid.gutter,
                             grid.px(3),
-                            grid.px(4),
+                            grid.gutter,
                             grid.px(8),
                           ),
                           children: [
@@ -201,7 +201,8 @@ class _QrSheetScreenState extends ConsumerState<QrSheetScreen> {
                                 'Failed to load QR sheet. Please check your connection.';
                           }
                           return ListView(
-                            padding: EdgeInsets.all(grid.px(4)),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: grid.gutter, vertical: grid.px(4)),
                             children: [
                               PixelPanel(
                                 style: is403
@@ -247,9 +248,9 @@ class _QrSheetScreenState extends ConsumerState<QrSheetScreen> {
 
                         return ListView(
                           padding: EdgeInsets.fromLTRB(
-                            grid.px(4),
+                            grid.gutter,
                             grid.px(3),
-                            grid.px(4),
+                            grid.gutter,
                             grid.px(8) + MediaQuery.paddingOf(context).bottom,
                           ),
                           children: [

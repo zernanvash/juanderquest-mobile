@@ -90,9 +90,8 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                 children: [
                   PixelAppBar(
                     title: 'Plaza',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                     actions: [
                       PixelIconButton(
                         icon: Wave3Art.refresh,
@@ -115,9 +114,9 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: EdgeInsets.fromLTRB(
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(3),
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(8) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
@@ -162,8 +161,8 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                                   ),
                                   SizedBox(height: grid.px(3)),
                                   const Center(
-                                    child: PixelLoader(
-                                        label: 'Loading activity'),
+                                    child:
+                                        PixelLoader(label: 'Loading activity'),
                                   ),
                                 ],
                               ),
@@ -508,7 +507,8 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
               Container(height: grid.unit, color: PixelPalette.paperDim),
           ],
           for (var i = 0; i < entries.length; i++) ...[
-            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+            if (i > 0)
+              Container(height: grid.unit, color: PixelPalette.paperDim),
             Padding(
               padding: EdgeInsets.symmetric(vertical: grid.px(2)),
               child: Row(
@@ -521,6 +521,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                   ),
                   SizedBox(width: grid.px(2)),
                   Expanded(
+                    flex: 3,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -545,11 +546,17 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                     ),
                   ),
                   SizedBox(width: grid.px(2)),
-                  Text(
-                    '${entries[i].score} pts',
-                    style: PixelType.numbers(
-                      context,
-                      color: PixelPalette.greenDark,
+                  Flexible(
+                    flex: 2,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${entries[i].score} pts',
+                        style: PixelType.numbers(
+                          context,
+                          color: PixelPalette.greenDark,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -571,103 +578,104 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CosmeticAvatar(
-                name: activity.actorName,
-                imageUrl: activity.actorAvatar,
-                frame:
-                    activity.actorCosmetics?['frame']?['asset'] as Map<String, dynamic>?,
-                size: grid.px(14),
-              ),
-              SizedBox(width: grid.px(2)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      activity.actorName,
-                      maxLines: 2,
-                      style: PixelType.title(
-                        context,
-                        color: _cosmeticColor(
-                                activity.actorCosmetics?['nameColor']?['asset']
-                                    ?['color']) ??
-                            PixelPalette.ink,
-                      ),
-                    ),
-                    if ((activity.actorCosmetics?['title']?['asset']?['text']
-                                ?.toString() ??
-                            '')
-                        .isNotEmpty)
-                      Text(
-                        activity.actorCosmetics!['title']['asset']['text']
-                            .toString(),
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
-                        ),
-                      ),
-                    if (activity.displayReasonChip != null) ...[
-                      SizedBox(height: grid.px(1)),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: PixelChip(
-                          activity.displayReasonChip!,
-                          style: _activityReasonStyle(activity.reason),
-                          textColor: _activityReasonTextColor(activity.reason),
-                        ),
-                      ),
-                    ],
-                  ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CosmeticAvatar(
+                  name: activity.actorName,
+                  imageUrl: activity.actorAvatar,
+                  frame: activity.actorCosmetics?['frame']?['asset']
+                      as Map<String, dynamic>?,
+                  size: grid.px(14),
                 ),
-              ),
+                SizedBox(width: grid.px(2)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        activity.actorName,
+                        maxLines: 2,
+                        style: PixelType.title(
+                          context,
+                          color: _cosmeticColor(
+                                  activity.actorCosmetics?['nameColor']
+                                      ?['asset']?['color']) ??
+                              PixelPalette.ink,
+                        ),
+                      ),
+                      if ((activity.actorCosmetics?['title']?['asset']?['text']
+                                  ?.toString() ??
+                              '')
+                          .isNotEmpty)
+                        Text(
+                          activity.actorCosmetics!['title']['asset']['text']
+                              .toString(),
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                      if (activity.displayReasonChip != null) ...[
+                        SizedBox(height: grid.px(1)),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: PixelChip(
+                            activity.displayReasonChip!,
+                            style: _activityReasonStyle(activity.reason),
+                            textColor:
+                                _activityReasonTextColor(activity.reason),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(
+              formatted.sentence,
+              style: PixelType.body(context, color: PixelPalette.wood),
+            ),
+            if (formatted.pointsBadge != null) ...[
+              SizedBox(height: grid.px(1)),
+              PixelChip(formatted.pointsBadge!,
+                  style: PixelBoxStyle.green, textColor: PixelPalette.white),
             ],
-          ),
-          SizedBox(height: grid.px(2)),
-          Text(
-            formatted.sentence,
-            style: PixelType.body(context, color: PixelPalette.wood),
-          ),
-          if (formatted.pointsBadge != null) ...[
-            SizedBox(height: grid.px(1)),
-            PixelChip(formatted.pointsBadge!, style: PixelBoxStyle.green,
-                textColor: PixelPalette.white),
+            SizedBox(height: grid.px(2)),
+            Wrap(
+              spacing: grid.px(2),
+              runSpacing: grid.px(1),
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                PixelButton(
+                  key: ValueKey('plaza_cheer_${activity.id}'),
+                  label: activity.cheeredByMe
+                      ? 'Cheered ${activity.cheerCount}'
+                      : 'Cheer ${activity.cheerCount}',
+                  icon: DesignerArt.heartLiked,
+                  iconScale: 1,
+                  variant: activity.cheeredByMe
+                      ? PixelButtonVariant.primary
+                      : PixelButtonVariant.secondary,
+                  onPressed: () {
+                    ref
+                        .read(plazaFeedProvider.notifier)
+                        .toggleCheer(activity.id);
+                  },
+                ),
+                PixelChip(
+                  '${activity.commentCount} comments',
+                  icon: StudioIcons.edit,
+                  iconScale: 2,
+                  style: PixelBoxStyle.slot,
+                ),
+              ],
+            ),
           ],
-          SizedBox(height: grid.px(2)),
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              PixelButton(
-                key: ValueKey('plaza_cheer_${activity.id}'),
-                label: activity.cheeredByMe
-                    ? 'Cheered ${activity.cheerCount}'
-                    : 'Cheer ${activity.cheerCount}',
-                icon: DesignerArt.heartLiked,
-                iconScale: 1,
-                variant: activity.cheeredByMe
-                    ? PixelButtonVariant.primary
-                    : PixelButtonVariant.secondary,
-                onPressed: () {
-                  ref
-                      .read(plazaFeedProvider.notifier)
-                      .toggleCheer(activity.id);
-                },
-              ),
-              PixelChip(
-                '${activity.commentCount} comments',
-                icon: StudioIcons.edit,
-                iconScale: 2,
-                style: PixelBoxStyle.slot,
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
       ),
     );
   }

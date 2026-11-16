@@ -43,7 +43,9 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) ref.invalidate(choiceOverviewProvider);
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(choiceOverviewProvider);
+    }
   }
 
   @override
@@ -51,7 +53,8 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
     final authenticated = ref.watch(authProvider).isAuthenticated;
     final overview = ref.watch(choiceOverviewProvider);
     final supporterQuest = ref.watch(choiceSupporterQuestProvider);
-    final engagement = authenticated ? ref.watch(choiceEngagementProvider) : null;
+    final engagement =
+        authenticated ? ref.watch(choiceEngagementProvider) : null;
     final claimState = ref.watch(choiceSupporterClaimProvider);
     return Theme(
       data: AppTheme.pixel,
@@ -80,9 +83,9 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                           ref.invalidate(choiceOverviewProvider),
                       child: ListView(
                         padding: EdgeInsets.fromLTRB(
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(3),
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(8) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
@@ -110,8 +113,7 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                                 grid,
                                 'Your community journey could not be loaded.',
                                 'Retry journey',
-                                () => ref
-                                    .invalidate(choiceEngagementProvider),
+                                () => ref.invalidate(choiceEngagementProvider),
                               ),
                               data: (summary) =>
                                   _journey(context, grid, summary),
@@ -124,13 +126,13 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                               grid,
                               'Visit rewards could not be checked.',
                               'Retry visit rewards',
-                              () => ref
-                                  .invalidate(choiceSupporterQuestProvider),
+                              () =>
+                                  ref.invalidate(choiceSupporterQuestProvider),
                             ),
                             data: (quest) => quest == null
                                 ? const SizedBox.shrink()
-                                : _supporterQuest(
-                                    context, grid, quest, authenticated, claimState),
+                                : _supporterQuest(context, grid, quest,
+                                    authenticated, claimState),
                           ),
                         ],
                       ),
@@ -264,7 +266,8 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                   ),
                 if (data.nextTheme != null)
                   Text(data.nextTheme!,
-                      style: PixelType.body(context, color: PixelPalette.slate)),
+                      style:
+                          PixelType.body(context, color: PixelPalette.slate)),
               ],
             ),
           ),
@@ -367,7 +370,8 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
           PixelSectionTitle(
             'Your community journey',
             icon: DesignerArt.questMarker,
-            value: summary.currentStreak > 0 ? '${summary.currentStreak}' : null,
+            value:
+                summary.currentStreak > 0 ? '${summary.currentStreak}' : null,
             valueColor: PixelPalette.greenDark,
           ),
           SizedBox(height: grid.px(1)),
@@ -480,8 +484,8 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
               PixelButton(
                 label: 'Sign in to claim after your visit',
                 expand: true,
-                onPressed: () => context.go(
-                    '/?redirect=${Uri.encodeComponent('/choice')}'),
+                onPressed: () =>
+                    context.go('/?redirect=${Uri.encodeComponent('/choice')}'),
               ),
             if (claimState.hasError) ...[
               SizedBox(height: grid.px(2)),
@@ -627,8 +631,7 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
         PixelButton(
           key: const ValueKey('choice_confirm_vote'),
           label: 'Confirm vote',
-          onPressed: () =>
-              Navigator.of(context, rootNavigator: true).pop(true),
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(true),
         ),
       ],
     );
@@ -681,14 +684,13 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                       backgroundColor: PixelPalette.parchment,
                       onRefresh: () async {
                         ref.invalidate(choiceOverviewProvider);
-                        ref.invalidate(
-                            choiceDetailProvider(widget.campaignId));
+                        ref.invalidate(choiceDetailProvider(widget.campaignId));
                       },
                       child: ListView(
                         padding: EdgeInsets.fromLTRB(
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(3),
-                          grid.px(4),
+                          grid.gutter,
                           grid.px(8) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
@@ -712,11 +714,9 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                                     alignment: Alignment.centerRight,
                                     child: PixelButton(
                                       label: 'Retry',
-                                      variant:
-                                          PixelButtonVariant.secondary,
+                                      variant: PixelButtonVariant.secondary,
                                       onPressed: () {
-                                        ref.invalidate(
-                                            choiceOverviewProvider);
+                                        ref.invalidate(choiceOverviewProvider);
                                         ref.invalidate(choiceDetailProvider(
                                             widget.campaignId));
                                       },
@@ -907,9 +907,7 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
             'Voting unlocks after ${data.eligibility!.eligibleAt?.toLocal() ?? 'your account is 72 hours old'} or after one approved destination visit.',
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
-        if (authenticated &&
-            data.eligibility == null &&
-            isOpen)
+        if (authenticated && data.eligibility == null && isOpen)
           Text(
             'Voting eligibility could not be confirmed. Pull to retry.',
             style: PixelType.body(context, color: PixelPalette.slate),
@@ -969,7 +967,8 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                     return KeyedSubtree(
                       key: isFocused
                           ? _focusKey
-                          : ValueKey('choice_candidate_${standing.candidateId}'),
+                          : ValueKey(
+                              'choice_candidate_${standing.candidateId}'),
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: grid.px(2)),
                         child: Column(
@@ -1021,7 +1020,9 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                             SizedBox(height: grid.px(1)),
                             PixelStatRow(
                               'Provisional votes',
-                              tallyHidden || votes == null ? 'Hidden' : '$votes',
+                              tallyHidden || votes == null
+                                  ? 'Hidden'
+                                  : '$votes',
                               style: PixelType.body(context),
                               labelColor: PixelPalette.slate,
                               valueColor: PixelPalette.gold,
@@ -1029,7 +1030,8 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
                             if (!tallyHidden && votes != null) ...[
                               SizedBox(height: grid.px(1)),
                               PixelProgressBar(
-                                value: totalVotes > 0 ? votes / totalVotes : 0.0,
+                                value:
+                                    totalVotes > 0 ? votes / totalVotes : 0.0,
                                 segments: 10,
                                 color: isLeader
                                     ? themeSpec.leadBarColor

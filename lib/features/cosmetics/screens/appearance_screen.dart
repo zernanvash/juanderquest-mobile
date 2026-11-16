@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
@@ -57,16 +57,15 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
                 children: [
                   PixelAppBar(
                     title: 'Appearance',
-                    onBack: canPop
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
+                    onBack:
+                        canPop ? () => Navigator.of(context).maybePop() : null,
                   ),
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
+                        grid.gutter,
                         grid.px(4),
-                        grid.px(4),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [

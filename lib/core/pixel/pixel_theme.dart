@@ -46,9 +46,10 @@ abstract final class PixelTheme {
     double size, {
     Color color = PixelPalette.ink,
     bool bold = false,
+    bool plain = false,
   }) =>
       TextStyle(
-        fontFamily: 'Silkscreen',
+        fontFamily: plain ? 'VT323' : 'Silkscreen',
         fontFamilyFallback: PixelFonts.fallback,
         fontSize: size,
         height: 1.25,
@@ -107,9 +108,9 @@ abstract final class PixelTheme {
         titleLarge: _text(20, bold: true),
         titleMedium: _text(16, bold: true),
         titleSmall: _text(16, bold: true),
-        bodyLarge: _text(16),
-        bodyMedium: _text(16),
-        bodySmall: _text(8),
+        bodyLarge: _text(21, plain: true),
+        bodyMedium: _text(19, plain: true),
+        bodySmall: _text(15, plain: true),
         labelLarge: _text(16, bold: true),
         labelMedium: _text(16),
         labelSmall: _text(8),
@@ -142,14 +143,14 @@ abstract final class PixelTheme {
         elevation: 0,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         titleTextStyle: _text(24, bold: true),
-        contentTextStyle: _text(16, color: PixelPalette.slate),
+        contentTextStyle: _text(19, color: PixelPalette.slate, plain: true),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        contentTextStyle: _text(16, color: PixelPalette.paper),
+        contentTextStyle: _text(19, color: PixelPalette.paper, plain: true),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(

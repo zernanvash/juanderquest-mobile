@@ -80,16 +80,15 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(3),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [
                         PixelPanel(
-                          style: passed
-                              ? PixelBoxStyle.green
-                              : PixelBoxStyle.red,
+                          style:
+                              passed ? PixelBoxStyle.green : PixelBoxStyle.red,
                           child: Column(
                             children: [
                               Text(
@@ -169,7 +168,8 @@ class _CulturalQuizResultScreenState extends State<CulturalQuizResultScreen> {
                                   '+${result.xpAwarded} Explorer XP Awarded',
                                   style: PixelBoxStyle.gold,
                                 ),
-                              ] else if (passed && result.alreadyCompletedPrior) ...[
+                              ] else if (passed &&
+                                  result.alreadyCompletedPrior) ...[
                                 SizedBox(height: grid.px(2)),
                                 Text(
                                   'Learning Replay: XP was previously claimed for this destination.',

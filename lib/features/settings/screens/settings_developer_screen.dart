@@ -50,9 +50,9 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                   Expanded(
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(3),
-                        grid.px(4),
+                        grid.gutter,
                         grid.px(8) + MediaQuery.paddingOf(context).bottom,
                       ),
                       children: [
@@ -89,8 +89,8 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                               ),
                               SizedBox(height: grid.px(1)),
                               Padding(
-                                padding: EdgeInsets.symmetric(
-                                    vertical: grid.px(2)),
+                                padding:
+                                    EdgeInsets.symmetric(vertical: grid.px(2)),
                                 child: Row(
                                   children: [
                                     Expanded(
@@ -132,8 +132,8 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                               // Plan 75n: QA/test quests and spots are hidden from
                               // travelers unless this is on (session only).
                               Padding(
-                                padding: EdgeInsets.symmetric(
-                                    vertical: grid.px(2)),
+                                padding:
+                                    EdgeInsets.symmetric(vertical: grid.px(2)),
                                 child: Row(
                                   children: [
                                     Expanded(
@@ -194,7 +194,8 @@ class SettingsDeveloperScreen extends ConsumerWidget {
                                 _link(
                                   context,
                                   grid,
-                                  key: const ValueKey('settings_ar_diagnostics'),
+                                  key:
+                                      const ValueKey('settings_ar_diagnostics'),
                                   title: 'AR diagnostics',
                                   subtitle:
                                       'Live sensor readout and a test object.',
