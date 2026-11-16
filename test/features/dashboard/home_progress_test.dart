@@ -574,9 +574,10 @@ void main() {
       expect(find.byKey(const ValueKey('home_purse_mjdq')), findsOneWidget);
       expect(find.bySemanticsLabel('125 mJDQ'), findsOneWidget);
       expect(find.byKey(const ValueKey('home_purse_stamps')), findsOneWidget);
-      expect(find.text('5 STAMPS'), findsOneWidget);
+      // Layout A (owner 2026-11-16): icon + number, no words.
+      expect(find.bySemanticsLabel('5 stamps'), findsOneWidget);
       expect(find.byKey(const ValueKey('home_purse_rep')), findsOneWidget);
-      expect(find.text('350 REP'), findsOneWidget);
+      expect(find.bySemanticsLabel('350 reputation'), findsOneWidget);
 
       // 4-stat Numbers strip
       expect(

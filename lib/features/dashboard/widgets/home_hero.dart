@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/pixel_art.dart';
+import '../pixel/home_pixel_art.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
-import '../../../core/pixel/pixel_rpg.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -82,78 +85,117 @@ class HomeHero extends ConsumerWidget {
     final townsCount = engagement?.municipalities ?? 0;
     final streakDays = daily?.streak ?? engagement?.currentStreak ?? 0;
 
-    return PixelPanel(
-      style: PixelBoxStyle.wood,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                key: const ValueKey('home_hero_profile'),
-                behavior: HitTestBehavior.opaque,
-                onTap: () => context.go('/profile'),
-                child: PixelPanel(
-                  style: PixelBoxStyle.gold,
-                  padding: 1,
-                  child: SizedBox(
-                    width: grid.px(14),
-                    height: grid.px(14),
-                    child: ClipRect(
-                      child: validAvatar
-                          ? Image.network(
-                              avatarUrl,
-                              fit: BoxFit.cover,
-                              filterQuality: FilterQuality.medium,
-                              errorBuilder: (_, __, ___) =>
-                                  _avatarFallback(context, initial),
-                            )
-                          : _avatarFallback(context, initial),
+    // Owner 2026-11-16, layout A: a slim icon-number strip above the card
+    // (no words), then the card with LEVEL at the top right.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          key: const ValueKey('home_hero_purse_bar'),
+          children: [
+            Semantics(
+              button: true,
+              label: '$points mJDQ',
+              child: ExcludeSemantics(
+                child: GestureDetector(
+                  key: const ValueKey('home_purse_mjdq'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => context.push('/shop'),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: grid.px(1)),
+                    child: MjdqAmount(
+                      points,
+                      animateOnIncrease: true,
+                      idleSpin: true,
+                      style: PixelType.title(context, color: PixelPalette.ink),
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: grid.px(2)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: PixelType.title(
-                        context,
-                        color: nameColor ?? PixelPalette.paper,
+            ),
+            SizedBox(width: grid.px(4)),
+            _purseSlot(
+              context,
+              grid,
+              key: const ValueKey('home_purse_stamps'),
+              icon: HomePixelArt.stampCheck,
+              value: homeNumber(stampsCount),
+              semantics: '$stampsCount stamps',
+              onTap: () => context.push('/profile/badges'),
+            ),
+            SizedBox(width: grid.px(4)),
+            _purseSlot(
+              context,
+              grid,
+              key: const ValueKey('home_purse_rep'),
+              icon: DesignerArt.handshake,
+              value: homeNumber(repCount),
+              semantics: '$repCount reputation',
+              onTap: () => context.push('/plaza'),
+            ),
+          ],
+        ),
+        SizedBox(height: grid.px(1)),
+        PixelPanel(
+          style: PixelBoxStyle.wood,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    key: const ValueKey('home_hero_profile'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => context.go('/profile'),
+                    child: PixelPanel(
+                      style: PixelBoxStyle.gold,
+                      padding: 1,
+                      child: SizedBox(
+                        width: grid.px(14),
+                        height: grid.px(14),
+                        child: ClipRect(
+                          child: validAvatar
+                              ? Image.network(
+                                  avatarUrl,
+                                  fit: BoxFit.cover,
+                                  filterQuality: FilterQuality.medium,
+                                  errorBuilder: (_, __, ___) =>
+                                      _avatarFallback(context, initial),
+                                )
+                              : _avatarFallback(context, initial),
+                        ),
                       ),
                     ),
-                    if (handle != null) ...[
-                      SizedBox(height: grid.px(1)),
-                      Text(
-                        handle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.cream,
-                        ),
-                      ),
-                    ],
-                    SizedBox(height: grid.px(1)),
-                    Wrap(
-                      spacing: grid.px(1),
-                      runSpacing: grid.px(1),
+                  ),
+                  SizedBox(width: grid.px(2)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _chip(
-                          context,
-                          key: const ValueKey('home_hero_level_chip'),
-                          label: 'Level $level',
-                          style: PixelBoxStyle.gold,
-                          textColor: PixelPalette.ink,
+                        Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: PixelType.title(
+                            context,
+                            color: nameColor ?? PixelPalette.paper,
+                          ),
                         ),
-                        const PixelMicro(PixelMicroArt.sparkle, scale: 3),
-                        if (cosmeticTitle.isNotEmpty)
+                        if (handle != null) ...[
+                          SizedBox(height: grid.px(1)),
+                          Text(
+                            handle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.cream,
+                            ),
+                          ),
+                        ],
+                        if (cosmeticTitle.isNotEmpty) ...[
+                          SizedBox(height: grid.px(1)),
                           _chip(
                             context,
                             key: const ValueKey('home_hero_title_chip'),
@@ -161,136 +203,68 @@ class HomeHero extends ConsumerWidget {
                             style: PixelBoxStyle.green,
                             textColor: PixelPalette.white,
                           ),
+                        ],
                       ],
+                    ),
+                  ),
+                  SizedBox(width: grid.px(1)),
+                  // LEVEL at the top right of the card.
+                  _chip(
+                    context,
+                    key: const ValueKey('home_hero_level_chip'),
+                    label: 'Level $level',
+                    style: PixelBoxStyle.gold,
+                    textColor: PixelPalette.ink,
+                  ),
+                ],
+              ),
+              SizedBox(height: grid.px(2)),
+              GestureDetector(
+                key: const ValueKey('home_hero_level'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => context.go('/profile'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PixelProgressBar(
+                      value: xpInLevel / 50,
+                      segments: 10,
+                      color: PixelPalette.greenBright,
+                      showTipGlint: true,
+                    ),
+                    SizedBox(height: grid.px(1)),
+                    PixelText.rich(
+                      '{sun:$xpInLevel / 50 XP} to level {paper:${level + 1}} · {paper:$points total XP}',
+                      maxLines: 2,
+                      style:
+                          PixelType.small(context, color: PixelPalette.cream),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          GestureDetector(
-            key: const ValueKey('home_hero_level'),
-            behavior: HitTestBehavior.opaque,
-            onTap: () => context.go('/profile'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                PixelProgressBar(
-                  value: xpInLevel / 50,
-                  segments: 10,
-                  color: PixelPalette.greenBright,
-                  showTipGlint: true,
-                ),
-                SizedBox(height: grid.px(1)),
-                PixelText.rich(
-                  '{sun:$xpInLevel / 50 XP} to level {paper:${level + 1}} · {paper:$points total XP}',
-                  maxLines: 2,
-                  style: PixelType.small(context, color: PixelPalette.cream),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: grid.px(2)),
-          // 3-Slot Currency & Purse Bar (mJDQ, Stamps, Rep)
-          Row(
-            key: const ValueKey('home_hero_purse_bar'),
-            children: [
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  label: '$points mJDQ',
-                  child: ExcludeSemantics(
-                    child: GestureDetector(
-                      key: const ValueKey('home_purse_mjdq'),
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => context.push('/shop'),
-                      child: PixelPanel(
-                        style: PixelBoxStyle.parchment,
-                        padding: 1,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 34),
-                          child: Center(
-                            child: MjdqAmount(
-                              points,
-                              animateOnIncrease: true,
-                              idleSpin: true,
-                              style: PixelType.small(
-                                context,
-                                color: PixelPalette.ink,
-                              ).copyWith(fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: grid.px(1)),
-              Expanded(
-                child: _purseSlot(
-                  context,
-                  grid,
-                  key: const ValueKey('home_purse_stamps'),
-                  icon: const PixelMicro(PixelMicroArt.sparkle, scale: 2),
-                  label: '${homeNumber(stampsCount)} STAMPS',
-                  onTap: () => context.push('/profile/badges'),
-                ),
-              ),
-              SizedBox(width: grid.px(1)),
-              Expanded(
-                child: _purseSlot(
-                  context,
-                  grid,
-                  key: const ValueKey('home_purse_rep'),
-                  icon: const PixelMicro(PixelMicroArt.sparkle, scale: 2),
-                  label: '${homeNumber(repCount)} REP',
-                  onTap: () => context.push('/plaza'),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          // 4-Stat Numbers Strip (Quests, Visits, Towns, Streak)
-          GestureDetector(
-            key: const ValueKey('home_hero_stats_strip'),
-            behavior: HitTestBehavior.opaque,
-            onTap: () => context.go('/profile'),
-            child: PixelPanel(
-              style: PixelBoxStyle.parchment,
-              padding: 1,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: grid.px(1),
-                  vertical: grid.px(1),
-                ),
+              SizedBox(height: grid.px(2)),
+              // Quests, visits, towns, streak: plain on the card.
+              GestureDetector(
+                key: const ValueKey('home_hero_stats_strip'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => context.go('/profile'),
                 child: Wrap(
-                  alignment: WrapAlignment.spaceAround,
+                  alignment: WrapAlignment.spaceBetween,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: grid.px(1),
                   runSpacing: grid.px(1),
                   children: [
                     _statItem(context, 'QUESTS', '$questsCount'),
-                    Text('·',
-                        style: PixelType.small(context,
-                            color: PixelPalette.slate)),
                     _statItem(context, 'VISITS', '$visitsCount'),
-                    Text('·',
-                        style: PixelType.small(context,
-                            color: PixelPalette.slate)),
                     _statItem(context, 'TOWNS', '$townsCount'),
-                    Text('·',
-                        style: PixelType.small(context,
-                            color: PixelPalette.slate)),
                     _statItem(context, 'STREAK', '${streakDays}D'),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -298,41 +272,32 @@ class HomeHero extends ConsumerWidget {
     BuildContext context,
     PixelGrid grid, {
     required Key key,
-    required Widget icon,
-    required String label,
+    required PixelArt icon,
+    required String value,
+    required String semantics,
     required VoidCallback onTap,
   }) {
     return Semantics(
       button: true,
-      label: label,
+      label: semantics,
       child: ExcludeSemantics(
         child: GestureDetector(
           key: key,
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: PixelPanel(
-            style: PixelBoxStyle.parchment,
-            padding: 1,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 34),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  icon,
-                  SizedBox(width: grid.px(1)),
-                  Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.ink,
-                      ).copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
-              ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: grid.px(1)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PixelIconFit(icon, box: 18),
+                SizedBox(width: grid.px(1)),
+                Text(
+                  value,
+                  maxLines: 1,
+                  style: PixelType.title(context, color: PixelPalette.ink),
+                ),
+              ],
             ),
           ),
         ),
@@ -343,7 +308,7 @@ class HomeHero extends ConsumerWidget {
   Widget _statItem(BuildContext context, String title, String value) {
     return Text(
       '$title: $value',
-      style: PixelType.small(context, color: PixelPalette.ink).copyWith(
+      style: PixelType.small(context, color: PixelPalette.cream).copyWith(
         fontWeight: FontWeight.w700,
       ),
     );
