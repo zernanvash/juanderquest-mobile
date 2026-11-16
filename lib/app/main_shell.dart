@@ -9,7 +9,7 @@ import '../core/pixel/generated/pixel_palette.g.dart';
 import '../core/pixel/pixel_nav.dart';
 import '../features/companion/widgets/companion_card.dart';
 import '../features/dashboard/home_tips.dart';
-import '../features/dashboard/widgets/main_menu_panel.dart';
+import '../features/dashboard/widgets/main_menu_overlay.dart';
 import '../features/onboarding/pixel_tutorial.dart';
 import '../features/juanchoice/providers/juanchoice_provider.dart';
 import '../features/quests/providers/campaign_provider.dart';
@@ -142,27 +142,15 @@ class _MainShellState extends ConsumerState<MainShell> {
                     if (onMainPage) CompanionCard(tabIndex: currentIndex),
                   ],
                 ),
-                // The main menu: the page dims, the menu sits above the bar.
-                if (onMainPage && _menuOpen) ...[
+                // The main menu: the page dims, the menu rises out of pixel
+                // embers above the bar.
+                if (onMainPage)
                   Positioned.fill(
-                    child: GestureDetector(
-                      key: const ValueKey('main_menu_scrim'),
-                      onTap: () => _setMenu(false),
-                      child: ColoredBox(
-                        color: PixelPalette.ink.withValues(alpha: 0.78),
-                      ),
+                    child: MainMenuOverlay(
+                      open: _menuOpen,
+                      onClose: () => _setMenu(false),
                     ),
                   ),
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    bottom: 12,
-                    child: SafeArea(
-                      top: false,
-                      child: MainMenuPanel(onClose: () => _setMenu(false)),
-                    ),
-                  ),
-                ],
               ],
             ),
             bottomNavigationBar: !onMainPage

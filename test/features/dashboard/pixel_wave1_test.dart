@@ -553,11 +553,14 @@ void main() {
       containsSemantics(isSelected: true),
     );
     await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
+    // The menu assembles out of pixel embers (420 ms).
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.byKey(const ValueKey('main_menu_panel')), findsOneWidget);
     expect(find.byKey(const ValueKey('home_tile_plaza')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.byKey(const ValueKey('main_menu_panel')), findsNothing);
     await tester.tap(find.bySemanticsLabel('Shop'));
     await tester.pump();

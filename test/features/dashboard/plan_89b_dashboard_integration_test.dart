@@ -311,6 +311,7 @@ void main() {
     // The PLAZA tile is in the MENU panel (owner 2026-11-16).
     await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     final sprites = tester.widgetList<PixelSprite>(find.byType(PixelSprite));
     // PixelIconFit draws a margin-trimmed copy named '<name>#trim'.
@@ -362,6 +363,7 @@ void main() {
           key.value == 'home_menu_quests') {
         await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
         await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
       }
       await tester.ensureVisible(find.byKey(key));
       await tester.tap(find.byKey(key));
