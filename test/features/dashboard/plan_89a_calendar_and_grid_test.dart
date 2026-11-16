@@ -536,7 +536,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('New Year JuanChoice'), findsOneWidget);
-    expect(find.text('ALMANAC · JAN 2027'), findsOneWidget);
+    expect(find.text('JAN 2027'), findsOneWidget);
   });
 
   testWidgets(

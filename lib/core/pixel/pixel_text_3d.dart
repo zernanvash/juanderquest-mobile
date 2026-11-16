@@ -385,17 +385,26 @@ class _BandClip extends CustomClipper<Rect> {
 /// should have the new text style, then remove the yellow background"): an
 /// optional whole-pixel icon and banded lettering, no box behind it. Long
 /// titles shrink to fit one line.
+///
+/// A live [value] (owner: "dynamic variables like the 4/7 should be
+/// separated ... so the user can differentiate it from static texts") is
+/// drawn as plain bold text in [valueColor] after the title, and pops each
+/// time it changes.
 class PixelSectionTitle extends StatelessWidget {
   const PixelSectionTitle(
     this.text, {
     super.key,
     this.icon,
+    this.value,
+    this.valueColor = PixelPalette.cream,
     this.colors = PixelText3DColors.gold,
     this.size = 12,
   });
 
   final String text;
   final PixelArt? icon;
+  final String? value;
+  final Color valueColor;
   final PixelText3DColors colors;
   final double size;
 
@@ -421,7 +430,43 @@ class PixelSectionTitle extends StatelessWidget {
             ),
           ),
         ),
+        if (value != null) ...[
+          SizedBox(width: grid.px(2)),
+          PixelValuePop(value!, color: valueColor),
+        ],
       ],
+    );
+  }
+}
+
+/// A live number or count: plain bold text that pops (stepped, whole-pixel
+/// feel) whenever [value] changes. Respects reduced motion.
+class PixelValuePop extends StatelessWidget {
+  const PixelValuePop(this.value, {super.key, this.color = PixelPalette.ink});
+
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final text = Text(
+      value,
+      maxLines: 1,
+      style: PixelType.title(context, color: color)
+          .copyWith(fontWeight: FontWeight.w700),
+    );
+    if (still) return text;
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(value),
+      tween: Tween(begin: 1.35, end: 1),
+      duration: const Duration(milliseconds: 320),
+      builder: (context, t, child) => Transform.scale(
+        // Four steps, not a smooth zoom.
+        scale: (t * 8).round() / 8,
+        child: child,
+      ),
+      child: text,
     );
   }
 }

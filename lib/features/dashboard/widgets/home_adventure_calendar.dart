@@ -198,7 +198,8 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
             runSpacing: 4,
             children: [
               PixelSectionTitle(
-                'ALMANAC · $monthLabel',
+                'ALMANAC',
+                value: monthLabel,
                 icon: HomePixelArt.calendar,
               ),
               Row(

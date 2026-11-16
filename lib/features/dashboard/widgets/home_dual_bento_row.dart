@@ -293,7 +293,8 @@ class _StampBentoBox extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               PixelSectionTitle(
-                'STAMP $claimedDays/7',
+                'STAMP',
+                value: '$claimedDays/7',
                 icon: claimedToday
                     ? DesignerArt.chestOpenAnim.frames.last
                     : DesignerArt.chestOpenAnim.frames.first,

@@ -614,7 +614,9 @@ void main() {
       expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_gem_pill')), findsOneWidget);
       expect(find.text('Hundred Islands Eco Trek'), findsOneWidget);
-      expect(find.text('STAMP 0/7'), findsOneWidget);
+      // Title and live value are separate (owner 2026-11-16).
+      expect(find.text('STAMP'), findsOneWidget);
+      expect(find.text('0/7'), findsOneWidget);
       expect(find.bySemanticsLabel('QOTD +5 mJDQ'), findsOneWidget);
 
       await tester.drag(find.byType(ListView), const Offset(0, -800));
@@ -790,7 +792,9 @@ void main() {
         ),
       );
       expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
-      expect(find.text('STAMP 0/7'), findsOneWidget);
+      // Title and live value are separate (owner 2026-11-16).
+      expect(find.text('STAMP'), findsOneWidget);
+      expect(find.text('0/7'), findsOneWidget);
 
       await _pump(
         tester,
@@ -800,7 +804,9 @@ void main() {
         ),
       );
       expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
-      expect(find.text('STAMP 0/7'), findsOneWidget);
+      // Title and live value are separate (owner 2026-11-16).
+      expect(find.text('STAMP'), findsOneWidget);
+      expect(find.text('0/7'), findsOneWidget);
     });
 
     testWidgets('test quests stay off Home unless Developer mode shows them',
