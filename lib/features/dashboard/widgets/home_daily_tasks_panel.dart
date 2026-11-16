@@ -5,6 +5,7 @@ import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../providers/home_daily_provider.dart';
 
@@ -38,9 +39,9 @@ class HomeDailyTasksPanel extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
+                child: PixelSectionTitle(
                   tr(context, en: 'DAILY TASKS', tl: 'GAWAIN NGAYON'),
-                  style: PixelType.title(context),
+                  colors: PixelText3DColors.green,
                 ),
               ),
               PixelChip(

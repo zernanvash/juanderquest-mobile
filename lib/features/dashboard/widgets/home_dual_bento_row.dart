@@ -7,6 +7,7 @@ import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../quests/models/quest_model.dart';
 import '../providers/home_daily_provider.dart';
@@ -196,38 +197,7 @@ class _MissionBentoBox extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: PixelSprite(DesignerArt.questMarker, scale: 1),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: PixelPalette.sun,
-                        border: Border.all(color: PixelPalette.ink, width: 1),
-                      ),
-                      child: Text(
-                        badgeText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: PixelType.small(context, color: PixelPalette.ink)
-                            .copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              PixelSectionTitle(badgeText, icon: DesignerArt.questMarker),
               const SizedBox(height: 4),
               if (quest != null) ...[
                 Text(
@@ -322,32 +292,11 @@ class _StampBentoBox extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: PixelSprite(
-                        claimedToday
-                            ? DesignerArt.chestOpenAnim.frames.last
-                            : DesignerArt.chestOpenAnim.frames.first,
-                        scale: 1,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'STAMP $claimedDays/7',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: PixelType.small(context, color: PixelPalette.sun)
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
+              PixelSectionTitle(
+                'STAMP $claimedDays/7',
+                icon: claimedToday
+                    ? DesignerArt.chestOpenAnim.frames.last
+                    : DesignerArt.chestOpenAnim.frames.first,
               ),
               const SizedBox(height: 4),
               Text(

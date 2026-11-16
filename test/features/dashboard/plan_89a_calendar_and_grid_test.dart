@@ -47,7 +47,8 @@ Widget _wrapPixel({
 }
 
 void main() {
-  test('WP-1: designer navProfile & plazaTrophy and HomePixelArt are valid', () {
+  test('WP-1: designer navProfile & plazaTrophy and HomePixelArt are valid',
+      () {
     expect(DesignerArt.navProfile.width, greaterThan(0));
     expect(DesignerArt.navProfile.height, greaterThan(0));
     expect(DesignerArt.plazaTrophy.width, 16);
@@ -58,7 +59,9 @@ void main() {
     expect(HomePixelArt.stampCheck.height, 8);
   });
 
-  test('WP-2: verified Pangasinan festivals are month-only and Mango-Bamboo is April', () {
+  test(
+      'WP-2: verified Pangasinan festivals are month-only and Mango-Bamboo is April',
+      () {
     final festivals = verifiedPangasinanFestivalsForYear(2026);
     final mango = festivals.firstWhere((e) => e.id.contains('mango-bamboo'));
     expect(mango.startDate.month, 4);
@@ -71,7 +74,9 @@ void main() {
     expect(galicayo.monthOnly, isTrue);
   });
 
-  test('WP-2: calendar provider merges voting, real campaigns, and streak.current', () {
+  test(
+      'WP-2: calendar provider merges voting, real campaigns, and streak.current',
+      () {
     final c2 = ProviderContainer(
       overrides: [
         choiceOverviewProvider.overrideWith((ref) async {
@@ -198,7 +203,8 @@ void main() {
       final entries = c2.read(homeCalendarEntriesProvider(2026));
 
       expect(entries.any((e) => e.id == 'campaign-live-coastal-1'), isTrue);
-      expect(entries.any((e) => e.id == 'campaign-bangus-festival-2026'), isFalse);
+      expect(
+          entries.any((e) => e.id == 'campaign-bangus-festival-2026'), isFalse);
       expect(entries.any((e) => e.id == 'campaign-undated-1'), isFalse);
       expect(entries.any((e) => e.kind == CalendarEntryKind.voting), isTrue);
 
@@ -261,7 +267,8 @@ void main() {
     expect(find.byKey(const ValueKey('home_tile_merchants')), findsOneWidget);
   });
 
-  testWidgets('WP-4: HomeDualBentoRow renders recommended quest & daily claim key',
+  testWidgets(
+      'WP-4: HomeDualBentoRow renders recommended quest & daily claim key',
       (tester) async {
     var claimed = false;
     String? navigatedTo;
@@ -298,9 +305,10 @@ void main() {
       ),
     );
 
-    expect(find.text('In your town'), findsOneWidget);
+    expect(find.text('IN YOUR TOWN'), findsOneWidget);
     expect(find.text('Capitol Beach Walk'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_daily_claim_button')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('home_daily_claim_button')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('home_daily_claim_button')));
     expect(claimed, isTrue);

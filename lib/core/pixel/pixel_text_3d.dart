@@ -164,7 +164,8 @@ class PixelText3D extends StatelessWidget {
     final layers = switch (look) {
       PixelTextLook.extruded => [
           for (var i = d; i >= -1; i--) at(0, i * u, text_(stroke(2 * u))),
-          for (var i = d; i >= 1; i--) at(0, i * u, text_(base.copyWith(color: colors.side))),
+          for (var i = d; i >= 1; i--)
+            at(0, i * u, text_(base.copyWith(color: colors.side))),
           at(0, -u, text_(base.copyWith(color: colors.bevel))),
           at(0, 0, text_(base.copyWith(color: colors.face))),
         ],
@@ -174,7 +175,8 @@ class PixelText3D extends StatelessWidget {
         ],
       PixelTextLook.banded => [
           for (var i = d; i >= 0; i--) at(0, i * u, text_(stroke(2 * u))),
-          for (var i = d; i >= 1; i--) at(0, i * u, text_(base.copyWith(color: colors.outline))),
+          for (var i = d; i >= 1; i--)
+            at(0, i * u, text_(base.copyWith(color: colors.outline))),
           at(0, 0, bands([colors.bevel, colors.face, colors.band])),
         ],
       PixelTextLook.chunky => [
@@ -183,7 +185,8 @@ class PixelText3D extends StatelessWidget {
           at(0, 0, bands([colors.face, colors.band])),
         ],
       PixelTextLook.shadow => [
-          for (var i = d; i >= 1; i--) at(i * u, i * u, text_(base.copyWith(color: colors.outline))),
+          for (var i = d; i >= 1; i--)
+            at(i * u, i * u, text_(base.copyWith(color: colors.outline))),
           at(0, 0, text_(base.copyWith(color: colors.face))),
         ],
     };
@@ -191,7 +194,11 @@ class PixelText3D extends StatelessWidget {
     final pad = look == PixelTextLook.chunky ? 2 * u : u;
     return Padding(
       // Room for the outline and the extrusion so nothing is clipped.
-      padding: EdgeInsets.fromLTRB(pad, 2 * u, pad + (look == PixelTextLook.chunky ? depth * u : 0), (depth + 2) * u),
+      padding: EdgeInsets.fromLTRB(
+          pad,
+          2 * u,
+          pad + (look == PixelTextLook.chunky ? depth * u : 0),
+          (depth + 2) * u),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -274,7 +281,8 @@ class _PixelText3DButtonState extends State<PixelText3DButton> {
                   if (widget.icon != null) ...[
                     Transform.translate(
                       offset: Offset(0, _down ? grid.unit : 0),
-                      child: PixelIconFit(widget.icon!, box: widget.iconBox ?? widget.size * 2),
+                      child: PixelIconFit(widget.icon!,
+                          box: widget.iconBox ?? widget.size * 2),
                     ),
                   ],
                   // Only the text shrinks to fit; the icon keeps whole pixels.
@@ -329,7 +337,8 @@ class PixelIconFit extends StatelessWidget {
         }
         if (bottom < 0) return art;
         return PixelArt('${art.name}#trim', [
-          for (var y = top; y <= bottom; y++) art.rows[y].substring(left, right + 1),
+          for (var y = top; y <= bottom; y++)
+            art.rows[y].substring(left, right + 1),
         ]);
       });
 
@@ -370,4 +379,49 @@ class _BandClip extends CustomClipper<Rect> {
 
   @override
   bool shouldReclip(_BandClip old) => old.from != from || old.to != to;
+}
+
+/// v0.3 section title (owner 2026-11-16: "titles like 'Today's Mission'
+/// should have the new text style, then remove the yellow background"): an
+/// optional whole-pixel icon and banded lettering, no box behind it. Long
+/// titles shrink to fit one line.
+class PixelSectionTitle extends StatelessWidget {
+  const PixelSectionTitle(
+    this.text, {
+    super.key,
+    this.icon,
+    this.colors = PixelText3DColors.gold,
+    this.size = 12,
+  });
+
+  final String text;
+  final PixelArt? icon;
+  final PixelText3DColors colors;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return Row(
+      children: [
+        if (icon != null) ...[
+          PixelIconFit(icon!, box: size + 8),
+          SizedBox(width: grid.px(1)),
+        ],
+        Flexible(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: PixelText3D(text,
+                  size: size,
+                  depth: 1,
+                  colors: colors,
+                  textAlign: TextAlign.left),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

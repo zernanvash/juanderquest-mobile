@@ -6,6 +6,7 @@ import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../models/home_calendar_entry.dart';
 import '../pixel/home_pixel_art.dart';
@@ -80,8 +81,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
   }
 
   List<DateTime?> _monthCellsFor(DateTime monthStart) {
-    final daysInMonth =
-        DateTime(monthStart.year, monthStart.month + 1, 0).day;
+    final daysInMonth = DateTime(monthStart.year, monthStart.month + 1, 0).day;
     final leadingBlanks = monthStart.weekday - 1; // Monday = 1 -> 0 blanks
     final cells = <DateTime?>[
       for (var i = 0; i < leadingBlanks; i++) null,
@@ -197,28 +197,9 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
             spacing: 4,
             runSpacing: 4,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: PixelSprite(HomePixelArt.calendar, scale: 1),
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Flexible(
-                    child: Text(
-                      'ALMANAC · $monthLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: PixelType.small(context, color: PixelPalette.sun)
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
+              PixelSectionTitle(
+                'ALMANAC · $monthLabel',
+                icon: HomePixelArt.calendar,
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
