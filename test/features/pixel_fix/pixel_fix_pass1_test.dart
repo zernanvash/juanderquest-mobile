@@ -233,7 +233,9 @@ void main() {
     expect(listTop, greaterThanOrEqualTo(24));
   });
 
-  testWidgets('Explore photo-less card clips its category strip',
+  // Plan 98: a photo-less card has no photo area at all (the category strip
+  // placeholder was removed).
+  testWidgets('Explore photo-less card has no photo area',
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -255,7 +257,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(ClipRect), findsWidgets);
+    expect(find.byKey(const Key('explore_photo_collapsed')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

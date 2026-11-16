@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -248,6 +250,9 @@ void main() {
 
     testWidgets('double-tapping a card photo likes the spot and stays on Explore',
         (tester) async {
+      // Plan 98: a photo that fails collapses, so serve one that keeps loading
+      // (its frame stays, like a real photo's).
+      debugNetworkImageHttpClientProvider = _LoadingHttpClient.new;
       final pushedRoutes = <String>[];
       final spot = _makeSpot(
         id: 's-dbl',
@@ -286,6 +291,7 @@ void main() {
 
       expect(notifier.likeCalls, [true]);
       expect(pushedRoutes.where((r) => r.startsWith('/explore/')), isEmpty);
+      debugNetworkImageHttpClientProvider = null;
     });
 
     testWidgets('featured card does not show when no spot has a photo', (tester) async {
@@ -593,4 +599,17 @@ void main() {
       expect(caughtUpText, findsOneWidget);
     });
   });
+}
+
+/// An HttpClient whose requests never finish: network images stay loading.
+class _LoadingHttpClient implements HttpClient {
+  @override
+  bool autoUncompress = true;
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) =>
+      Completer<HttpClientRequest>().future;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
