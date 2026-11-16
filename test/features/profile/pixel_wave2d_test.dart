@@ -466,7 +466,7 @@ void main() {
         const ProfileScreen(),
         user: _user,
         extraOverrides: [
-          userSpotsProvider('scale-01').overrideWith((ref) => Future.value([_spot])),
+          userSpotsProvider('u1').overrideWith((ref) => Future.value([_spot])),
         ],
       );
       await tester.pump();
@@ -489,7 +489,7 @@ void main() {
         const ProfileScreen(),
         user: _user,
         extraOverrides: [
-          userSpotsProvider('scale-01').overrideWith((ref) => Future.value([])),
+          userSpotsProvider('u1').overrideWith((ref) => Future.value([])),
         ],
       );
       await tester.pump();
@@ -508,7 +508,7 @@ void main() {
         const ProfileScreen(),
         user: _user,
         extraOverrides: [
-          userSpotsProvider('scale-01').overrideWith((ref) => Future.error(Exception('network error'))),
+          userSpotsProvider('u1').overrideWith((ref) => Future.error(Exception('network error'))),
         ],
       );
       await tester.pump();
