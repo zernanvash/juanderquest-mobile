@@ -9,6 +9,7 @@ import 'pixel_box.dart';
 import 'pixel_controls.dart';
 import 'pixel_grid.dart';
 import 'pixel_rpg.dart';
+import 'pixel_text_3d.dart';
 import 'pixel_text.dart';
 
 class PixelHotbarItem {
@@ -325,12 +326,28 @@ class PixelAppBar extends StatelessWidget {
                   SizedBox(width: grid.px(2)),
                 ],
                 Expanded(
-                  child: ShadowText(
-                    title,
-                    style: PixelType.title(context, color: PixelPalette.paper),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  // v0.3: short titles are banded lettering; long ones
+                  // (destination or quest names) stay readable body text.
+                  child: title.length <= 18
+                      ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: PixelText3D(
+                              title,
+                              size: 14,
+                              depth: 1,
+                              colors: PixelText3DColors.cream,
+                              textAlign: TextAlign.left,
+                            ),
+                          ),
+                        )
+                      : ShadowText(
+                          title,
+                          style: PixelType.title(context, color: PixelPalette.paper),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                 ),
                 for (final action in actions) ...[
                   SizedBox(width: grid.px(1)),

@@ -187,7 +187,8 @@ void main() {
       );
       expect(pixelSpriteFinder, findsOneWidget);
       final spriteWidget = tester.widget<PixelSprite>(pixelSpriteFinder);
-      expect(spriteWidget.art, equals(DesignerArt.heartLiked));
+      // PixelIconFit draws a margin-trimmed copy named '<name>#trim'.
+      expect(spriteWidget.art.name.split('#').first, DesignerArt.heartLiked.name);
 
       // Verify COMMENTS chip uses StudioIcons.edit
       final commentsChip = find.text('2 comments');

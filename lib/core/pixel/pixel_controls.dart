@@ -9,8 +9,8 @@ import '../audio/game_audio.dart';
 import 'pixel_art.dart';
 import 'pixel_box.dart';
 import 'pixel_grid.dart';
-import 'pixel_rpg.dart';
 import 'pixel_text.dart';
+import 'pixel_text_3d.dart';
 
 export 'mjdq_amount.dart';
 
@@ -22,40 +22,6 @@ void pixelTick(BuildContext context, {String sfx = 'tap'}) {
 }
 
 enum PixelButtonVariant { primary, secondary, danger, ghost }
-
-const _ghostStyle = PixelBoxStyle(
-  fill: PixelPalette.paper,
-  highlight: PixelPalette.paper,
-  shade: PixelPalette.paperDim,
-  outline: PixelPalette.ink,
-  corner: 1,
-  shadowPx: 0,
-  bevel: false,
-);
-
-const _disabledStyle = PixelBoxStyle(
-  fill: PixelPalette.paperDim,
-  highlight: PixelPalette.paperDim,
-  shade: PixelPalette.mist,
-  outline: PixelPalette.stone,
-  corner: 1,
-  shadowPx: 0,
-  bevel: false,
-);
-
-PixelBoxStyle _buttonStyle(PixelButtonVariant variant) => switch (variant) {
-      PixelButtonVariant.primary => PixelBoxStyle.green,
-      PixelButtonVariant.secondary => PixelBoxStyle.parchment,
-      PixelButtonVariant.danger => PixelBoxStyle.red,
-      PixelButtonVariant.ghost => _ghostStyle,
-    };
-
-Color _buttonText(PixelButtonVariant variant) => switch (variant) {
-      PixelButtonVariant.primary => PixelPalette.white,
-      PixelButtonVariant.secondary => PixelPalette.ink,
-      PixelButtonVariant.danger => PixelPalette.white,
-      PixelButtonVariant.ghost => PixelPalette.ink,
-    };
 
 class PixelButton extends StatefulWidget {
   const PixelButton({
@@ -87,6 +53,29 @@ class PixelButton extends StatefulWidget {
   State<PixelButton> createState() => _PixelButtonState();
 }
 
+/// Disabled controls are drawn faded (no Opacity layer when enabled).
+Widget _dimIf(bool dim, Widget child) =>
+    dim ? Opacity(opacity: 0.45, child: child) : child;
+
+/// v0.3 (owner 2026-11-16: "full UI makeover with this design system. remove
+/// the boxes"): lettering colours for a button, from its variant or the box
+/// style a caller passed.
+PixelText3DColors _letterColors(PixelButtonVariant variant, PixelBoxStyle? style) {
+  if (style != null) {
+    final fill = style.fill;
+    if (fill == PixelBoxStyle.green.fill) return PixelText3DColors.green;
+    if (fill == PixelBoxStyle.red.fill) return PixelText3DColors.red;
+    if (fill == PixelBoxStyle.gold.fill) return PixelText3DColors.gold;
+    return PixelText3DColors.cream;
+  }
+  return switch (variant) {
+    PixelButtonVariant.primary => PixelText3DColors.gold,
+    PixelButtonVariant.secondary => PixelText3DColors.green,
+    PixelButtonVariant.danger => PixelText3DColors.red,
+    PixelButtonVariant.ghost => PixelText3DColors.cream,
+  };
+}
+
 class _PixelButtonState extends State<PixelButton> {
   bool _down = false;
 
@@ -94,44 +83,31 @@ class _PixelButtonState extends State<PixelButton> {
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     final enabled = widget.onPressed != null && !widget.loading;
-    final style = enabled
-        ? (widget.style ?? _buttonStyle(widget.variant)).copyWith(shadowPx: 1)
-        : _disabledStyle;
-    final textColor = enabled
-        ? (widget.textColor ?? _buttonText(widget.variant))
-        : PixelPalette.slate;
+    final colors = _letterColors(widget.variant, widget.style);
     final content = Row(
       mainAxisSize: widget.expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (widget.loading) ...[
-          _SteppedDots(color: textColor),
+          _SteppedDots(color: colors.side),
           SizedBox(width: grid.px(2)),
         ] else if (widget.icon != null) ...[
-          if (widget.iconSize != null)
-            SizedBox.square(
-              dimension: widget.iconSize,
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: PixelSprite(widget.icon!, scale: widget.iconScale),
-              ),
-            )
-          else
-            PixelSprite(widget.icon!, scale: widget.iconScale),
+          Transform.translate(
+            offset: Offset(0, _down ? grid.unit : 0),
+            child: PixelIconFit(widget.icon!, box: widget.iconSize ?? 24),
+          ),
           SizedBox(width: grid.px(2)),
         ],
         Flexible(
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.center,
-            child: ShadowText(
+            child: PixelText3D(
               widget.label,
-              style: PixelType.body(context, color: textColor).copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-              softWrap: false,
-              textAlign: TextAlign.center,
+              size: 12,
+              depth: 1,
+              colors: colors,
+              pressed: _down,
             ),
           ),
         ),
@@ -143,6 +119,7 @@ class _PixelButtonState extends State<PixelButton> {
       label: widget.loading ? '${widget.label} loading' : widget.label,
       child: ExcludeSemantics(
         child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTapDown: enabled ? (_) => setState(() => _down = true) : null,
           onTapCancel: enabled ? () => setState(() => _down = false) : null,
           onTapUp: enabled
@@ -153,15 +130,16 @@ class _PixelButtonState extends State<PixelButton> {
                 }
               : null,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: PixelPanel(
-              style: style,
-              padding: 2,
-              pressed: _down,
-              child: Center(
-                widthFactor: widget.expand ? null : 1,
-                heightFactor: 1,
-                child: content,
+            constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+            child: _dimIf(
+              !enabled && !widget.loading,
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: grid.px(1)),
+                child: Center(
+                  widthFactor: widget.expand ? null : 1,
+                  heightFactor: 1,
+                  child: content,
+                ),
               ),
             ),
           ),
@@ -224,14 +202,18 @@ class _PixelIconButtonState extends State<PixelIconButton> {
               : null,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            child: PixelPanel(
-              style: enabled ? widget.style : _disabledStyle,
-              padding: 2,
-              pressed: _down,
-              child: Center(
+            child: _dimIf(
+              !enabled,
+              Center(
                 widthFactor: 1,
                 heightFactor: 1,
-                child: PixelSprite(widget.icon, scale: scale),
+                // v0.3: no box, just the icon; it dips while pressed.
+                child: Transform.translate(
+                  offset: Offset(0, _down ? PixelGrid.of(context).unit : 0),
+                  child: widget.iconHeight == null
+                      ? PixelSprite(widget.icon, scale: scale)
+                      : PixelIconFit(widget.icon, box: widget.iconHeight! + 8),
+                ),
               ),
             ),
           ),
@@ -259,6 +241,15 @@ class PixelChip extends StatelessWidget {
   final VoidCallback? onTap;
   final int iconScale;
 
+  // v0.3: no box. Gold, green and red chips read as lettering in that colour;
+  // anything else (parchment = "not selected") as cream.
+  PixelText3DColors get _colors {
+    if (style.fill == PixelBoxStyle.gold.fill) return PixelText3DColors.gold;
+    if (style.fill == PixelBoxStyle.green.fill) return PixelText3DColors.green;
+    if (style.fill == PixelBoxStyle.red.fill) return PixelText3DColors.red;
+    return PixelText3DColors.cream;
+  }
+
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
@@ -273,30 +264,28 @@ class PixelChip extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              style: PixelType.small(context, color: textColor),
-            ),
+            child: PixelText3D(label, size: 9, depth: 1, colors: _colors),
           ),
         ),
       ],
     );
-    if (onTap == null) {
-      return PixelPanel(
-        style: style.copyWith(corner: 1, shadowPx: 0),
-        padding: 2,
-        child: content,
-      );
-    }
-    // Plan 75k: tappable chips press like inventory slots.
-    return PixelTappableSlot(
-      style: style.copyWith(corner: 1, shadowPx: 1),
-      padding: 2,
-      semanticLabel: label,
-      onTap: onTap,
-      child: ExcludeSemantics(child: content),
+    if (onTap == null) return content;
+    return Semantics(
+      button: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            pixelTick(context);
+            onTap!();
+          },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 40),
+            child: Center(widthFactor: 1, heightFactor: 1, child: content),
+          ),
+        ),
+      ),
     );
   }
 }

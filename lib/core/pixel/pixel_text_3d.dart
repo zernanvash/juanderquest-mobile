@@ -146,24 +146,18 @@ class PixelText3D extends StatelessWidget {
             ..isAntiAlias = false
             ..color = colors.outline,
         );
-    // Hard colour bands, top to bottom (no blending between bands).
-    Widget bands(List<Color> cs) {
-      final stops = <double>[], colours = <Color>[];
-      for (var i = 0; i < cs.length; i++) {
-        stops..add(i / cs.length)..add((i + 1) / cs.length);
-        colours..add(cs[i])..add(cs[i]);
-      }
-      return ShaderMask(
-        blendMode: BlendMode.srcIn,
-        shaderCallback: (r) => LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: colours,
-          stops: stops,
-        ).createShader(r),
-        child: text_(base.copyWith(color: PixelPalette.white)),
-      );
-    }
+    // Hard colour bands, top to bottom: the same text clipped to slices of
+    // its height (clipping is cheap; no offscreen layer per label).
+    Widget bands(List<Color> cs) => Stack(
+          clipBehavior: Clip.none,
+          children: [
+            for (var i = 0; i < cs.length; i++)
+              ClipRect(
+                clipper: _BandClip(i / cs.length, (i + 1) / cs.length),
+                child: text_(base.copyWith(color: cs[i])),
+              ),
+          ],
+        );
 
     final layers = switch (look) {
       PixelTextLook.extruded => [
@@ -200,9 +194,12 @@ class PixelText3D extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           // Sizing child (invisible), so the widget measures like plain text.
-          Opacity(
-            opacity: 0,
-            child: Text(text, style: base, textAlign: textAlign, maxLines: 1, softWrap: false),
+          Text(
+            text,
+            style: base.copyWith(color: PixelPalette.ink.withValues(alpha: 0)),
+            textAlign: textAlign,
+            maxLines: 1,
+            softWrap: false,
           ),
           ...layers,
         ],
@@ -350,4 +347,24 @@ class PixelIconFit extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Clips to a horizontal slice [from]..[to] of the child's height (wide
+/// enough sideways for italics and outlines).
+class _BandClip extends CustomClipper<Rect> {
+  const _BandClip(this.from, this.to);
+
+  final double from;
+  final double to;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(
+        -size.width,
+        from > 0 ? size.height * from : -size.height,
+        size.width * 2,
+        to < 1 ? size.height * to : size.height * 2,
+      );
+
+  @override
+  bool shouldReclip(_BandClip old) => old.from != from || old.to != to;
 }

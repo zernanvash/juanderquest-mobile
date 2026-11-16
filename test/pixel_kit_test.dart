@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
 import 'package:juanderquest_app/core/pixel/pixel_box.dart';
 import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
+import 'package:juanderquest_app/core/pixel/pixel_text_3d.dart';
 import 'package:juanderquest_app/core/pixel/pixel_feedback.dart';
 import 'package:juanderquest_app/core/pixel/pixel_grid.dart';
 import 'package:juanderquest_app/core/pixel/pixel_input.dart';
@@ -149,19 +150,19 @@ void main() {
       final semantics = tester.ensureSemantics();
       expect(find.bySemanticsLabel('Start'), findsOneWidget);
       expect(
-          tester.widget<PixelPanel>(find.byType(PixelPanel)).pressed, isFalse);
+          tester.widget<PixelText3D>(find.byType(PixelText3D)).pressed, isFalse);
 
       final gesture = await tester.startGesture(
         tester.getCenter(find.byType(PixelButton)),
       );
       await tester.pump();
       expect(
-          tester.widget<PixelPanel>(find.byType(PixelPanel)).pressed, isTrue);
+          tester.widget<PixelText3D>(find.byType(PixelText3D)).pressed, isTrue);
       await gesture.up();
       await tester.pump();
       expect(taps, 1);
       expect(
-          tester.widget<PixelPanel>(find.byType(PixelPanel)).pressed, isFalse);
+          tester.widget<PixelText3D>(find.byType(PixelText3D)).pressed, isFalse);
       semantics.dispose();
     });
 

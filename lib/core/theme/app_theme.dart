@@ -128,9 +128,10 @@ abstract class AppTheme {
           borderRadius: AppSpacing.roundedLg,
           borderSide: BorderSide(color: AppColors.borderLowContrast),
         ),
+        // Owner 2026-11-16: no green outline on focus.
         focusedBorder: const OutlineInputBorder(
           borderRadius: AppSpacing.roundedLg,
-          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.borderLowContrast),
         ),
         errorBorder: const OutlineInputBorder(
           borderRadius: AppSpacing.roundedLg,

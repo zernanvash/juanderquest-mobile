@@ -203,9 +203,10 @@ abstract final class PixelTheme {
           borderRadius: BorderRadius.zero,
           borderSide: BorderSide(color: PixelPalette.ink, width: 1),
         ),
+        // Owner 2026-11-16: no green outline on focus ("its tripping me").
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(color: PixelPalette.green, width: 2),
+          borderSide: BorderSide(color: PixelPalette.ink, width: 1),
         ),
         errorBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.zero,
