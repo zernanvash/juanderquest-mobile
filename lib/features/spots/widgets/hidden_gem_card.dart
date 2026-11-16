@@ -63,9 +63,10 @@ class _HiddenGemAd extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _open(context),
-        // Plan 75m: a dark spotlight frame so the gem stands out in the feed.
+        // Plan 75m: a dark spotlight frame so the gem stands out in the feed
+        // (brown, not navy: owner 2026-11-17).
         child: PixelPanel(
-          style: PixelBoxStyle.inkDialogue,
+          style: PixelBoxStyle.darkWood,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

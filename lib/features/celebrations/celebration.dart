@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../core/pixel/generated/pixel_palette.g.dart';
 import '../../core/pixel/pixel_box.dart';
 import '../../core/pixel/pixel_grid.dart';
+import '../../core/pixel/pixel_text.dart';
 import 'celebration_button.dart';
 import 'celebration_models.dart';
 import 'scenes/level_up_scene.dart';
@@ -96,7 +97,7 @@ class _CelebrationPageState extends State<CelebrationPage>
       case QuestComplete():
         return QuestCompleteGame(
           unit: grid.unit,
-          font: settings.font,
+          font: PixelType.headerFont,
           questTitle: c.questTitle,
           reward: c.reward,
           fontScale: settings.fontScale(),
@@ -106,7 +107,7 @@ class _CelebrationPageState extends State<CelebrationPage>
       case LevelUp():
         return LevelUpGame(
           unit: grid.unit,
-          font: settings.font,
+          font: PixelType.headerFont,
           fromLevel: c.fromLevel,
           toLevel: c.toLevel,
           fontScale: settings.fontScale(),
@@ -116,7 +117,7 @@ class _CelebrationPageState extends State<CelebrationPage>
       case StampEarned():
         return StampEarnedGame(
           unit: grid.unit,
-          font: settings.font,
+          font: PixelType.headerFont,
           stampName: c.stampName,
           stamp: c.stamp,
           fontScale: settings.fontScale(),

@@ -373,12 +373,6 @@ class PixelSettingsNotifier extends Notifier<PixelSettings> {
     unawaited(_persist());
   }
 
-  void setFont(String value) {
-    if (kReleaseMode || !PixelSettings.fonts.containsKey(value)) return;
-    state = state.copyWith(font: value);
-    unawaited(_persist());
-  }
-
   void setHaptics(bool value) {
     if (kReleaseMode) return;
     state = state.copyWith(haptics: value);

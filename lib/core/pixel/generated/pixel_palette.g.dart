@@ -86,6 +86,8 @@ abstract final class PixelPalette {
   static const blueLight = Color(0xFFDBEAFE);
   /// app infoBg
   static const sky = Color(0xFFE0F2FE);
+  /// the earlier brand brown, for spotlight cards (owner 2026-11-17)
+  static const woodDark = Color(0xFF582F0E);
 
   /// Key used in generated pixel rows -> colour.
   static const byKey = <String, Color>{
@@ -130,6 +132,7 @@ abstract final class PixelPalette {
     'C': blueMid,
     'D': blueLight,
     'E': sky,
+    'F': woodDark,
   };
 
   /// Palette names in order, for galleries.
@@ -175,5 +178,6 @@ abstract final class PixelPalette {
     'blueMid': blueMid,
     'blueLight': blueLight,
     'sky': sky,
+    'woodDark': woodDark,
   };
 }

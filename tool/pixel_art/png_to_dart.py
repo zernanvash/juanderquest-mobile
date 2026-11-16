@@ -78,6 +78,9 @@ def nearest(palette, rgb, cache):
     lab = srgb_to_lab(rgb)
     best, best_d = None, 1e18
     for c in palette:
+        # "art": false = a UI-only colour; art never snaps to it.
+        if c.get('art') is False:
+            continue
         d = sum((lab[i] - c['lab'][i]) ** 2 for i in range(3))
         if d < best_d:
             best, best_d = c, d

@@ -276,69 +276,8 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                 ),
             ],
           ),
+          // Owner 2026-11-17: no font picker; the app uses three fixed fonts.
           SizedBox(height: grid.px(3)),
-          Text(
-            'FONT · UNIFORM ACROSS THE APP',
-            style: PixelType.small(context, color: PixelPalette.slate),
-          ),
-          SizedBox(height: grid.px(2)),
-          for (final entry in PixelSettings.fonts.entries) ...[
-            Semantics(
-              button: true,
-              selected: settings.font == entry.key,
-              label: entry.key,
-              child: ExcludeSemantics(
-                child: GestureDetector(
-                  onTap: () {
-                    pixelTick(context);
-                    notifier.setFont(entry.key);
-                  },
-                  child: PixelPanel(
-                    style: settings.font == entry.key
-                        ? PixelBoxStyle.gold
-                        : PixelBoxStyle.slot,
-                    sunken: settings.font != entry.key,
-                    padding: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.key,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: entry.key,
-                            fontSize: 16,
-                            height: 1.3,
-                            color: PixelPalette.ink,
-                          ),
-                        ),
-                        Text(
-                          'Hundred Islands · 1,250 mJDQ',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: entry.key,
-                            fontSize: 12,
-                            height: 1.3,
-                            color: PixelPalette.wood,
-                          ),
-                        ),
-                        Text(
-                          entry.value,
-                          style: PixelType.small(
-                            context,
-                            color: PixelPalette.slate,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: grid.px(2)),
-          ],
           Row(
             children: [
               Expanded(

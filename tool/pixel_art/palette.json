@@ -47,6 +47,8 @@
     {"key": "B", "name": "blueBright",  "hex": "2563EB", "source": "web status-info"},
     {"key": "C", "name": "blueMid",     "mix": ["blueBright", "blueLight", 0.45], "source": "mix web status-info -> status-info-bg 45%"},
     {"key": "D", "name": "blueLight",   "hex": "DBEAFE", "source": "web status-info-bg"},
-    {"key": "E", "name": "sky",         "hex": "E0F2FE", "source": "app infoBg"}
+    {"key": "E", "name": "sky",         "hex": "E0F2FE", "source": "app infoBg"},
+
+    {"key": "F", "name": "woodDark",    "hex": "582F0E", "art": false, "source": "the earlier brand brown, for spotlight cards (owner 2026-11-17)"}
   ]
 }

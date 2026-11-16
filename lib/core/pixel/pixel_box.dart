@@ -71,6 +71,14 @@ class PixelBoxStyle {
     shade: PixelPalette.ink,
   );
 
+  /// The earlier, darker brown for spotlight cards (owner 2026-11-17: the
+  /// lighter logo brown looked off on them).
+  static const darkWood = PixelBoxStyle(
+    fill: PixelPalette.woodDark,
+    highlight: PixelPalette.wood,
+    shade: PixelPalette.woodDeep,
+  );
+
   static const gold = PixelBoxStyle(
     fill: PixelPalette.sun,
     highlight: PixelPalette.sunLight,
