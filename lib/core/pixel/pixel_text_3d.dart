@@ -126,8 +126,16 @@ class PixelText3D extends StatelessWidget {
     final d = pressed ? 0 : depth;
     final lift = (depth - d) * u; // pressed: the face moves down
 
-    Widget text_(TextStyle style) =>
-        Text(text, style: style, textAlign: textAlign, maxLines: 1, softWrap: false);
+    // Drawing layers are RichText so only the one sizing Text below is "the
+    // text" (screen readers and finders see the label once).
+    final scaler = MediaQuery.textScalerOf(context);
+    Widget text_(TextStyle style) => RichText(
+          text: TextSpan(text: text, style: style),
+          textAlign: textAlign,
+          maxLines: 1,
+          softWrap: false,
+          textScaler: scaler,
+        );
     Widget at(double dx, double dy, Widget child) =>
         Transform.translate(offset: Offset(dx, dy + lift), child: child);
     TextStyle stroke(double w) => base.copyWith(
@@ -192,7 +200,10 @@ class PixelText3D extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           // Sizing child (invisible), so the widget measures like plain text.
-          Opacity(opacity: 0, child: text_(base)),
+          Opacity(
+            opacity: 0,
+            child: Text(text, style: base, textAlign: textAlign, maxLines: 1, softWrap: false),
+          ),
           ...layers,
         ],
       ),
