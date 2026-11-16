@@ -28,7 +28,6 @@ class GameAudio {
   static const musicVolume = 0.35;
   bool _musicWanted = false;
   bool _appVisible = true;
-  bool _musicPlaying = false;
   AudioPlayer? _music;
 
   /// Music mixes with whatever the phone already plays (no audio focus), so
@@ -59,31 +58,44 @@ class GameAudio {
     _syncMusic();
   }
 
+  // One sync at a time; a change while syncing runs another pass, so the
+  // player always ends in the wanted state (a pause that arrives while the
+  // file is still loading can't leave it stuck).
+  bool _syncing = false;
+  bool _resync = false;
+  bool _musicLoaded = false;
+
   Future<void> _syncMusic() async {
     if (_inTest) return;
-    final play = _musicWanted && _appVisible;
-    if (play == _musicPlaying) return;
-    _musicPlaying = play;
+    if (_syncing) {
+      _resync = true;
+      return;
+    }
+    _syncing = true;
     try {
-      if (play) {
+      do {
+        _resync = false;
         final music = _music ??= AudioPlayer();
-        await music.setAudioContext(_musicContext);
-        await music.setReleaseMode(ReleaseMode.loop);
-        await music.setVolume(musicVolume);
-        if (music.state == PlayerState.paused) {
-          await music.resume();
-        } else {
-          await music.play(AssetSource('audio/music/jdq_bgm.mp3'));
+        if (_musicWanted && _appVisible) {
+          if (!_musicLoaded) {
+            await music.setAudioContext(_musicContext);
+            await music.setReleaseMode(ReleaseMode.loop);
+            await music.setVolume(musicVolume);
+            await music.setSource(AssetSource('audio/music/jdq_bgm.mp3'));
+            _musicLoaded = true;
+          }
+          if (music.state != PlayerState.playing) await music.resume();
+        } else if (music.state == PlayerState.playing) {
+          await music.pause();
         }
-      } else {
-        await _music?.pause();
-      }
+      } while (_resync);
     } catch (e) {
-      // No audio engine: stay silent, and allow a retry on the next change.
-      _musicPlaying = false;
       debugPrint('GameAudio music: $e');
+    } finally {
+      _syncing = false;
     }
   }
+
 
   final sfxVolume = ValueNotifier<double>(0.8);
 
