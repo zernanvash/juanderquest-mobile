@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/l10n/app_language.dart';
 import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
@@ -77,6 +78,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
         MapConfig.satelliteAvailable() && ref.read(satelliteModeProvider),
       ),
     );
+    // Plan 100 WP-9: done quests need the traveler's submissions.
+    Future.microtask(() {
+      if (mounted) {
+        unawaited(ref.read(submissionProvider.notifier).fetchSubmissions());
+      }
+    });
     _nativeMap.onTapEmpty = _handleMapTap;
     _nativeMap.onTapPlace = (id) {
       if (_focusedArea?.id == id) return;
@@ -568,6 +575,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
         ref.read(questProvider.notifier).fetchQuests(),
         ref.read(spotDiscoveryProvider.notifier).load(),
         ref.refresh(choiceSpotlightProvider.future),
+        // Plan 100 WP-9: which quests are done (throttled by the provider).
+        ref.read(submissionProvider.notifier).fetchSubmissions(),
       ]);
     } finally {
       if (mounted) {
@@ -795,15 +804,21 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                   if (hasDoneQuests) ...[
                     Tooltip(
                       message: _showDoneQuests
-                          ? 'Hide done quests'
-                          : 'Show done quests',
+                          ? tr(context,
+                              en: 'Hide done quests',
+                              tl: 'Itago ang tapos na quest')
+                          : tr(context,
+                              en: 'Show done quests',
+                              tl: 'Ipakita ang tapos na quest'),
                       child: Semantics(
                         button: true,
                         toggled: _showDoneQuests,
-                        label: 'Show done quests',
+                        label: tr(context,
+                            en: 'Show done quests',
+                            tl: 'Ipakita ang tapos na quest'),
                         child: ExcludeSemantics(
                           child: PixelChip(
-                            'DONE',
+                            tr(context, en: 'DONE', tl: 'TAPOS'),
                             key: const ValueKey('map_show_done_quests'),
                             style: _showDoneQuests
                                 ? PixelBoxStyle.gold

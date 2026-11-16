@@ -54,7 +54,7 @@ class HomeDailyTasksPanel extends StatelessWidget {
               ),
             ],
           ),
-          for (final m in missions.take(3)) ...[
+          for (final m in missions) ...[
             SizedBox(height: grid.px(2)),
             _TaskRow(mission: m, onTap: () => onOpen(m)),
           ],

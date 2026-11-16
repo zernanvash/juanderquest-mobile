@@ -820,6 +820,11 @@ class MapLibreJdqMap extends JdqMap {
   static const questPinDp = 40.0;
   static const spotPinDp = 32.0;
 
+  /// Pixel art scales by whole numbers (tool/pixel_art/README.md); an art
+  /// bigger than the target (spot pin, 64 px) only shrinks by halves.
+  static double _wholeScale(double s) =>
+      s >= 1 ? s.roundToDouble() : 1 / (1 / s).round();
+
   Future<Uint8List?> _rasterizeToPng(PixelArt art, {double scale = 2}) async {
     try {
       final img = art.image();
@@ -988,11 +993,11 @@ class MapLibreJdqMap extends JdqMap {
             2.0;
         final questBytes = await _rasterizeToPng(
           DesignerArt.questMarker,
-          scale: questPinDp * dpr / DesignerArt.questMarker.height,
+          scale: _wholeScale(questPinDp * dpr / DesignerArt.questMarker.height),
         );
         final spotBytes = await _rasterizeToPng(
           DesignerArt.spotMarker,
-          scale: spotPinDp * dpr / DesignerArt.spotMarker.height,
+          scale: _wholeScale(spotPinDp * dpr / DesignerArt.spotMarker.height),
         );
         if (questBytes != null && spotBytes != null) {
           await c.addImage('jdq-pin-quest', questBytes);

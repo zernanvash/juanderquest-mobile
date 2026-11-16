@@ -66,7 +66,10 @@ class _MjdqAmountState extends State<MjdqAmount> {
     if (widget.idleSpin && _idle == null) {
       _idle = Timer.periodic(MjdqAmount.idleSpinEvery, (_) {
         // Off-screen routes and reduced motion keep the coin still.
-        if (!mounted || _playing || !TickerMode.of(context)) {
+        if (!mounted ||
+            _playing ||
+            !TickerMode.of(context) ||
+            (MediaQuery.maybeDisableAnimationsOf(context) ?? false)) {
           return;
         }
         setState(() => _playing = true);
