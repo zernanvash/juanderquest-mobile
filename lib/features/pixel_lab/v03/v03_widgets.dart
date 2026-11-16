@@ -40,8 +40,8 @@ class ProtoMainMenu extends StatelessWidget {
     required this.style,
     required this.onTap,
     this.labelColors = PixelText3DColors.cream,
-    this.look = PixelTextLook.extruded,
-    this.font,
+    this.look = PixelTextLook.banded,
+    this.font = PixelText3D.defaultFont,
   });
 
   final PixelTextLook look;

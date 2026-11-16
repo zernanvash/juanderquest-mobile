@@ -84,9 +84,12 @@ class PixelText3D extends StatelessWidget {
     this.depth = 2,
     this.pressed = false,
     this.textAlign = TextAlign.center,
-    this.look = PixelTextLook.extruded,
-    this.font,
+    this.look = PixelTextLook.banded,
+    this.font = PixelText3D.defaultFont,
   });
+
+  /// Owner 2026-11-16: "menu C, banded, pressstart2p for buttons and headers".
+  static const defaultFont = 'PressStart2P';
 
   final String text;
 
@@ -208,8 +211,8 @@ class PixelText3DButton extends StatefulWidget {
     this.iconBox,
     this.size = 16,
     this.colors = PixelText3DColors.gold,
-    this.look = PixelTextLook.extruded,
-    this.font,
+    this.look = PixelTextLook.banded,
+    this.font = PixelText3D.defaultFont,
   });
 
   final PixelTextLook look;

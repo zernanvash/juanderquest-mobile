@@ -28,8 +28,8 @@ class PixelLabV03Screen extends StatefulWidget {
 class _PixelLabV03ScreenState extends State<PixelLabV03Screen> {
   bool _dark = false;
   ProtoMenuStyle _menu = ProtoMenuStyle.noBoxes;
-  PixelTextLook _look = PixelTextLook.extruded;
-  String _font = PixelFonts.families.first;
+  PixelTextLook _look = PixelTextLook.banded;
+  String _font = PixelText3D.defaultFont;
   // Lettering colours follow the page: gold on the light page, cream on
   // dark wood (owner 2026-11-16: "dark mode and light mode toggle auto
   // selecting whats appropriate combo").
