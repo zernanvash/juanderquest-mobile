@@ -299,7 +299,6 @@ void main() {
             nominalStamps: 5,
           ),
           onClaimDaily: () => claimed = true,
-          gemName: 'Sual Cove',
           onNavigate: (r) => navigatedTo = r,
         ),
       ),

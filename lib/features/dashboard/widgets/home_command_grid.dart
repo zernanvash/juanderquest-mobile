@@ -7,7 +7,7 @@ import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
-import '../../vote/pixel/wave3_art.dart';
+import '../pixel/home_pixel_art.dart';
 
 class _CommandTileSpec {
   const _CommandTileSpec({
@@ -115,11 +115,13 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         icon: DesignerArt.navMap,
         route: '/map',
       ),
+      // Owner 2026-11-16: the Almanac replaces HISTORY (proof history
+      // stays in Settings -> My submissions).
       const _CommandTileSpec(
-        key: ValueKey('home_tile_history'),
-        label: 'HISTORY',
-        icon: Wave3Art.list,
-        route: '/history',
+        key: ValueKey('home_tile_almanac'),
+        label: 'ALMANAC',
+        icon: HomePixelArt.calendar,
+        route: '/almanac',
       ),
     ];
   }

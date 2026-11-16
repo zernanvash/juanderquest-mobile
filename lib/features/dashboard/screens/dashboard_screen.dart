@@ -20,7 +20,6 @@ import '../../notifications/providers/local_notifications_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/providers/campaign_provider.dart';
 import '../../quests/providers/quest_provider.dart';
-import '../../spots/providers/hidden_gem_provider.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/screens/interests_screen.dart';
 import '../../submissions/providers/submission_provider.dart';
@@ -29,7 +28,6 @@ import '../providers/home_daily_provider.dart';
 import '../providers/home_dashboard_providers.dart';
 import '../providers/home_qotd_provider.dart';
 import '../providers/home_recommended_quest_provider.dart';
-import '../widgets/home_adventure_calendar.dart';
 import '../widgets/main_menu_panel.dart';
 import '../widgets/home_daily_tasks_panel.dart';
 import '../widgets/home_dual_bento_row.dart';
@@ -75,7 +73,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ]);
     ref.invalidate(homeQotdProvider);
     ref.invalidate(homeNearbyQuizProvider);
-    ref.invalidate(hiddenGemProvider);
     ref.invalidate(serverUnreadNotificationsProvider);
   }
 
@@ -88,7 +85,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final dailyAsync = ref.watch(homeDailyProvider);
     final claimState = ref.watch(homeDailyClaimProvider);
     final qotd = ref.watch(homeQotdProvider).asData?.value;
-    final gems = ref.watch(hiddenGemProvider).valueOrNull;
 
     final quests = withoutTestContent(
       questsState.quests,
@@ -102,7 +98,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final daily = claimState.latest ?? dailyAsync.valueOrNull;
     final unread = ref.watch(unreadNotificationCountProvider);
-    final firstGem = (gems != null && gems.isNotEmpty) ? gems.first : null;
 
     if (!_tipsRequested && user != null) {
       _tipsRequested = true;
@@ -125,8 +120,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Column(
                 children: [
                   PixelAppBar(
-                    title: 'Home',
+                    title: 'JuanderQuest',
                     isTab: true,
+                    // Owner 2026-11-16: the logo instead of "HOME".
+                    titleWidget: Image.asset(
+                      'assets/images/logo.png',
+                      key: const ValueKey('home_logo'),
+                      height: 44,
+                      filterQuality: FilterQuality.medium,
+                    ),
                     actions: [
                       // Owner 2026-11-16: only the bell on Home (Search is on
                       // Explore, the Map in the menu, Settings on Profile).
@@ -197,6 +199,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                           SizedBox(height: grid.px(3)),
 
+                          // Plan 100 WP-4: today's tasks (they earn the stamps); owner
+                          // 2026-11-16: right under the player card.
+                          if (daily != null && daily.missions.isNotEmpty) ...[
+                            HomeDailyTasksPanel(
+                              missions: daily.missions,
+                              onOpen: (m) => switch (m.kind) {
+                                'qotd' => _showQotdSheet(context, ref, qotd),
+                                'cheer_post' => context.push('/plaza'),
+                                _ => context.push('/quests'),
+                              },
+                            ),
+                            SizedBox(height: grid.px(3)),
+                          ],
+
                           // BAND 2 (main menu) moved to the MENU button in
                           // the bottom bar (owner 2026-11-16).
                           // BAND 3: DUAL BENTO (MISSION + DAILY STAMP + QOTD/GEM)
@@ -213,26 +229,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     .claim(daily),
                             qotdDone: qotd?.answered == true,
                             onTapQotd: () => _showQotdSheet(context, ref, qotd),
-                            gemName: firstGem?.name,
-                            gemSlug: firstGem?.id,
                           ),
                           SizedBox(height: grid.px(3)),
 
-                          // Plan 100 WP-4: today's tasks (they earn the stamps).
-                          if (daily != null && daily.missions.isNotEmpty) ...[
-                            HomeDailyTasksPanel(
-                              missions: daily.missions,
-                              onOpen: (m) => switch (m.kind) {
-                                'qotd' => _showQotdSheet(context, ref, qotd),
-                                'cheer_post' => context.push('/plaza'),
-                                _ => context.push('/quests'),
-                              },
-                            ),
-                            SizedBox(height: grid.px(3)),
-                          ],
-
-                          // BAND 4: PANGASINAN CHRONO-ALMANAC CALENDAR
-                          const HomeAdventureCalendar(),
+                          // The Almanac moved to the main menu (owner 2026-11-16).
                         ],
                       ),
                     ),

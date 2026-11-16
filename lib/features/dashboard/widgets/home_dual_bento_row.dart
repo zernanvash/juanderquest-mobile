@@ -28,9 +28,6 @@ class HomeDualBentoRow extends StatelessWidget {
     this.onClaimDaily,
     this.qotdDone = false,
     this.onTapQotd,
-    this.gemName,
-    this.gemSlug,
-    this.onTapGem,
     this.onNavigate,
   });
 
@@ -42,9 +39,6 @@ class HomeDualBentoRow extends StatelessWidget {
   final VoidCallback? onClaimDaily;
   final bool qotdDone;
   final VoidCallback? onTapQotd;
-  final String? gemName;
-  final String? gemSlug;
-  final VoidCallback? onTapGem;
   final ValueChanged<String>? onNavigate;
 
   static const _greenStyle = PixelBoxStyle(
@@ -72,7 +66,6 @@ class HomeDualBentoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -107,54 +100,21 @@ class HomeDualBentoRow extends StatelessWidget {
           },
         ),
         SizedBox(height: grid.px(2)),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final stacked = constraints.maxWidth < 260 || textScale >= 1.6;
-            final qotdChip = _MicroPillButton(
-              key: const ValueKey('home_qotd_pill'),
-              icon: DesignerArt.questionMark,
-              label: qotdDone ? 'QOTD DONE' : 'QOTD +5 mJDQ',
-              labelWidget: qotdDone
-                  ? null
-                  : MjdqAmount(
-                      5,
-                      sign: true,
-                      prefix: 'QOTD ',
-                      style:
-                          PixelType.small(context, color: PixelPalette.woodDeep)
-                              .copyWith(fontWeight: FontWeight.w700),
-                    ),
-              onTap: onTapQotd,
-            );
-            final gemChip = _MicroPillButton(
-              key: const ValueKey('home_gem_pill'),
-              icon: DesignerArt.gem,
-              label: gemName != null && gemName!.isNotEmpty
-                  ? 'GEM: $gemName'
-                  : 'HIDDEN GEM',
-              onTap: onTapGem ??
-                  (gemSlug != null && gemSlug!.isNotEmpty
-                      ? () => _go(context, '/explore/$gemSlug')
-                      : () => _go(context, '/explore')),
-            );
-            if (stacked) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  qotdChip,
-                  const SizedBox(height: 6),
-                  gemChip,
-                ],
-              );
-            }
-            return Row(
-              children: [
-                Expanded(child: qotdChip),
-                const SizedBox(width: 6),
-                Expanded(child: gemChip),
-              ],
-            );
-          },
+        // Owner 2026-11-16: the hidden gem left Home; QOTD takes the row.
+        _MicroPillButton(
+          key: const ValueKey('home_qotd_pill'),
+          icon: DesignerArt.questionMark,
+          label: qotdDone ? 'QOTD DONE' : 'QOTD +5 mJDQ',
+          labelWidget: qotdDone
+              ? null
+              : MjdqAmount(
+                  5,
+                  sign: true,
+                  prefix: 'QUESTION OF THE DAY ',
+                  style: PixelType.small(context, color: PixelPalette.woodDeep)
+                      .copyWith(fontWeight: FontWeight.w700),
+                ),
+          onTap: onTapQotd,
         ),
       ],
     );
@@ -364,39 +324,44 @@ class _MicroPillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 40),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: PixelPalette.parchment,
-          border: Border.all(color: PixelPalette.woodDeep, width: 2),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: PixelSprite(icon, scale: 1),
+    // Its own button for screen readers (not merged into the panels above).
+    return Semantics(
+      container: true,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 40),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: PixelPalette.parchment,
+            border: Border.all(color: PixelPalette.woodDeep, width: 2),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: PixelSprite(icon, scale: 1),
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: labelWidget ??
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        PixelType.small(context, color: PixelPalette.woodDeep)
-                            .copyWith(fontWeight: FontWeight.w700),
-                  ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Expanded(
+                child: labelWidget ??
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          PixelType.small(context, color: PixelPalette.woodDeep)
+                              .copyWith(fontWeight: FontWeight.w700),
+                    ),
+              ),
+            ],
+          ),
         ),
       ),
     );

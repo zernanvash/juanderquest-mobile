@@ -20,12 +20,17 @@ ApiClient _api({Object? data, bool fail = false, List<String>? paths}) {
         paths?.add('${options.path}?year=${options.queryParameters['year']}');
         if (fail) {
           handler.reject(
-            DioException(requestOptions: options, type: DioExceptionType.connectionError),
+            DioException(
+                requestOptions: options,
+                type: DioExceptionType.connectionError),
           );
           return;
         }
         handler.resolve(
-          Response(requestOptions: options, statusCode: 200, data: {'success': true, 'data': data}),
+          Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {'success': true, 'data': data}),
         );
       },
     ),
@@ -33,7 +38,8 @@ ApiClient _api({Object? data, bool fail = false, List<String>? paths}) {
   return api;
 }
 
-HomeCalendarEntry _builtIn(String id, String town, int month) => HomeCalendarEntry(
+HomeCalendarEntry _builtIn(String id, String town, int month) =>
+    HomeCalendarEntry(
       id: id,
       title: id,
       municipality: town,
@@ -50,7 +56,8 @@ ProviderContainer _container(ApiClient api) {
     overrides: [
       apiClientProvider.overrideWithValue(api),
       homeDailyProvider.overrideWith(
-        (ref) async => const HomeDailyState(stamps: 0, missions: [], claimedDays: 0, streak: 0),
+        (ref) async => const HomeDailyState(
+            stamps: 0, missions: [], claimedDays: 0, streak: 0),
       ),
       choiceOverviewProvider.overrideWith(
         (ref) async => const ChoiceOverview(
@@ -82,13 +89,26 @@ void main() {
       _api(
         paths: paths,
         data: [
-          {'id': 'f1', 'name': 'Bangus Festival', 'municipality': 'Dagupan', 'starts_on': '2027-04-20', 'ends_on': '2027-04-30'},
-          {'id': 'f2', 'name': 'Broken', 'municipality': null, 'starts_on': 'not-a-date', 'ends_on': '2027-01-01'},
+          {
+            'id': 'f1',
+            'name': 'Bangus Festival',
+            'municipality': 'Dagupan',
+            'starts_on': '2027-04-20',
+            'ends_on': '2027-04-30'
+          },
+          {
+            'id': 'f2',
+            'name': 'Broken',
+            'municipality': null,
+            'starts_on': 'not-a-date',
+            'ends_on': '2027-01-01'
+          },
         ],
       ),
     );
 
-    final festivals = await container.read(festivalCalendarProvider(2027).future);
+    final festivals =
+        await container.read(festivalCalendarProvider(2027).future);
 
     expect(paths, ['/calendar/festivals?year=2027']);
     expect(festivals, hasLength(1));
@@ -101,11 +121,19 @@ void main() {
     expect(bangus.spansDay(DateTime(2027, 5, 1)), isFalse);
   });
 
-  test('a dated festival replaces the built-in month entry for the same town and month only', () async {
+  test(
+      'a dated festival replaces the built-in month entry for the same town and month only',
+      () async {
     final container = _container(
       _api(
         data: [
-          {'id': 'f1', 'name': 'Bangus Festival', 'municipality': 'dagupan', 'starts_on': '2027-04-20', 'ends_on': '2027-04-30'},
+          {
+            'id': 'f1',
+            'name': 'Bangus Festival',
+            'municipality': 'dagupan',
+            'starts_on': '2027-04-20',
+            'ends_on': '2027-04-30'
+          },
         ],
       ),
     );
@@ -113,7 +141,10 @@ void main() {
     await container.read(homeDailyProvider.future);
     await container.read(choiceOverviewProvider.future);
 
-    final ids = container.read(homeCalendarEntriesProvider(2027)).map((e) => e.id).toList();
+    final ids = container
+        .read(homeCalendarEntriesProvider(2027))
+        .map((e) => e.id)
+        .toList();
 
     expect(ids, contains('festival-admin-f1'));
     expect(ids, isNot(contains('built-in-bangus')));
@@ -122,11 +153,15 @@ void main() {
 
   test('offline or an older server keeps the built-in month list', () async {
     final container = _container(_api(fail: true));
-    expect(await container.read(festivalCalendarProvider(2027).future), isEmpty);
+    expect(
+        await container.read(festivalCalendarProvider(2027).future), isEmpty);
     await container.read(homeDailyProvider.future);
     await container.read(choiceOverviewProvider.future);
 
-    final ids = container.read(homeCalendarEntriesProvider(2027)).map((e) => e.id).toList();
+    final ids = container
+        .read(homeCalendarEntriesProvider(2027))
+        .map((e) => e.id)
+        .toList();
 
     expect(ids, containsAll(['built-in-bangus', 'built-in-bagoong']));
   });

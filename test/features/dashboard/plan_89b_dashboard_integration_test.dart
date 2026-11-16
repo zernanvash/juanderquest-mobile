@@ -10,6 +10,7 @@ import 'package:juanderquest_app/core/pixel/pixel_art.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
+import 'package:juanderquest_app/features/dashboard/screens/almanac_screen.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
@@ -277,6 +278,7 @@ GoRouter _appRouter() => GoRouter(
           '/cultural-quizzes',
         ])
           GoRoute(path: path, builder: (_, __) => _RouteProbe(path)),
+        GoRoute(path: '/almanac', builder: (_, __) => const AlmanacScreen()),
       ],
     );
 
@@ -343,12 +345,8 @@ void main() {
     expect(find.byType(HomeCommandGrid), findsNothing);
     expect(heroY, lessThan(bentoY));
 
-    await tester.drag(find.byType(ListView), const Offset(0, -800));
-    await tester.pumpAndSettle();
-    final calY = tester.getTopLeft(find.byType(HomeAdventureCalendar)).dy;
-    final bentoAfterScrollY =
-        tester.getTopLeft(find.byType(HomeDualBentoRow)).dy;
-    expect(bentoAfterScrollY, lessThan(calY));
+    // The Almanac left Home for the main menu (owner 2026-11-16).
+    expect(find.byType(HomeAdventureCalendar), findsNothing);
   });
 
   testWidgets(
@@ -380,7 +378,14 @@ void main() {
     await tapAndCheck(const ValueKey('home_tile_plaza'), '/plaza');
     await tapAndCheck(const ValueKey('home_tile_add_spot'), '/map/add-spot');
     await tapAndCheck(const ValueKey('home_tile_map'), '/map');
-    await tapAndCheck(const ValueKey('home_tile_history'), '/history');
+    // The Almanac replaced HISTORY (owner 2026-11-16).
+    await _pumpRouter(tester);
+    await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('home_tile_almanac')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlmanacScreen), findsOneWidget);
     await tapAndCheck(const ValueKey('home_tile_quizzes'), '/cultural-quizzes');
   });
 
@@ -419,7 +424,11 @@ void main() {
     );
 
     await _pumpRouter(tester, campaigns: [campaign]);
-    await tester.drag(find.byType(ListView), const Offset(0, -800));
+    // The Almanac opens from the main menu (owner 2026-11-16).
+    await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('home_tile_almanac')));
     await tester.pumpAndSettle();
 
     // Toggle week <-> month

@@ -94,6 +94,7 @@ import 'package:juanderquest_app/features/pixel_lab/pixel_lab_screen.dart';
 import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
 import 'package:juanderquest_app/core/pixel/pixel_nav.dart';
 import 'package:juanderquest_app/core/pixel/placeholder_art.dart';
+import 'package:juanderquest_app/features/dashboard/screens/almanac_screen.dart';
 import 'package:juanderquest_app/features/dashboard/data/home_events.dart';
 import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
@@ -737,7 +738,8 @@ void main() {
                 'data': {
                   'id': 'app-1',
                   'status': 'needs_changes',
-                  'business_name': 'Bonuan Waterfront Bangus Grill and Pasalubong Center',
+                  'business_name':
+                      'Bonuan Waterfront Bangus Grill and Pasalubong Center',
                   'category': 'dining',
                   'municipality': 'Dagupan City',
                   'business_province': 'Pangasinan',
@@ -746,7 +748,11 @@ void main() {
                   'contact_name': 'Maria Santos',
                   'contact_email': 'maria.santos@bonuan-grill.example',
                   'contact_phone': '09170000000',
-                  'sponsorship_goals': ['quest_stop', 'voucher_perk', 'map_pin'],
+                  'sponsorship_goals': [
+                    'quest_stop',
+                    'voucher_perk',
+                    'map_pin'
+                  ],
                   'applicant_feedback':
                       'Please move the map pin to the exact storefront along Tondaligan Road and include a working contact phone.',
                 },
@@ -1001,11 +1007,10 @@ void main() {
 
     for (final size in [const Size(320, 568), const Size(568, 320)]) {
       testWidgets(
-          'DashboardScreen week & month modes do not overflow at ${size.width}x${size.height} 2x text',
+          'AlmanacScreen week & month modes do not overflow at ${size.width}x${size.height} 2x text',
           (tester) async {
-        await testScreenOverflow(tester, const DashboardScreen(), size, 2.0);
-        await tester.drag(find.byType(ListView), const Offset(0, -800));
-        await tester.pumpAndSettle();
+        // The Almanac moved to its own page (owner 2026-11-16).
+        await testScreenOverflow(tester, const AlmanacScreen(), size, 2.0);
         await tester.ensureVisible(
           find.byKey(const ValueKey('home_calendar_mode_toggle')),
         );
@@ -2207,9 +2212,15 @@ void main() {
             explanation: 'Fact.',
             options: [
               CulturalQuizOptionModel(
-                  id: 'tf-1', questionId: 'q-tf', ordinal: 1, optionText: 'Fact'),
+                  id: 'tf-1',
+                  questionId: 'q-tf',
+                  ordinal: 1,
+                  optionText: 'Fact'),
               CulturalQuizOptionModel(
-                  id: 'tf-2', questionId: 'q-tf', ordinal: 2, optionText: 'Myth'),
+                  id: 'tf-2',
+                  questionId: 'q-tf',
+                  ordinal: 2,
+                  optionText: 'Myth'),
             ],
           ),
           CulturalQuizQuestionModel(
@@ -2222,13 +2233,25 @@ void main() {
             explanation: 'Cape Bolinao.',
             options: [
               CulturalQuizOptionModel(
-                  id: 'p-1', questionId: 'q-photo', ordinal: 1, optionText: 'Lighthouse'),
+                  id: 'p-1',
+                  questionId: 'q-photo',
+                  ordinal: 1,
+                  optionText: 'Lighthouse'),
               CulturalQuizOptionModel(
-                  id: 'p-2', questionId: 'q-photo', ordinal: 2, optionText: 'Cathedral'),
+                  id: 'p-2',
+                  questionId: 'q-photo',
+                  ordinal: 2,
+                  optionText: 'Cathedral'),
               CulturalQuizOptionModel(
-                  id: 'p-3', questionId: 'q-photo', ordinal: 3, optionText: 'Plaza'),
+                  id: 'p-3',
+                  questionId: 'q-photo',
+                  ordinal: 3,
+                  optionText: 'Plaza'),
               CulturalQuizOptionModel(
-                  id: 'p-4', questionId: 'q-photo', ordinal: 4, optionText: 'Bridge'),
+                  id: 'p-4',
+                  questionId: 'q-photo',
+                  ordinal: 4,
+                  optionText: 'Bridge'),
             ],
           ),
           CulturalQuizQuestionModel(
@@ -2798,14 +2821,16 @@ void main() {
 
           final goFinder = find.byKey(const ValueKey('nav_start_adventure'));
           expect(goFinder, findsOneWidget);
-          expect(tester.getRect(goFinder).bottom, lessThanOrEqualTo(size.height));
+          expect(
+              tester.getRect(goFinder).bottom, lessThanOrEqualTo(size.height));
 
           // Open the panel and verify no overflow and GO remains visible
           await tester.tap(find.byKey(const ValueKey('nav_sheet_handle')));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           expect(goFinder, findsOneWidget);
-          expect(tester.getRect(goFinder).bottom, lessThanOrEqualTo(size.height));
+          expect(
+              tester.getRect(goFinder).bottom, lessThanOrEqualTo(size.height));
         });
       }
     });
@@ -2956,11 +2981,31 @@ class _OverflowMerchantApi extends MerchantApi {
         'counts': {'active_products': 12},
         'checklist': {
           'items': [
-            {'id': 'profile_info', 'title': 'Review business info & address', 'completed': true},
-            {'id': 'profile_contact', 'title': 'Confirm contact details', 'completed': true},
-            {'id': 'profile_photo', 'title': 'Upload logo or banner photo', 'completed': false},
-            {'id': 'catalog_item', 'title': 'Add your first product or specialty', 'completed': false},
-            {'id': 'publish_profile', 'title': 'Publish merchant showcase profile', 'completed': false},
+            {
+              'id': 'profile_info',
+              'title': 'Review business info & address',
+              'completed': true
+            },
+            {
+              'id': 'profile_contact',
+              'title': 'Confirm contact details',
+              'completed': true
+            },
+            {
+              'id': 'profile_photo',
+              'title': 'Upload logo or banner photo',
+              'completed': false
+            },
+            {
+              'id': 'catalog_item',
+              'title': 'Add your first product or specialty',
+              'completed': false
+            },
+            {
+              'id': 'publish_profile',
+              'title': 'Publish merchant showcase profile',
+              'completed': false
+            },
           ],
         },
         'truthful_notice': {

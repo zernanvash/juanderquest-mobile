@@ -25,7 +25,8 @@ const _missions = [
   ),
 ];
 
-Widget _wrap(Widget child, {Size size = const Size(360, 640), double text = 1}) =>
+Widget _wrap(Widget child,
+        {Size size = const Size(360, 640), double text = 1}) =>
     MediaQuery(
       data: MediaQueryData(size: size, textScaler: TextScaler.linear(text)),
       child: MaterialApp(

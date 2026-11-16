@@ -53,6 +53,7 @@ import '../features/quests/screens/qr_sheet_screen.dart';
 import '../features/plaza/plaza_screen.dart';
 import '../features/about/screens/about_screen.dart';
 import '../features/trail/trail_catalog_screen.dart';
+import '../features/dashboard/screens/almanac_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/navigation/models/route_model.dart';
 import '../features/navigation/screens/navigation_screen.dart';
@@ -182,6 +183,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                   path: '/saved',
                   builder: (context, state) => const SavedSpotsScreen()),
+              // Owner 2026-11-16: the Almanac opens from the main menu.
+              GoRoute(
+                  path: '/almanac',
+                  builder: (context, state) => const AlmanacScreen()),
               GoRoute(
                 path: '/quests',
                 builder: (context, state) => const QuestListScreen(),
@@ -371,8 +376,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (context, state) => const AppearanceScreen()),
           GoRoute(
               path: 'notifications',
-              builder: (context, state) =>
-                  const SettingsNotificationsScreen()),
+              builder: (context, state) => const SettingsNotificationsScreen()),
           GoRoute(
               path: 'updates',
               builder: (context, state) => const SettingsUpdatesScreen()),

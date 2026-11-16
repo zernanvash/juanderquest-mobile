@@ -490,6 +490,10 @@ GoRouter _router({bool menu = false}) => GoRouter(
           builder: (_, __) => const _RouteProbe('/saved'),
         ),
         GoRoute(
+          path: '/almanac',
+          builder: (_, __) => const _RouteProbe('/almanac'),
+        ),
+        GoRoute(
           path: '/history',
           builder: (_, __) => const _RouteProbe('/history'),
         ),
@@ -616,19 +620,19 @@ void main() {
       expect(find.byKey(const ValueKey('home_bento_mission')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_gem_pill')), findsOneWidget);
+      // Owner 2026-11-16: the hidden gem left Home.
+      expect(find.byKey(const ValueKey('home_gem_pill')), findsNothing);
       expect(find.text('Hundred Islands Eco Trek'), findsOneWidget);
       // Title and live value are separate (owner 2026-11-16).
       expect(find.text('STAMP'), findsOneWidget);
       expect(find.text('0/7'), findsOneWidget);
-      expect(find.bySemanticsLabel('QOTD +5 mJDQ'), findsOneWidget);
-
-      await tester.drag(find.byType(ListView), const Offset(0, -800));
-      await tester.pumpAndSettle();
+      // QOTD sits below the daily tasks now; scroll it into view.
+      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_pill')));
+      await tester.pump();
       expect(
-        find.byKey(const ValueKey('home_calendar_panel')),
-        findsOneWidget,
-      );
+          find.bySemanticsLabel('QUESTION OF THE DAY +5 mJDQ'), findsOneWidget);
+      // The Almanac moved to the main menu (owner 2026-11-16).
+      expect(find.byKey(const ValueKey('home_calendar_panel')), findsNothing);
     });
 
     testWidgets('Active Quest button continues to quest detail',
@@ -667,12 +671,8 @@ void main() {
       expect(fake.calls['/me/daily/claim'], 1);
       expect(find.text('CLAIMED'), findsOneWidget);
       expect(find.text('Streak: 5d'), findsOneWidget);
-      await tester.drag(find.byType(ListView), const Offset(0, -800));
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('home_calendar_panel')),
-        findsOneWidget,
-      );
+      // The Almanac moved to the main menu (owner 2026-11-16).
+      expect(find.byKey(const ValueKey('home_calendar_panel')), findsNothing);
     });
 
     testWidgets('QOTD sheet opens and submits answer', (tester) async {
@@ -708,7 +708,7 @@ void main() {
       expect(find.byKey(const ValueKey('home_tile_quizzes')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_add_spot')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_map')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_tile_history')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_tile_almanac')), findsOneWidget);
 
       await _tapRoute(
           tester, find.byKey(const ValueKey('home_menu_quests')), '/quests');
@@ -729,7 +729,7 @@ void main() {
           tester, find.byKey(const ValueKey('home_tile_map')), '/map');
       await _pump(tester, menu: true);
       await _tapRoute(
-          tester, find.byKey(const ValueKey('home_tile_history')), '/history');
+          tester, find.byKey(const ValueKey('home_tile_almanac')), '/almanac');
     });
 
     testWidgets('Notifications button opens notifications route',
@@ -774,7 +774,11 @@ void main() {
         ),
       );
       expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
-      expect(find.bySemanticsLabel('QOTD +5 mJDQ'), findsOneWidget);
+      // QOTD sits below the daily tasks now; scroll it into view.
+      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_pill')));
+      await tester.pump();
+      expect(
+          find.bySemanticsLabel('QUESTION OF THE DAY +5 mJDQ'), findsOneWidget);
 
       await _pump(
         tester,

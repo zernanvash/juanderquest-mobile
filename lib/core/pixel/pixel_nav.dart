@@ -322,9 +322,14 @@ class PixelAppBar extends StatelessWidget {
     this.onBack,
     this.actions = const [],
     this.isTab = false,
+    this.titleWidget,
   });
 
   final String title;
+
+  /// Replaces the lettered [title] (Home shows the logo, owner 2026-11-16);
+  /// [title] stays the semantic label.
+  final Widget? titleWidget;
   final VoidCallback? onBack;
   final List<Widget> actions;
   final bool isTab;
@@ -406,27 +411,36 @@ class PixelAppBar extends StatelessWidget {
                   // (destination or quest names) stay readable body text.
                   // Owner 2026-11-16: one fixed title size; long titles
                   // (place or quest names) stay body text.
-                  child: title.length <= 14
+                  child: titleWidget != null
                       ? Align(
                           alignment: Alignment.centerLeft,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: PixelText3D(
-                              title,
-                              size: 12,
-                              depth: 1,
-                              colors: PixelText3DColors.cream,
-                              textAlign: TextAlign.left,
-                            ),
+                          child: Semantics(
+                            header: true,
+                            label: title,
+                            child: ExcludeSemantics(child: titleWidget!),
                           ),
                         )
-                      : ShadowText(
-                          title,
-                          style: PixelType.title(context,
-                              color: PixelPalette.paper),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      : title.length <= 14
+                          ? Align(
+                              alignment: Alignment.centerLeft,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: PixelText3D(
+                                  title,
+                                  size: 12,
+                                  depth: 1,
+                                  colors: PixelText3DColors.cream,
+                                  textAlign: TextAlign.left,
+                                ),
+                              ),
+                            )
+                          : ShadowText(
+                              title,
+                              style: PixelType.title(context,
+                                  color: PixelPalette.paper),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                 ),
                 for (final action in actions) ...[
                   SizedBox(width: grid.px(1)),

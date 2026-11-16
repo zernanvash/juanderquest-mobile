@@ -50,7 +50,8 @@ String _normTown(String raw) {
 /// submission / daily / location / home-town state change (never in build).
 final homeRecommendedQuestProvider = Provider<HomeRecommendedQuest?>((ref) {
   final quests = ref.watch(questProvider.select((s) => s.quests));
-  final submissions = ref.watch(submissionProvider.select((s) => s.submissions));
+  final submissions =
+      ref.watch(submissionProvider.select((s) => s.submissions));
   final daily = ref.watch(homeDailyProvider).valueOrNull;
   final lastLoc = ref.watch(homeLastKnownLocationProvider).valueOrNull;
   final homeTown = ref.watch(homeTownProvider).valueOrNull?.town;
