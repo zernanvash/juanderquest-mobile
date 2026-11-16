@@ -130,8 +130,14 @@ void main() {
         version: 1,
       );
       var errors = validateQuestBuilder(state);
-      expect(errors.any((e) => e.message == 'Title must be at least 3 characters.'), isTrue);
-      expect(errors.any((e) => e.message == 'Description must be at least 10 characters.'), isTrue);
+      expect(errors.any((e) => e.message == 'Give your quest a title.'), isTrue);
+
+      // Plan 56: a draft saves with any title and a short description...
+      expect(validateQuestBuilder(state.copyWith(title: 'B')), isEmpty);
+      // ...but publishing lists what is missing.
+      errors = validateQuestBuilder(state.copyWith(title: 'B', status: 'published'));
+      expect(errors.any((e) => e.message == 'To publish: title needs at least 5 characters.'), isTrue);
+      expect(errors.any((e) => e.message == 'To publish: description needs at least 15 characters.'), isTrue);
 
       // 2. Published requires tasks and at least one required task
       state = state.copyWith(

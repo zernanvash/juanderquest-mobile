@@ -121,7 +121,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     // Owner 2026-11-08: bio, 3 equipped badges, home town, Pasaporte, stats,
     // favourite spot and latest journey, from the server.
-    final showcaseKey = isMine ? '' : (widget.username ?? '').replaceFirst('@', '');
+    final showcaseKey =
+        isMine ? '' : (widget.username ?? '').replaceFirst('@', '');
     final showcase = ref.watch(showcaseProvider(showcaseKey)).valueOrNull;
     final earnedBadges = showcase?.badgesEarned ?? 0;
 
@@ -194,10 +195,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         if (showcase != null) ...[
                           SizedBox(height: grid.px(3)),
-                          ProfileShowcaseSection(showcase: showcase, isMine: isMine),
+                          ProfileShowcaseSection(
+                              showcase: showcase, isMine: isMine),
                         ],
                         SizedBox(height: grid.px(3)),
-                        _actionButtons(context, grid, isMine, earnedBadges, savedSpots),
+                        _actionButtons(
+                            context, grid, isMine, earnedBadges, savedSpots),
                         SizedBox(height: grid.px(4)),
                         _postedDestinations(
                           context,
@@ -327,9 +330,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // Plan 62: the season/year story.
             PixelButton(
               key: const ValueKey('profile_recap'),
-              label: tr(context, en: 'My Juander Recap ›', tl: 'Juander Recap ko ›'),
+              label: tr(context,
+                  en: 'My Juander Recap ›', tl: 'Juander Recap ko ›'),
               variant: PixelButtonVariant.secondary,
               onPressed: () => context.push('/recap'),
+            ),
+            SizedBox(height: grid.px(2)),
+            // Plan 56: drafts and published quests.
+            PixelButton(
+              key: const ValueKey('profile_my_quests'),
+              label: tr(context, en: 'My quests ›', tl: 'Mga quest ko ›'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => context.push('/my-quests'),
             ),
           ] else ...[
             SizedBox(height: grid.px(3)),
@@ -379,14 +391,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const PixelMicro(PixelMicroArt.sparkle, scale: 2),
                         SizedBox(width: grid.px(1)),
                         Flexible(
-                          child: Text('Badges', style: PixelType.title(context)),
+                          child:
+                              Text('Badges', style: PixelType.title(context)),
                         ),
                       ],
                     ),
                     SizedBox(height: grid.px(1)),
                     Text(
                       '$earnedBadges Earned ›',
-                      style: PixelType.small(context, color: PixelPalette.greenDark),
+                      style: PixelType.small(context,
+                          color: PixelPalette.greenDark),
                     ),
                   ],
                 ),
@@ -414,14 +428,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           const PixelMicro(PixelMicroArt.coin, scale: 2),
                           SizedBox(width: grid.px(1)),
                           Flexible(
-                            child: Text('Saved', style: PixelType.title(context)),
+                            child:
+                                Text('Saved', style: PixelType.title(context)),
                           ),
                         ],
                       ),
                       SizedBox(height: grid.px(1)),
                       Text(
                         '$savedSpots Places ›',
-                        style: PixelType.small(context, color: PixelPalette.slate),
+                        style:
+                            PixelType.small(context, color: PixelPalette.slate),
                       ),
                     ],
                   ),
@@ -494,7 +510,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   key: const ValueKey('profile_spots_retry'),
                   label: 'RETRY',
                   variant: PixelButtonVariant.secondary,
-                  onPressed: () => ref.invalidate(userSpotsProvider(targetHandle)),
+                  onPressed: () =>
+                      ref.invalidate(userSpotsProvider(targetHandle)),
                 ),
               ],
             ),
@@ -584,7 +601,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       '${spot.municipality} · ${spot.category.toUpperCase()}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: PixelType.small(context, color: PixelPalette.greenDark),
+                      style: PixelType.small(context,
+                          color: PixelPalette.greenDark),
                     ),
                   ],
                 ),
@@ -593,7 +611,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               PixelButton(
                 label: 'View ›',
                 variant: PixelButtonVariant.secondary,
-                onPressed: () => context.push('/explore/${spot.slug}', extra: spot),
+                onPressed: () =>
+                    context.push('/explore/${spot.slug}', extra: spot),
               ),
             ],
           ),

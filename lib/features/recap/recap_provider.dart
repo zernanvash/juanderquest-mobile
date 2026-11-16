@@ -43,7 +43,8 @@ class Recap {
       periodId: period['id']?.toString() ?? '',
       periodLabel: period['label']?.toString() ?? '',
       questsCompleted: n(j['quests_completed']),
-      towns: (j['towns'] as List? ?? const []).map((t) => t.toString()).toList(),
+      towns:
+          (j['towns'] as List? ?? const []).map((t) => t.toString()).toList(),
       townsTotal: n(j['towns_total']),
       spotsPosted: n(j['spots_posted']),
       quizzesPassed: n(j['quizzes_passed']),
