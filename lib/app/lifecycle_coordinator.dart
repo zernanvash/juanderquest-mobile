@@ -1,3 +1,4 @@
+import '../core/audio/game_audio.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -131,6 +132,7 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
     final monitor = container.read(connectionMonitorProvider.notifier);
 
     if (state == AppLifecycleState.resumed) {
+      GameAudio.instance.setAppVisible(true);
       monitor.setBackgrounded(false);
       final auth = container.read(authProvider);
       final now = DateTime.now();
@@ -157,6 +159,7 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
     }
 
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      GameAudio.instance.setAppVisible(false);
       monitor.setBackgrounded(true);
     }
   }

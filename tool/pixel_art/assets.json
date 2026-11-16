@@ -13,7 +13,6 @@
     {"name": "navExplore",            "file": "assets/icons/nav-explore.png"},
     {"name": "navMap",                "file": "assets/icons/jdq-map.png"},
     {"name": "navHome",               "file": "assets/icons/nav-home.png"},
-    {"name": "navCompass",            "file": "assets/icons/nav-compass.png"},
     {"name": "navProfile",            "file": "assets/icons/jdq-profile.png"},
     {"name": "navSettings",           "file": "assets/icons/nav-settings.png"},
     {"name": "navShop",               "file": "assets/icons/nav-shop.png"},

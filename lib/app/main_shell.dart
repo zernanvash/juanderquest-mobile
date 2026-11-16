@@ -147,8 +147,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                       ),
                       PixelHotbarItem(
                         label: tr(context, en: 'Explore', tl: 'Tuklasin'),
-                        // Plan 100 WP-2: a compass, not Home's search glass.
-                        icon: DesignerArt.navCompass,
+                        // Owner 2026-11-16: the original navExplore compass.
+                        icon: DesignerArt.navExplore,
                       ),
                       PixelHotbarItem(
                         label: tr(context, en: 'Map', tl: 'Mapa'),

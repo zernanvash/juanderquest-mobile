@@ -144,7 +144,7 @@ class _PixelHotbarState extends State<PixelHotbar> {
           onTapCancel: () => setState(() => _pressed = null),
           onTapUp: (_) {
             setState(() => _pressed = null);
-            if (!selected) pixelTick(context);
+            if (!selected) pixelTick(context, sfx: 'tab');
             widget.onTap(i);
           },
           child: Transform.translate(

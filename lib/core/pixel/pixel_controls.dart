@@ -14,9 +14,11 @@ import 'pixel_text.dart';
 
 export 'mjdq_amount.dart';
 
-void pixelTick(BuildContext context) {
+void pixelTick(BuildContext context, {String sfx = 'tap'}) {
   if (PixelScope.of(context).haptics) HapticFeedback.selectionClick();
-  if (GameAudio.instance.buttonSounds.value) GameAudio.instance.playSfx('tap', vary: true);
+  if (GameAudio.instance.buttonSounds.value) {
+    GameAudio.instance.playSfx(sfx, vary: sfx == 'tap');
+  }
 }
 
 enum PixelButtonVariant { primary, secondary, danger, ghost }
@@ -322,7 +324,7 @@ class PixelSwitch extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {
-            pixelTick(context);
+            pixelTick(context, sfx: value ? 'toggle_off' : 'toggle_on');
             onChanged(!value);
           },
           child: ConstrainedBox(

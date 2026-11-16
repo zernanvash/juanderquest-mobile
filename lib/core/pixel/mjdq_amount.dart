@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import 'generated/designer_art.g.dart';
@@ -37,10 +35,9 @@ class MjdqAmount extends StatefulWidget {
   final bool animate;
   final bool animateOnIncrease;
 
-  /// Plan 100 WP-6: replay the coin spin every [idleSpinEvery] (balances on
-  /// Home and Profile), so the coin is visibly alive.
+  /// Plan 100 WP-6: the coin spins continuously (balances on Home and
+  /// Profile), like the Pixel lab preview (owner 2026-11-16: "no pause").
   final bool idleSpin;
-  static const idleSpinEvery = Duration(seconds: 2);
   final String? prefix;
   final String? suffix;
   final TextStyle? style;
@@ -57,6 +54,13 @@ const _coinFront = 3;
 
 /// One full turn from front to front: 3 4 5 6 0 1 2 3.
 const _coinTurn = [3, 4, 5, 6, 0, 1, 2, 3];
+
+/// The same turn as an endless loop at the strip's own speed (10 fps).
+final _coinLoop = PixelFrames(
+  'coinLoop',
+  fps: DesignerArt.coinAnim.fps,
+  frames: [for (final i in _coinTurn.take(7)) DesignerArt.coinAnim.frames[i]],
+);
 
 /// Owner 2026-11-16: start facing front, smooth in and out. Plays one eased
 /// turn (slow, fast in the middle, slow again) instead of a flat frame rate.
@@ -99,37 +103,11 @@ class _CoinSpinState extends State<_CoinSpin>
 
 class _MjdqAmountState extends State<MjdqAmount> {
   bool _playing = false;
-  Timer? _idle;
 
   @override
   void initState() {
     super.initState();
     _playing = widget.animate;
-    _syncIdle();
-  }
-
-  void _syncIdle() {
-    if (widget.idleSpin && _idle == null) {
-      _idle = Timer.periodic(MjdqAmount.idleSpinEvery, (_) {
-        // Off-screen routes and reduced motion keep the coin still.
-        if (!mounted ||
-            _playing ||
-            !TickerMode.of(context) ||
-            (MediaQuery.maybeDisableAnimationsOf(context) ?? false)) {
-          return;
-        }
-        setState(() => _playing = true);
-      });
-    } else if (!widget.idleSpin) {
-      _idle?.cancel();
-      _idle = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _idle?.cancel();
-    super.dispose();
   }
 
   @override
@@ -140,12 +118,9 @@ class _MjdqAmountState extends State<MjdqAmount> {
         widget.animateOnIncrease && widget.amount > oldWidget.amount;
     if (triggeredByFlag || triggeredByGain) {
       _playing = true;
-    } else if (!widget.animate &&
-        !widget.animateOnIncrease &&
-        !widget.idleSpin) {
+    } else if (!widget.animate && !widget.animateOnIncrease) {
       _playing = false;
     }
-    _syncIdle();
   }
 
   String get _numberText {
@@ -160,8 +135,9 @@ class _MjdqAmountState extends State<MjdqAmount> {
     final play = _playing && !reducedMotion;
     final baseStyle = widget.style ??
         PixelType.small(context, color: widget.color ?? PixelPalette.ink);
-    final effectiveStyle =
-        widget.color != null ? baseStyle.copyWith(color: widget.color) : baseStyle;
+    final effectiveStyle = widget.color != null
+        ? baseStyle.copyWith(color: widget.color)
+        : baseStyle;
     final numText = _numberText;
     final leftText = '${widget.prefix ?? ''}$numText';
     final rightText = widget.suffix ?? '';
@@ -190,16 +166,20 @@ class _MjdqAmountState extends State<MjdqAmount> {
             dimension: dim,
             child: FittedBox(
               fit: BoxFit.contain,
-              child: play
-                  ? _CoinSpin(
-                      onDone: () {
-                        if (mounted) setState(() => _playing = false);
-                      },
-                    )
-                  : PixelSprite(
-                      DesignerArt.coinAnim.frames[_coinFront],
-                      scale: 1,
-                    ),
+              child: widget.idleSpin && !reducedMotion
+                  // Continuous loop from the front face; the ticker stops
+                  // on off-screen routes (TickerMode).
+                  ? PixelAnimation(_coinLoop, scale: 1)
+                  : play
+                      ? _CoinSpin(
+                          onDone: () {
+                            if (mounted) setState(() => _playing = false);
+                          },
+                        )
+                      : PixelSprite(
+                          DesignerArt.coinAnim.frames[_coinFront],
+                          scale: 1,
+                        ),
             ),
           ),
           if (rightText.isNotEmpty) ...[

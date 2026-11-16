@@ -48,6 +48,8 @@ class PixelSettings {
     this.haptics = true,
     this.textSize = PixelTextSize.followPhone,
     this.language = AppLanguage.english,
+    this.music = true,
+    this.sounds = true,
   }) : _artPx = artPx;
 
   static const double defaultArtPx = 2;
@@ -77,6 +79,10 @@ class PixelSettings {
   final PixelTextSize textSize;
   final AppLanguage language;
 
+  /// Owner 2026-11-16: background music and button sounds, on by default.
+  final bool music;
+  final bool sounds;
+
   double resolveArtPx([double shortestSide = 400]) {
     final art = _artPx;
     if (art != null && artSizes.contains(art)) return art;
@@ -105,6 +111,8 @@ class PixelSettings {
     bool? haptics,
     PixelTextSize? textSize,
     AppLanguage? language,
+    bool? music,
+    bool? sounds,
   }) =>
       PixelSettings(
         artPx: artPx ?? _artPx,
@@ -112,6 +120,8 @@ class PixelSettings {
         haptics: haptics ?? this.haptics,
         textSize: textSize ?? this.textSize,
         language: language ?? this.language,
+        music: music ?? this.music,
+        sounds: sounds ?? this.sounds,
       );
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -121,6 +131,8 @@ class PixelSettings {
         'haptics': haptics,
         'textSize': textSize.name,
         'language': language.name,
+        'music': music,
+        'sounds': sounds,
       };
 
   static PixelSettings? fromJson(String raw) {
@@ -155,6 +167,8 @@ class PixelSettings {
         haptics: haptics is bool ? haptics : true,
         textSize: parsedTextSize,
         language: language,
+        music: decoded['music'] is bool ? decoded['music'] as bool : true,
+        sounds: decoded['sounds'] is bool ? decoded['sounds'] as bool : true,
       );
     } catch (_) {
       return null;
@@ -168,10 +182,13 @@ class PixelSettings {
       other.font == font &&
       other.haptics == haptics &&
       other.textSize == textSize &&
-      other.language == language;
+      other.language == language &&
+      other.music == music &&
+      other.sounds == sounds;
 
   @override
-  int get hashCode => Object.hash(_artPx, font, haptics, textSize, language);
+  int get hashCode =>
+      Object.hash(_artPx, font, haptics, textSize, language, music, sounds);
 }
 
 class PixelScope extends StatelessWidget {
@@ -345,6 +362,16 @@ class PixelSettingsNotifier extends Notifier<PixelSettings> {
   void setHaptics(bool value) {
     if (kReleaseMode) return;
     state = state.copyWith(haptics: value);
+    unawaited(_persist());
+  }
+
+  void setMusic(bool value) {
+    state = state.copyWith(music: value);
+    unawaited(_persist());
+  }
+
+  void setSounds(bool value) {
+    state = state.copyWith(sounds: value);
     unawaited(_persist());
   }
 

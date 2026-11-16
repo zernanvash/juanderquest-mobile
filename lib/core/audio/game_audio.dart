@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
@@ -19,7 +20,69 @@ class GameAudio {
   ];
 
   /// When true, every pixel button press plays `tap` (see `pixelTick`).
+  /// Follows Settings → Button sounds (on by default since 2026-11-16).
   final buttonSounds = ValueNotifier<bool>(false);
+
+  // Background music (owner 2026-11-16: assets/audio/music/jdq_bgm.mp3,
+  // equalized and loudness-normalized for phone speakers).
+  static const musicVolume = 0.35;
+  bool _musicWanted = false;
+  bool _appVisible = true;
+  bool _musicPlaying = false;
+  AudioPlayer? _music;
+
+  /// Music mixes with whatever the phone already plays (no audio focus), so
+  /// it never stops the traveller's own music or navigation voice.
+  static final _musicContext = AudioContext(
+    android: const AudioContextAndroid(
+      audioFocus: AndroidAudioFocus.none,
+      usageType: AndroidUsageType.game,
+      contentType: AndroidContentType.music,
+    ),
+  );
+
+  static final bool _inTest =
+      !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+
+  /// Called by the app root with the saved settings.
+  void configure({required bool music, required bool sounds}) {
+    buttonSounds.value = sounds;
+    if (_musicWanted == music) return;
+    _musicWanted = music;
+    _syncMusic();
+  }
+
+  /// Called on app lifecycle changes: music pauses in the background.
+  void setAppVisible(bool visible) {
+    if (_appVisible == visible) return;
+    _appVisible = visible;
+    _syncMusic();
+  }
+
+  Future<void> _syncMusic() async {
+    if (_inTest) return;
+    final play = _musicWanted && _appVisible;
+    if (play == _musicPlaying) return;
+    _musicPlaying = play;
+    try {
+      if (play) {
+        final music = _music ??= AudioPlayer();
+        await music.setAudioContext(_musicContext);
+        await music.setReleaseMode(ReleaseMode.loop);
+        await music.setVolume(musicVolume);
+        if (music.state == PlayerState.paused) {
+          await music.resume();
+        } else {
+          await music.play(AssetSource('audio/music/jdq_bgm.mp3'));
+        }
+      } else {
+        await _music?.pause();
+      }
+    } catch (_) {
+      // No audio engine: stay silent.
+    }
+  }
+
   final sfxVolume = ValueNotifier<double>(0.8);
 
   final _pool = <AudioPlayer>[];
@@ -37,6 +100,7 @@ class GameAudio {
   );
 
   Future<void> playSfx(String name, {bool vary = false}) async {
+    if (_inTest) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - (_lastPlayed[name] ?? 0) < 60) return;
     _lastPlayed[name] = now;
@@ -51,7 +115,8 @@ class GameAudio {
       await player.stop();
       await player.setVolume(sfxVolume.value);
       // ±6% pitch so repeated taps and coins don't sound identical.
-      await player.setPlaybackRate(vary ? 0.94 + _rng.nextDouble() * 0.12 : 1.0);
+      await player
+          .setPlaybackRate(vary ? 0.94 + _rng.nextDouble() * 0.12 : 1.0);
       await player.play(AssetSource('audio/sfx/$name.wav'));
     } catch (_) {
       // No audio engine (tests, unsupported device): stay silent.

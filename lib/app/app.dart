@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/audio/game_audio.dart';
 import '../core/pixel/pixel_grid.dart';
 import '../core/services/push_listener.dart';
 import '../core/theme/app_theme.dart';
@@ -16,6 +17,10 @@ class JuanderQuestApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final pixelSettings = ref.watch(pixelSettingsProvider);
+    GameAudio.instance.configure(
+      music: pixelSettings.music,
+      sounds: pixelSettings.sounds,
+    );
 
     return LifecycleCoordinator(
       child: MaterialApp.router(
@@ -35,4 +40,3 @@ class JuanderQuestApp extends ConsumerWidget {
     );
   }
 }
-

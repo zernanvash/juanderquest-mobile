@@ -151,6 +151,35 @@ class SettingsScreen extends ConsumerWidget {
                                   onTap: () =>
                                       context.push('/settings/notifications'),
                                 ),
+                                // Owner 2026-11-16: music and button sounds.
+                                _SettingsTile(
+                                  key: const ValueKey('settings_music'),
+                                  icon: 'M',
+                                  title: tr(context, en: 'Music', tl: 'Musika'),
+                                  value: ref.watch(pixelSettingsProvider).music
+                                      ? tr(context, en: 'On', tl: 'Bukas')
+                                      : tr(context, en: 'Off', tl: 'Sarado'),
+                                  onTap: () => ref
+                                      .read(pixelSettingsProvider.notifier)
+                                      .setMusic(!ref
+                                          .read(pixelSettingsProvider)
+                                          .music),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings_sounds'),
+                                  icon: 'S',
+                                  title: tr(context,
+                                      en: 'Button sounds',
+                                      tl: 'Tunog ng button'),
+                                  value: ref.watch(pixelSettingsProvider).sounds
+                                      ? tr(context, en: 'On', tl: 'Bukas')
+                                      : tr(context, en: 'Off', tl: 'Sarado'),
+                                  onTap: () => ref
+                                      .read(pixelSettingsProvider.notifier)
+                                      .setSounds(!ref
+                                          .read(pixelSettingsProvider)
+                                          .sounds),
+                                ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_text_size'),
                                   icon: 'T',
