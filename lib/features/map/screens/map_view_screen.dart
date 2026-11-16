@@ -28,6 +28,8 @@ import '../../juanchoice/models/juanchoice_models.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/models/quest_model.dart';
 import '../../quests/providers/quest_provider.dart';
+import '../../submissions/providers/submission_provider.dart';
+import '../map_done_quests.dart';
 import '../../spots/models/spot_model.dart';
 import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/utils/spot_location_handoff.dart';
@@ -61,6 +63,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
   bool _appResumed = true;
   late final Future<String> _style;
   String _pinSignature = '';
+  bool _showDoneQuests = false; // Plan 100 WP-9
   bool _deepLinkHandled = false;
 
   @override
@@ -620,7 +623,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     final currentZoom = _nativeMap.camera.zoom;
     final isTownFocused = _focusedArea != null;
 
-    final List<QuestModel> visibleQuests;
+    List<QuestModel> visibleQuests;
     final List<SpotModel> visibleSpots;
 
     if (isTownFocused) {
@@ -644,6 +647,16 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       visibleSpots = const [];
     }
 
+    // Plan 100 WP-9 (owner: "shadow faded … default hide it totally"):
+    // finished quests are hidden unless "Show done quests" is on.
+    final questDone = mapQuestDone(ref.watch(submissionProvider).submissions);
+    final hasDoneQuests = visibleQuests.any(questDone);
+    visibleQuests = mapVisibleQuests(
+      visibleQuests,
+      questDone,
+      showDone: _showDoneQuests,
+    );
+
     final pins = <JdqPin>[
       for (final q in visibleQuests)
         JdqPin(
@@ -651,6 +664,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
           LatLng(q.gpsLat, q.gpsLng),
           q.title,
           quest: true,
+          done: questDone(q),
         ),
       for (final s in visibleSpots)
         JdqPin('spot:${s.id}', LatLng(s.gpsLat, s.gpsLng), s.name),
@@ -678,7 +692,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       }
     };
     final signature =
-        pins.map((p) => '${p.id}:${p.point}:${p.label}').join('|');
+        pins.map((p) => '${p.id}:${p.point}:${p.label}:${p.done}').join('|');
     if (signature != _pinSignature) {
       _pinSignature = signature;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -773,6 +787,33 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                       bearing: _nativeMap.camera.bearing,
                       tilt: _nativeMap.camera.tilt,
                       onPressed: () => unawaited(_nativeMap.resetOrientation()),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+
+                  // Plan 100 WP-9: bring back finished quests as shadows.
+                  if (hasDoneQuests) ...[
+                    Tooltip(
+                      message: _showDoneQuests
+                          ? 'Hide done quests'
+                          : 'Show done quests',
+                      child: Semantics(
+                        button: true,
+                        toggled: _showDoneQuests,
+                        label: 'Show done quests',
+                        child: ExcludeSemantics(
+                          child: PixelChip(
+                            'DONE',
+                            key: const ValueKey('map_show_done_quests'),
+                            style: _showDoneQuests
+                                ? PixelBoxStyle.gold
+                                : PixelBoxStyle.parchment,
+                            onTap: () => setState(
+                              () => _showDoneQuests = !_showDoneQuests,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 4),
                   ],

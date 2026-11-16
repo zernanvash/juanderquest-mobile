@@ -510,7 +510,8 @@ class MapLibreJdqMap extends JdqMap {
         'jdq-pins',
         _collection([
           for (final p in pins)
-            _point(p.point, {'id': p.id, 'name': p.label, 'quest': p.quest}),
+            _point(p.point,
+                {'id': p.id, 'name': p.label, 'quest': p.quest, 'done': p.done}),
         ]),
       ),
     );
@@ -693,6 +694,7 @@ class MapLibreJdqMap extends JdqMap {
           iconSize: 1.0,
           iconAllowOverlap: allow,
           iconAnchor: 'bottom',
+          iconOpacity: _doneOpacity,
         ),
       );
     } catch (_) {}
@@ -805,6 +807,14 @@ class MapLibreJdqMap extends JdqMap {
   void setMyLocation(bool enabled) {
     if (!_disposed) _location.value = enabled;
   }
+
+  /// Plan 100 WP-9: finished quests show as faded shadows.
+  static const _doneOpacity = [
+    'case',
+    ['==', ['get', 'done'], true],
+    0.4,
+    1.0,
+  ];
 
   /// Map pin heights on screen (Plan 100 WP-8).
   static const questPinDp = 40.0;
@@ -1002,6 +1012,7 @@ class MapLibreJdqMap extends JdqMap {
               iconSize: 1.0,
               iconAllowOverlap: allowOverlap,
               iconAnchor: 'bottom',
+              iconOpacity: _doneOpacity,
             ),
           );
           symbolsAdded = true;

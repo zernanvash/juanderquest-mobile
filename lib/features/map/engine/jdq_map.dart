@@ -69,10 +69,14 @@ class JdqRouteOverlay {
 }
 
 class JdqPin {
-  const JdqPin(this.id, this.point, this.label, {this.quest = false});
+  const JdqPin(this.id, this.point, this.label,
+      {this.quest = false, this.done = false});
   final String id, label;
   final LatLng point;
   final bool quest;
+
+  /// Plan 100 WP-9: a quest you finished, drawn faded ("shadow").
+  final bool done;
 }
 
 /// No platform controller escapes into screen logic or widget tests.
