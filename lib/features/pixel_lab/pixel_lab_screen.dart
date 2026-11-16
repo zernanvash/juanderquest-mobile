@@ -23,6 +23,7 @@ import 'home_options.dart';
 import 'rpg_feel_section.dart';
 import 'sound_lab_section.dart';
 import 'tutorial_preview.dart';
+import 'ui_prototypes_section.dart';
 
 class PixelLabScreen extends ConsumerStatefulWidget {
   const PixelLabScreen({super.key});
@@ -86,6 +87,10 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                         padding: EdgeInsets.all(grid.px(4)),
                         children: [
                           _intro(context, grid),
+                          SizedBox(height: grid.px(3)),
+                          // Plan 101: pick a menu style and the 2.5D text.
+                          _section(context, 'UI prototypes (Plan 101)',
+                              const UiPrototypesSection()),
                           if (!kReleaseMode) ...[
                             SizedBox(height: grid.px(3)),
                             _kit(context, grid, settings, notifier),
