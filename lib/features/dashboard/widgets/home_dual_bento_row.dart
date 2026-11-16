@@ -6,10 +6,14 @@ import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_idle.dart';
+import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../quests/models/quest_model.dart';
+import '../pixel/home_pixel_art.dart';
 import '../providers/home_daily_provider.dart';
 
 /// Concept B Band 3: Asymmetric dual bento split — Left emerald Mission box
@@ -103,7 +107,9 @@ class HomeDualBentoRow extends StatelessWidget {
         // Owner 2026-11-16: the hidden gem left Home; QOTD takes the row.
         _MicroPillButton(
           key: const ValueKey('home_qotd_pill'),
-          icon: DesignerArt.questionMark,
+          // Idle: the "?" tilts until answered; then a check mark.
+          icon: qotdDone ? HomePixelArt.stampCheck : DesignerArt.questionMark,
+          iconWrap: qotdDone ? null : (icon) => PixelTilt(child: icon),
           label: qotdDone ? 'QOTD DONE' : 'QOTD +5 mJDQ',
           labelWidget: qotdDone
               ? null
@@ -114,7 +120,10 @@ class HomeDualBentoRow extends StatelessWidget {
                   style: PixelType.small(context, color: PixelPalette.woodDeep)
                       .copyWith(fontWeight: FontWeight.w700),
                 ),
-          onTap: onTapQotd,
+          onTap: qotdDone
+              ? () => showPixelToast(
+                  context, 'Already answered. A new question comes tomorrow!')
+              : onTapQotd,
         ),
       ],
     );
@@ -161,6 +170,8 @@ class _MissionBentoBox extends StatelessWidget {
               PixelSectionTitle(
                 badgeText,
                 icon: DesignerArt.questMarker,
+                // Idle: the quest marker bobs.
+                iconWrap: (icon) => PixelIdleBob(child: icon),
                 value: reason,
               ),
               const SizedBox(height: 4),
@@ -247,62 +258,76 @@ class _StampBentoBox extends StatelessWidget {
     final claimedToday = dailyState?.claimToday ?? false;
     final nominal = dailyState?.nominalStamps ?? 5;
 
-    return PixelPanel(
-      style: style,
-      padding: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PixelSectionTitle(
-                'STAMP',
-                value: '$claimedDays/7',
-                icon: claimedToday
-                    ? DesignerArt.chestOpenAnim.frames.last
-                    : DesignerArt.chestOpenAnim.frames.first,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Streak: ${streak}d',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: PixelType.small(context, color: PixelPalette.cream)
-                    .copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  for (var d = 1; d <= 7; d++) ...[
-                    if (d > 1) const SizedBox(width: 2),
-                    Expanded(
-                      child: Container(
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: d <= claimedDays
-                              ? PixelPalette.sun
-                              : PixelPalette.woodDeep,
-                          border: Border.all(color: PixelPalette.ink, width: 1),
+    // Idle states (owner 2026-11-16): unclaimed, the chest wiggles; claimed,
+    // a slow gold shimmer crosses the panel.
+    return PixelShimmer(
+      enabled: claimedToday,
+      child: PixelPanel(
+        style: style,
+        padding: 2,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PixelSectionTitle(
+                  'STAMP',
+                  value: '$claimedDays/7',
+                  icon: claimedToday
+                      ? DesignerArt.chestOpenAnim.frames.last
+                      : DesignerArt.chestOpenAnim.frames.first,
+                  iconWrap:
+                      claimedToday ? null : (icon) => PixelWiggle(child: icon),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Streak: ${streak}d',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(context, color: PixelPalette.cream)
+                      .copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    for (var d = 1; d <= 7; d++) ...[
+                      if (d > 1) const SizedBox(width: 2),
+                      Expanded(
+                        child: Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: d <= claimedDays
+                                ? PixelPalette.sun
+                                : PixelPalette.woodDeep,
+                            border:
+                                Border.all(color: PixelPalette.ink, width: 1),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          PixelButton(
-            key: const ValueKey('home_daily_claim_button'),
-            label: claimedToday ? 'CLAIMED' : 'CLAIM +$nominal',
-            variant: PixelButtonVariant.primary,
-            expand: true,
-            loading: claiming,
-            onPressed: claimedToday ? null : onClaim,
-          ),
-        ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            PixelButton(
+              key: const ValueKey('home_daily_claim_button'),
+              label: claimedToday ? 'CLAIMED' : 'CLAIM +$nominal',
+              variant: claimedToday
+                  ? PixelButtonVariant.secondary
+                  : PixelButtonVariant.primary,
+              expand: true,
+              loading: claiming,
+              // Owner 2026-11-16: a second try says why nothing happens.
+              onPressed: claimedToday
+                  ? () => showPixelToast(context,
+                      "You already claimed today's stamp. Come back tomorrow!")
+                  : onClaim,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -315,9 +340,11 @@ class _MicroPillButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.labelWidget,
+    this.iconWrap,
   });
 
   final PixelArt icon;
+  final Widget Function(Widget icon)? iconWrap;
   final String label;
   final Widget? labelWidget;
   final VoidCallback? onTap;
@@ -340,14 +367,24 @@ class _MicroPillButton extends StatelessWidget {
           ),
           child: Row(
             children: [
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: PixelSprite(icon, scale: 1),
-                ),
-              ),
+              if (iconWrap == null)
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: PixelSprite(icon, scale: 1),
+                  ),
+                )
+              else
+                iconWrap!(SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: PixelSprite(icon, scale: 1),
+                  ),
+                )),
               const SizedBox(width: 6),
               Expanded(
                 child: labelWidget ??

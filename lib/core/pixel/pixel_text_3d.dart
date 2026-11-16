@@ -395,6 +395,7 @@ class PixelSectionTitle extends StatelessWidget {
     this.text, {
     super.key,
     this.icon,
+    this.iconWrap,
     this.value,
     this.valueColor = PixelPalette.cream,
     this.colors = PixelText3DColors.gold,
@@ -403,6 +404,9 @@ class PixelSectionTitle extends StatelessWidget {
 
   final String text;
   final PixelArt? icon;
+
+  /// Wraps the icon, e.g. in an idle loop (`PixelWiggle`, `PixelTilt`).
+  final Widget Function(Widget icon)? iconWrap;
   final String? value;
   final Color valueColor;
   final PixelText3DColors colors;
@@ -414,7 +418,9 @@ class PixelSectionTitle extends StatelessWidget {
     return Row(
       children: [
         if (icon != null) ...[
-          PixelIconFit(icon!, box: size + 8),
+          iconWrap == null
+              ? PixelIconFit(icon!, box: size + 8)
+              : iconWrap!(PixelIconFit(icon!, box: size + 8)),
           SizedBox(width: grid.px(1)),
         ],
         Flexible(
