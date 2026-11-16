@@ -59,7 +59,16 @@ class MapOrientationButton extends StatelessWidget {
                     heightFactor: 1,
                     child: Transform.rotate(
                       angle: -bearing * math.pi / 180,
-                      child: const PixelSprite(MapMarkerArt.iconCompass, scale: 2),
+                      // Plan 100 WP-8: ~24 dp (scale is physical pixels).
+                      child: PixelSprite(
+                        MapMarkerArt.iconCompass,
+                        scale: (24 *
+                                MediaQuery.devicePixelRatioOf(ctx) /
+                                MapMarkerArt.iconCompass.height)
+                            .round()
+                            .clamp(1, 64)
+                            .toInt(),
+                      ),
                     ),
                   ),
                 ),

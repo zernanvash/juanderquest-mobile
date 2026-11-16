@@ -806,6 +806,10 @@ class MapLibreJdqMap extends JdqMap {
     if (!_disposed) _location.value = enabled;
   }
 
+  /// Map pin heights on screen (Plan 100 WP-8).
+  static const questPinDp = 40.0;
+  static const spotPinDp = 32.0;
+
   Future<Uint8List?> _rasterizeToPng(PixelArt art, {double scale = 2}) async {
     try {
       final img = art.image();
@@ -966,12 +970,20 @@ class MapLibreJdqMap extends JdqMap {
 
       bool symbolsAdded = false;
       try {
+        // Plan 100 WP-8: MapLibre on Android shows these PNGs at device
+        // density, so size them in dp x pixel ratio (they were ~25 dp and
+        // ~16 dp on a 3x phone; owner: "maps markers is super small").
+        final dpr = WidgetsBinding
+                .instance.platformDispatcher.views.firstOrNull?.devicePixelRatio ??
+            2.0;
         final questBytes = await _rasterizeToPng(
           DesignerArt.questMarker,
-          scale: 2,
+          scale: questPinDp * dpr / DesignerArt.questMarker.height,
         );
-        final spotBytes =
-            await _rasterizeToPng(DesignerArt.spotMarker, scale: 0.75);
+        final spotBytes = await _rasterizeToPng(
+          DesignerArt.spotMarker,
+          scale: spotPinDp * dpr / DesignerArt.spotMarker.height,
+        );
         if (questBytes != null && spotBytes != null) {
           await c.addImage('jdq-pin-quest', questBytes);
           await c.addImage('jdq-pin-spot', spotBytes);

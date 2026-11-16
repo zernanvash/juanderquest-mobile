@@ -739,6 +739,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                       const SizedBox(width: 8),
                       PixelIconButton(
                         icon: MapMarkerArt.iconClose,
+                        iconHeight: 24, // Plan 100 WP-8
                         semanticLabel: 'Cancel',
                         style: PixelBoxStyle.parchment,
                         onPressed: _cancelPinPlacement,
@@ -782,6 +783,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                       message: satellite ? 'Show map' : 'Show satellite',
                       child: PixelIconButton(
                         icon: MapMarkerArt.iconSatellite,
+                        iconHeight: 24, // Plan 100 WP-8
                         semanticLabel:
                             satellite ? 'Show map' : 'Show satellite',
                         style: satellite
@@ -816,6 +818,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                             )
                           : PixelIconButton(
                               icon: MapMarkerArt.iconLocateMe,
+                              iconHeight: 24, // Plan 100 WP-8
                               semanticLabel: 'Use My Location',
                               style: PixelBoxStyle.parchment,
                               onPressed: _useMyLocation,
@@ -829,6 +832,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                     message: 'Fit All Markers',
                     child: PixelIconButton(
                       icon: MapMarkerArt.iconFitBounds,
+                      iconHeight: 24, // Plan 100 WP-8
                       semanticLabel: 'Fit All Markers',
                       style: PixelBoxStyle.parchment,
                       onPressed: _fitAllBounds,
@@ -856,6 +860,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                             )
                           : PixelIconButton(
                               icon: MapMarkerArt.iconRefresh,
+                              iconHeight: 24, // Plan 100 WP-8
                               semanticLabel: 'Reload Coordinates',
                               style: PixelBoxStyle.parchment,
                               onPressed: _refreshData,
@@ -1143,6 +1148,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                 const Spacer(),
                 PixelIconButton(
                   icon: MapMarkerArt.iconClose,
+                  iconHeight: 24, // Plan 100 WP-8
                   semanticLabel: 'Close card',
                   style: PixelBoxStyle.parchment,
                   onPressed: () {
@@ -1370,6 +1376,7 @@ class _AreaBanner extends StatelessWidget {
           PixelIconButton(
             key: const ValueKey('area_clear'),
             icon: MapMarkerArt.iconClose,
+            iconHeight: 24, // Plan 100 WP-8
             semanticLabel: 'Clear area focus',
             style: PixelBoxStyle.parchment,
             onPressed: onClear,
