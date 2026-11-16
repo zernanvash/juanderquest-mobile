@@ -51,15 +51,11 @@ class ExploreSpotCard extends StatelessWidget {
     return Semantics(
       container: true,
       label: 'Destination ${spot.name} in ${spot.municipality}',
-      // v0.3 (owner 2026-11-16: "for explore revert the buttons, but remove
-      // the outer box"): no card box; a pixel line under each post.
-      child: Container(
-        padding: EdgeInsets.only(bottom: grid.px(3)),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: PixelPalette.woodLight, width: grid.unit),
-          ),
-        ),
+      // Owner 2026-11-17: each place sits in its own box (was a line under
+      // each post).
+      child: PixelPanel(
+        style: PixelBoxStyle.parchment,
+        padding: 3,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -112,15 +108,8 @@ class ExploreSpotCard extends StatelessWidget {
                         ),
                     ],
                   ),
-                  SizedBox(height: grid.px(1)),
-
-                  // 2-line Description
-                  PixelText.rich(
-                    spot.description,
-                    style: PixelType.body(context, color: PixelPalette.slate),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  // Owner 2026-11-17: no caption/traveler note on the card;
+                  // the place page shows it.
                 ],
               ),
             ),

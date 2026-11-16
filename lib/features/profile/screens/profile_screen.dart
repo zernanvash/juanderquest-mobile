@@ -161,12 +161,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         PixelIconButton(
                           icon: DesignerArt.notifBell,
                           semanticLabel: 'Notifications',
+                          iconHeight: 24,
                           onPressed: () => context.push('/notifications'),
                         ),
                       if (isMine)
                         PixelIconButton(
                           icon: DesignerArt.navSettings,
                           semanticLabel: 'Explorer Settings',
+                          iconHeight: 24,
                           onPressed: () => context.push('/settings'),
                         ),
                     ],
@@ -300,22 +302,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ),
                     ],
+                    // Owner 2026-11-17: the level sits under the name.
+                    SizedBox(height: grid.px(2)),
+                    Wrap(
+                      spacing: grid.px(2),
+                      runSpacing: grid.px(1),
+                      children: [
+                        PixelChip(
+                          'Level $level Explorer',
+                          style: PixelBoxStyle.green,
+                          textColor: PixelPalette.white,
+                        ),
+                        MjdqChip(pointsBalance, idleSpin: true),
+                      ],
+                    ),
                   ],
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            children: [
-              PixelChip(
-                'Level $level Explorer',
-                style: PixelBoxStyle.green,
-                textColor: PixelPalette.white,
-              ),
-              MjdqChip(pointsBalance, idleSpin: true),
             ],
           ),
           if (isMine) ...[

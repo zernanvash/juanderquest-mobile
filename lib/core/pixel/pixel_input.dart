@@ -155,8 +155,10 @@ class _PixelTextFieldState extends State<PixelTextField> {
               style: PixelBoxStyle.slot.copyWith(
                 fill: hasError ? PixelPalette.redLight : PixelPalette.white,
                 outline: hasError ? PixelPalette.alert : PixelPalette.ink,
+                // Owner 2026-11-17: one outline only; the bevel read as a
+                // second box inside the field.
+                bevel: false,
               ),
-              sunken: true,
               padding: 2,
               child: widget.prefix == null
                   ? input

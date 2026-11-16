@@ -137,7 +137,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     icon: DesignerArt.search,
                     semanticLabel: 'Search & Filters',
                     style: PixelBoxStyle.parchment,
-                    iconHeight: 20,
+                    iconHeight: 24,
                     onPressed: () => context.push('/search'),
                   ),
                   // Owner 2026-11-16: Saved sits right of Search (the Map
@@ -147,7 +147,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                     icon: ExploreArt.bookmarkSaved,
                     semanticLabel: 'Saved places',
                     style: PixelBoxStyle.parchment,
-                    iconHeight: 20,
+                    iconHeight: 24,
                     onPressed: () => context.push('/saved'),
                   ),
                 ],
@@ -252,7 +252,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                                 context.push('/quests/${pagedSpots[i].questId}')
                             : null,
                       ),
-                      SizedBox(height: grid.px(2)),
+                      SizedBox(height: grid.px(4)),
                     ],
 
                     // End-of-feed JuanChoice insertion if insertion index is at or beyond pagedSpots length

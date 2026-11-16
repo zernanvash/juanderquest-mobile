@@ -1177,7 +1177,8 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
               key: const ValueKey('studio_publish'),
               label: _submitting ? 'Publishing' : 'Publish spot',
               icon: StudioIcons.edit,
-              iconScale: 2,
+              // Owner 2026-11-17: a bigger icon on the main action.
+              iconScale: 3,
               expand: true,
               loading: _submitting,
               onPressed: _submitting || _mediaUploading ? null : _publish,

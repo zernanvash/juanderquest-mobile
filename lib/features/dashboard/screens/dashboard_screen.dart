@@ -141,7 +141,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               semanticLabel: unread > 0
                                   ? 'Notifications, $unread unread'
                                   : 'Notifications',
-                              iconHeight: 36,
+                              // App-bar icons share one size (owner 2026-11-17).
+                              iconHeight: 24,
                               onPressed: () => context.go('/notifications'),
                             ),
                             if (unread > 0)
@@ -196,7 +197,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               child: HomeHero(user: user),
                             ),
                           ),
-                          SizedBox(height: grid.px(3)),
+                          SizedBox(height: grid.px(5)),
 
                           // Plan 100 WP-4: today's tasks (they earn the stamps); owner
                           // 2026-11-16: right under the player card.
@@ -215,7 +216,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               _ => context.push('/quests'),
                             },
                           ),
-                          SizedBox(height: grid.px(3)),
+                          SizedBox(height: grid.px(5)),
 
                           // BAND 2 (main menu) moved to the MENU button in
                           // the bottom bar (owner 2026-11-16).
@@ -232,10 +233,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     .read(homeDailyClaimProvider.notifier)
                                     .claim(daily),
                           ),
-                          SizedBox(height: grid.px(3)),
+                          SizedBox(height: grid.px(5)),
                           // Owner 2026-11-17: the question is open on Home.
                           HomeQotdPanel(key: _qotdKey),
-                          SizedBox(height: grid.px(3)),
+                          SizedBox(height: grid.px(5)),
 
                           // The Almanac moved to the main menu (owner 2026-11-16).
                         ],

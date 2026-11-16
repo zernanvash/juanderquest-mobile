@@ -91,7 +91,7 @@ class HomeDualBentoRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 missionBox,
-                SizedBox(height: grid.px(2)),
+                SizedBox(height: grid.px(5)),
                 stampBox,
               ],
             );
