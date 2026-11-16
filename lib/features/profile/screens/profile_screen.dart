@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -321,6 +322,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               label: 'Customize Look ›',
               variant: PixelButtonVariant.secondary,
               onPressed: () => context.push('/settings/appearance'),
+            ),
+            SizedBox(height: grid.px(2)),
+            // Plan 62: the season/year story.
+            PixelButton(
+              key: const ValueKey('profile_recap'),
+              label: tr(context, en: 'My Juander Recap ›', tl: 'Juander Recap ko ›'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => context.push('/recap'),
             ),
           ] else ...[
             SizedBox(height: grid.px(3)),
