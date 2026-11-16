@@ -99,24 +99,27 @@ void main() {
     expect(find.bySemanticsLabel('1250 mJDQ'), findsOneWidget);
   });
 
-  testWidgets('MjdqAmount plays coin animation when points increase and settles on frame 1', (tester) async {
+  testWidgets('MjdqAmount rests facing front, turns once when points increase, and settles facing front', (tester) async {
+    // Owner 2026-11-16: start from the coin facing the front; eased turn.
+    final front = DesignerArt.coinAnim.frames[3];
     Widget buildFor(int points) => MaterialApp(
           theme: AppTheme.pixel,
           home: Scaffold(
             body: Center(child: MjdqAmount(points, animateOnIncrease: true)),
           ),
         );
+    PixelArt shown() => tester.widget<PixelSprite>(find.byType(PixelSprite)).art;
 
     await tester.pumpWidget(buildFor(100));
-    expect(find.byType(PixelAnimation), findsNothing);
-    expect(find.byType(PixelSprite), findsOneWidget);
+    expect(shown(), same(front));
 
     await tester.pumpWidget(buildFor(150));
     await tester.pump();
-    expect(find.byType(PixelAnimation), findsOneWidget);
+    expect(shown(), same(front), reason: 'the turn starts facing front');
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(shown(), isNot(same(front)), reason: 'mid-turn shows another frame');
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.byType(PixelAnimation), findsNothing);
-    expect(find.byType(PixelSprite), findsOneWidget);
+    expect(shown(), same(front));
   });
 }
