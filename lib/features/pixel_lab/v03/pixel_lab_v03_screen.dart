@@ -8,6 +8,7 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../../../core/pixel/pixel_theme.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../spots/explore/explore_art.dart';
@@ -27,6 +28,22 @@ class PixelLabV03Screen extends StatefulWidget {
 class _PixelLabV03ScreenState extends State<PixelLabV03Screen> {
   bool _dark = false;
   ProtoMenuStyle _menu = ProtoMenuStyle.noBoxes;
+  PixelTextLook _look = PixelTextLook.extruded;
+  String _font = PixelFonts.families.first;
+  PixelText3DColors _colors = PixelText3DColors.cream;
+  static const _colorSets = <(String, PixelText3DColors)>[
+    ('CREAM', PixelText3DColors.cream),
+    ('GOLD', PixelText3DColors.gold),
+    ('GREEN', PixelText3DColors.green),
+    ('RED', PixelText3DColors.red),
+  ];
+  static const _lookNames = <PixelTextLook, String>{
+    PixelTextLook.extruded: '2.5D',
+    PixelTextLook.flat: 'FLAT OUTLINE',
+    PixelTextLook.banded: 'BANDED',
+    PixelTextLook.chunky: 'CHUNKY',
+    PixelTextLook.shadow: 'DROP SHADOW',
+  };
   int _tab = 0;
   final _done = <int>{0};
   String _last = 'NOTHING TAPPED YET';
@@ -60,6 +77,8 @@ class _PixelLabV03ScreenState extends State<PixelLabV03Screen> {
                         _controls(context, grid),
                         PixelRule(color: _rule),
                         _homePreview(context, grid),
+                        PixelRule(color: _rule),
+                        _lookGallery(context, grid),
                         PixelRule(color: _rule),
                         _buttons(context, grid),
                         PixelRule(color: _rule),
@@ -167,6 +186,71 @@ class _PixelLabV03ScreenState extends State<PixelLabV03Screen> {
                     onTap: () => setState(() => _menu = style)),
             ],
           ),
+          SizedBox(height: grid.px(2)),
+          Text('MENU C LETTERING', style: PixelType.small(context, color: _muted)),
+          SizedBox(height: grid.px(1)),
+          _chips(grid, 'look', [
+            for (final l in PixelTextLook.values)
+              (_lookNames[l]!, _look == l, () => setState(() => _look = l)),
+          ]),
+          SizedBox(height: grid.px(1)),
+          _chips(grid, 'font', [
+            for (final f in PixelFonts.families)
+              (f.toUpperCase(), _font == f, () => setState(() => _font = f)),
+          ]),
+          SizedBox(height: grid.px(1)),
+          _chips(grid, 'colour', [
+            for (final (name, c) in _colorSets)
+              (name, _colors == c, () => setState(() => _colors = c)),
+          ]),
+        ],
+      );
+
+  Widget _chips(PixelGrid grid, String group, List<(String, bool, VoidCallback)> items) => Wrap(
+        spacing: grid.px(1),
+        runSpacing: grid.px(1),
+        children: [
+          for (final (label, on, tap) in items)
+            PixelChip(label,
+                key: ValueKey('v03_${group}_$label'),
+                style: on ? PixelBoxStyle.gold : PixelBoxStyle.parchment,
+                onTap: tap),
+        ],
+      );
+
+  /// Every look in every font, so they can be compared side by side.
+  Widget _lookGallery(BuildContext context, PixelGrid grid) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _label(context, 'LETTERING GALLERY'),
+          Text('EVERY LOOK IN EVERY FONT. TAP ONE TO USE IT ON THE MENU ABOVE.',
+              style: PixelType.small(context, color: _muted)),
+          SizedBox(height: grid.px(2)),
+          for (final l in PixelTextLook.values) ...[
+            Text(_lookNames[l]!, style: PixelType.small(context, color: _muted)),
+            Wrap(
+              spacing: grid.px(3),
+              runSpacing: grid.px(1),
+              children: [
+                for (final f in PixelFonts.families)
+                  GestureDetector(
+                    key: ValueKey('v03_gallery_${l.name}_$f'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() {
+                      _look = l;
+                      _font = f;
+                      _menu = ProtoMenuStyle.noBoxes;
+                    }),
+                    child: PixelText3D('QUESTS',
+                        size: 16,
+                        look: l,
+                        font: f,
+                        colors: _look == l && _font == f ? PixelText3DColors.gold : _colors),
+                  ),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+          ],
         ],
       );
 
@@ -210,7 +294,13 @@ class _PixelLabV03ScreenState extends State<PixelLabV03Screen> {
             ],
           ),
           SizedBox(height: grid.px(4)),
-          ProtoMainMenu(style: _menu, onTap: _tap),
+          ProtoMainMenu(
+            style: _menu,
+            onTap: _tap,
+            look: _look,
+            font: _font,
+            labelColors: _colors,
+          ),
           SizedBox(height: grid.px(4)),
           // Mission: text plus a 2.5D action.
           Row(

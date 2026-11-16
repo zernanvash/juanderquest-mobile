@@ -40,8 +40,12 @@ class ProtoMainMenu extends StatelessWidget {
     required this.style,
     required this.onTap,
     this.labelColors = PixelText3DColors.cream,
+    this.look = PixelTextLook.extruded,
+    this.font,
   });
 
+  final PixelTextLook look;
+  final String? font;
   final ProtoMenuStyle style;
   final ValueChanged<String> onTap;
   final PixelText3DColors labelColors;
@@ -63,6 +67,8 @@ class ProtoMainMenu extends StatelessWidget {
               iconBox: 40,
               size: 14,
               colors: labelColors,
+              look: look,
+              font: font,
               onPressed: () => onTap(item.label),
             ),
           _ => GestureDetector(

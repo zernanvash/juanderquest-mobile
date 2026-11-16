@@ -43,9 +43,30 @@ class PixelText3DColors {
   );
 }
 
-/// Plan 101 prototype: bold, beveled, extruded ("2.5D") pixel text. No
-/// gradients and no blur: stacked copies of the text, offset by whole art
-/// pixels (outline, side, bevel, face).
+/// Plan 101 title/button looks (owner 2026-11-16: "more variation ... 2d bold
+/// text with outline"). Our own takes on common pixel-game lettering; drawn
+/// with our OFL fonts, never copied glyphs.
+enum PixelTextLook {
+  /// Stepped extrusion with a 1-pixel bevel on top (the first prototype).
+  extruded,
+
+  /// Flat 2D bold text with a dark outline.
+  flat,
+
+  /// Face in three hard colour bands (light, mid, dark) with an outline and
+  /// a one-step drop below.
+  banded,
+
+  /// Thick outline and a hard diagonal shadow, two colour bands.
+  chunky,
+
+  /// No outline: bold face over a hard drop shadow.
+  shadow,
+}
+
+/// Plan 101 prototype: bold pixel text for titles and buttons in one of the
+/// [PixelTextLook]s. No blur and no smooth gradients: stacked copies of the
+/// text offset by whole art pixels, and hard colour bands.
 class PixelText3D extends StatelessWidget {
   const PixelText3D(
     this.text, {
@@ -55,6 +76,8 @@ class PixelText3D extends StatelessWidget {
     this.depth = 2,
     this.pressed = false,
     this.textAlign = TextAlign.center,
+    this.look = PixelTextLook.extruded,
+    this.font,
   });
 
   final String text;
@@ -63,50 +86,103 @@ class PixelText3D extends StatelessWidget {
   final double size;
   final PixelText3DColors colors;
 
-  /// Extrusion in art pixels.
+  /// Extrusion / shadow in art pixels.
   final int depth;
 
   /// Pressed text sinks into its extrusion (for 2.5D buttons).
   final bool pressed;
   final TextAlign textAlign;
+  final PixelTextLook look;
+
+  /// Font family (one of `PixelFonts.families`); null = the user's font.
+  final String? font;
 
   @override
   Widget build(BuildContext context) {
     final u = PixelGrid.of(context).unit;
-    final base = PixelType.display(context).copyWith(
+    var base = PixelType.display(context).copyWith(
       fontSize: size * PixelScope.of(context).fontScale(),
       fontWeight: FontWeight.w700,
       height: 1.1,
     );
+    if (font != null) base = base.copyWith(fontFamily: font);
+    // Outlined looks need space between letters so outlines don't merge.
+    final spacing = switch (look) {
+      PixelTextLook.chunky => 3 * u,
+      _ => 2 * u,
+    };
+    base = base.copyWith(letterSpacing: spacing);
     final d = pressed ? 0 : depth;
     final lift = (depth - d) * u; // pressed: the face moves down
 
-    Widget layer(double dy, TextStyle style) => Transform.translate(
-          offset: Offset(0, dy + lift),
-          child: Text(text, style: style, textAlign: textAlign, maxLines: 1, softWrap: false),
+    Widget text_(TextStyle style) =>
+        Text(text, style: style, textAlign: textAlign, maxLines: 1, softWrap: false);
+    Widget at(double dx, double dy, Widget child) =>
+        Transform.translate(offset: Offset(dx, dy + lift), child: child);
+    TextStyle stroke(double w) => base.copyWith(
+          foreground: Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = w
+            ..strokeJoin = StrokeJoin.miter
+            ..isAntiAlias = false
+            ..color = colors.outline,
         );
+    // Hard colour bands, top to bottom (no blending between bands).
+    Widget bands(List<Color> cs) {
+      final stops = <double>[], colours = <Color>[];
+      for (var i = 0; i < cs.length; i++) {
+        stops..add(i / cs.length)..add((i + 1) / cs.length);
+        colours..add(cs[i])..add(cs[i]);
+      }
+      return ShaderMask(
+        blendMode: BlendMode.srcIn,
+        shaderCallback: (r) => LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: colours,
+          stops: stops,
+        ).createShader(r),
+        child: text_(base.copyWith(color: const Color(0xFFFFFFFF))),
+      );
+    }
 
-    final outline = base.copyWith(
-      foreground: Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2 * u
-        ..strokeJoin = StrokeJoin.miter
-        ..isAntiAlias = false
-        ..color = colors.outline,
-    );
+    final layers = switch (look) {
+      PixelTextLook.extruded => [
+          for (var i = d; i >= -1; i--) at(0, i * u, text_(stroke(2 * u))),
+          for (var i = d; i >= 1; i--) at(0, i * u, text_(base.copyWith(color: colors.side))),
+          at(0, -u, text_(base.copyWith(color: colors.bevel))),
+          at(0, 0, text_(base.copyWith(color: colors.face))),
+        ],
+      PixelTextLook.flat => [
+          at(0, 0, text_(stroke(2 * u))),
+          at(0, 0, text_(base.copyWith(color: colors.face))),
+        ],
+      PixelTextLook.banded => [
+          for (var i = d; i >= 0; i--) at(0, i * u, text_(stroke(2 * u))),
+          for (var i = d; i >= 1; i--) at(0, i * u, text_(base.copyWith(color: colors.outline))),
+          at(0, 0, bands([colors.bevel, colors.face, colors.side])),
+        ],
+      PixelTextLook.chunky => [
+          for (var i = d; i >= 1; i--) at(i * u, i * u, text_(stroke(3 * u))),
+          at(0, 0, text_(stroke(3 * u))),
+          at(0, 0, bands([colors.face, colors.side])),
+        ],
+      PixelTextLook.shadow => [
+          for (var i = d; i >= 1; i--) at(i * u, i * u, text_(base.copyWith(color: colors.outline))),
+          at(0, 0, text_(base.copyWith(color: colors.face))),
+        ],
+    };
 
+    final pad = look == PixelTextLook.chunky ? 2 * u : u;
     return Padding(
       // Room for the outline and the extrusion so nothing is clipped.
-      padding: EdgeInsets.fromLTRB(u, 2 * u, u, (depth + 1) * u),
+      padding: EdgeInsets.fromLTRB(pad, 2 * u, pad + (look == PixelTextLook.chunky ? depth * u : 0), (depth + 2) * u),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           // Sizing child (invisible), so the widget measures like plain text.
-          Opacity(opacity: 0, child: Text(text, style: base, textAlign: textAlign, maxLines: 1, softWrap: false)),
-          for (var i = d; i >= -1; i--) layer(i * u, outline),
-          for (var i = d; i >= 1; i--) layer(i * u, base.copyWith(color: colors.side)),
-          layer(-u, base.copyWith(color: colors.bevel)),
-          layer(0, base.copyWith(color: colors.face)),
+          Opacity(opacity: 0, child: text_(base)),
+          ...layers,
         ],
       ),
     );
@@ -124,8 +200,12 @@ class PixelText3DButton extends StatefulWidget {
     this.iconBox,
     this.size = 16,
     this.colors = PixelText3DColors.gold,
+    this.look = PixelTextLook.extruded,
+    this.font,
   });
 
+  final PixelTextLook look;
+  final String? font;
   final String label;
   final VoidCallback? onPressed;
   final PixelArt? icon;
@@ -182,6 +262,8 @@ class _PixelText3DButtonState extends State<PixelText3DButton> {
                       widget.label,
                       size: widget.size,
                       colors: widget.colors,
+                      look: widget.look,
+                      font: widget.font,
                       pressed: _down,
                     ),
                   ),

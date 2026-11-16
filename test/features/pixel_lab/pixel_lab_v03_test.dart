@@ -4,6 +4,9 @@ import 'package:juanderquest_app/features/pixel_lab/v03/pixel_lab_v03_screen.dar
 
 Future<void> _tapKey(WidgetTester tester, String key) async {
   final f = find.byKey(ValueKey(key));
+  if (f.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(f, 200, scrollable: find.byType(Scrollable).first);
+  }
   await tester.ensureVisible(f);
   await tester.pump(const Duration(milliseconds: 300));
   await tester.tap(f);
@@ -22,6 +25,14 @@ void main() {
     await _tapKey(tester, 'v03_task_1');
     await tester.scrollUntilVisible(find.byKey(const ValueKey('v03_last')), 300);
     expect(find.text('TAPPED PLAZA'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, 6000));
+    await tester.pump(const Duration(milliseconds: 200));
+    for (final k in ['v03_look_FLAT OUTLINE', 'v03_look_BANDED', 'v03_look_CHUNKY', 'v03_look_DROP SHADOW', 'v03_font_PRESSSTART2P', 'v03_colour_GOLD']) {
+      await _tapKey(tester, k);
+      expect(tester.takeException(), isNull);
+    }
+    await _tapKey(tester, 'v03_gallery_chunky_VT323');
+    expect(tester.takeException(), isNull);
     await tester.tap(find.byKey(const ValueKey('v03_tab_MAP')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(tester.takeException(), isNull);
@@ -38,7 +49,7 @@ void main() {
       ));
       await tester.pump(const Duration(milliseconds: 200));
       expect(tester.takeException(), isNull);
-      for (final k in ['v03_menu_fill', 'v03_menu_compact', 'v03_dark']) {
+      for (final k in ['v03_menu_fill', 'v03_menu_compact', 'v03_dark', 'v03_menu_noBoxes', 'v03_look_CHUNKY', 'v03_font_PRESSSTART2P']) {
         await _tapKey(tester, k);
         expect(tester.takeException(), isNull);
       }
