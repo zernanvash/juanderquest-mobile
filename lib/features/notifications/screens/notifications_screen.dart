@@ -295,6 +295,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       );
     }
     return Column(
+      // Full-width cards (owner phone check 2026-11-16: short cards shrank).
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final item in items) ...[
           _notificationCard(context, grid, item),
