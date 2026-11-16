@@ -29,6 +29,7 @@ import '../providers/home_recommended_quest_provider.dart';
 import '../widgets/main_menu_panel.dart';
 import '../widgets/home_daily_tasks_panel.dart';
 import '../widgets/home_qotd_panel.dart';
+import '../widgets/home_around_panels.dart';
 import '../widgets/home_dual_bento_row.dart';
 import '../widgets/home_hero.dart';
 
@@ -241,6 +242,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           SizedBox(height: grid.px(5)),
                           // Owner 2026-11-17: the question is open on Home.
                           HomeQotdPanel(key: _qotdKey),
+                          SizedBox(height: grid.px(5)),
+                          // Owner 2026-11-17: places near you and the next
+                          // Almanac event.
+                          const HomeNearbyPanel(),
+                          SizedBox(height: grid.px(5)),
+                          const HomeNextEventPanel(),
                           SizedBox(height: grid.px(5)),
 
                           // The Almanac moved to the main menu (owner 2026-11-16).
