@@ -4,11 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/pixel/generated/designer_art.g.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_background.dart';
 import '../../../../core/pixel/pixel_box.dart';
 import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/pixel/pixel_grid.dart';
+import '../../../../core/pixel/pixel_text_3d.dart';
 import '../../../../core/pixel/pixel_text.dart';
 import '../../models/spot_model.dart';
 import '../../providers/hidden_gem_provider.dart';
@@ -170,7 +170,7 @@ class _NoPhoto extends StatelessWidget {
     return const DitherBackground(
       top: PixelPalette.woodMid,
       bottom: PixelPalette.woodDeep,
-      child: Center(child: PixelSprite(DesignerArt.gem, scale: 2)),
+      child: Center(child: PixelIconFit(DesignerArt.gem, box: 36)),
     );
   }
 }
