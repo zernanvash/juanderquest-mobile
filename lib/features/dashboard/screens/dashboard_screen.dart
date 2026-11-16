@@ -16,7 +16,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
-import '../../cultural_quizzes/widgets/nearby_quiz_radar_banner.dart';
+import '../../notifications/providers/local_notifications_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/models/quest_model.dart';
 import '../../quests/pixel/saved_quests.dart';
@@ -78,6 +78,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.invalidate(homeQotdProvider);
     ref.invalidate(homeNearbyQuizProvider);
     ref.invalidate(hiddenGemProvider);
+    ref.invalidate(serverUnreadNotificationsProvider);
   }
 
   @override
@@ -109,6 +110,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         (currentChoice.status == 'voting' ||
             choiceOverview?.isCampaignOpen(currentChoice) == true);
     final daily = claimState.latest ?? dailyAsync.valueOrNull;
+    final unread = ref.watch(unreadNotificationCountProvider);
     final firstGem = (gems != null && gems.isNotEmpty) ? gems.first : null;
 
     if (!_tipsRequested && user != null) {
@@ -147,11 +149,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                       Tooltip(
                         message: 'Notifications',
-                        child: PixelIconButton(
-                          icon: DesignerArt.notifBell,
-                          semanticLabel: 'Notifications',
-                          iconHeight: 36,
-                          onPressed: () => context.go('/notifications'),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            PixelIconButton(
+                              icon: DesignerArt.notifBell,
+                              semanticLabel: unread > 0
+                                  ? 'Notifications, $unread unread'
+                                  : 'Notifications',
+                              iconHeight: 36,
+                              onPressed: () => context.go('/notifications'),
+                            ),
+                            if (unread > 0)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: IgnorePointer(
+                                  child: PixelChip(
+                                    unread > 9 ? '9+' : '$unread',
+                                    key: const ValueKey('home_bell_count'),
+                                    style: PixelBoxStyle.red,
+                                    textColor: PixelPalette.white,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       Tooltip(
@@ -179,12 +201,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           grid.px(8) + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
-                          if (ref.watch(
-                            quizRadarProvider.select((s) => s.showBanner),
-                          )) ...[
-                            const NearbyQuizRadarBanner(),
-                            SizedBox(height: grid.px(3)),
-                          ],
+                          // Plan 100 WP-5: nearby-quiz alerts moved to the
+                          // bell (Notifications); the Map keeps its banner.
                           // BAND 1: CONDENSED HERO, PURSE & NUMBERS
                           KeyedSubtree(
                             key: tipsKeys.hero,

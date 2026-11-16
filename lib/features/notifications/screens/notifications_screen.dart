@@ -15,6 +15,7 @@ import '../../../core/services/push_routing.dart';
 import '../../../core/services/push_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../providers/local_notifications_provider.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -117,7 +118,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 
+  /// Plan 100 WP-5: phone-made items (nearby quizzes) first, then the server's.
+  List<Map<String, dynamic>> get _all =>
+      [...ref.watch(localNotificationsProvider), ..._items];
+
   Future<void> _markRead(String id) async {
+    if (id.startsWith(localNotificationPrefix)) {
+      ref.read(localNotificationReadsProvider.notifier).markRead([id]);
+      return;
+    }
     try {
       await ref.read(apiClientProvider).dio.patch('/notifications/$id/read');
       if (!mounted) return;
@@ -126,6 +135,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             .map((item) => item['id'] == id ? {...item, 'read': true} : item)
             .toList();
       });
+      ref.invalidate(serverUnreadNotificationsProvider);
     } on DioException {
       if (!mounted) return;
       showPixelToast(
@@ -137,6 +147,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   Future<void> _markAllRead() async {
     if (_markingAllRead) return;
+    ref.read(localNotificationReadsProvider.notifier).markRead(
+          ref.read(localNotificationsProvider).map((i) => i['id'] as String),
+        );
+    if (!_items.any((i) => i['read'] != true)) return;
     setState(() => _markingAllRead = true);
     try {
       await ref.read(apiClientProvider).dio.post('/notifications/read-all');
@@ -145,6 +159,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         _items = _items.map((item) => {...item, 'read': true}).toList();
         _markingAllRead = false;
       });
+      ref.invalidate(serverUnreadNotificationsProvider);
     } on DioException {
       if (!mounted) return;
       setState(() => _markingAllRead = false);
@@ -158,6 +173,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return 'REWARD';
       case 'weekly_recap':
         return 'PLAZA';
+      case 'nearby_quiz':
+        return 'NEARBY';
       default:
         return 'UPDATE';
     }
@@ -198,7 +215,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         ? Navigator.of(context).maybePop()
                         : context.go('/dashboard'),
                     actions: [
-                      if (!_loading && _items.any((i) => i['read'] != true))
+                      if (!_loading && _all.any((i) => i['read'] != true))
                         PixelButton(
                           key: const ValueKey('notifications_read_all'),
                           label: _markingAllRead ? 'READING…' : 'READ ALL',
@@ -260,7 +277,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         ),
       );
     }
-    if (_items.isEmpty) {
+    final items = _all;
+    if (items.isEmpty) {
       return PixelPanel(
         style: PixelBoxStyle.parchment,
         child: PixelEmptyState(
@@ -278,7 +296,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
     return Column(
       children: [
-        for (final item in _items) ...[
+        for (final item in items) ...[
           _notificationCard(context, grid, item),
           SizedBox(height: grid.px(2)),
         ],
