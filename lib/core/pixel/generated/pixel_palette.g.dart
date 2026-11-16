@@ -6,84 +6,124 @@ import 'dart:ui';
 abstract final class PixelPalette {
   /// app deepInk
   static const ink = Color(0xFF0D1B2A);
+
   /// app textSecondary
   static const slate = Color(0xFF414844);
+
   /// app textMuted / outline
   static const stone = Color(0xFF717973);
+
   /// app outlineVariant
   static const mist = Color(0xFFC1C8C2);
+
   /// app surfaceContainerHighest
   static const paperDim = Color(0xFFE3E2DF);
+
   /// app background (Warm Paper)
   static const paper = Color(0xFFFAF9F5);
+
   /// app surfaceContainerLowest
   static const white = Color(0xFFFFFFFF);
+
   /// web brand-primary-hover
   static const greenDeep = Color(0xFF1B4332);
+
   /// app primaryDark
   static const greenDark = Color(0xFF274E3C);
+
   /// app primary (Tourism Green)
   static const green = Color(0xFF3F6653);
+
   /// web brand-primary / app success
   static const greenBright = Color(0xFF2D6A4F);
+
   /// mix primary -> primaryContainer 45%
   static const greenMid = Color(0xFF7AA28D);
+
   /// app primaryContainer
   static const greenLight = Color(0xFFC1ECD4);
+
   /// app onSecondaryContainer
   static const goldDeep = Color(0xFF6B4B00);
+
   /// web brand-accent-dark
   static const gold = Color(0xFFB45309);
+
   /// app/web warning
   static const amber = Color(0xFFD97706);
+
   /// web brand-accent-hover
   static const flame = Color(0xFFF77F00);
+
   /// app sunGold / web brand-accent
   static const sun = Color(0xFFFFB703);
+
   /// app secondaryContainer
   static const sunLight = Color(0xFFFFDEA9);
+
   /// web brand-accent-light
   static const cream = Color(0xFFFFF8E1);
+
   /// mix brand-brown-dark -> deepInk 50%
   static const woodNight = Color(0xFF261D1A);
+
   /// web brand-brown-dark
   static const woodDeep = Color(0xFF3E1F0A);
+
   /// app woodBrown / web brand-brown
   static const wood = Color(0xFF582F0E);
+
   /// web brand-brown-light
   static const woodMid = Color(0xFF7B4B27);
+
   /// mix brand-brown-light -> secondaryContainer 55%
   static const woodLight = Color(0xFFC49C6E);
+
   /// app openDataBg
   static const parchment = Color(0xFFF7EBE1);
+
   /// mix crowd-surging -> deepInk 60%
   static const redNight = Color(0xFF451B24);
+
   /// web crowd-surging
   static const redDeep = Color(0xFF991B1B);
+
   /// web status-danger
   static const red = Color(0xFFBC4749);
+
   /// mix status-danger -> white 18%
   static const redBright = Color(0xFFC8686A);
+
   /// mix status-danger -> status-danger-bg 60%
   static const redSoft = Color(0xFFE3A8A8);
+
   /// web status-danger-bg
   static const redLight = Color(0xFFFDE8E8);
+
   /// app danger
   static const alert = Color(0xFFBA1A1A);
+
   /// app crowdBusy
   static const orange = Color(0xFFE67E22);
+
   /// app crowdBusyBg
   static const orangeLight = Color(0xFFFFECE0);
+
   /// mix lguVerified -> deepInk 50%
   static const blueDeep = Color(0xFF143248);
+
   /// app lguVerified / info
   static const blue = Color(0xFF1B4965);
+
   /// web status-info
   static const blueBright = Color(0xFF2563EB);
+
   /// mix web status-info -> status-info-bg 45%
   static const blueMid = Color(0xFF77A0F4);
+
   /// web status-info-bg
   static const blueLight = Color(0xFFDBEAFE);
+
   /// app infoBg
   static const sky = Color(0xFFE0F2FE);
 

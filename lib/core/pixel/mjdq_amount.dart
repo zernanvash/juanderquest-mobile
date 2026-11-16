@@ -61,7 +61,8 @@ const _coinTurn = [3, 4, 5, 6, 0, 1, 2, 3];
 /// The same turn as an endless loop at the strip's own speed (10 fps).
 // The idle spin never ends, so widget tests (which wait for animations to
 // settle) see a still coin.
-final bool _inTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+final bool _inTest =
+    !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
 
 /// Lets the coin's own test switch the idle spin back on.
 @visibleForTesting
@@ -150,7 +151,6 @@ class _MjdqAmountState extends State<MjdqAmount> {
         ? baseStyle.copyWith(color: widget.color)
         : baseStyle;
     final numText = _numberText;
-    final leftText = '${widget.prefix ?? ''}$numText';
     final rightText = widget.suffix ?? '';
     final semanticLabel =
         '${widget.prefix ?? ''}$numText mJDQ${rightText.isEmpty ? '' : ' $rightText'}'
@@ -164,20 +164,24 @@ class _MjdqAmountState extends State<MjdqAmount> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Flexible(
-            child: Text(
-              leftText,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: effectiveStyle,
+          // Owner 2026-11-17: the coin comes first ("<coin> 120").
+          if ((widget.prefix ?? '').isNotEmpty)
+            Flexible(
+              child: Text(
+                widget.prefix!.trimRight(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: effectiveStyle,
+              ),
             ),
-          ),
-          SizedBox(width: grid.px(1)),
+          if ((widget.prefix ?? '').isNotEmpty) SizedBox(width: grid.px(1)),
           SizedBox.square(
             dimension: dim,
             child: FittedBox(
               fit: BoxFit.contain,
-              child: widget.idleSpin && !reducedMotion && (!_inTest || debugIdleSpinInTests)
+              child: widget.idleSpin &&
+                      !reducedMotion &&
+                      (!_inTest || debugIdleSpinInTests)
                   // Continuous loop from the front face; the ticker stops
                   // on off-screen routes (TickerMode).
                   ? PixelAnimation(_coinLoop, scale: 1)
@@ -191,6 +195,15 @@ class _MjdqAmountState extends State<MjdqAmount> {
                           DesignerArt.coinAnim.frames[_coinFront],
                           scale: 1,
                         ),
+            ),
+          ),
+          SizedBox(width: grid.px(1)),
+          Flexible(
+            child: Text(
+              numText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: effectiveStyle,
             ),
           ),
           if (rightText.isNotEmpty) ...[
@@ -222,8 +235,8 @@ class MjdqChip extends StatelessWidget {
     this.idleSpin = false,
     this.prefix,
     this.suffix,
-    this.style = PixelBoxStyle.gold,
-    this.textColor = PixelPalette.ink,
+    this.style = PixelBoxStyle.coin,
+    this.textColor = PixelPalette.paper,
   });
 
   final int amount;

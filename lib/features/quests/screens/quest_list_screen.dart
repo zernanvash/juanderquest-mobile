@@ -119,8 +119,6 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                     actions: [
                       MjdqChip(
                         points,
-                        style: PixelBoxStyle.gold,
-                        textColor: PixelPalette.ink,
                       ),
                     ],
                   ),

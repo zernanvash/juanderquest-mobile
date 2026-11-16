@@ -318,7 +318,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     actions: [
                       MjdqChip(
                         points,
-                        style: PixelBoxStyle.gold,
                         animateOnIncrease: true,
                       ),
                     ],
@@ -721,9 +720,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     ),
                   ],
                 ),
-                Text(
-                  _cosmeticPrice(item),
-                  style: PixelType.numbers(
+                _priceView(
+                  context,
+                  item,
+                  PixelType.numbers(
                     context,
                     color: item.owned
                         ? PixelPalette.greenDark
@@ -838,6 +838,14 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     );
   }
 
+  /// Coin prices show as "<coin> 120" (owner 2026-11-17).
+  Widget _priceView(BuildContext context, CosmeticItem item, TextStyle style) {
+    if (!item.owned && item.pricePoints != null) {
+      return MjdqAmount(item.pricePoints!, style: style);
+    }
+    return Text(_cosmeticPrice(item), style: style);
+  }
+
   String _cosmeticPrice(CosmeticItem item) {
     if (item.owned) {
       return item.equipped ? 'Equipped' : 'Owned';
@@ -930,12 +938,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                       SizedBox(height: PixelGrid.of(context).px(2)),
                     ],
                     if (!item.owned && !item.buyable) ...[
-                      Text(
-                        _cosmeticPrice(item),
-                        style: PixelType.body(
-                          context,
-                          color: PixelPalette.slate,
-                        ),
+                      _priceView(
+                        context,
+                        item,
+                        PixelType.body(context, color: PixelPalette.slate),
                       ),
                       SizedBox(height: PixelGrid.of(context).px(2)),
                     ],
@@ -1052,7 +1058,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     style: PixelBoxStyle.slot),
                 MjdqChip(
                   voucher.costPoints,
-                  style: canAfford ? PixelBoxStyle.gold : PixelBoxStyle.slot,
+                  style: canAfford ? PixelBoxStyle.coin : PixelBoxStyle.slot,
+                  textColor: canAfford ? PixelPalette.paper : PixelPalette.ink,
                 ),
               ],
             ),

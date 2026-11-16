@@ -620,18 +620,17 @@ void main() {
       expect(find.byKey(const ValueKey('home_command_grid')), findsNothing);
       expect(find.byKey(const ValueKey('home_bento_mission')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
-      expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
+      // Owner 2026-11-17: the question is open on Home (no pill).
+      expect(find.byKey(const ValueKey('home_qotd_pill')), findsNothing);
       // Owner 2026-11-16: the hidden gem left Home.
       expect(find.byKey(const ValueKey('home_gem_pill')), findsNothing);
       expect(find.text('Hundred Islands Eco Trek'), findsOneWidget);
       // Title and live value are separate (owner 2026-11-16).
       expect(find.text('STAMP'), findsOneWidget);
       expect(find.text('0/7'), findsOneWidget);
-      // QOTD sits below the daily tasks now; scroll it into view.
-      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_pill')));
+      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_panel')));
       await tester.pump();
-      expect(
-          find.bySemanticsLabel('QUESTION OF THE DAY +5 mJDQ'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
       // The Almanac moved to the main menu (owner 2026-11-16).
       expect(find.byKey(const ValueKey('home_calendar_panel')), findsNothing);
     });
@@ -676,11 +675,11 @@ void main() {
       expect(find.byKey(const ValueKey('home_calendar_panel')), findsNothing);
     });
 
-    testWidgets('QOTD sheet opens and submits answer', (tester) async {
+    testWidgets('QOTD panel is open and submits answer', (tester) async {
       await _pump(tester);
-      await tester.tap(find.byKey(const ValueKey('home_qotd_pill')));
+      // Owner 2026-11-17: the question is open on Home; no tap to open.
+      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_panel')));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
       expect(
@@ -690,6 +689,9 @@ void main() {
       );
 
       // Tap option o1
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('home_qotd_option_o1')));
+      await tester.pump();
       await tester.tap(find.byKey(const ValueKey('home_qotd_option_o1')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -747,9 +749,9 @@ void main() {
         (tester) async {
       final fake = _FakeApi(qotd: _qotdJson(), answer: _answerJson());
       await _pump(tester, overrides: _overrides(api: fake, realQotd: true));
-      await tester.tap(find.byKey(const ValueKey('home_qotd_pill')));
+      // Owner 2026-11-17: the question is open on Home; no tap to open.
+      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_panel')));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
       expect(
@@ -758,6 +760,9 @@ void main() {
         findsOneWidget,
       );
 
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('home_qotd_option_o1')));
+      await tester.pump();
       await tester.tap(find.byKey(const ValueKey('home_qotd_option_o1')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -774,12 +779,9 @@ void main() {
           qotd: const AsyncValue.data(_emptyQotd),
         ),
       );
-      expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
-      // QOTD sits below the daily tasks now; scroll it into view.
-      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_pill')));
+      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_panel')));
       await tester.pump();
-      expect(
-          find.bySemanticsLabel('QUESTION OF THE DAY +5 mJDQ'), findsOneWidget);
+      expect(find.textContaining('No question today'), findsOneWidget);
 
       await _pump(
         tester,
@@ -787,10 +789,9 @@ void main() {
           qotd: AsyncValue.error(Exception('qotd down'), StackTrace.empty),
         ),
       );
-      expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('home_qotd_pill')));
+      await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_panel')));
       await tester.pump();
-      expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
+      expect(find.textContaining('could not load'), findsOneWidget);
     });
 
     testWidgets('daily claim empty and error states', (tester) async {

@@ -118,8 +118,6 @@ class QuestCard extends StatelessWidget {
                     MjdqChip(
                       quest.rewardPoints,
                       sign: true,
-                      style: PixelBoxStyle.gold,
-                      textColor: PixelPalette.ink,
                     ),
                     if (onToggleSaved != null)
                       SavedQuestHeart(

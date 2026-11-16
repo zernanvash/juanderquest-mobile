@@ -42,8 +42,6 @@ class QuestTravelerPreviewCard extends StatelessWidget {
               MjdqChip(
                 state.rewardPoints,
                 sign: true,
-                style: PixelBoxStyle.gold,
-                textColor: PixelPalette.ink,
               ),
             ],
           ),

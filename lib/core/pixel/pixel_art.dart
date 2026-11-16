@@ -33,7 +33,8 @@ class PixelArt {
             final color = PixelPalette.byKey[row[x]];
             if (color == null) continue;
             paint.color = color;
-            canvas.drawRect(Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, 1), paint);
+            canvas.drawRect(
+                Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, 1), paint);
           }
         }
         return recorder.endRecording().toImageSync(width, height);
@@ -64,8 +65,11 @@ class PixelSprite extends StatelessWidget {
   Widget build(BuildContext context) {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final size = Size(art.width * scale / dpr, art.height * scale / dpr);
-    final sprite = _PixelSnap(child: CustomPaint(size: size, painter: _SpritePainter(art.image())));
-    return semanticLabel == null ? ExcludeSemantics(child: sprite) : Semantics(label: semanticLabel, image: true, child: sprite);
+    final sprite = _PixelSnap(
+        child: CustomPaint(size: size, painter: _SpritePainter(art.image())));
+    return semanticLabel == null
+        ? ExcludeSemantics(child: sprite)
+        : Semantics(label: semanticLabel, image: true, child: sprite);
   }
 }
 
@@ -92,7 +96,12 @@ class _SpritePainter extends CustomPainter {
 
 /// Plays [frames] in steps (no tweening), looping or once.
 class PixelAnimation extends StatefulWidget {
-  const PixelAnimation(this.frames, {super.key, this.scale = 3, this.loop = true, this.playing = true, this.onDone});
+  const PixelAnimation(this.frames,
+      {super.key,
+      this.scale = 3,
+      this.loop = true,
+      this.playing = true,
+      this.onDone});
 
   final PixelFrames frames;
   final int scale;
@@ -104,7 +113,8 @@ class PixelAnimation extends StatefulWidget {
   State<PixelAnimation> createState() => _PixelAnimationState();
 }
 
-class _PixelAnimationState extends State<PixelAnimation> with SingleTickerProviderStateMixin {
+class _PixelAnimationState extends State<PixelAnimation>
+    with SingleTickerProviderStateMixin {
   late final Ticker _ticker = createTicker(_tick);
   int _frame = 0;
   Duration _start = Duration.zero;
@@ -134,7 +144,8 @@ class _PixelAnimationState extends State<PixelAnimation> with SingleTickerProvid
       _restart = false;
     }
     final count = widget.frames.frames.length;
-    var next = ((elapsed - _start).inMicroseconds * widget.frames.fps / 1e6).floor();
+    var next =
+        ((elapsed - _start).inMicroseconds * widget.frames.fps / 1e6).floor();
     if (!widget.loop && next >= count) {
       _ticker.stop();
       next = count - 1;
@@ -151,7 +162,8 @@ class _PixelAnimationState extends State<PixelAnimation> with SingleTickerProvid
   }
 
   @override
-  Widget build(BuildContext context) => PixelSprite(widget.frames.frames[_frame], scale: widget.scale);
+  Widget build(BuildContext context) =>
+      PixelSprite(widget.frames.frames[_frame], scale: widget.scale);
 }
 
 /// Paints the child at a whole-device-pixel offset so sprite edges stay sharp.
@@ -159,11 +171,13 @@ class _PixelSnap extends SingleChildRenderObjectWidget {
   const _PixelSnap({super.child});
 
   @override
-  RenderObject createRenderObject(BuildContext context) => _RenderPixelSnap(MediaQuery.devicePixelRatioOf(context));
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderPixelSnap(MediaQuery.devicePixelRatioOf(context));
 
   @override
   void updateRenderObject(BuildContext context, RenderObject renderObject) {
-    (renderObject as _RenderPixelSnap).dpr = MediaQuery.devicePixelRatioOf(context);
+    (renderObject as _RenderPixelSnap).dpr =
+        MediaQuery.devicePixelRatioOf(context);
   }
 }
 
@@ -179,6 +193,9 @@ class _RenderPixelSnap extends RenderProxyBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    super.paint(context, Offset((offset.dx * _dpr).roundToDouble() / _dpr, (offset.dy * _dpr).roundToDouble() / _dpr));
+    super.paint(
+        context,
+        Offset((offset.dx * _dpr).roundToDouble() / _dpr,
+            (offset.dy * _dpr).roundToDouble() / _dpr));
   }
 }

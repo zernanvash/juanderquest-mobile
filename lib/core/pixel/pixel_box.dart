@@ -64,6 +64,13 @@ class PixelBoxStyle {
     shade: PixelPalette.greenDark,
   );
 
+  /// Behind coin amounts (owner 2026-11-17: not yellow, the coin is yellow).
+  static const coin = PixelBoxStyle(
+    fill: PixelPalette.blueDeep,
+    highlight: PixelPalette.blue,
+    shade: PixelPalette.ink,
+  );
+
   static const gold = PixelBoxStyle(
     fill: PixelPalette.sun,
     highlight: PixelPalette.sunLight,

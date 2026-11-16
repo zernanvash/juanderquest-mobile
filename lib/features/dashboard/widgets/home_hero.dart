@@ -113,7 +113,8 @@ class HomeHero extends ConsumerWidget {
                 ),
               ),
             ),
-            SizedBox(width: grid.px(4)),
+            // Owner 2026-11-17: more room between the currencies.
+            SizedBox(width: grid.px(10)),
             _purseSlot(
               context,
               grid,
@@ -123,7 +124,8 @@ class HomeHero extends ConsumerWidget {
               semantics: '$stampsCount stamps',
               onTap: () => context.push('/profile/badges'),
             ),
-            SizedBox(width: grid.px(4)),
+            // Owner 2026-11-17: more room between the currencies.
+            SizedBox(width: grid.px(10)),
             _purseSlot(
               context,
               grid,

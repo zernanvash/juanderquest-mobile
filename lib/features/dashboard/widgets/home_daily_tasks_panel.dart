@@ -19,19 +19,25 @@ class HomeDailyTasksPanel extends StatelessWidget {
     super.key,
     required this.missions,
     required this.onOpen,
+    this.daily,
+    this.loading = false,
   });
 
   final List<HomeDailyMission> missions;
+
+  /// For the weekly chest line (owner 2026-11-17: show daily and weekly).
+  final HomeDailyState? daily;
+  final bool loading;
 
   /// Opens where a mission is done (by its `kind`).
   final ValueChanged<HomeDailyMission> onOpen;
 
   @override
   Widget build(BuildContext context) {
-    if (missions.isEmpty) return const SizedBox.shrink();
     final grid = PixelGrid.of(context);
     final done = missions.where((m) => m.completed).length;
-    final allDone = done == missions.length;
+    final allDone = missions.isNotEmpty && done == missions.length;
+    final d = daily;
     // Idle (owner 2026-11-16): the next task's reward pulses; all done, a
     // calm shimmer and a line saying so.
     final next = missions.where((m) => !m.completed).firstOrNull;
@@ -48,9 +54,21 @@ class HomeDailyTasksPanel extends StatelessWidget {
             PixelSectionTitle(
               tr(context, en: 'DAILY TASKS', tl: 'GAWAIN NGAYON'),
               colors: PixelText3DColors.green,
-              value: '$done/${missions.length}',
+              value: missions.isEmpty ? null : '$done/${missions.length}',
               valueColor: PixelPalette.greenDark,
             ),
+            if (missions.isEmpty) ...[
+              SizedBox(height: grid.px(2)),
+              loading
+                  ? const PixelLoader(label: 'Loading tasks')
+                  : Text(
+                      tr(context,
+                          en: 'No tasks today. Check back tomorrow!',
+                          tl: 'Walang gawain ngayon. Balik bukas!'),
+                      key: const ValueKey('home_daily_none'),
+                      style: PixelType.body(context, color: PixelPalette.slate),
+                    ),
+            ],
             for (final m in missions) ...[
               SizedBox(height: grid.px(2)),
               _TaskRow(
@@ -58,6 +76,10 @@ class HomeDailyTasksPanel extends StatelessWidget {
                 pulse: identical(m, next),
                 onTap: () => onOpen(m),
               ),
+            ],
+            if (d != null && d.chestRequired > 0) ...[
+              SizedBox(height: grid.px(3)),
+              _WeeklyChest(daily: d),
             ],
             if (allDone) ...[
               SizedBox(height: grid.px(2)),
@@ -140,6 +162,58 @@ class _TaskRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// This week's chest: finish N daily tasks this week for bonus stamps.
+class _WeeklyChest extends StatelessWidget {
+  const _WeeklyChest({required this.daily});
+
+  final HomeDailyState daily;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final done = daily.chestCompleted.clamp(0, daily.chestRequired);
+    return Column(
+      key: const ValueKey('home_weekly_chest'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                daily.chestEarned
+                    ? tr(context,
+                        en: 'WEEKLY CHEST OPENED', tl: 'NABUKSAN ANG BAUL')
+                    : tr(context, en: 'WEEKLY CHEST', tl: 'BAUL NG LINGGO'),
+                style: PixelType.small(context, color: PixelPalette.ink)
+                    .copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Text(
+              '$done/${daily.chestRequired}',
+              style: PixelType.small(context, color: PixelPalette.greenDark)
+                  .copyWith(fontWeight: FontWeight.w700),
+            ),
+            if (daily.chestStamps > 0) ...[
+              SizedBox(width: grid.px(2)),
+              PixelChip(
+                '+${daily.chestStamps}',
+                style: PixelBoxStyle.gold,
+                textColor: PixelPalette.ink,
+              ),
+            ],
+          ],
+        ),
+        SizedBox(height: grid.px(1)),
+        PixelProgressBar(
+          value: daily.chestRequired == 0 ? 0 : done / daily.chestRequired,
+          segments: daily.chestRequired.clamp(1, 10),
+          color: PixelPalette.greenBright,
+        ),
+      ],
     );
   }
 }

@@ -10,8 +10,6 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
-import '../../../core/pixel/pixel_rpg.dart';
-import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -30,6 +28,7 @@ import '../providers/home_qotd_provider.dart';
 import '../providers/home_recommended_quest_provider.dart';
 import '../widgets/main_menu_panel.dart';
 import '../widgets/home_daily_tasks_panel.dart';
+import '../widgets/home_qotd_panel.dart';
 import '../widgets/home_dual_bento_row.dart';
 import '../widgets/home_hero.dart';
 
@@ -42,6 +41,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _tipsRequested = false;
+  final _qotdKey = GlobalKey();
 
   @override
   void initState() {
@@ -84,7 +84,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final submissionsState = ref.watch(submissionProvider);
     final dailyAsync = ref.watch(homeDailyProvider);
     final claimState = ref.watch(homeDailyClaimProvider);
-    final qotd = ref.watch(homeQotdProvider).asData?.value;
 
     final quests = withoutTestContent(
       questsState.quests,
@@ -201,17 +200,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                           // Plan 100 WP-4: today's tasks (they earn the stamps); owner
                           // 2026-11-16: right under the player card.
-                          if (daily != null && daily.missions.isNotEmpty) ...[
-                            HomeDailyTasksPanel(
-                              missions: daily.missions,
-                              onOpen: (m) => switch (m.kind) {
-                                'qotd' => _showQotdSheet(context, ref, qotd),
-                                'cheer_post' => context.push('/plaza'),
-                                _ => context.push('/quests'),
-                              },
-                            ),
-                            SizedBox(height: grid.px(3)),
-                          ],
+                          // Owner 2026-11-17: always on Home (it hid when
+                          // today's list was empty).
+                          HomeDailyTasksPanel(
+                            missions: daily?.missions ?? const [],
+                            daily: daily,
+                            loading: daily == null && dailyAsync.isLoading,
+                            onOpen: (m) => switch (m.kind) {
+                              'qotd' => Scrollable.ensureVisible(
+                                  _qotdKey.currentContext!,
+                                  duration: const Duration(milliseconds: 300),
+                                ),
+                              'cheer_post' => context.push('/plaza'),
+                              _ => context.push('/quests'),
+                            },
+                          ),
+                          SizedBox(height: grid.px(3)),
 
                           // BAND 2 (main menu) moved to the MENU button in
                           // the bottom bar (owner 2026-11-16).
@@ -227,9 +231,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 : () => ref
                                     .read(homeDailyClaimProvider.notifier)
                                     .claim(daily),
-                            qotdDone: qotd?.answered == true,
-                            onTapQotd: () => _showQotdSheet(context, ref, qotd),
                           ),
+                          SizedBox(height: grid.px(3)),
+                          // Owner 2026-11-17: the question is open on Home.
+                          HomeQotdPanel(key: _qotdKey),
                           SizedBox(height: grid.px(3)),
 
                           // The Almanac moved to the main menu (owner 2026-11-16).
@@ -245,122 +250,4 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
-}
-
-void _showQotdSheet(
-  BuildContext context,
-  WidgetRef ref,
-  HomeQotdState? initialQotd,
-) {
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (ctx) {
-      return Consumer(
-        builder: (context, ref, _) {
-          final liveQotd =
-              ref.watch(homeQotdProvider).asData?.value ?? initialQotd;
-          final grid = PixelGrid.of(ctx);
-          if (liveQotd == null) {
-            return Container(
-              margin: EdgeInsets.all(grid.px(2)),
-              child: const PixelPanel(
-                key: ValueKey('home_qotd_panel'),
-                style: PixelBoxStyle.wood,
-                padding: 2,
-                child: Text('Loading Question of the Day...'),
-              ),
-            );
-          }
-          return SafeArea(
-            child: Container(
-              margin: EdgeInsets.all(grid.px(2)),
-              child: PixelPanel(
-                key: const ValueKey('home_qotd_panel'),
-                style: PixelBoxStyle.wood,
-                padding: 2,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'QUESTION OF THE DAY',
-                            style: PixelType.title(
-                              ctx,
-                              color: PixelPalette.paper,
-                            ),
-                          ),
-                        ),
-                        PixelIconButton(
-                          icon: DesignerArt.heartUnliked,
-                          semanticLabel: 'Close',
-                          onPressed: () => Navigator.of(ctx).pop(),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: grid.px(1)),
-                    Text(
-                      liveQotd.quizTitle.isNotEmpty
-                          ? liveQotd.quizTitle
-                          : 'Daily Pangasinan Lore',
-                      style: PixelType.small(ctx, color: PixelPalette.cream),
-                    ),
-                    SizedBox(height: grid.px(2)),
-                    Text(
-                      liveQotd.questionText.isNotEmpty
-                          ? liveQotd.questionText
-                          : 'Loading question...',
-                      style: PixelType.body(
-                        ctx,
-                        color: PixelPalette.paper,
-                      ).copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    SizedBox(height: grid.px(2)),
-                    for (final option in liveQotd.options) ...[
-                      SizedBox(height: grid.px(1)),
-                      PixelTappableSlot(
-                        key: ValueKey('home_qotd_option_${option.id}'),
-                        style: liveQotd.selectedOptionId == option.id
-                            ? (liveQotd.correct
-                                ? PixelBoxStyle.green
-                                : PixelBoxStyle.red)
-                            : PixelBoxStyle.parchment,
-                        padding: 2,
-                        onTap: liveQotd.answered
-                            ? null
-                            : () => ref
-                                .read(homeQotdProvider.notifier)
-                                .answer(option.id),
-                        child: Text(
-                          option.text,
-                          style: PixelType.body(ctx, color: PixelPalette.ink),
-                        ),
-                      ),
-                    ],
-                    if (liveQotd.explanation != null) ...[
-                      SizedBox(height: grid.px(2)),
-                      Text(
-                        liveQotd.explanation!,
-                        style: PixelType.small(ctx, color: PixelPalette.cream),
-                      ),
-                    ],
-                    SizedBox(height: grid.px(3)),
-                    PixelButton(
-                      label: 'CLOSE',
-                      expand: true,
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    },
-  );
 }

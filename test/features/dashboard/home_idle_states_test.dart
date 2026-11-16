@@ -5,7 +5,9 @@ import 'package:juanderquest_app/core/pixel/pixel_idle.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/widgets/home_daily_tasks_panel.dart';
+import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
 import 'package:juanderquest_app/features/dashboard/widgets/home_dual_bento_row.dart';
+import 'package:juanderquest_app/features/dashboard/widgets/home_qotd_panel.dart';
 
 Widget _wrap(Widget child) => ProviderScope(
       child: MaterialApp(
@@ -30,10 +32,8 @@ HomeDailyMission _m(String id, {bool done = false}) => HomeDailyMission(
     );
 
 void main() {
-  testWidgets('claimed stamp and answered QOTD explain why nothing happens',
-      (tester) async {
+  testWidgets('claimed stamp explains why nothing happens', (tester) async {
     var claims = 0;
-    var qotd = 0;
     await tester.pumpWidget(_wrap(HomeDualBentoRow(
       dailyState: const HomeDailyState(
         stamps: 5,
@@ -42,26 +42,66 @@ void main() {
         nominalStamps: 5,
       ),
       onClaimDaily: () => claims++,
-      qotdDone: true,
-      onTapQotd: () => qotd++,
     )));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('home_daily_claim_button')));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(claims, 0);
     expect(find.textContaining('already claimed'), findsOneWidget);
-
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('home_qotd_pill')));
-    await tester.tap(find.byKey(const ValueKey('home_qotd_pill')));
-    await tester.pump();
+  });
+
+  testWidgets('QOTD is open on Home; answered shows the result and explains',
+      (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        homeQotdProvider.overrideWith((ref) => _Qotd(ref, answered: false)),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.pixel,
+        home: const Scaffold(body: HomeQotdPanel()),
+      ),
+    ));
+    expect(find.text('Where is Hundred Islands?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_qotd_option_o1')), findsOneWidget);
+
+    await tester.pumpWidget(ProviderScope(
+      key: UniqueKey(),
+      overrides: [
+        homeQotdProvider.overrideWith((ref) => _Qotd(ref, answered: true)),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.pixel,
+        home: const Scaffold(body: HomeQotdPanel()),
+      ),
+    ));
+    expect(find.text('CORRECT'), findsOneWidget);
+    expect(find.text('Alaminos City has them.'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('home_qotd_option_o1')));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(qotd, 0);
     expect(find.textContaining('Already answered'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('daily tasks panel shows with no tasks, plus the weekly chest',
+      (tester) async {
+    await tester.pumpWidget(_wrap(HomeDailyTasksPanel(
+      missions: const [],
+      daily: const HomeDailyState(
+        stamps: 0,
+        missions: [],
+        chestCompleted: 2,
+        chestRequired: 5,
+        chestStamps: 10,
+      ),
+      onOpen: (_) {},
+    )));
+    expect(find.byKey(const ValueKey('home_daily_none')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_weekly_chest')), findsOneWidget);
+    expect(find.text('2/5'), findsOneWidget);
   });
 
   testWidgets('daily tasks: next reward pulses; all done says so',
@@ -107,4 +147,24 @@ void main() {
 
 extension<T> on T {
   R let<R>(R Function(T) f) => f(this);
+}
+
+class _Qotd extends HomeQotdNotifier {
+  _Qotd(super.ref, {required bool answered}) : super(autoLoad: false) {
+    state = AsyncValue.data(
+      HomeQotdState(
+        date: '2026-11-17',
+        quizTitle: 'Daily Lore',
+        questionId: 'qq-1',
+        questionText: 'Where is Hundred Islands?',
+        options: const [
+          HomeQotdOption(id: 'o1', ordinal: 1, text: 'Alaminos'),
+        ],
+        answered: answered,
+        selectedOptionId: answered ? 'o1' : null,
+        correct: answered,
+        explanation: answered ? 'Alaminos City has them.' : null,
+      ),
+    );
+  }
 }

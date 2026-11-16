@@ -566,8 +566,6 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     }
   }
 
-
-
   Future<void> _refreshData() async {
     setState(() => _isRefreshing = true);
     try {
@@ -1010,8 +1008,16 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
   String _cleanTitle(String rawTitle) {
     var t = rawTitle.trim();
     for (final prefix in const [
-      'SIM · ', 'SIM: ', 'SIM - ', 'SIM ·', 'SIM:',
-      'TEST · ', 'TEST: ', 'TEST - ', 'TEST ·', 'TEST:',
+      'SIM · ',
+      'SIM: ',
+      'SIM - ',
+      'SIM ·',
+      'SIM:',
+      'TEST · ',
+      'TEST: ',
+      'TEST - ',
+      'TEST ·',
+      'TEST:',
     ]) {
       if (t.toUpperCase().startsWith(prefix)) {
         return t.substring(prefix.length).trim();
@@ -1178,13 +1184,22 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                   PixelPanel(
                     style: PixelBoxStyle.slot,
                     padding: 1,
-                    child: Text(
-                      bountyOrStatus,
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.woodDeep,
-                      ).copyWith(fontWeight: FontWeight.w700),
-                    ),
+                    child: isQuest
+                        ? MjdqAmount(
+                            _selectedQuest!.rewardPoints,
+                            sign: true,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.woodDeep,
+                            ).copyWith(fontWeight: FontWeight.w700),
+                          )
+                        : Text(
+                            bountyOrStatus,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.woodDeep,
+                            ).copyWith(fontWeight: FontWeight.w700),
+                          ),
                   ),
                 ],
                 if (isTest) ...[

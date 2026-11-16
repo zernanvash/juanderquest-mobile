@@ -57,11 +57,12 @@ void main() {
     expect(opened, isNull, reason: 'done tasks are not tappable');
   });
 
-  testWidgets('Plan 100 WP-4: hidden with no missions', (tester) async {
+  testWidgets('shows with no missions (owner 2026-11-17)', (tester) async {
     await tester.pumpWidget(
       _wrap(HomeDailyTasksPanel(missions: const [], onOpen: (_) {})),
     );
-    expect(find.byKey(const ValueKey('home_daily_tasks')), findsNothing);
+    expect(find.byKey(const ValueKey('home_daily_tasks')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_daily_none')), findsOneWidget);
   });
 
   for (final size in const [Size(320, 568), Size(568, 320)]) {

@@ -137,7 +137,9 @@ class PixelParticleSystem extends ChangeNotifier {
         ax: 0,
         ay: gravity,
         sizeArtPx: (_nextDouble() < 0.25) ? 3 : ((_nextDouble() < 0.6) ? 2 : 1),
-        color: palette[(_nextDouble() * palette.length).floor().clamp(0, palette.length - 1)],
+        color: palette[(_nextDouble() * palette.length)
+            .floor()
+            .clamp(0, palette.length - 1)],
         maxLife: _range(minLife, maxLife),
       );
     }
@@ -179,7 +181,9 @@ class PixelParticleSystem extends ChangeNotifier {
           // Frontier rises from modalRect.bottom -> modalRect.top on open and close.
           final fracFromBottom = bandCenter;
           final spreadY = (modalRect.height * 0.14).clamp(6.0, 26.0);
-          py = (modalRect.bottom - fracFromBottom * modalRect.height + _range(-spreadY, spreadY))
+          py = (modalRect.bottom -
+                  fracFromBottom * modalRect.height +
+                  _range(-spreadY, spreadY))
               .clamp(modalRect.top, modalRect.bottom);
           if (opening) {
             final toTargetX = (px - anchor.dx) * _range(0.5, 1.4);
@@ -198,9 +202,12 @@ class PixelParticleSystem extends ChangeNotifier {
           final radiusScale = bandCenter.clamp(0.05, 1.0);
           final halfW = modalRect.width * 0.5 * radiusScale;
           final halfH = modalRect.height * 0.5 * radiusScale;
-          final originCenter = Offset(modalRect.center.dx, modalRect.bottom - modalRect.height * 0.35);
-          px = (originCenter.dx + math.cos(angle) * halfW).clamp(modalRect.left, modalRect.right);
-          py = (originCenter.dy + math.sin(angle) * halfH).clamp(modalRect.top, modalRect.bottom);
+          final originCenter = Offset(
+              modalRect.center.dx, modalRect.bottom - modalRect.height * 0.35);
+          px = (originCenter.dx + math.cos(angle) * halfW)
+              .clamp(modalRect.left, modalRect.right);
+          py = (originCenter.dy + math.sin(angle) * halfH)
+              .clamp(modalRect.top, modalRect.bottom);
           if (opening) {
             vx = math.cos(angle) * _range(35, 110);
             vy = math.sin(angle) * _range(35, 110) - 25;
@@ -216,15 +223,18 @@ class PixelParticleSystem extends ChangeNotifier {
           final onHoriz = _nextDouble() < 0.65;
           if (onHoriz) {
             px = _range(modalRect.left, modalRect.right);
-            py = (_nextDouble() < 0.5 ? modalRect.top : modalRect.bottom) + _range(-6, 6);
+            py = (_nextDouble() < 0.5 ? modalRect.top : modalRect.bottom) +
+                _range(-6, 6);
           } else {
-            px = (_nextDouble() < 0.5 ? modalRect.left : modalRect.right) + _range(-6, 6);
+            px = (_nextDouble() < 0.5 ? modalRect.left : modalRect.right) +
+                _range(-6, 6);
             py = _range(modalRect.top, modalRect.bottom);
           }
           // Mix in scanline particles across the dissolving modal face.
           if (_nextDouble() < 0.5) {
             px = _range(modalRect.left, modalRect.right);
-            py = modalRect.top + modalRect.height * (opening ? (1.0 - bandCenter) : bandCenter);
+            py = modalRect.top +
+                modalRect.height * (opening ? (1.0 - bandCenter) : bandCenter);
           }
           vx = _range(-55, 55);
           vy = opening ? -_range(25, 85) : -_range(30, 100);
@@ -242,7 +252,9 @@ class PixelParticleSystem extends ChangeNotifier {
         ax: ax,
         ay: ay,
         sizeArtPx: _nextDouble() < 0.2 ? 3 : (_nextDouble() < 0.65 ? 2 : 1),
-        color: palette[(_nextDouble() * palette.length).floor().clamp(0, palette.length - 1)],
+        color: palette[(_nextDouble() * palette.length)
+            .floor()
+            .clamp(0, palette.length - 1)],
         maxLife: _range(0.22, 0.48),
       );
       spawned++;
@@ -338,7 +350,10 @@ class _PixelParticlePainter extends CustomPainter {
       final side = p.sizeArtPx * unit;
       final sx = grid.snap(p.x);
       final sy = grid.snap(p.y);
-      if (sx + side < 0 || sy + side < 0 || sx > size.width || sy > size.height) {
+      if (sx + side < 0 ||
+          sy + side < 0 ||
+          sx > size.width ||
+          sy > size.height) {
         continue;
       }
       _paint.color = p.color.withValues(alpha: alpha);
@@ -400,10 +415,22 @@ class _PixelDisintegrateClipper extends CustomClipper<Path> {
 
   // Normalized 4x4 Bayer matrix values in [0, 15].
   static const List<int> _bayer4x4 = <int>[
-    0, 8, 2, 10,
-    12, 4, 14, 6,
-    3, 11, 1, 9,
-    15, 7, 13, 5,
+    0,
+    8,
+    2,
+    10,
+    12,
+    4,
+    14,
+    6,
+    3,
+    11,
+    1,
+    9,
+    15,
+    7,
+    13,
+    5,
   ];
 
   @override
@@ -418,7 +445,8 @@ class _PixelDisintegrateClipper extends CustomClipper<Path> {
     final cols = math.max(1, (size.width / cellSize).ceil());
     final rows = math.max(1, (size.height / cellSize).ceil());
     final centerCol = (cols - 1) * 0.5;
-    final maxDist = math.max(1.0, math.sqrt(centerCol * centerCol + rows * rows));
+    final maxDist =
+        math.max(1.0, math.sqrt(centerCol * centerCol + rows * rows));
 
     for (var r = 0; r < rows; r++) {
       final top = r * cellSize;

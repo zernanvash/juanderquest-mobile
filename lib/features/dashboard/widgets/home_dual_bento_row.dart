@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
@@ -13,7 +12,6 @@ import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../quests/models/quest_model.dart';
-import '../pixel/home_pixel_art.dart';
 import '../providers/home_daily_provider.dart';
 
 /// Concept B Band 3: Asymmetric dual bento split — Left emerald Mission box
@@ -30,8 +28,6 @@ class HomeDualBentoRow extends StatelessWidget {
     this.dailyState,
     this.claimingDaily = false,
     this.onClaimDaily,
-    this.qotdDone = false,
-    this.onTapQotd,
     this.onNavigate,
   });
 
@@ -41,8 +37,6 @@ class HomeDualBentoRow extends StatelessWidget {
   final HomeDailyState? dailyState;
   final bool claimingDaily;
   final VoidCallback? onClaimDaily;
-  final bool qotdDone;
-  final VoidCallback? onTapQotd;
   final ValueChanged<String>? onNavigate;
 
   static const _greenStyle = PixelBoxStyle(
@@ -102,28 +96,6 @@ class HomeDualBentoRow extends StatelessWidget {
               ],
             );
           },
-        ),
-        SizedBox(height: grid.px(2)),
-        // Owner 2026-11-16: the hidden gem left Home; QOTD takes the row.
-        _MicroPillButton(
-          key: const ValueKey('home_qotd_pill'),
-          // Idle: the "?" tilts until answered; then a check mark.
-          icon: qotdDone ? HomePixelArt.stampCheck : DesignerArt.questionMark,
-          iconWrap: qotdDone ? null : (icon) => PixelTilt(child: icon),
-          label: qotdDone ? 'QOTD DONE' : 'QOTD +5 mJDQ',
-          labelWidget: qotdDone
-              ? null
-              : MjdqAmount(
-                  5,
-                  sign: true,
-                  prefix: 'QUESTION OF THE DAY ',
-                  style: PixelType.small(context, color: PixelPalette.woodDeep)
-                      .copyWith(fontWeight: FontWeight.w700),
-                ),
-          onTap: qotdDone
-              ? () => showPixelToast(
-                  context, 'Already answered. A new question comes tomorrow!')
-              : onTapQotd,
         ),
       ],
     );
@@ -327,78 +299,6 @@ class _StampBentoBox extends StatelessWidget {
                   : onClaim,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MicroPillButton extends StatelessWidget {
-  const _MicroPillButton({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.labelWidget,
-    this.iconWrap,
-  });
-
-  final PixelArt icon;
-  final Widget Function(Widget icon)? iconWrap;
-  final String label;
-  final Widget? labelWidget;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // Its own button for screen readers (not merged into the panels above).
-    return Semantics(
-      container: true,
-      button: true,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 40),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: PixelPalette.parchment,
-            border: Border.all(color: PixelPalette.woodDeep, width: 2),
-          ),
-          child: Row(
-            children: [
-              if (iconWrap == null)
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: FittedBox(
-                    fit: BoxFit.contain,
-                    child: PixelSprite(icon, scale: 1),
-                  ),
-                )
-              else
-                iconWrap!(SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: FittedBox(
-                    fit: BoxFit.contain,
-                    child: PixelSprite(icon, scale: 1),
-                  ),
-                )),
-              const SizedBox(width: 6),
-              Expanded(
-                child: labelWidget ??
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          PixelType.small(context, color: PixelPalette.woodDeep)
-                              .copyWith(fontWeight: FontWeight.w700),
-                    ),
-              ),
-            ],
-          ),
         ),
       ),
     );

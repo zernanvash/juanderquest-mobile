@@ -618,7 +618,8 @@ abstract final class DesignerArt {
     ]),
   ]);
 
-  static const heartUnlikeAnim = PixelFrames('heartUnlikeAnim', fps: 16, frames: [
+  static const heartUnlikeAnim =
+      PixelFrames('heartUnlikeAnim', fps: 16, frames: [
     PixelArt('heartUnlikeAnim#0', [
       '....................................',
       '....................................',
@@ -1115,7 +1116,8 @@ abstract final class DesignerArt {
     ]),
   ]);
 
-  static const heartUnlikeAnimV3 = PixelFrames('heartUnlikeAnimV3', fps: 16, frames: [
+  static const heartUnlikeAnimV3 =
+      PixelFrames('heartUnlikeAnimV3', fps: 16, frames: [
     PixelArt('heartUnlikeAnimV3#0', [
       '....................................',
       '....................................',
