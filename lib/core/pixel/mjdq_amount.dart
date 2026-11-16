@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'generated/designer_art.g.dart';
@@ -56,6 +59,14 @@ const _coinFront = 3;
 const _coinTurn = [3, 4, 5, 6, 0, 1, 2, 3];
 
 /// The same turn as an endless loop at the strip's own speed (10 fps).
+// The idle spin never ends, so widget tests (which wait for animations to
+// settle) see a still coin.
+final bool _inTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+
+/// Lets the coin's own test switch the idle spin back on.
+@visibleForTesting
+bool debugIdleSpinInTests = false;
+
 final _coinLoop = PixelFrames(
   'coinLoop',
   fps: DesignerArt.coinAnim.fps,
@@ -166,7 +177,7 @@ class _MjdqAmountState extends State<MjdqAmount> {
             dimension: dim,
             child: FittedBox(
               fit: BoxFit.contain,
-              child: widget.idleSpin && !reducedMotion
+              child: widget.idleSpin && !reducedMotion && (!_inTest || debugIdleSpinInTests)
                   // Continuous loop from the front face; the ticker stops
                   // on off-screen routes (TickerMode).
                   ? PixelAnimation(_coinLoop, scale: 1)

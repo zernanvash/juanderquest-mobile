@@ -33,6 +33,8 @@ void main() {
   });
 
   testWidgets('balance coin spins continuously with no pause', (tester) async {
+    debugIdleSpinInTests = true;
+    addTearDown(() => debugIdleSpinInTests = false);
     await tester.pumpWidget(MaterialApp(
       theme: AppTheme.pixel,
       home:
