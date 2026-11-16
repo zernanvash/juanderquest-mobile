@@ -16,6 +16,7 @@ import '../../cultural_quizzes/models/cultural_quiz_model.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
+import '../theater/theater_coming_soon_section.dart';
 import '../theater/theater_about_section.dart';
 import '../explore/explore_art.dart';
 import '../theater/theater_backdrop.dart';
@@ -361,6 +362,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           spot: spot,
                           onDirections: _openDirections,
                         ),
+
+                        // Chapter 4b: COMING SOON (owner, Plan 101)
+                        const SizedBox(height: 28),
+                        const TheaterComingSoonSection(),
 
                         // Chapter 5: NEARBY (only when alternatives exist)
                         if (hasAlternatives) ...[

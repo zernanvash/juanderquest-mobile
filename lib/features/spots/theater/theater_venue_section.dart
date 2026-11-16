@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -82,9 +83,9 @@ class _TheaterVenueSectionState extends ConsumerState<TheaterVenueSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title
-          Text(
+          const PixelSectionTitle(
             'VENUE & MAP',
-            style: PixelType.title(context, color: PixelPalette.paper),
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(2)),
 

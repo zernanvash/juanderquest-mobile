@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/dev/test_content.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -152,9 +153,9 @@ class _TheaterQuestsSectionState extends ConsumerState<TheaterQuestsSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          const PixelSectionTitle(
             'QUESTS HERE',
-            style: PixelType.title(context, color: PixelPalette.paper),
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(2)),
           if (matches.isEmpty) ...[
@@ -219,9 +220,9 @@ class _SpotQuestRow extends StatelessWidget {
       key: ValueKey('spot_quest_row_${q.id}'),
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: PixelPanel(
-        style: PixelBoxStyle.parchment,
-        padding: 2,
+      // Plan 101: a plain row inside the dark section panel.
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(1)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -242,14 +243,14 @@ class _SpotQuestRow extends StatelessWidget {
                       q.rewardPoints,
                       style: PixelType.small(
                         context,
-                        color: PixelPalette.greenDeep,
+                        color: PixelPalette.sun,
                       ).copyWith(fontWeight: FontWeight.w700),
                     ),
                     Text(
                       ' · $stepLabel',
                       style: PixelType.small(
                         context,
-                        color: PixelPalette.greenDeep,
+                        color: PixelPalette.mist,
                       ).copyWith(fontWeight: FontWeight.w700),
                     ),
                   ],
@@ -261,9 +262,8 @@ class _SpotQuestRow extends StatelessWidget {
               q.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: PixelType.body(context).copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: PixelType.body(context, color: PixelPalette.paper)
+                  .copyWith(fontWeight: FontWeight.w700),
             ),
           ],
         ),

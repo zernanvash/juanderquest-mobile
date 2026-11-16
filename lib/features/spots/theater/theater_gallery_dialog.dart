@@ -94,7 +94,8 @@ class _TheaterGalleryDialogState extends State<TheaterGalleryDialog> {
                       key: const Key('gallery_close_btn'),
                       onTap: () => Navigator.of(context).pop(),
                       child: Container(
-                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        constraints:
+                            const BoxConstraints(minWidth: 48, minHeight: 48),
                         alignment: Alignment.center,
                         child: PixelPanel(
                           style: PixelBoxStyle.inkDialogue.copyWith(
@@ -185,7 +186,8 @@ class _TheaterGalleryDialogState extends State<TheaterGalleryDialog> {
                   : PageView.builder(
                       controller: _pageController,
                       physics: const BouncingScrollPhysics(),
-                      onPageChanged: (idx) => setState(() => _currentIndex = idx),
+                      onPageChanged: (idx) =>
+                          setState(() => _currentIndex = idx),
                       itemCount: count,
                       itemBuilder: (context, index) {
                         final item = widget.media[index];
@@ -208,13 +210,17 @@ class _TheaterGalleryDialogState extends State<TheaterGalleryDialog> {
                     label: 'Previous photo',
                     child: InkWell(
                       key: const Key('gallery_prev_btn'),
-                      onTap: _currentIndex > 0 ? () => _goTo(_currentIndex - 1) : null,
+                      onTap: _currentIndex > 0
+                          ? () => _goTo(_currentIndex - 1)
+                          : null,
                       child: Container(
-                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        constraints:
+                            const BoxConstraints(minWidth: 48, minHeight: 48),
                         alignment: Alignment.center,
                         child: PixelPanel(
                           style: _currentIndex > 0
-                              ? PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 0)
+                              ? PixelBoxStyle.parchment
+                                  .copyWith(corner: 1, shadowPx: 0)
                               : PixelBoxStyle.stone.copyWith(
                                   fill: PixelPalette.slate,
                                   outline: PixelPalette.stone,
@@ -250,11 +256,13 @@ class _TheaterGalleryDialogState extends State<TheaterGalleryDialog> {
                           ? () => _goTo(_currentIndex + 1)
                           : null,
                       child: Container(
-                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        constraints:
+                            const BoxConstraints(minWidth: 48, minHeight: 48),
                         alignment: Alignment.center,
                         child: PixelPanel(
                           style: _currentIndex < count - 1
-                              ? PixelBoxStyle.parchment.copyWith(corner: 1, shadowPx: 0)
+                              ? PixelBoxStyle.parchment
+                                  .copyWith(corner: 1, shadowPx: 0)
                               : PixelBoxStyle.stone.copyWith(
                                   fill: PixelPalette.slate,
                                   outline: PixelPalette.stone,

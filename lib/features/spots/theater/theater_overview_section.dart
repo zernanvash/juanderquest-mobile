@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -36,9 +38,9 @@ class TheaterOverviewSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Chapter Title
-          Text(
+          const PixelSectionTitle(
             'Overview',
-            style: PixelType.title(context, color: PixelPalette.paper),
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(2)),
 
@@ -118,10 +120,17 @@ class TheaterOverviewSection extends StatelessWidget {
             children: [
               Expanded(
                 child: PixelButton(
+                  key: const ValueKey('spot_add_photo'),
                   label: 'Add photo',
                   variant: PixelButtonVariant.secondary,
                   expand: true,
-                  onPressed: () => context.push('/map/add-spot'),
+                  // Owner 2026-11-16: add a photo only, approved by an
+                  // admin (Plan 102). Until that ships, say so instead of
+                  // opening the new-destination flow.
+                  onPressed: () => showPixelToast(
+                    context,
+                    'Adding photos to a place is coming soon.',
+                  ),
                 ),
               ),
               if (isAuthor) ...[

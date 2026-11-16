@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -227,7 +230,8 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
       final res =
           await _dio.post('/spots/${widget.spotId}/comments/${c.id}/helpful');
       final data = res.data is Map ? res.data['data'] : null;
-      final count = data is Map ? (data['helpful_count'] as num?)?.toInt() : null;
+      final count =
+          data is Map ? (data['helpful_count'] as num?)?.toInt() : null;
       if (!mounted) return;
       setState(() {
         _comments = [
@@ -267,9 +271,9 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title
-          Text(
+          const PixelSectionTitle(
             'NOTES',
-            style: PixelType.title(context, color: PixelPalette.paper),
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(1)),
           Text(
@@ -291,7 +295,8 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                   key: const ValueKey('spot_like'),
                   onTap: _toggleLike,
                   child: Container(
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    constraints:
+                        const BoxConstraints(minWidth: 48, minHeight: 48),
                     alignment: Alignment.center,
                     child: PixelPanel(
                       style: _liked
@@ -308,12 +313,27 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                           horizontal: grid.px(3),
                           vertical: grid.px(1),
                         ),
-                        child: Text(
-                          _liked ? '♥ LIKED' : '♡ LIKE',
-                          style: PixelType.small(
-                            context,
-                            color: _liked ? PixelPalette.white : PixelPalette.paper,
-                          ),
+                        // Plan 101: our pixel heart, not a text heart.
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PixelIconFit(
+                              _liked
+                                  ? DesignerArt.heartLiked
+                                  : DesignerArt.heartUnliked,
+                              box: 16,
+                            ),
+                            SizedBox(width: grid.px(1)),
+                            Text(
+                              _liked ? 'LIKED' : 'LIKE',
+                              style: PixelType.small(
+                                context,
+                                color: _liked
+                                    ? PixelPalette.white
+                                    : PixelPalette.paper,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -335,7 +355,7 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(color: PixelPalette.sun),
+                child: PixelLoader(label: 'Loading notes'),
               ),
             )
           else if (_loadError != null)
@@ -355,9 +375,8 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
               ],
             )
           else if (_comments.isEmpty)
-            PixelPanel(
-              style: PixelBoxStyle.inkDialogue,
-              padding: 2,
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: grid.px(2)),
               child: Center(
                 child: Text(
                   'No notes yet. Be the first to share a tip.',
@@ -369,7 +388,11 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
           else
             for (final c in _comments) ...[
               _buildCommentItem(c, grid),
-              if (c != _comments.last) SizedBox(height: grid.px(2)),
+              if (c != _comments.last)
+                Container(
+                  height: grid.unit,
+                  color: PixelPalette.paper.withValues(alpha: 0.18),
+                ),
             ],
         ],
       ),
@@ -433,9 +456,8 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                       style: _tag == e.key
                           ? PixelBoxStyle.gold
                           : PixelBoxStyle.slot,
-                      textColor: _tag == e.key
-                          ? PixelPalette.ink
-                          : PixelPalette.cream,
+                      // Plan 101: readable on the pale chip.
+                      textColor: PixelPalette.ink,
                     ),
                   ),
               ],
@@ -459,79 +481,72 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
   Widget _buildCommentItem(SpotComment c, PixelGrid grid) {
     final voted = _helpfulVoted.contains(c.id);
 
-    return PixelPanel(
-      style: PixelBoxStyle.inkDialogue.copyWith(
-        fill: PixelPalette.ink,
-        outline: PixelPalette.slate,
-        corner: 2,
-        shadowPx: 0,
-      ),
-      padding: 1,
-      child: Padding(
-        padding: EdgeInsets.all(grid.px(2)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: grid.px(1),
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  c.authorName.toUpperCase(),
-                  style: PixelType.small(context, color: PixelPalette.paper),
-                ),
-                if (c.verifiedVisit)
-                  const FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: PixelChip(
-                      'VERIFIED VISIT',
-                      style: PixelBoxStyle.green,
-                      textColor: PixelPalette.white,
-                    ),
+    // Plan 101: one panel per section; each note is a plain row.
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: grid.px(1),
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                c.authorName.toUpperCase(),
+                style: PixelType.small(context, color: PixelPalette.paper),
+              ),
+              if (c.verifiedVisit)
+                const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: PixelChip(
+                    'VERIFIED VISIT',
+                    style: PixelBoxStyle.green,
+                    textColor: PixelPalette.white,
                   ),
-                Text(
-                  '${spotCommentTags[c.tag]?.toUpperCase() ?? 'GENERAL'} · ${_relative(c.createdAt).toUpperCase()}',
-                  style: PixelType.small(context, color: PixelPalette.mist),
                 ),
-              ],
-            ),
-            SizedBox(height: grid.px(1)),
-            Text(
-              c.content,
-              style: PixelType.body(context, color: PixelPalette.paperDim),
-            ),
-            SizedBox(height: grid.px(1)),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Semantics(
-                button: true,
-                label: 'Mark note helpful (${c.helpfulCount})',
-                child: InkWell(
-                  onTap: voted ? null : () => _markHelpful(c),
-                  child: Container(
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 36),
-                    alignment: Alignment.center,
-                    child: PixelPanel(
-                      style: voted
-                          ? PixelBoxStyle.gold.copyWith(corner: 2, shadowPx: 0)
-                          : PixelBoxStyle.inkDialogue.copyWith(
-                              fill: PixelPalette.slate,
-                              outline: PixelPalette.mist,
-                              corner: 2,
-                              shadowPx: 0,
-                            ),
-                      padding: 1,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: grid.px(2),
-                          vertical: grid.px(1),
-                        ),
-                        child: Text(
-                          'HELPFUL (${c.helpfulCount})',
-                          style: PixelType.small(
-                            context,
-                            color: voted ? PixelPalette.ink : PixelPalette.paper,
+              Text(
+                '${spotCommentTags[c.tag]?.toUpperCase() ?? 'GENERAL'} · ${_relative(c.createdAt).toUpperCase()}',
+                style: PixelType.small(context, color: PixelPalette.mist),
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            c.content,
+            style: PixelType.body(context, color: PixelPalette.paperDim),
+          ),
+          SizedBox(height: grid.px(1)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Semantics(
+              button: true,
+              label: 'Mark note helpful (${c.helpfulCount})',
+              child: InkWell(
+                onTap: voted ? null : () => _markHelpful(c),
+                child: Container(
+                  constraints:
+                      const BoxConstraints(minWidth: 48, minHeight: 36),
+                  alignment: Alignment.center,
+                  child: PixelPanel(
+                    style: voted
+                        ? PixelBoxStyle.gold.copyWith(corner: 2, shadowPx: 0)
+                        : PixelBoxStyle.inkDialogue.copyWith(
+                            fill: PixelPalette.slate,
+                            outline: PixelPalette.mist,
+                            corner: 2,
+                            shadowPx: 0,
                           ),
+                    padding: 1,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: grid.px(2),
+                        vertical: grid.px(1),
+                      ),
+                      child: Text(
+                        'HELPFUL (${c.helpfulCount})',
+                        style: PixelType.small(
+                          context,
+                          color: voted ? PixelPalette.ink : PixelPalette.paper,
                         ),
                       ),
                     ),
@@ -539,8 +554,8 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -607,102 +622,108 @@ class _SpotReportSheetState extends State<SpotReportSheet> {
           bottom: MediaQuery.viewInsetsOf(context).bottom + grid.px(3),
         ),
         child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'REPORT A PROBLEM',
-                      style: PixelType.title(context, color: PixelPalette.paper),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'REPORT A PROBLEM',
+                        style:
+                            PixelType.title(context, color: PixelPalette.paper),
+                      ),
                     ),
                   ),
-                ),
-                InkWell(
-                  onTap: () => Navigator.of(context).pop(false),
-                  child: Container(
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '✕',
-                      style: PixelType.title(context, color: PixelPalette.paper),
+                  InkWell(
+                    onTap: () => Navigator.of(context).pop(false),
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(minWidth: 48, minHeight: 48),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '✕',
+                        style:
+                            PixelType.title(context, color: PixelPalette.paper),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: grid.px(1)),
-            Text(
-              widget.spotName.toUpperCase(),
-              style: PixelType.small(context, color: PixelPalette.mist),
-            ),
-            SizedBox(height: grid.px(2)),
-            Column(
-              children: [
-                for (final e in spotReportReasons.entries)
-                  RadioListTile<String>(
-                    key: ValueKey('report_${e.key}'),
-                    value: e.key,
-                    groupValue: _reason,
-                    activeColor: PixelPalette.sun,
-                    onChanged: (v) => setState(() => _reason = v),
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      e.value,
-                      style: PixelType.small(context, color: PixelPalette.paper),
-                    ),
-                  ),
-              ],
-            ),
-            SizedBox(height: grid.px(2)),
-            PixelPanel(
-              style: PixelBoxStyle.inkDialogue.copyWith(
-                fill: PixelPalette.ink,
-                outline: PixelPalette.slate,
-                corner: 2,
-                shadowPx: 0,
+                ],
               ),
-              padding: 1,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: grid.px(2)),
-                child: TextField(
-                  controller: _details,
-                  maxLength: 500,
-                  maxLines: 3,
-                  style: PixelType.body(context, color: PixelPalette.paper),
-                  decoration: InputDecoration(
-                    labelText: 'DETAILS (OPTIONAL)',
-                    labelStyle: PixelType.small(context, color: PixelPalette.mist),
-                    border: InputBorder.none,
-                    counterStyle: PixelType.small(context, color: PixelPalette.stone),
-                  ),
-                ),
-              ),
-            ),
-            if (_error != null) ...[
               SizedBox(height: grid.px(1)),
               Text(
-                _error!,
-                style: PixelType.small(context, color: PixelPalette.red),
+                widget.spotName.toUpperCase(),
+                style: PixelType.small(context, color: PixelPalette.mist),
+              ),
+              SizedBox(height: grid.px(2)),
+              Column(
+                children: [
+                  for (final e in spotReportReasons.entries)
+                    RadioListTile<String>(
+                      key: ValueKey('report_${e.key}'),
+                      value: e.key,
+                      groupValue: _reason,
+                      activeColor: PixelPalette.sun,
+                      onChanged: (v) => setState(() => _reason = v),
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        e.value,
+                        style:
+                            PixelType.small(context, color: PixelPalette.paper),
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(height: grid.px(2)),
+              PixelPanel(
+                style: PixelBoxStyle.inkDialogue.copyWith(
+                  fill: PixelPalette.ink,
+                  outline: PixelPalette.slate,
+                  corner: 2,
+                  shadowPx: 0,
+                ),
+                padding: 1,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: grid.px(2)),
+                  child: TextField(
+                    controller: _details,
+                    maxLength: 500,
+                    maxLines: 3,
+                    style: PixelType.body(context, color: PixelPalette.paper),
+                    decoration: InputDecoration(
+                      labelText: 'DETAILS (OPTIONAL)',
+                      labelStyle:
+                          PixelType.small(context, color: PixelPalette.mist),
+                      border: InputBorder.none,
+                      counterStyle:
+                          PixelType.small(context, color: PixelPalette.stone),
+                    ),
+                  ),
+                ),
+              ),
+              if (_error != null) ...[
+                SizedBox(height: grid.px(1)),
+                Text(
+                  _error!,
+                  style: PixelType.small(context, color: PixelPalette.red),
+                ),
+              ],
+              SizedBox(height: grid.px(2)),
+              PixelButton(
+                key: const ValueKey('report_send'),
+                label: _sending ? 'SENDING…' : 'SEND REPORT',
+                variant: PixelButtonVariant.primary,
+                onPressed: _reason == null || _sending ? null : _send,
               ),
             ],
-            SizedBox(height: grid.px(2)),
-            PixelButton(
-              key: const ValueKey('report_send'),
-              label: _sending ? 'SENDING…' : 'SEND REPORT',
-              variant: PixelButtonVariant.primary,
-              onPressed: _reason == null || _sending ? null : _send,
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 }

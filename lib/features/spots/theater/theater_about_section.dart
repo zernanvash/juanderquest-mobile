@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -30,9 +31,9 @@ class TheaterAboutSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title
-          Text(
+          const PixelSectionTitle(
             'ABOUT',
-            style: PixelType.title(context, color: PixelPalette.paper),
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(2)),
 
@@ -102,26 +103,23 @@ class TheaterAboutSection extends StatelessWidget {
               style: PixelType.small(context, color: PixelPalette.mist),
             ),
             SizedBox(height: grid.px(1)),
-            PixelPanel(
-              style: PixelBoxStyle.tooltip,
-              padding: 2,
-              child: Padding(
-                padding: EdgeInsets.all(grid.px(2)),
-                child: Column(
-                  children: [
-                    for (final entry in spot.hours.entries) ...[
-                      PixelStatRow(
-                        entry.key,
-                        entry.value,
-                        labelColor: PixelPalette.sun,
-                        valueColor: PixelPalette.paper,
-                        style: PixelType.small(context),
-                      ),
-                      if (entry.key != spot.hours.keys.last)
-                        SizedBox(height: grid.px(1)),
-                    ],
+            // Plan 101: plain rows inside the section panel.
+            Padding(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (final entry in spot.hours.entries) ...[
+                    PixelStatRow(
+                      entry.key,
+                      entry.value,
+                      labelColor: PixelPalette.sun,
+                      valueColor: PixelPalette.paper,
+                      style: PixelType.small(context),
+                    ),
+                    if (entry.key != spot.hours.keys.last)
+                      SizedBox(height: grid.px(1)),
                   ],
-                ),
+                ],
               ),
             ),
           ],
