@@ -20,6 +20,7 @@ import '../dashboard/home_tips.dart';
 import '../spots/providers/spot_discovery_provider.dart';
 import '../spots/theater/theater_backdrop.dart';
 import 'home_options.dart';
+import 'particle_menu_transition_section.dart';
 import 'rpg_feel_section.dart';
 import 'sound_lab_section.dart';
 import 'tutorial_preview.dart';
@@ -128,6 +129,12 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           // preview is Settings → Developer → Pixel lab v0.3).
                           _section(context, 'UI prototypes (Plan 101)',
                               const UiPrototypesSection()),
+                          SizedBox(height: grid.px(3)),
+                          _section(
+                            context,
+                            'Particle system · MENU transition',
+                            const ParticleMenuTransitionSection(),
+                          ),
                           SizedBox(height: grid.px(6)),
                         ],
                       ),
