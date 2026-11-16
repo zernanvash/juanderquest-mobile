@@ -440,7 +440,7 @@ class SpotPostcard extends StatelessWidget {
           filterQuality: FilterQuality.medium,
           errorBuilder: (_, __, ___) => const DitherBackground(
                 top: PixelPalette.greenMid,
-                bottom: PixelPalette.greenDeep,
+                bottom: PixelPalette.green,
               ));
     } else if (coverUrl != null && coverUrl!.isNotEmpty) {
       cover = Image.network(coverUrl!,
@@ -448,12 +448,12 @@ class SpotPostcard extends StatelessWidget {
           filterQuality: FilterQuality.medium,
           errorBuilder: (_, __, ___) => const DitherBackground(
                 top: PixelPalette.greenMid,
-                bottom: PixelPalette.greenDeep,
+                bottom: PixelPalette.green,
               ));
     } else {
       cover = const DitherBackground(
         top: PixelPalette.greenMid,
-        bottom: PixelPalette.greenDeep,
+        bottom: PixelPalette.green,
       );
     }
     return PixelPanel(

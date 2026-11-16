@@ -23,7 +23,8 @@ abstract final class PixelType {
       height: 1.25,
       color: color,
       fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-      letterSpacing: 0,
+      // PressStart2P sets its letters far apart; pull them together.
+      letterSpacing: font == headerFont ? -size * scale * 0.09 : 0,
       fontFeatures: feature == null ? null : [feature],
     );
   }

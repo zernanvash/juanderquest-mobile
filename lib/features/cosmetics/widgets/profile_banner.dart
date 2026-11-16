@@ -134,7 +134,7 @@ class _ProfileBannerState extends State<ProfileBanner>
           if (asset == null)
             const DitherBackground(
               top: PixelPalette.greenMid,
-              bottom: PixelPalette.greenDeep,
+              bottom: PixelPalette.green,
             )
           else
             ValueListenableBuilder<double>(

@@ -120,9 +120,11 @@ class PixelText3D extends StatelessWidget {
     );
     if (font != null) base = base.copyWith(fontFamily: font);
     // Outlined looks need space between letters so outlines don't merge.
+    // PressStart2P already has wide gaps; keep them tight (owner
+    // 2026-11-17).
     final spacing = switch (look) {
-      PixelTextLook.chunky => 3 * u,
-      _ => 2 * u,
+      PixelTextLook.chunky => 1 * u,
+      _ => 0.0,
     };
     base = base.copyWith(letterSpacing: spacing);
     final d = pressed ? 0 : depth;

@@ -180,8 +180,11 @@ class PixelIconButton extends StatefulWidget {
     this.style = PixelBoxStyle.parchment,
     this.iconScale = 3,
     this.iconHeight,
+    this.boxed = true,
   });
 
+  /// false: the icon alone, no box behind it (still a 48 px target).
+  final bool boxed;
   final PixelArt icon;
   final String semanticLabel;
   final VoidCallback? onPressed;
@@ -224,16 +227,25 @@ class _PixelIconButtonState extends State<PixelIconButton> {
               : null,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            child: PixelPanel(
-              style: enabled ? widget.style : _disabledStyle,
-              padding: 2,
-              pressed: _down,
-              child: Center(
-                widthFactor: 1,
-                heightFactor: 1,
-                child: PixelSprite(widget.icon, scale: scale),
-              ),
-            ),
+            child: widget.boxed
+                ? PixelPanel(
+                    style: enabled ? widget.style : _disabledStyle,
+                    padding: 2,
+                    pressed: _down,
+                    child: Center(
+                      widthFactor: 1,
+                      heightFactor: 1,
+                      child: PixelSprite(widget.icon, scale: scale),
+                    ),
+                  )
+                : Center(
+                    widthFactor: 1,
+                    heightFactor: 1,
+                    child: Transform.translate(
+                      offset: Offset(0, _down ? 1 : 0),
+                      child: PixelSprite(widget.icon, scale: scale),
+                    ),
+                  ),
           ),
         ),
       ),

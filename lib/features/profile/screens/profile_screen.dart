@@ -77,7 +77,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _avatarFallback(BuildContext context, String initial) {
     return DitherBackground(
       top: PixelPalette.greenMid,
-      bottom: PixelPalette.greenDeep,
+      bottom: PixelPalette.green,
       child: Center(
         child: Text(
           initial,
@@ -248,7 +248,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               height: grid.px(36),
               child: const DitherBackground(
                 top: PixelPalette.greenMid,
-                bottom: PixelPalette.greenDeep,
+                bottom: PixelPalette.green,
               ),
             ),
           if (isMine) SizedBox(height: grid.px(2)),
@@ -612,7 +612,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _spotFallback(BuildContext context) {
     return const DitherBackground(
       top: PixelPalette.greenMid,
-      bottom: PixelPalette.greenDeep,
+      bottom: PixelPalette.green,
     );
   }
 }

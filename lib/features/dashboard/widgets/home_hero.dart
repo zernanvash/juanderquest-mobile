@@ -78,72 +78,16 @@ class HomeHero extends ConsumerWidget {
         !avatarUrl.endsWith('.svg') &&
         (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
 
-    final stampsCount = daily?.stamps ?? stats.totalPointsEarned;
-    final repCount = currentUser?.scoutReputation ?? 0;
     final questsCount = stats.completedQuestsCount;
     final visitsCount = engagement?.verifiedVisits ?? 0;
     final townsCount = engagement?.municipalities ?? 0;
     final streakDays = daily?.streak ?? engagement?.currentStreak ?? 0;
 
-    // Owner 2026-11-16, layout A: a slim icon-number strip above the card
-    // (no words), then the card with LEVEL at the top right.
+    // Owner 2026-11-17: the currencies moved to the top bar
+    // ([HomePurseStrip]); the card keeps LEVEL at the top right.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Shrinks to fit on narrow screens with large text.
-        FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Row(
-              key: const ValueKey('home_hero_purse_bar'),
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Semantics(
-                  button: true,
-                  label: '$points mJDQ',
-                  child: ExcludeSemantics(
-                    child: GestureDetector(
-                      key: const ValueKey('home_purse_mjdq'),
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => context.push('/shop'),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: grid.px(1)),
-                        child: MjdqAmount(
-                          points,
-                          animateOnIncrease: true,
-                          idleSpin: true,
-                          style:
-                              PixelType.title(context, color: PixelPalette.ink),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                // Owner 2026-11-17: more room between the currencies.
-                SizedBox(width: grid.px(16)),
-                _purseSlot(
-                  context,
-                  grid,
-                  key: const ValueKey('home_purse_stamps'),
-                  icon: HomePixelArt.stampCheck,
-                  value: homeNumber(stampsCount),
-                  semantics: '$stampsCount stamps',
-                  onTap: () => context.push('/profile/badges'),
-                ),
-                // Owner 2026-11-17: more room between the currencies.
-                SizedBox(width: grid.px(16)),
-                _purseSlot(
-                  context,
-                  grid,
-                  key: const ValueKey('home_purse_rep'),
-                  icon: DesignerArt.handshake,
-                  value: homeNumber(repCount),
-                  semantics: '$repCount reputation',
-                  onTap: () => context.push('/plaza'),
-                ),
-              ],
-            )),
-        SizedBox(height: grid.px(1)),
         PixelPanel(
           style: PixelBoxStyle.wood,
           child: Column(
@@ -276,43 +220,6 @@ class HomeHero extends ConsumerWidget {
     );
   }
 
-  Widget _purseSlot(
-    BuildContext context,
-    PixelGrid grid, {
-    required Key key,
-    required PixelArt icon,
-    required String value,
-    required String semantics,
-    required VoidCallback onTap,
-  }) {
-    return Semantics(
-      button: true,
-      label: semantics,
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          key: key,
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: grid.px(1)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                PixelIconFit(icon, box: 18),
-                SizedBox(width: grid.px(1)),
-                Text(
-                  value,
-                  maxLines: 1,
-                  style: PixelType.title(context, color: PixelPalette.ink),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _statItem(BuildContext context, String title, String value) {
     return Text(
       '$title: $value',
@@ -346,11 +253,118 @@ class HomeHero extends ConsumerWidget {
   Widget _avatarFallback(BuildContext context, String initial) {
     return DitherBackground(
       top: PixelPalette.greenMid,
-      bottom: PixelPalette.greenDeep,
+      bottom: PixelPalette.green,
       child: Center(
         child: Text(
           initial,
           style: PixelType.title(context, color: PixelPalette.paper),
+        ),
+      ),
+    );
+  }
+}
+
+/// Coins, stamps and reputation as icon + number (no words). Owner
+/// 2026-11-17: it sits in Home's top bar. Each one opens its page.
+class HomePurseStrip extends ConsumerWidget {
+  const HomePurseStrip({super.key, this.color = PixelPalette.paper});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final grid = PixelGrid.of(context);
+    final user = ref.watch(authProvider).user;
+    final stats = ref.watch(profileStatsProvider);
+    final daily = ref.watch(homeDailyProvider).valueOrNull;
+    final points = user?.points ?? 0;
+    final stampsCount = daily?.stamps ?? stats.totalPointsEarned;
+    final repCount = user?.scoutReputation ?? 0;
+    return FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerRight,
+        child: Row(
+          key: const ValueKey('home_hero_purse_bar'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(
+              button: true,
+              label: '$points mJDQ',
+              child: ExcludeSemantics(
+                child: GestureDetector(
+                  key: const ValueKey('home_purse_mjdq'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => context.push('/shop'),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: grid.px(1)),
+                    child: MjdqAmount(
+                      points,
+                      animateOnIncrease: true,
+                      idleSpin: true,
+                      style: PixelType.title(context, color: color),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Owner 2026-11-17: more room between the currencies.
+            SizedBox(width: grid.px(6)),
+            _purseSlot(
+              context,
+              grid,
+              key: const ValueKey('home_purse_stamps'),
+              icon: HomePixelArt.stampCheck,
+              value: homeNumber(stampsCount),
+              semantics: '$stampsCount stamps',
+              onTap: () => context.push('/profile/badges'),
+            ),
+            // Owner 2026-11-17: more room between the currencies.
+            SizedBox(width: grid.px(6)),
+            _purseSlot(
+              context,
+              grid,
+              key: const ValueKey('home_purse_rep'),
+              icon: DesignerArt.handshake,
+              value: homeNumber(repCount),
+              semantics: '$repCount reputation',
+              onTap: () => context.push('/plaza'),
+            ),
+          ],
+        ));
+  }
+
+  Widget _purseSlot(
+    BuildContext context,
+    PixelGrid grid, {
+    required Key key,
+    required PixelArt icon,
+    required String value,
+    required String semantics,
+    required VoidCallback onTap,
+  }) {
+    return Semantics(
+      button: true,
+      label: semantics,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          key: key,
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: grid.px(1)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PixelIconFit(icon, box: 18),
+                SizedBox(width: grid.px(1)),
+                Text(
+                  value,
+                  maxLines: 1,
+                  style: PixelType.title(context, color: color),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

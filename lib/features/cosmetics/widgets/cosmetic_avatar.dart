@@ -65,7 +65,7 @@ class CosmeticAvatar extends StatelessWidget {
         height: size,
         child: DitherBackground(
           top: PixelPalette.greenMid,
-          bottom: PixelPalette.greenDeep,
+          bottom: PixelPalette.green,
           child: Center(
             child: Text(
               name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),

@@ -654,7 +654,7 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
                         filterQuality: FilterQuality.medium,
                         errorBuilder: (_, __, ___) => const DitherBackground(
                           top: PixelPalette.greenMid,
-                          bottom: PixelPalette.greenDeep,
+                          bottom: PixelPalette.green,
                         ),
                       ),
                     ),

@@ -381,8 +381,9 @@ class PixelAppBar extends StatelessWidget {
                 }
               });
 
+    // Owner 2026-11-17: the top bar is the logo's brown.
     return Container(
-      color: PixelPalette.ink,
+      color: PixelPalette.wood,
       child: SafeArea(
         bottom: false,
         child: Padding(

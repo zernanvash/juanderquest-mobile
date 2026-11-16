@@ -122,6 +122,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     title: 'JuanderQuest',
                     isTab: true,
                     // Owner 2026-11-16: the logo instead of "HOME".
+                    // Owner 2026-11-17: the currencies sit in the top bar.
                     titleWidget: Image.asset(
                       'assets/images/logo.png',
                       key: const ValueKey('home_logo'),
@@ -129,6 +130,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       filterQuality: FilterQuality.medium,
                     ),
                     actions: [
+                      // The strip takes most of the bar and shrinks to fit.
+                      const Flexible(flex: 3, child: HomePurseStrip()),
                       // Owner 2026-11-16: only the bell on Home (Search is on
                       // Explore, the Map in the menu, Settings on Profile).
                       Tooltip(
@@ -143,6 +146,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   : 'Notifications',
                               // App-bar icons share one size (owner 2026-11-17).
                               iconHeight: 24,
+                              // Owner 2026-11-17: no box behind the bell.
+                              boxed: false,
                               onPressed: () => context.go('/notifications'),
                             ),
                             if (unread > 0)

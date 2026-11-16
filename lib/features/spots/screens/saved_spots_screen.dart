@@ -220,7 +220,7 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
                 child: image == null || image.isEmpty
                     ? const DitherBackground(
                         top: PixelPalette.greenMid,
-                        bottom: PixelPalette.greenDeep,
+                        bottom: PixelPalette.green,
                       )
                     : Image.network(
                         image,
@@ -228,7 +228,7 @@ class _SavedSpotsScreenState extends ConsumerState<SavedSpotsScreen> {
                         filterQuality: FilterQuality.medium,
                         errorBuilder: (_, __, ___) => const DitherBackground(
                           top: PixelPalette.greenMid,
-                          bottom: PixelPalette.greenDeep,
+                          bottom: PixelPalette.green,
                         ),
                       ),
               ),
