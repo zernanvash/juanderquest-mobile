@@ -18,8 +18,6 @@ import '../../auth/providers/auth_provider.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../../notifications/providers/local_notifications_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
-import '../../quests/models/quest_model.dart';
-import '../../quests/pixel/saved_quests.dart';
 import '../../quests/providers/campaign_provider.dart';
 import '../../quests/providers/quest_provider.dart';
 import '../../spots/providers/hidden_gem_provider.dart';
@@ -32,7 +30,7 @@ import '../providers/home_dashboard_providers.dart';
 import '../providers/home_qotd_provider.dart';
 import '../providers/home_recommended_quest_provider.dart';
 import '../widgets/home_adventure_calendar.dart';
-import '../widgets/home_command_grid.dart';
+import '../widgets/main_menu_panel.dart';
 import '../widgets/home_daily_tasks_panel.dart';
 import '../widgets/home_dual_bento_row.dart';
 import '../widgets/home_hero.dart';
@@ -86,10 +84,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final user = ref.watch(authProvider).user;
     final tipsKeys = ref.watch(homeTipsKeysProvider);
     final questsState = ref.watch(questProvider);
-    final savedIds = ref.watch(savedQuestsProvider);
     final submissionsState = ref.watch(submissionProvider);
-    final nearbyQuizzes = ref.watch(homeNearbyQuizProvider).valueOrNull;
-    final choiceOverview = ref.watch(choiceOverviewProvider).asData?.value;
     final dailyAsync = ref.watch(homeDailyProvider);
     final claimState = ref.watch(homeDailyClaimProvider);
     final qotd = ref.watch(homeQotdProvider).asData?.value;
@@ -100,15 +95,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       (quest) => quest.isTest,
       showTest: ref.watch(showTestContentProvider),
     );
-    final inProgress = _inProgressQuests(quests, submissionsState);
+    final inProgress = inProgressQuests(quests, submissionsState);
     final activeQuest = inProgress.isNotEmpty ? inProgress.first : null;
     final recommended =
         activeQuest == null ? ref.watch(homeRecommendedQuestProvider) : null;
 
-    final currentChoice = choiceOverview?.current;
-    final voteLive = currentChoice != null &&
-        (currentChoice.status == 'voting' ||
-            choiceOverview?.isCampaignOpen(currentChoice) == true);
     final daily = claimState.latest ?? dailyAsync.valueOrNull;
     final unread = ref.watch(unreadNotificationCountProvider);
     final firstGem = (gems != null && gems.isNotEmpty) ? gems.first : null;
@@ -146,6 +137,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           iconHeight: 36,
                           onPressed: () => context.push('/search'),
                         ),
+                      ),
+                      // Owner 2026-11-16: the Map sits right of Search.
+                      PixelIconButton(
+                        key: const ValueKey('home_appbar_map'),
+                        icon: DesignerArt.navMap,
+                        semanticLabel: 'Map',
+                        iconHeight: 36,
+                        onPressed: () => context.go('/map'),
                       ),
                       Tooltip(
                         message: 'Notifications',
@@ -224,30 +223,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                           SizedBox(height: grid.px(3)),
 
-                          // BAND 2: TOP 4x2 COMMAND GRID
-                          KeyedSubtree(
-                            key: tipsKeys.nextStop,
-                            child: HomeCommandGrid(
-                              activeQuestsCount: inProgress.length,
-                              savedCount: savedIds.length,
-                              nearbyQuizCount: ref.watch(
-                                    quizRadarProvider
-                                        .select((s) => s.inRangeIncomplete),
-                                  ).isNotEmpty
-                                  ? ref
-                                      .watch(
-                                        quizRadarProvider
-                                            .select((s) => s.inRangeIncomplete),
-                                      )
-                                      .length
-                                  : (nearbyQuizzes?.items.length ?? 0),
-                              voteLive: voteLive,
-                              onOpenQuizzes: () =>
-                                  context.push('/cultural-quizzes'),
-                            ),
-                          ),
-                          SizedBox(height: grid.px(3)),
-
+                          // BAND 2 (main menu) moved to the MENU button in
+                          // the bottom bar (owner 2026-11-16).
                           // BAND 3: DUAL BENTO (MISSION + DAILY STAMP + QOTD/GEM)
                           HomeDualBentoRow(
                             activeQuest: activeQuest,
@@ -296,137 +273,120 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-List<QuestModel> _inProgressQuests(
-  List<QuestModel> quests,
-  SubmissionState submissions,
-) {
-  final completedTitles = submissions.submissions
-      .where((item) => item.status == 'approved')
-      .map((item) => item.questTitle)
-      .toSet();
-  return quests.where((quest) {
-    if (completedTitles.contains(quest.title)) return false;
-    if (quest.steps.isEmpty) return false;
-    final anyVerified = quest.steps.any((step) => step.isVerified);
-    final allVerified = quest.steps.every((step) => step.isVerified);
-    return anyVerified && !allVerified;
-  }).toList();
-}
-
 void _showQotdSheet(
   BuildContext context,
   WidgetRef ref,
   HomeQotdState? initialQotd,
 ) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Consumer(
-          builder: (context, ref, _) {
-            final liveQotd =
-                ref.watch(homeQotdProvider).asData?.value ?? initialQotd;
-            final grid = PixelGrid.of(ctx);
-            if (liveQotd == null) {
-              return Container(
-                margin: EdgeInsets.all(grid.px(2)),
-                child: const PixelPanel(
-                  key: ValueKey('home_qotd_panel'),
-                  style: PixelBoxStyle.wood,
-                  padding: 2,
-                  child: Text('Loading Question of the Day...'),
-                ),
-              );
-            }
-            return SafeArea(
-              child: Container(
-                margin: EdgeInsets.all(grid.px(2)),
-                child: PixelPanel(
-                  key: const ValueKey('home_qotd_panel'),
-                  style: PixelBoxStyle.wood,
-                  padding: 2,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'QUESTION OF THE DAY',
-                              style: PixelType.title(
-                                ctx,
-                                color: PixelPalette.paper,
-                              ),
-                            ),
-                          ),
-                          PixelIconButton(
-                            icon: DesignerArt.heartUnliked,
-                            semanticLabel: 'Close',
-                            onPressed: () => Navigator.of(ctx).pop(),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: grid.px(1)),
-                      Text(
-                        liveQotd.quizTitle.isNotEmpty
-                            ? liveQotd.quizTitle
-                            : 'Daily Pangasinan Lore',
-                        style: PixelType.small(ctx, color: PixelPalette.cream),
-                      ),
-                      SizedBox(height: grid.px(2)),
-                      Text(
-                        liveQotd.questionText.isNotEmpty
-                            ? liveQotd.questionText
-                            : 'Loading question...',
-                        style: PixelType.body(
-                          ctx,
-                          color: PixelPalette.paper,
-                        ).copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      SizedBox(height: grid.px(2)),
-                      for (final option in liveQotd.options) ...[
-                        SizedBox(height: grid.px(1)),
-                        PixelTappableSlot(
-                          key: ValueKey('home_qotd_option_${option.id}'),
-                          style: liveQotd.selectedOptionId == option.id
-                              ? (liveQotd.correct
-                                  ? PixelBoxStyle.green
-                                  : PixelBoxStyle.red)
-                              : PixelBoxStyle.parchment,
-                          padding: 2,
-                          onTap: liveQotd.answered
-                              ? null
-                              : () => ref
-                                  .read(homeQotdProvider.notifier)
-                                  .answer(option.id),
-                          child: Text(
-                            option.text,
-                            style: PixelType.body(ctx, color: PixelPalette.ink),
-                          ),
-                        ),
-                      ],
-                      if (liveQotd.explanation != null) ...[
-                        SizedBox(height: grid.px(2)),
-                        Text(
-                          liveQotd.explanation!,
-                          style: PixelType.small(ctx, color: PixelPalette.cream),
-                        ),
-                      ],
-                      SizedBox(height: grid.px(3)),
-                      PixelButton(
-                        label: 'CLOSE',
-                        expand: true,
-                        onPressed: () => Navigator.of(ctx).pop(),
-                      ),
-                    ],
-                  ),
-                ),
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) {
+      return Consumer(
+        builder: (context, ref, _) {
+          final liveQotd =
+              ref.watch(homeQotdProvider).asData?.value ?? initialQotd;
+          final grid = PixelGrid.of(ctx);
+          if (liveQotd == null) {
+            return Container(
+              margin: EdgeInsets.all(grid.px(2)),
+              child: const PixelPanel(
+                key: ValueKey('home_qotd_panel'),
+                style: PixelBoxStyle.wood,
+                padding: 2,
+                child: Text('Loading Question of the Day...'),
               ),
             );
-          },
-        );
-      },
-    );
-  }
+          }
+          return SafeArea(
+            child: Container(
+              margin: EdgeInsets.all(grid.px(2)),
+              child: PixelPanel(
+                key: const ValueKey('home_qotd_panel'),
+                style: PixelBoxStyle.wood,
+                padding: 2,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'QUESTION OF THE DAY',
+                            style: PixelType.title(
+                              ctx,
+                              color: PixelPalette.paper,
+                            ),
+                          ),
+                        ),
+                        PixelIconButton(
+                          icon: DesignerArt.heartUnliked,
+                          semanticLabel: 'Close',
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: grid.px(1)),
+                    Text(
+                      liveQotd.quizTitle.isNotEmpty
+                          ? liveQotd.quizTitle
+                          : 'Daily Pangasinan Lore',
+                      style: PixelType.small(ctx, color: PixelPalette.cream),
+                    ),
+                    SizedBox(height: grid.px(2)),
+                    Text(
+                      liveQotd.questionText.isNotEmpty
+                          ? liveQotd.questionText
+                          : 'Loading question...',
+                      style: PixelType.body(
+                        ctx,
+                        color: PixelPalette.paper,
+                      ).copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: grid.px(2)),
+                    for (final option in liveQotd.options) ...[
+                      SizedBox(height: grid.px(1)),
+                      PixelTappableSlot(
+                        key: ValueKey('home_qotd_option_${option.id}'),
+                        style: liveQotd.selectedOptionId == option.id
+                            ? (liveQotd.correct
+                                ? PixelBoxStyle.green
+                                : PixelBoxStyle.red)
+                            : PixelBoxStyle.parchment,
+                        padding: 2,
+                        onTap: liveQotd.answered
+                            ? null
+                            : () => ref
+                                .read(homeQotdProvider.notifier)
+                                .answer(option.id),
+                        child: Text(
+                          option.text,
+                          style: PixelType.body(ctx, color: PixelPalette.ink),
+                        ),
+                      ),
+                    ],
+                    if (liveQotd.explanation != null) ...[
+                      SizedBox(height: grid.px(2)),
+                      Text(
+                        liveQotd.explanation!,
+                        style: PixelType.small(ctx, color: PixelPalette.cream),
+                      ),
+                    ],
+                    SizedBox(height: grid.px(3)),
+                    PixelButton(
+                      label: 'CLOSE',
+                      expand: true,
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}

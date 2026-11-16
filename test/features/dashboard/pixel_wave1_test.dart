@@ -543,13 +543,22 @@ void main() {
       tester.getSemantics(find.bySemanticsLabel('Home')),
       containsSemantics(isSelected: true),
     );
-    await tester.tap(find.bySemanticsLabel('Map'));
+    // Owner 2026-11-16: the Map left the bar; MENU opens the main menu.
+    expect(find.bySemanticsLabel('Map'), findsNothing);
+    await tester.tap(find.bySemanticsLabel('Explore'));
     await tester.pump();
-    expect(find.text('MAP PAGE'), findsOneWidget);
+    expect(find.text('EXPLORE PAGE'), findsOneWidget);
     expect(
-      tester.getSemantics(find.bySemanticsLabel('Map')),
+      tester.getSemantics(find.bySemanticsLabel('Explore')),
       containsSemantics(isSelected: true),
     );
+    await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('main_menu_panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_tile_plaza')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('main_menu_panel')), findsNothing);
     await tester.tap(find.bySemanticsLabel('Shop'));
     await tester.pump();
     expect(find.text('SHOP PAGE'), findsOneWidget);

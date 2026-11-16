@@ -12,6 +12,7 @@ import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
 import 'package:juanderquest_app/features/dashboard/screens/dashboard_screen.dart';
+import 'package:juanderquest_app/features/dashboard/widgets/main_menu_panel.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
@@ -389,7 +390,8 @@ List<Override> _overrides({
       ),
     ),
     spotDiscoveryProvider.overrideWith(
-      (ref) => _SpotFixture(ref, const SpotDiscoveryState(isInitialLoading: false)),
+      (ref) =>
+          _SpotFixture(ref, const SpotDiscoveryState(isInitialLoading: false)),
     ),
     submissionProvider.overrideWith(
       (ref) => _SubmissionFixture(
@@ -423,12 +425,17 @@ class _FixedQotdNotifier extends HomeQotdNotifier {
   }
 }
 
-GoRouter _router() => GoRouter(
+GoRouter _router({bool menu = false}) => GoRouter(
       initialLocation: '/dashboard',
       routes: [
         GoRoute(
           path: '/dashboard',
-          builder: (_, __) => const DashboardScreen(),
+          // The main menu moved from Home to the MENU panel (2026-11-16).
+          builder: (_, __) => menu
+              ? Scaffold(
+                  body: SingleChildScrollView(
+                      child: MainMenuPanel(onClose: () {})))
+              : const DashboardScreen(),
         ),
         GoRoute(
           path: '/profile',
@@ -502,6 +509,7 @@ Future<void> _pump(
   List<Override>? overrides,
   Size size = const Size(400, 1600),
   double textScale = 1.0,
+  bool menu = false,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -517,7 +525,7 @@ Future<void> _pump(
       overrides: overrides ?? _overrides(),
       child: MaterialApp.router(
         theme: AppTheme.pixel,
-        routerConfig: _router(),
+        routerConfig: _router(menu: menu),
       ),
     ),
   );
@@ -545,7 +553,8 @@ Future<void> _tapRoute(
 
 void main() {
   group('Dashboard RPG Menu Layout', () {
-    testWidgets('Hero renders identity, Level, XP bar, 3-slot Purse and numbers strip',
+    testWidgets(
+        'Hero renders identity, Level, XP bar, 3-slot Purse and numbers strip',
         (tester) async {
       await _pump(tester);
       expect(find.text('Juan Dela Cruz'), findsOneWidget);
@@ -562,7 +571,8 @@ void main() {
       expect(find.text('350 REP'), findsOneWidget);
 
       // 4-stat Numbers strip
-      expect(find.byKey(const ValueKey('home_hero_stats_strip')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('home_hero_stats_strip')), findsOneWidget);
       expect(find.text('VISITS: 18'), findsOneWidget);
       expect(find.text('TOWNS: 5'), findsOneWidget);
       expect(find.text('STREAK: 4D'), findsOneWidget);
@@ -570,9 +580,11 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Purse slots and stats strip navigate to their pages', (tester) async {
+    testWidgets('Purse slots and stats strip navigate to their pages',
+        (tester) async {
       await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_purse_mjdq')), '/shop');
+      await _tapRoute(
+          tester, find.byKey(const ValueKey('home_purse_mjdq')), '/shop');
 
       await _pump(tester);
       await _tapRoute(
@@ -582,7 +594,8 @@ void main() {
       );
 
       await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_purse_rep')), '/plaza');
+      await _tapRoute(
+          tester, find.byKey(const ValueKey('home_purse_rep')), '/plaza');
 
       await _pump(tester);
       await _tapRoute(
@@ -595,7 +608,7 @@ void main() {
     testWidgets('Concept B renders command grid, dual bento, and almanac',
         (tester) async {
       await _pump(tester);
-      expect(find.byKey(const ValueKey('home_command_grid')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_command_grid')), findsNothing);
       expect(find.byKey(const ValueKey('home_bento_mission')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_qotd_pill')), findsOneWidget);
@@ -612,7 +625,8 @@ void main() {
       );
     });
 
-    testWidgets('Active Quest button continues to quest detail', (tester) async {
+    testWidgets('Active Quest button continues to quest detail',
+        (tester) async {
       await _pump(tester);
       await _tapRoute(
         tester,
@@ -663,7 +677,8 @@ void main() {
 
       expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
       expect(
-        find.text('Which town is home to the Minor Basilica of Our Lady of Manaoag?'),
+        find.text(
+            'Which town is home to the Minor Basilica of Our Lady of Manaoag?'),
         findsOneWidget,
       );
 
@@ -672,12 +687,13 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Manaoag is home to the Minor Basilica.'), findsOneWidget);
+      expect(
+          find.text('Manaoag is home to the Minor Basilica.'), findsOneWidget);
     });
 
     testWidgets('Command Grid 4×2 launcher renders all 8 destinations',
         (tester) async {
-      await _pump(tester);
+      await _pump(tester, menu: true);
       expect(find.byKey(const ValueKey('home_command_grid')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_merchants')), findsOneWidget);
@@ -688,22 +704,30 @@ void main() {
       expect(find.byKey(const ValueKey('home_tile_saved')), findsOneWidget);
       expect(find.byKey(const ValueKey('home_tile_history')), findsOneWidget);
 
-      await _tapRoute(tester, find.byKey(const ValueKey('home_menu_quests')), '/quests');
-      await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_merchants')), '/affiliate');
-      await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_vote')), '/choice');
-      await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_plaza')), '/plaza');
-      await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_add_spot')), '/map/add-spot');
-      await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_saved')), '/saved');
-      await _pump(tester);
-      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_history')), '/history');
+      await _tapRoute(
+          tester, find.byKey(const ValueKey('home_menu_quests')), '/quests');
+      await _pump(tester, menu: true);
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_merchants')),
+          '/affiliate');
+      await _pump(tester, menu: true);
+      await _tapRoute(
+          tester, find.byKey(const ValueKey('home_tile_vote')), '/choice');
+      await _pump(tester, menu: true);
+      await _tapRoute(
+          tester, find.byKey(const ValueKey('home_tile_plaza')), '/plaza');
+      await _pump(tester, menu: true);
+      await _tapRoute(tester, find.byKey(const ValueKey('home_tile_add_spot')),
+          '/map/add-spot');
+      await _pump(tester, menu: true);
+      await _tapRoute(
+          tester, find.byKey(const ValueKey('home_tile_saved')), '/saved');
+      await _pump(tester, menu: true);
+      await _tapRoute(
+          tester, find.byKey(const ValueKey('home_tile_history')), '/history');
     });
 
-    testWidgets('Notifications button opens notifications route', (tester) async {
+    testWidgets('Notifications button opens notifications route',
+        (tester) async {
       await _pump(tester);
       await _tapRoute(
         tester,
@@ -722,7 +746,8 @@ void main() {
 
       expect(find.byKey(const ValueKey('home_qotd_panel')), findsOneWidget);
       expect(
-        find.text('Which town is home to the Minor Basilica of Our Lady of Manaoag?'),
+        find.text(
+            'Which town is home to the Minor Basilica of Our Lady of Manaoag?'),
         findsOneWidget,
       );
 
@@ -731,7 +756,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(fake.calls['/qotd/answer'], 1);
-      expect(find.text('Manaoag is home to the Minor Basilica.'), findsOneWidget);
+      expect(
+          find.text('Manaoag is home to the Minor Basilica.'), findsOneWidget);
     });
 
     testWidgets('QOTD empty and error states', (tester) async {
@@ -769,7 +795,8 @@ void main() {
       await _pump(
         tester,
         overrides: _overrides(
-          dailyState: AsyncValue.error(Exception('daily down'), StackTrace.empty),
+          dailyState:
+              AsyncValue.error(Exception('daily down'), StackTrace.empty),
         ),
       );
       expect(find.byKey(const ValueKey('home_bento_stamp')), findsOneWidget);
@@ -809,8 +836,9 @@ void main() {
           ),
         ],
       );
-      final state = QuestState(quests: [_quests.first, testQuest], isLoading: false);
-      await _pump(tester, overrides: _overrides(quests: state));
+      final state =
+          QuestState(quests: [_quests.first, testQuest], isLoading: false);
+      await _pump(tester, overrides: _overrides(quests: state), menu: true);
       expect(find.text('1 active · 0 saved'), findsOneWidget);
 
       await _pump(
@@ -819,14 +847,16 @@ void main() {
           ..._overrides(quests: state),
           showTestContentProvider.overrideWith((ref) => true),
         ],
+        menu: true,
       );
       expect(find.text('2 active · 0 saved'), findsOneWidget);
     });
 
-    testWidgets('JuanChoice launcher reflects active campaign, results, and error states',
+    testWidgets(
+        'JuanChoice launcher reflects active campaign, results, and error states',
         (tester) async {
       // 1. Active voting campaign
-      await _pump(tester);
+      await _pump(tester, menu: true);
       expect(find.text('LIVE'), findsOneWidget);
       await _tapRoute(
         tester,
@@ -855,6 +885,7 @@ void main() {
             ),
           ),
         ),
+        menu: true,
       );
       expect(find.text('SOON'), findsOneWidget);
       await _tapRoute(
@@ -867,8 +898,10 @@ void main() {
       await _pump(
         tester,
         overrides: _overrides(
-          choiceOverview: AsyncValue.error(Exception('choice down'), StackTrace.empty),
+          choiceOverview:
+              AsyncValue.error(Exception('choice down'), StackTrace.empty),
         ),
+        menu: true,
       );
       expect(find.text('SOON'), findsOneWidget);
     });

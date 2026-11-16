@@ -51,14 +51,15 @@ class ExploreSpotCard extends StatelessWidget {
     return Semantics(
       container: true,
       label: 'Destination ${spot.name} in ${spot.municipality}',
-      child: PixelPanel(
-        style: PixelBoxStyle.parchment.copyWith(
-          fill: PixelPalette.paper,
-          outline: PixelPalette.ink,
-          corner: 1,
-          shadowPx: 1,
+      // v0.3 (owner 2026-11-16: "for explore revert the buttons, but remove
+      // the outer box"): no card box; a pixel line under each post.
+      child: Container(
+        padding: EdgeInsets.only(bottom: grid.px(3)),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: PixelPalette.woodLight, width: grid.unit),
+          ),
         ),
-        padding: 2,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,

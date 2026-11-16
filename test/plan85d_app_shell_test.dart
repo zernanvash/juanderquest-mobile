@@ -12,7 +12,8 @@ import 'package:juanderquest_app/features/profile/screens/profile_screen.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_developer_screen.dart';
 import 'package:juanderquest_app/features/settings/screens/settings_screen.dart';
 
-class _FakeAuthNotifier extends StateNotifier<AuthState> implements AuthNotifier {
+class _FakeAuthNotifier extends StateNotifier<AuthState>
+    implements AuthNotifier {
   _FakeAuthNotifier(super.state);
 
   @override
@@ -64,7 +65,8 @@ void main() {
         ),
         GoRoute(
           path: '/wallet/connect',
-          builder: (_, __) => const Scaffold(body: Text('route:/wallet/connect')),
+          builder: (_, __) =>
+              const Scaffold(body: Text('route:/wallet/connect')),
         ),
       ],
     );
@@ -94,7 +96,8 @@ void main() {
     expect(tester.takeException(), isNull);
   }
 
-  testWidgets('SettingsDeveloperScreen holds Governance prototype and opens /vote',
+  testWidgets(
+      'SettingsDeveloperScreen holds Governance prototype and opens /vote',
       (tester) async {
     await pumpAtSize(
       tester,
@@ -127,15 +130,16 @@ void main() {
     expect(find.text('Testnet'), findsOneWidget);
   });
 
-  testWidgets('DashboardScreen renders Concept B command grid and almanac', (tester) async {
+  testWidgets('DashboardScreen renders Concept B command grid and almanac',
+      (tester) async {
     await pumpAtSize(
       tester,
       const DashboardScreen(),
       const Size(390, 844),
       1.0,
     );
-    expect(find.byKey(const ValueKey('home_command_grid')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
+    // The main menu grid moved to the MENU panel (owner 2026-11-16).
+    expect(find.byKey(const ValueKey('home_command_grid')), findsNothing);
   });
 
   // Plan 93b WP-7.4: Shop is a bottom tab, so Profile has no Shop card.
@@ -150,7 +154,8 @@ void main() {
   });
 
   for (final size in [const Size(320, 568), const Size(568, 320)]) {
-    testWidgets('No overflow at ${size.width}x${size.height} 2x text on Settings, Dev, Profile, Home',
+    testWidgets(
+        'No overflow at ${size.width}x${size.height} 2x text on Settings, Dev, Profile, Home',
         (tester) async {
       await pumpAtSize(tester, const SettingsScreen(), size, 2.0);
       await pumpAtSize(tester, const SettingsDeveloperScreen(), size, 2.0);

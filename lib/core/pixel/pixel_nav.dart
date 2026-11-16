@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -32,11 +30,17 @@ class PixelHotbar extends StatefulWidget {
     required this.items,
     required this.index,
     required this.onTap,
+    this.center,
   });
 
   final List<PixelHotbarItem> items;
+
+  /// Selected item, or -1 when the page has no tab (e.g. the Map).
   final int index;
   final ValueChanged<int> onTap;
+
+  /// Optional widget in the middle of the bar (the MENU button).
+  final Widget? center;
 
   @override
   State<PixelHotbar> createState() => _PixelHotbarState();
@@ -45,69 +49,41 @@ class PixelHotbar extends StatefulWidget {
 class _PixelHotbarState extends State<PixelHotbar> {
   int? _pressed;
 
-  /// Owner 2026-11-04 picked "A · Wood shelf": dark wood bar, square
-  /// parchment slots, the active slot gold and lifted. Slots are square and
-  /// sized in whole art pixels; icons draw at a whole-number device scale.
-  static const _selectedStyle = PixelBoxStyle(
-    fill: PixelPalette.sun,
-    highlight: PixelPalette.sunLight,
-    shade: PixelPalette.amber,
-    corner: 1,
-    shadowPx: 1,
-  );
-
-  static const _idleStyle = PixelBoxStyle(
-    fill: PixelPalette.parchment,
-    highlight: PixelPalette.white,
-    shade: PixelPalette.paperDim,
-    corner: 1,
-    shadowPx: 1,
-  );
-
-  /// Largest slot side, in logical px.
-  static const _maxSide = 72.0;
-
+  /// v0.3 (owner 2026-11-16: "i like the nav bar from pixel lab, but keep the
+  /// vanilla text as labels"): a pale bar under a 1-pixel wood line; icons
+  /// at a whole-pixel scale, the selected one lifted; plain text labels.
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
+    final n = widget.items.length;
+    final half = widget.center == null ? n : (n + 1) ~/ 2;
     return Container(
-      decoration: BoxDecoration(
-        color: PixelPalette.woodDeep,
-        border: Border(
-          top: BorderSide(color: PixelPalette.wood, width: grid.px(1)),
-        ),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        grid.px(2),
-        grid.px(4),
-        grid.px(2),
-        grid.px(3) + MediaQuery.paddingOf(context).bottom,
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final n = widget.items.length;
-          final gap = grid.px(2);
-          // Square side: an equal share of the width, capped, rounded down to
-          // whole art pixels so every slot is exactly the same size.
-          final share = (constraints.maxWidth - gap * (n - 1)) / n;
-          final side = (share.clamp(0, _maxSide) / grid.unit).floorToDouble() *
-              grid.unit;
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              for (var i = 0; i < n; i++)
-                SizedBox.square(
-                  dimension: side,
-                  child: _slot(context, grid, i, side),
-                ),
-            ],
-          );
-        },
+      color: PixelPalette.parchment,
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(height: grid.unit, color: PixelPalette.woodLight),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                grid.px(1), grid.px(2), grid.px(1), grid.px(2)),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < n; i++) ...[
+                  if (i == half && widget.center != null)
+                    Expanded(child: Center(child: widget.center)),
+                  Expanded(child: _slot(context, grid, i)),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _slot(BuildContext context, PixelGrid grid, int i, double side) {
+  Widget _slot(BuildContext context, PixelGrid grid, int i) {
     final item = widget.items[i];
     final selected = i == widget.index;
     final pressed = _pressed == i;
@@ -124,16 +100,7 @@ class _PixelHotbarState extends State<PixelHotbar> {
                 : item.badge!;
     final semanticsLabel =
         item.badge == null ? item.label : '${item.label}, $badgeSemantics';
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    // Whole device pixels per art pixel, so the icon fits about half the slot
-    // without stretching.
-    final iconScale = icon == null
-        ? 1
-        : (side * 0.5 * dpr / math.max(icon.width, icon.height))
-            .floor()
-            .clamp(1, 16)
-            .toInt();
-    final lift = selected ? -grid.px(2) : (pressed ? grid.unit : 0.0);
+    final lift = selected ? -grid.px(1) : (pressed ? grid.unit : 0.0);
     return Semantics(
       selected: selected,
       button: true,
@@ -148,53 +115,140 @@ class _PixelHotbarState extends State<PixelHotbar> {
             if (!selected) pixelTick(context, sfx: 'tab');
             widget.onTap(i);
           },
-          child: Transform.translate(
-            offset: Offset(0, lift),
-            child: PixelPanel(
-              style: selected ? _selectedStyle : _idleStyle,
-              pressed: pressed,
-              padding: 1,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (icon != null)
-                    Expanded(
-                      child: Center(
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
-                          children: [
-                            // Plan 75k: the active tab's icon breathes.
-                            PixelIdleBob(
-                              enabled: selected,
-                              child: PixelSprite(icon, scale: iconScale),
-                            ),
-                            if (badgeText != null)
-                              Positioned(
-                                top: -2,
-                                right: -6,
-                                child: _Badge(
-                                  text: badgeText,
-                                  alert: item.badge != '!',
-                                ),
-                              ),
-                          ],
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 52),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (icon != null)
+                  Transform.translate(
+                    offset: Offset(0, lift),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        // Plan 75k: the active tab's icon breathes.
+                        PixelIdleBob(
+                          enabled: selected,
+                          child: PixelIconFit(icon, box: 30),
                         ),
-                      ),
-                    ),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      item.label,
-                      maxLines: 1,
-                      softWrap: false,
-                      style: PixelType.small(
-                        context,
-                        color: selected ? PixelPalette.ink : PixelPalette.wood,
-                      ),
+                        if (badgeText != null)
+                          Positioned(
+                            top: -2,
+                            right: -6,
+                            child: _Badge(
+                              text: badgeText,
+                              alert: item.badge != '!',
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                ],
+                SizedBox(height: grid.unit),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: PixelType.small(
+                      context,
+                      color: selected ? PixelPalette.ink : PixelPalette.slate,
+                    ).copyWith(fontWeight: selected ? FontWeight.w700 : null),
+                  ),
+                ),
+                // Selected marker: a short gold bar under the label.
+                Container(
+                  margin: EdgeInsets.only(top: grid.unit),
+                  width: grid.px(6),
+                  height: grid.unit,
+                  color: selected ? PixelPalette.sun : PixelPalette.parchment,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The MENU button in the middle of the bottom bar: a raised gold slot that
+/// opens (and, as CLOSE, shuts) the main menu.
+class PixelMenuButton extends StatefulWidget {
+  const PixelMenuButton({
+    super.key,
+    required this.open,
+    required this.onPressed,
+    this.label = 'Menu',
+    this.closeLabel = 'Close',
+  });
+
+  final bool open;
+  final VoidCallback onPressed;
+  final String label;
+  final String closeLabel;
+
+  @override
+  State<PixelMenuButton> createState() => _PixelMenuButtonState();
+}
+
+class _PixelMenuButtonState extends State<PixelMenuButton> {
+  bool _down = false;
+
+  static const _style = PixelBoxStyle(
+    fill: PixelPalette.sun,
+    highlight: PixelPalette.sunLight,
+    shade: PixelPalette.amber,
+    corner: 2,
+    shadowPx: 1,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final text = widget.open ? widget.closeLabel : widget.label;
+    return Semantics(
+      button: true,
+      expanded: widget.open,
+      label: widget.open ? 'Close menu' : 'Open menu',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          key: const ValueKey('hotbar_menu_button'),
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _down = true),
+          onTapCancel: () => setState(() => _down = false),
+          onTapUp: (_) {
+            setState(() => _down = false);
+            pixelTick(context, sfx: widget.open ? 'back' : 'sheet_open');
+            widget.onPressed();
+          },
+          child: Transform.translate(
+            // Sits a little above the bar, like a raised slot.
+            offset: Offset(0, -grid.px(3)),
+            child: SizedBox.square(
+              dimension: 60,
+              child: PixelPanel(
+                style: _style,
+                pressed: _down,
+                padding: 1,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    PixelIconFit(widget.open ? _closeIcon : _menuIcon, box: 22),
+                    SizedBox(height: grid.unit),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        text,
+                        maxLines: 1,
+                        style: PixelType.small(context, color: PixelPalette.ink)
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -203,6 +257,28 @@ class _PixelHotbarState extends State<PixelHotbar> {
     );
   }
 }
+
+const _menuIcon = PixelArt('pixelMenu', [
+  '00000000',
+  '00000000',
+  '........',
+  '00000000',
+  '00000000',
+  '........',
+  '00000000',
+  '00000000',
+]);
+
+const _closeIcon = PixelArt('pixelClose', [
+  '00....00',
+  '000..000',
+  '.000000.',
+  '..0000..',
+  '..0000..',
+  '.000000.',
+  '000..000',
+  '00....00',
+]);
 
 class _Badge extends StatelessWidget {
   const _Badge({required this.text, required this.alert});
@@ -344,7 +420,8 @@ class PixelAppBar extends StatelessWidget {
                         )
                       : ShadowText(
                           title,
-                          style: PixelType.title(context, color: PixelPalette.paper),
+                          style: PixelType.title(context,
+                              color: PixelPalette.paper),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),

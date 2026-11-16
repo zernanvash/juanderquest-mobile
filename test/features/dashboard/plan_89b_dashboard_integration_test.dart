@@ -157,7 +157,8 @@ List<Override> _baseOverrides({
     apiClientProvider.overrideWithValue(api),
     homeTipsStoreProvider.overrideWithValue(_MemoryTipsStore()),
     authProvider.overrideWith(
-      (ref) => _AuthFixture(api, ref.watch(authRefreshProvider.notifier), _user()),
+      (ref) =>
+          _AuthFixture(api, ref.watch(authRefreshProvider.notifier), _user()),
     ),
     questProvider.overrideWith(
       (ref) => _QuestFixture(
@@ -303,15 +304,25 @@ Future<void> _pumpRouter(
 }
 
 void main() {
-  testWidgets('Designer icons render on MainShell Profile, AppBar, and PLAZA tile',
+  testWidgets(
+      'Designer icons render on MainShell Profile, AppBar, and PLAZA tile',
       (tester) async {
     await _pumpRouter(tester);
+    // The PLAZA tile is in the MENU panel (owner 2026-11-16).
+    await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
+    await tester.pump();
 
     final sprites = tester.widgetList<PixelSprite>(find.byType(PixelSprite));
     // PixelIconFit draws a margin-trimmed copy named '<name>#trim'.
     final names = sprites.map((s) => s.art.name.split('#').first).toSet();
     final arts = {
-      for (final a in [DesignerArt.navProfile, DesignerArt.navMap, DesignerArt.plazaTrophy, DesignerArt.search, DesignerArt.navSettings])
+      for (final a in [
+        DesignerArt.navProfile,
+        DesignerArt.navMap,
+        DesignerArt.plazaTrophy,
+        DesignerArt.search,
+        DesignerArt.navSettings
+      ])
         if (names.contains(a.name)) a,
     };
 
@@ -327,23 +338,31 @@ void main() {
     await _pumpRouter(tester);
 
     final heroY = tester.getTopLeft(find.byType(HomeHero)).dy;
-    final gridY = tester.getTopLeft(find.byType(HomeCommandGrid)).dy;
     final bentoY = tester.getTopLeft(find.byType(HomeDualBentoRow)).dy;
 
-    expect(heroY, lessThan(gridY));
-    expect(gridY, lessThan(bentoY));
+    // The main menu grid moved to the MENU panel (owner 2026-11-16).
+    expect(find.byType(HomeCommandGrid), findsNothing);
+    expect(heroY, lessThan(bentoY));
 
     await tester.drag(find.byType(ListView), const Offset(0, -800));
     await tester.pumpAndSettle();
     final calY = tester.getTopLeft(find.byType(HomeAdventureCalendar)).dy;
-    final bentoAfterScrollY = tester.getTopLeft(find.byType(HomeDualBentoRow)).dy;
+    final bentoAfterScrollY =
+        tester.getTopLeft(find.byType(HomeDualBentoRow)).dy;
     expect(bentoAfterScrollY, lessThan(calY));
   });
 
-  testWidgets('App bar Search/Settings and all 8 Command Grid tiles open routes',
+  testWidgets(
+      'App bar Search/Settings and all 8 Command Grid tiles open routes',
       (tester) async {
     Future<void> tapAndCheck(Key key, String expectedRoute) async {
       await _pumpRouter(tester);
+      // Grid tiles live in the MENU panel (owner 2026-11-16).
+      if ((key as ValueKey<String>).value.startsWith('home_tile_') ||
+          key.value == 'home_menu_quests') {
+        await tester.tap(find.byKey(const ValueKey('hotbar_menu_button')));
+        await tester.pump();
+      }
       await tester.ensureVisible(find.byKey(key));
       await tester.tap(find.byKey(key));
       await tester.pumpAndSettle();

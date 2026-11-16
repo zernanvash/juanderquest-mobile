@@ -9,6 +9,7 @@ import '../core/pixel/generated/pixel_palette.g.dart';
 import '../core/pixel/pixel_nav.dart';
 import '../features/companion/widgets/companion_card.dart';
 import '../features/dashboard/home_tips.dart';
+import '../features/dashboard/widgets/main_menu_panel.dart';
 import '../features/onboarding/pixel_tutorial.dart';
 import '../features/juanchoice/providers/juanchoice_provider.dart';
 import '../features/quests/providers/campaign_provider.dart';
@@ -51,6 +52,15 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   DateTime? _lastBackPress;
+  bool _menuOpen = false;
+
+  /// Bottom-bar tabs and the shell branch each opens. The Map (branch 2) left
+  /// the bar (owner 2026-11-16); it opens from the map button by Search.
+  static const _tabBranches = [0, 1, 3, 4];
+
+  void _setMenu(bool open) {
+    if (_menuOpen != open) setState(() => _menuOpen = open);
+  }
 
   @override
   void initState() {
@@ -79,6 +89,11 @@ class _MainShellState extends ConsumerState<MainShell> {
 
         if (showTips) {
           ref.read(homeTipsControllerProvider.notifier).skip();
+          return;
+        }
+
+        if (_menuOpen) {
+          _setMenu(false);
           return;
         }
 
@@ -119,27 +134,65 @@ class _MainShellState extends ConsumerState<MainShell> {
         children: [
           Scaffold(
             backgroundColor: PixelPalette.paper,
-            body: Column(
+            body: Stack(
               children: [
-                Expanded(child: widget.navigationShell),
-                if (onMainPage) CompanionCard(tabIndex: currentIndex),
+                Column(
+                  children: [
+                    Expanded(child: widget.navigationShell),
+                    if (onMainPage) CompanionCard(tabIndex: currentIndex),
+                  ],
+                ),
+                // The main menu: the page dims, the menu sits above the bar.
+                if (onMainPage && _menuOpen) ...[
+                  Positioned.fill(
+                    child: GestureDetector(
+                      key: const ValueKey('main_menu_scrim'),
+                      onTap: () => _setMenu(false),
+                      child: ColoredBox(
+                        color: PixelPalette.ink.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    child: SafeArea(
+                      top: false,
+                      child: MainMenuPanel(onClose: () => _setMenu(false)),
+                    ),
+                  ),
+                ],
               ],
             ),
             bottomNavigationBar: !onMainPage
                 ? null
                 : PixelHotbar(
                     key: tipsKeys.hotbar,
-                    index: currentIndex,
-                    onTap: (index) {
-                      if (index == currentIndex) {
+                    index: _tabBranches.indexOf(currentIndex),
+                    onTap: (tab) {
+                      _setMenu(false);
+                      final branch = _tabBranches[tab];
+                      if (branch == currentIndex) {
                         widget.navigationShell
-                            .goBranch(index, initialLocation: true);
+                            .goBranch(branch, initialLocation: true);
                       } else {
-                        widget.navigationShell.goBranch(index);
+                        widget.navigationShell.goBranch(branch);
                       }
                     },
+                    // Owner 2026-11-16: a MENU button opens the main menu.
+                    center: KeyedSubtree(
+                      key: tipsKeys.nextStop,
+                      child: PixelMenuButton(
+                        open: _menuOpen,
+                        label: tr(context, en: 'Menu', tl: 'Menu'),
+                        closeLabel: tr(context, en: 'Close', tl: 'Isara'),
+                        onPressed: () => _setMenu(!_menuOpen),
+                      ),
+                    ),
                     items: [
-                      // Owner 2026-11-05: Home · Explore · Map · Shop · Profile.
+                      // Owner 2026-11-16: Home · Explore · MENU · Shop ·
+                      // Profile (the Map moved next to Search).
                       // Plan 93b WP-8: labels follow Settings -> Language.
                       PixelHotbarItem(
                         label: tr(context, en: 'Home', tl: 'Tahanan'),
@@ -149,10 +202,6 @@ class _MainShellState extends ConsumerState<MainShell> {
                         label: tr(context, en: 'Explore', tl: 'Tuklasin'),
                         // Owner 2026-11-16: the original navExplore compass.
                         icon: DesignerArt.navExplore,
-                      ),
-                      PixelHotbarItem(
-                        label: tr(context, en: 'Map', tl: 'Mapa'),
-                        icon: DesignerArt.navMap,
                       ),
                       PixelHotbarItem(
                         label: tr(context, en: 'Shop', tl: 'Tindahan'),

@@ -251,8 +251,8 @@ class _PixelTutorialOverlayState extends State<PixelTutorialOverlay>
         clipBehavior: Clip.none,
         children: [
           Padding(
-            padding:
-                EdgeInsets.fromLTRB(grid.px(3), grid.px(_boxTop), grid.px(3), 0),
+            padding: EdgeInsets.fromLTRB(
+                grid.px(3), grid.px(_boxTop), grid.px(3), 0),
             child: PixelPanel(
               style: PixelBoxStyle.wood,
               padding: 4,
@@ -441,11 +441,11 @@ List<TutorialStep> firstRunSteps({
         target: hero,
       ),
       TutorialStep(
-        'Tap here for your next adventure: places near you, the map, or a quest.',
+        'Tap MENU for quests, quizzes, votes, the Plaza and more.',
         target: nextStop,
       ),
       TutorialStep(
-        'This bar jumps between Home, Explore, the Map, the Shop and your Profile. Have fun!',
+        'This bar jumps between Home, Explore, the Shop and your Profile. The map is next to Search. Have fun!',
         target: hotbar,
       ),
     ];

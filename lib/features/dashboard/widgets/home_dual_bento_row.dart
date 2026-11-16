@@ -78,7 +78,7 @@ class HomeDualBentoRow extends StatelessWidget {
       children: [
         LayoutBuilder(
           builder: (context, constraints) {
-            final sideBySide = constraints.maxWidth >= 280 && textScale < 1.4;
+            // Owner 2026-11-16: panels take the full width, stacked.
             final missionBox = _MissionBentoBox(
               key: const ValueKey('home_bento_mission'),
               style: _greenStyle,
@@ -95,18 +95,6 @@ class HomeDualBentoRow extends StatelessWidget {
               onClaim: onClaimDaily,
             );
 
-            if (sideBySide) {
-              return IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: missionBox),
-                    SizedBox(width: grid.px(2)),
-                    Expanded(child: stampBox),
-                  ],
-                ),
-              );
-            }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -255,15 +243,15 @@ class _MissionBentoBox extends StatelessWidget {
                     quest.locationName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        PixelType.small(context, color: PixelPalette.greenLight),
+                    style: PixelType.small(context,
+                        color: PixelPalette.greenLight),
                   )
                 else
                   MjdqAmount(
                     quest.rewardPoints,
                     sign: true,
-                    style:
-                        PixelType.small(context, color: PixelPalette.greenLight),
+                    style: PixelType.small(context,
+                        color: PixelPalette.greenLight),
                   ),
               ] else ...[
                 Text(
@@ -381,8 +369,7 @@ class _StampBentoBox extends StatelessWidget {
                           color: d <= claimedDays
                               ? PixelPalette.sun
                               : PixelPalette.woodDeep,
-                          border:
-                              Border.all(color: PixelPalette.ink, width: 1),
+                          border: Border.all(color: PixelPalette.ink, width: 1),
                         ),
                       ),
                     ),
@@ -449,8 +436,9 @@ class _MicroPillButton extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: PixelType.small(context, color: PixelPalette.woodDeep)
-                        .copyWith(fontWeight: FontWeight.w700),
+                    style:
+                        PixelType.small(context, color: PixelPalette.woodDeep)
+                            .copyWith(fontWeight: FontWeight.w700),
                   ),
             ),
           ],
