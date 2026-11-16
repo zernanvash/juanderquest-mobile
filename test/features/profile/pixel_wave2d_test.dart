@@ -870,7 +870,8 @@ void main() {
           findsOneWidget);
     });
 
-    testWidgets('empty state refreshes', (tester) async {
+    testWidgets('empty state auto-refreshes and has no manual refresh button',
+        (tester) async {
       late _SubmissionFixture fixture;
       await _pump(
         tester,
@@ -879,8 +880,7 @@ void main() {
             fixture = _SubmissionFixture(client, SubmissionState()),
       );
       expect(find.byKey(const ValueKey('submissions_empty')), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('submissions_refresh')));
-      await tester.pump();
+      expect(find.byKey(const ValueKey('submissions_refresh')), findsNothing);
       expect(fixture.fetches, greaterThanOrEqualTo(1));
     });
 
@@ -994,7 +994,7 @@ void main() {
       await _pump(tester, const AffiliateApplicationScreen(),
           apiClient: stubClient());
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Partner with local tourism'), findsOneWidget);
+      expect(find.text('PARTNER WITH LOCAL TOURISM'), findsOneWidget);
       expect(find.text('Submit Application'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('affiliate_submit')));
       await tester.pump();

@@ -10,7 +10,6 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/config/map_config.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -18,6 +17,7 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -517,23 +517,9 @@ class _AffiliateApplicationScreenState
                                     ],
                                   ),
                                   SizedBox(height: grid.px(3)),
-                                  Row(
-                                    children: [
-                                      const SizedBox.square(
-                                        dimension: 20,
-                                        child: FittedBox(
-                                          child: PixelSprite(
-                                              DesignerArt.handshake,
-                                              scale: 1),
-                                        ),
-                                      ),
-                                      SizedBox(width: grid.px(1)),
-                                      Expanded(
-                                        child: Text(
-                                            'How would you like to participate?',
-                                            style: PixelType.title(context)),
-                                      ),
-                                    ],
+                                  const PixelSectionTitle(
+                                    'How would you like to participate?',
+                                    icon: DesignerArt.handshake,
                                   ),
                                   SizedBox(height: grid.px(1)),
                                   for (final entry in _affiliateGoals.entries)
@@ -654,8 +640,7 @@ class _AffiliateApplicationScreenState
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text('$number. $title',
-                          style: PixelType.title(context)),
+                      child: PixelSectionTitle('$number. $title'),
                     ),
                     PixelChip(
                       done ? 'DONE' : 'OPEN',
@@ -693,23 +678,10 @@ class _AffiliateApplicationScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const SizedBox.square(
-                dimension: 24,
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: PixelSprite(DesignerArt.salakot, scale: 1),
-                ),
-              ),
-              SizedBox(width: grid.px(2)),
-              Expanded(
-                child: Text(
-                  'Partner with local tourism',
-                  style: PixelType.title(context, color: PixelPalette.paper),
-                ),
-              ),
-            ],
+          const PixelSectionTitle(
+            'Partner with local tourism',
+            icon: DesignerArt.salakot,
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(1)),
           Text(
@@ -730,9 +702,11 @@ class _AffiliateApplicationScreenState
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text('Application status',
-                    style: PixelType.title(context)),
+              const Expanded(
+                child: PixelSectionTitle(
+                  'Application status',
+                  icon: DesignerArt.handshake,
+                ),
               ),
               PixelChip(status.replaceAll('_', ' ').toUpperCase()),
             ],
@@ -848,8 +822,8 @@ class _AffiliateApplicationScreenState
                 });
                 _moveMap(LatLng(lat, lng), 12);
               },
-              child: PixelPanel(
-                style: PixelBoxStyle.parchment,
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: grid.px(2)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -871,7 +845,7 @@ class _AffiliateApplicationScreenState
                 ),
               ),
             ),
-            SizedBox(height: grid.px(2)),
+            Container(height: grid.unit, color: PixelPalette.paperDim),
           ],
         ],
         SizedBox(height: grid.px(2)),

@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../models/cultural_quiz_model.dart';
 import '../providers/cultural_quiz_provider.dart';
@@ -124,9 +124,9 @@ class _NearbyQuizzesScreenState extends ConsumerState<NearbyQuizzesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const PixelSectionTitle(
                         'No cultural quizzes nearby yet',
-                        style: PixelType.title(context),
+                        icon: DesignerArt.questionMark,
                       ),
                       SizedBox(height: grid.px(1)),
                       Text(
@@ -149,58 +149,100 @@ class _NearbyQuizzesScreenState extends ConsumerState<NearbyQuizzesScreen> {
                 ),
               ] else ...[
                 if (inRange.isNotEmpty) ...[
-                  Text(
-                    'Ready to play',
-                    key: const ValueKey('quiz_radar_section_ready'),
-                    style: PixelType.title(context),
-                  ),
-                  SizedBox(height: grid.px(2)),
-                  for (final quiz in inRange) ...[
-                    _QuizRadarCard(
-                      quiz: quiz,
-                      mode: _QuizCardMode.ready,
-                      onAction: () =>
-                          context.push('/cultural-quizzes/${quiz.quizId}'),
+                  PixelPanel(
+                    style: PixelBoxStyle.parchment,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        PixelSectionTitle(
+                          'Ready to play',
+                          key: const ValueKey('quiz_radar_section_ready'),
+                          icon: DesignerArt.questMarker,
+                          value: '${inRange.length}',
+                          valueColor: PixelPalette.greenDark,
+                        ),
+                        SizedBox(height: grid.px(1)),
+                        for (var i = 0; i < inRange.length; i++) ...[
+                          if (i > 0)
+                            Container(
+                              height: grid.unit,
+                              color: PixelPalette.paperDim,
+                            ),
+                          _QuizRadarRow(
+                            quiz: inRange[i],
+                            mode: _QuizCardMode.ready,
+                            onAction: () => context
+                                .push('/cultural-quizzes/${inRange[i].quizId}'),
+                          ),
+                        ],
+                      ],
                     ),
-                    SizedBox(height: grid.px(2)),
-                  ],
-                  SizedBox(height: grid.px(2)),
+                  ),
+                  SizedBox(height: grid.px(3)),
                 ],
                 if (approaching.isNotEmpty) ...[
-                  Text(
-                    'Walk closer',
-                    key: const ValueKey('quiz_radar_section_approaching'),
-                    style: PixelType.title(context),
-                  ),
-                  SizedBox(height: grid.px(2)),
-                  for (final quiz in approaching) ...[
-                    _QuizRadarCard(
-                      quiz: quiz,
-                      mode: _QuizCardMode.approaching,
-                      onAction: () => context.push(
-                        '/navigate?name=${Uri.encodeComponent(quiz.destinationName)}&address=${Uri.encodeComponent(quiz.municipality)}',
-                      ),
+                  PixelPanel(
+                    style: PixelBoxStyle.parchment,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        PixelSectionTitle(
+                          'Walk closer',
+                          key: const ValueKey('quiz_radar_section_approaching'),
+                          icon: DesignerArt.navMap,
+                          value: '${approaching.length}',
+                          valueColor: PixelPalette.greenDark,
+                        ),
+                        SizedBox(height: grid.px(1)),
+                        for (var i = 0; i < approaching.length; i++) ...[
+                          if (i > 0)
+                            Container(
+                              height: grid.unit,
+                              color: PixelPalette.paperDim,
+                            ),
+                          _QuizRadarRow(
+                            quiz: approaching[i],
+                            mode: _QuizCardMode.approaching,
+                            onAction: () => context.push(
+                              '/navigate?name=${Uri.encodeComponent(approaching[i].destinationName)}&address=${Uri.encodeComponent(approaching[i].municipality)}',
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    SizedBox(height: grid.px(2)),
-                  ],
-                  SizedBox(height: grid.px(2)),
+                  ),
+                  SizedBox(height: grid.px(3)),
                 ],
                 if (completed.isNotEmpty) ...[
-                  Text(
-                    'Completed',
-                    key: const ValueKey('quiz_radar_section_completed'),
-                    style: PixelType.title(context),
-                  ),
-                  SizedBox(height: grid.px(2)),
-                  for (final quiz in completed) ...[
-                    _QuizRadarCard(
-                      quiz: quiz,
-                      mode: _QuizCardMode.completed,
-                      onAction: () =>
-                          context.push('/cultural-quizzes/${quiz.quizId}'),
+                  PixelPanel(
+                    style: PixelBoxStyle.parchment,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        PixelSectionTitle(
+                          'Completed',
+                          key: const ValueKey('quiz_radar_section_completed'),
+                          icon: DesignerArt.plazaTrophy,
+                          value: '${completed.length}',
+                          valueColor: PixelPalette.greenDark,
+                        ),
+                        SizedBox(height: grid.px(1)),
+                        for (var i = 0; i < completed.length; i++) ...[
+                          if (i > 0)
+                            Container(
+                              height: grid.unit,
+                              color: PixelPalette.paperDim,
+                            ),
+                          _QuizRadarRow(
+                            quiz: completed[i],
+                            mode: _QuizCardMode.completed,
+                            onAction: () => context.push(
+                                '/cultural-quizzes/${completed[i].quizId}'),
+                          ),
+                        ],
+                      ],
                     ),
-                    SizedBox(height: grid.px(2)),
-                  ],
+                  ),
                 ],
               ],
             ],
@@ -237,34 +279,15 @@ class _RadarHeaderPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const SizedBox(
-                width: 40,
-                height: 40,
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: PixelSprite(DesignerArt.questionMark, scale: 1),
-                ),
-              ),
-              SizedBox(width: grid.px(2)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quiz Radar',
-                      style: PixelType.title(context, color: PixelPalette.paper),
-                    ),
-                    SizedBox(height: grid.px(1)),
-                    Text(
-                      originLabel,
-                      style: PixelType.small(context, color: PixelPalette.cream),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const PixelSectionTitle(
+            'Quiz radar',
+            icon: DesignerArt.questionMark,
+            colors: PixelText3DColors.cream,
+          ),
+          SizedBox(height: grid.px(1)),
+          Text(
+            originLabel,
+            style: PixelType.small(context, color: PixelPalette.cream),
           ),
           SizedBox(height: grid.px(2)),
           Wrap(
@@ -292,8 +315,8 @@ class _RadarHeaderPanel extends StatelessWidget {
 
 enum _QuizCardMode { ready, approaching, completed }
 
-class _QuizRadarCard extends StatelessWidget {
-  const _QuizRadarCard({
+class _QuizRadarRow extends StatelessWidget {
+  const _QuizRadarRow({
     required this.quiz,
     required this.mode,
     required this.onAction,
@@ -309,10 +332,6 @@ class _QuizRadarCard extends StatelessWidget {
     final isReady = mode == _QuizCardMode.ready;
     final isApproaching = mode == _QuizCardMode.approaching;
 
-    final panelStyle = isReady ? PixelBoxStyle.green : PixelBoxStyle.parchment;
-    final titleColor = isReady ? PixelPalette.paper : PixelPalette.ink;
-    final subColor = isReady ? PixelPalette.cream : PixelPalette.slate;
-
     final String distanceLine = isReady
         ? '${quiz.distanceMeters}m away (inside ${quiz.radiusMeters}m zone)'
         : isApproaching
@@ -325,8 +344,8 @@ class _QuizRadarCard extends StatelessWidget {
             ? 'ROUTE'
             : 'REPLAY · 0 XP';
 
-    return PixelPanel(
-      style: panelStyle,
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -336,7 +355,7 @@ class _QuizRadarCard extends StatelessWidget {
             children: [
               PixelChip(
                 quiz.language.toUpperCase(),
-                style: PixelBoxStyle.parchment,
+                style: PixelBoxStyle.slot,
               ),
               if (isReady || isApproaching)
                 PixelChip(
@@ -354,17 +373,20 @@ class _QuizRadarCard extends StatelessWidget {
           SizedBox(height: grid.px(1)),
           Text(
             quiz.title,
-            style: PixelType.title(context, color: titleColor),
+            style: PixelType.title(
+              context,
+              color: isReady ? PixelPalette.greenDark : PixelPalette.ink,
+            ),
           ),
           SizedBox(height: grid.px(1)),
           Text(
             '${quiz.destinationName} · $distanceLine',
-            style: PixelType.body(context, color: subColor),
+            style: PixelType.body(context, color: PixelPalette.slate),
           ),
           SizedBox(height: grid.px(2)),
           PixelButton(
             label: buttonLabel,
-            style: isReady ? PixelBoxStyle.gold : PixelBoxStyle.parchment,
+            style: isReady ? PixelBoxStyle.green : PixelBoxStyle.gold,
             expand: true,
             onPressed: onAction,
           ),

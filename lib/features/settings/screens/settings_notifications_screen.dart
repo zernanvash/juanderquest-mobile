@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/l10n/app_language.dart';
 import '../../../core/network/api_failure.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -176,51 +178,85 @@ class _SettingsNotificationsScreenState
                           ),
                         ],
                         if (values != null)
-                          for (final p in _prefs) ...[
-                            PixelPanel(
-                              key: ValueKey('notif_${p.key}'),
-                              style: PixelBoxStyle.parchment,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          tr(context, en: p.en, tl: p.tl),
-                                          style: PixelType.title(context),
-                                        ),
-                                        Text(
-                                          tr(
-                                            context,
-                                            en: p.hintEn,
-                                            tl: p.hintTl,
+                          PixelPanel(
+                            style: PixelBoxStyle.parchment,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                PixelSectionTitle(
+                                  tr(
+                                    context,
+                                    en: 'Notification alerts',
+                                    tl: 'Mga abiso',
+                                  ),
+                                  icon: DesignerArt.notifBell,
+                                  value:
+                                      '${values.values.where((v) => v).length}/${_prefs.length}',
+                                  valueColor: PixelPalette.greenDark,
+                                ),
+                                SizedBox(height: grid.px(1)),
+                                for (var i = 0; i < _prefs.length; i++) ...[
+                                  if (i > 0)
+                                    Container(
+                                      height: grid.unit,
+                                      color: PixelPalette.paperDim,
+                                    ),
+                                  KeyedSubtree(
+                                    key: ValueKey('notif_${_prefs[i].key}'),
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: grid.px(2)),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  tr(
+                                                    context,
+                                                    en: _prefs[i].en,
+                                                    tl: _prefs[i].tl,
+                                                  ),
+                                                  style:
+                                                      PixelType.title(context),
+                                                ),
+                                                Text(
+                                                  tr(
+                                                    context,
+                                                    en: _prefs[i].hintEn,
+                                                    tl: _prefs[i].hintTl,
+                                                  ),
+                                                  style: PixelType.small(
+                                                    context,
+                                                    color: PixelPalette.slate,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                          style: PixelType.small(
-                                            context,
-                                            color: PixelPalette.slate,
+                                          SizedBox(width: grid.px(2)),
+                                          PixelSwitch(
+                                            key: ValueKey(
+                                                'notif_switch_${_prefs[i].key}'),
+                                            value: values[_prefs[i].key]!,
+                                            semanticLabel: _prefs[i].en,
+                                            onChanged: (v) {
+                                              if (!_saving
+                                                  .contains(_prefs[i].key)) {
+                                                _set(_prefs[i].key, v);
+                                              }
+                                            },
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  SizedBox(width: grid.px(2)),
-                                  PixelSwitch(
-                                    key: ValueKey('notif_switch_${p.key}'),
-                                    value: values[p.key]!,
-                                    semanticLabel: p.en,
-                                    onChanged: (v) {
-                                      if (!_saving.contains(p.key)) {
-                                        _set(p.key, v);
-                                      }
-                                    },
-                                  ),
                                 ],
-                              ),
+                              ],
                             ),
-                            SizedBox(height: grid.px(2)),
-                          ],
+                          ),
                       ],
                     ),
                   ),

@@ -10,6 +10,7 @@ import '../../core/pixel/pixel_controls.dart';
 import '../../core/pixel/pixel_feedback.dart';
 import '../../core/pixel/pixel_grid.dart';
 import '../../core/pixel/pixel_nav.dart';
+import '../../core/pixel/pixel_text_3d.dart';
 import '../../core/pixel/pixel_text.dart';
 import '../../core/services/push_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -149,11 +150,24 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                             onPressed: () => context.push('/laro'),
                           ),
                           SizedBox(height: grid.px(4)),
-                          _feedHeader(context, grid),
-                          SizedBox(height: grid.px(2)),
                           feedAsync.when(
-                            loading: () => const Center(
-                                child: PixelLoader(label: 'Loading activity')),
+                            loading: () => PixelPanel(
+                              style: PixelBoxStyle.parchment,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const PixelSectionTitle(
+                                    'Live explorer activity',
+                                    icon: DesignerArt.navExplore,
+                                  ),
+                                  SizedBox(height: grid.px(3)),
+                                  const Center(
+                                    child: PixelLoader(
+                                        label: 'Loading activity'),
+                                  ),
+                                ],
+                              ),
+                            ),
                             error: (err, _) => _standingsError(
                               context,
                               grid,
@@ -163,20 +177,54 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                             ),
                             data: (activities) {
                               if (activities.isEmpty) {
-                                return const PixelEmptyState(
-                                  key: ValueKey('plaza_feed_empty'),
-                                  title: 'No activities yet',
-                                  message:
-                                      'No activities found. Explore quests to appear on the Plaza!',
+                                return PixelPanel(
+                                  style: PixelBoxStyle.parchment,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      const PixelSectionTitle(
+                                        'Live explorer activity',
+                                        icon: DesignerArt.navExplore,
+                                        value: '0',
+                                        valueColor: PixelPalette.greenDark,
+                                      ),
+                                      SizedBox(height: grid.px(2)),
+                                      const PixelEmptyState(
+                                        key: ValueKey('plaza_feed_empty'),
+                                        title: 'No activities yet',
+                                        message:
+                                            'No activities found. Explore quests to appear on the Plaza!',
+                                      ),
+                                    ],
+                                  ),
                                 );
                               }
-                              return Column(
-                                children: [
-                                  for (final activity in activities) ...[
-                                    _activity(context, grid, activity),
-                                    SizedBox(height: grid.px(2)),
+                              return PixelPanel(
+                                style: PixelBoxStyle.parchment,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    PixelSectionTitle(
+                                      'Live explorer activity',
+                                      icon: DesignerArt.navExplore,
+                                      value: '${activities.length}',
+                                      valueColor: PixelPalette.greenDark,
+                                    ),
+                                    SizedBox(height: grid.px(1)),
+                                    for (var i = 0;
+                                        i < activities.length;
+                                        i++) ...[
+                                      if (i > 0)
+                                        Container(
+                                          height: grid.unit,
+                                          color: PixelPalette.paperDim,
+                                        ),
+                                      _activity(context, grid, activities[i]),
+                                    ],
                                   ],
-                                ],
+                                ),
                               );
                             },
                           ),
@@ -199,7 +247,10 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Turn on Plaza alerts', style: PixelType.title(context)),
+          const PixelSectionTitle(
+            'Turn on Plaza alerts',
+            icon: DesignerArt.notifBell,
+          ),
           SizedBox(height: grid.px(1)),
           Text(
             'Know immediately when someone passes your rank.',
@@ -357,10 +408,6 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
     );
   }
 
-  Widget _feedHeader(BuildContext context, PixelGrid grid) {
-    return Text('Live explorer activity', style: PixelType.title(context));
-  }
-
   Widget _standings(
       BuildContext context, PixelGrid grid, Map<String, dynamic> data) {
     final entriesRaw = data['entries'] as List<dynamic>? ?? [];
@@ -377,7 +424,10 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Which town are you from?', style: PixelType.title(context)),
+            const PixelSectionTitle(
+              'Which town are you from?',
+              icon: DesignerArt.spotMarker,
+            ),
             SizedBox(height: grid.px(1)),
             Text(
               'Set your home town to compete with explorers from there, wherever you travel.',
@@ -401,121 +451,126 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (me != null) ...[
-          PixelPanel(
-            style: PixelBoxStyle.green,
-            child: Row(
-              children: [
-                PixelChip('#${me.rank}',
-                    style: PixelBoxStyle.gold),
-                SizedBox(width: grid.px(2)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        me.displayName,
-                        style: PixelType.title(
-                          context,
-                          color: PixelPalette.white,
-                        ),
-                      ),
-                      Text(
-                        '${me.score} pts · ${me.quests} ${me.quests == 1 ? 'quest' : 'quests'}',
-                        style: PixelType.body(
-                          context,
-                          color: PixelPalette.cream,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (me.delta != null)
-                  Text(
-                    me.delta! > 0
-                        ? '+${me.delta}'
-                        : (me.delta! < 0 ? '${me.delta}' : '-'),
-                    style: PixelType.numbers(
-                      context,
-                      color: PixelPalette.white,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          SizedBox(height: grid.px(2)),
-        ],
-        for (final scout in entries) ...[
-          PixelPanel(
-            style: scout.isSelf
-                ? PixelBoxStyle.green
-                : PixelBoxStyle.parchment,
-            child: Row(
-              children: [
-                PixelChip(
-                  '#${scout.rank}',
-                  style: scout.rank <= 3
-                      ? PixelBoxStyle.gold
-                      : PixelBoxStyle.slot,
-                ),
-                SizedBox(width: grid.px(2)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        scout.displayName,
-                        maxLines: 2,
-                        style: PixelType.title(
-                          context,
-                          color: scout.isSelf
-                              ? PixelPalette.white
-                              : PixelPalette.ink,
-                        ),
-                      ),
-                      Text(
-                        '${scout.homeTown ?? 'Pangasinan'} · ${scout.quests} ${scout.quests == 1 ? 'quest' : 'quests'}',
-                        style: PixelType.body(
-                          context,
-                          color: scout.isSelf
-                              ? PixelPalette.cream
-                              : PixelPalette.slate,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: grid.px(2)),
-                Text(
-                  '${scout.score} pts',
-                  style: PixelType.numbers(
-                    context,
-                    color: scout.isSelf
-                        ? PixelPalette.white
-                        : PixelPalette.greenDark,
-                  ),
-                ),
-              ],
-            ),
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PixelSectionTitle(
+            'Standings',
+            icon: DesignerArt.plazaTrophy,
+            value: '${entries.length}',
+            valueColor: PixelPalette.greenDark,
           ),
           SizedBox(height: grid.px(1)),
+          if (me != null) ...[
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+              child: Row(
+                children: [
+                  PixelChip('#${me.rank}', style: PixelBoxStyle.gold),
+                  SizedBox(width: grid.px(2)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          me.displayName,
+                          style: PixelType.title(
+                            context,
+                            color: PixelPalette.greenDark,
+                          ),
+                        ),
+                        Text(
+                          '${me.score} pts · ${me.quests} ${me.quests == 1 ? 'quest' : 'quests'}',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (me.delta != null)
+                    Text(
+                      me.delta! > 0
+                          ? '+${me.delta}'
+                          : (me.delta! < 0 ? '${me.delta}' : '-'),
+                      style: PixelType.numbers(
+                        context,
+                        color: PixelPalette.greenDark,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (entries.isNotEmpty)
+              Container(height: grid.unit, color: PixelPalette.paperDim),
+          ],
+          for (var i = 0; i < entries.length; i++) ...[
+            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+              child: Row(
+                children: [
+                  PixelChip(
+                    '#${entries[i].rank}',
+                    style: entries[i].rank <= 3
+                        ? PixelBoxStyle.gold
+                        : PixelBoxStyle.slot,
+                  ),
+                  SizedBox(width: grid.px(2)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entries[i].displayName,
+                          maxLines: 2,
+                          style: PixelType.title(
+                            context,
+                            color: entries[i].isSelf
+                                ? PixelPalette.greenDark
+                                : PixelPalette.ink,
+                          ),
+                        ),
+                        Text(
+                          '${entries[i].homeTown ?? 'Pangasinan'} · ${entries[i].quests} ${entries[i].quests == 1 ? 'quest' : 'quests'}',
+                          style: PixelType.body(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: grid.px(2)),
+                  Text(
+                    '${entries[i].score} pts',
+                    style: PixelType.numbers(
+                      context,
+                      color: PixelPalette.greenDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
   Widget _activity(
       BuildContext context, PixelGrid grid, ActivityItemModel activity) {
     final formatted = formatActivityText(activity);
-    return PixelPanel(
+    return KeyedSubtree(
       key: ValueKey('plaza_activity_${activity.id}'),
-      style: PixelBoxStyle.parchment,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -612,6 +667,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
             ],
           ),
         ],
+      ),
       ),
     );
   }

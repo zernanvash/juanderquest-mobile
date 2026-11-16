@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_release.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -9,6 +10,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../app_update/providers/app_update_provider.dart';
@@ -105,12 +107,10 @@ class SettingsUpdatesScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const PixelSectionTitle(
                                 'App System & Updates',
-                                style: PixelType.title(
-                                  context,
-                                  color: PixelPalette.paper,
-                                ),
+                                icon: DesignerArt.navShop,
+                                colors: PixelText3DColors.cream,
                               ),
                               SizedBox(height: grid.px(1)),
                               Text(
@@ -132,18 +132,10 @@ class SettingsUpdatesScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Wrap(
-                                  spacing: grid.px(2),
-                                  runSpacing: grid.px(1),
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Text('Check for updates',
-                                        style: PixelType.title(context)),
-                                    PixelChip(
-                                      version,
-                                      style: PixelBoxStyle.slot,
-                                    ),
-                                  ],
+                                PixelSectionTitle(
+                                  'Check for updates',
+                                  value: version,
+                                  valueColor: PixelPalette.greenDark,
                                 ),
                                 SizedBox(height: grid.px(1)),
                                 Text(

@@ -112,6 +112,8 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(gov, findsOneWidget);
+    await tester.ensureVisible(gov);
+    await tester.pump();
     await tester.tap(gov);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));

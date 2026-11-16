@@ -457,7 +457,7 @@ void main() {
         quizDetail: (ref, key) async => _quiz,
       );
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('Bolinao Coastal Heritage'), findsOneWidget);
+      expect(find.text('BOLINAO COASTAL HERITAGE'), findsOneWidget);
       expect(find.text('Patar Beach · Bolinao'), findsOneWidget);
       expect(find.text('+25 Explorer XP'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('quiz_start')));
@@ -610,7 +610,7 @@ void main() {
         ),
       );
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('Visit the community winner'), findsOneWidget);
+      expect(find.text('VISIT THE COMMUNITY WINNER'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('choice_open_quest')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
@@ -765,8 +765,8 @@ void main() {
           GovernanceState(proposals: [_proposal]),
         ),
       );
-      expect(find.text('Voting System Retired'), findsOneWidget);
-      expect(find.text('Historical Proposals (Archive)'), findsOneWidget);
+      expect(find.text('VOTING SYSTEM RETIRED'), findsOneWidget);
+      expect(find.text('HISTORICAL PROPOSALS'), findsOneWidget);
       expect(find.text('Patar White Beach Eco Trail'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('vote_choice')));
       await tester.pump();
@@ -808,7 +808,7 @@ void main() {
         governance: (ref) => _GovFixture(ref, GovernanceState()),
       );
       expect(find.bySemanticsLabel('Suggest Location'), findsNothing);
-      expect(find.text('Historical Proposals (Archive)'), findsOneWidget);
+      expect(find.text('HISTORICAL PROPOSALS'), findsOneWidget);
     });
   });
 
@@ -967,7 +967,7 @@ void main() {
         push: push,
         standings: _standings,
       );
-      expect(find.text('Turn on Plaza alerts'), findsOneWidget);
+      expect(find.text('TURN ON PLAZA ALERTS'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('plaza_alerts_on')));
       await tester.pump();
       expect(push.requests, 1);

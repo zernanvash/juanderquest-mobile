@@ -12,6 +12,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../pixel/juanchoice_pixel_art.dart';
@@ -150,17 +151,10 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const PixelSprite(DesignerArt.juanChoice, scale: 2),
-              SizedBox(width: grid.px(2)),
-              Expanded(
-                child: Text(
-                  'Community Choice',
-                  style: PixelType.title(context, color: PixelPalette.paper),
-                ),
-              ),
-            ],
+          const PixelSectionTitle(
+            'Community choice',
+            icon: DesignerArt.juanChoice,
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(1)),
           Text(
@@ -234,28 +228,12 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
                     ),
                   ),
                   SizedBox(height: grid.px(2)),
-                  PixelPanel(
-                    style: PixelBoxStyle.gold,
-                    padding: 1,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'OPEN BALLOT',
-                            style: PixelType.small(
-                              context,
-                              color: PixelPalette.ink,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '›',
-                          style: PixelType.title(
-                            context,
-                            color: PixelPalette.ink,
-                          ),
-                        ),
-                      ],
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: PixelChip(
+                      'OPEN BALLOT',
+                      style: PixelBoxStyle.gold,
+                      textColor: PixelPalette.ink,
                     ),
                   ),
                 ],
@@ -268,7 +246,10 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Next community vote', style: PixelType.title(context)),
+                const PixelSectionTitle(
+                  'Next community vote',
+                  icon: DesignerArt.juanChoice,
+                ),
                 SizedBox(height: grid.px(1)),
                 Text(
                   data.nextOpensAt == null
@@ -300,7 +281,14 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Previous results', style: PixelType.title(context)),
+              PixelSectionTitle(
+                'Previous results',
+                icon: DesignerArt.plazaTrophy,
+                value: data.previous != null
+                    ? '${data.previous!.validBallots}'
+                    : null,
+                valueColor: PixelPalette.greenDark,
+              ),
               SizedBox(height: grid.px(1)),
               if (data.previous == null)
                 Text(
@@ -376,7 +364,12 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Your community journey', style: PixelType.title(context)),
+          PixelSectionTitle(
+            'Your community journey',
+            icon: DesignerArt.questMarker,
+            value: summary.currentStreak > 0 ? '${summary.currentStreak}' : null,
+            valueColor: PixelPalette.greenDark,
+          ),
           SizedBox(height: grid.px(1)),
           PixelText.rich(
             'Streak: {green:${summary.currentStreak} rounds} · Longest: {gold:${summary.longestStreak}}',
@@ -440,9 +433,10 @@ class _JuanChoiceScreenState extends ConsumerState<JuanChoiceScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const PixelSectionTitle(
             'Visit the community winner',
-            style: PixelType.title(context, color: PixelPalette.white),
+            icon: DesignerArt.spotMarker,
+            colors: PixelText3DColors.cream,
           ),
           SizedBox(height: grid.px(1)),
           Text(quest.spotName,
@@ -940,130 +934,152 @@ class _JuanChoiceDetailScreenState extends ConsumerState<JuanChoiceDetailScreen>
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
         SizedBox(height: grid.px(2)),
-        for (final entry in (data.standings as List).asMap().entries) ...[
-          Builder(
-            builder: (context) {
-              final int index = entry.key;
-              final dynamic standing = entry.value;
-              final int? votes = standing.votes as int?;
-              final bool isMyVote = myCandidateId == standing.candidateId;
-              final bool isFocused =
-                  standing.candidateId == widget.focusCandidateId;
-              final bool isLeader =
-                  !tallyHidden && maxVotes > 0 && votes == maxVotes;
-              final bool isFirstRank = !tallyHidden && index == 0 && maxVotes > 0;
-              final PixelBoxStyle cardStyle = isFocused || isMyVote
-                  ? PixelBoxStyle.gold.copyWith(
-                      fill: PixelPalette.cream,
-                      outline: PixelPalette.goldDeep,
-                    )
-                  : PixelBoxStyle.parchment;
-              final int sharePct = (!tallyHidden && votes != null && totalVotes > 0)
-                  ? ((votes * 100) / totalVotes).round()
-                  : 0;
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PixelSectionTitle(
+                'Standings',
+                icon: DesignerArt.juanChoice,
+                value: '${(data.standings as List).length}',
+                valueColor: PixelPalette.greenDark,
+              ),
+              SizedBox(height: grid.px(1)),
+              for (final entry in (data.standings as List).asMap().entries) ...[
+                if (entry.key > 0)
+                  Container(height: grid.unit, color: PixelPalette.paperDim),
+                Builder(
+                  builder: (context) {
+                    final int index = entry.key;
+                    final dynamic standing = entry.value;
+                    final int? votes = standing.votes as int?;
+                    final bool isMyVote = myCandidateId == standing.candidateId;
+                    final bool isFocused =
+                        standing.candidateId == widget.focusCandidateId;
+                    final bool isLeader =
+                        !tallyHidden && maxVotes > 0 && votes == maxVotes;
+                    final bool isFirstRank =
+                        !tallyHidden && index == 0 && maxVotes > 0;
+                    final int sharePct =
+                        (!tallyHidden && votes != null && totalVotes > 0)
+                            ? ((votes * 100) / totalVotes).round()
+                            : 0;
 
-              return PixelPanel(
-                key: isFocused
-                    ? _focusKey
-                    : ValueKey('choice_candidate_${standing.candidateId}'),
-                style: cardStyle,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Ranks only mean something once a vote is in; at 0 the
-                    // API order is just candidate id.
-                    if ((!tallyHidden && maxVotes > 0) || isMyVote) ...[
-                      Wrap(
-                        spacing: grid.px(1),
-                        runSpacing: grid.px(1),
-                        children: [
-                          if (!tallyHidden && maxVotes > 0)
-                            PixelChip(
-                              '#${index + 1}',
-                              style: isFirstRank
-                                  ? PixelBoxStyle.gold
-                                  : PixelBoxStyle.stone,
-                              icon: isFirstRank ? DesignerArt.plazaTrophy : null,
-                              iconScale: 2,
-                              textColor: isFirstRank
-                                  ? PixelPalette.ink
-                                  : PixelPalette.white,
+                    return KeyedSubtree(
+                      key: isFocused
+                          ? _focusKey
+                          : ValueKey('choice_candidate_${standing.candidateId}'),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Ranks only mean something once a vote is in; at 0 the
+                            // API order is just candidate id.
+                            if ((!tallyHidden && maxVotes > 0) || isMyVote) ...[
+                              Wrap(
+                                spacing: grid.px(1),
+                                runSpacing: grid.px(1),
+                                children: [
+                                  if (!tallyHidden && maxVotes > 0)
+                                    PixelChip(
+                                      '#${index + 1}',
+                                      style: isFirstRank
+                                          ? PixelBoxStyle.gold
+                                          : PixelBoxStyle.stone,
+                                      icon: isFirstRank
+                                          ? DesignerArt.plazaTrophy
+                                          : null,
+                                      iconScale: 2,
+                                      textColor: isFirstRank
+                                          ? PixelPalette.ink
+                                          : PixelPalette.white,
+                                    ),
+                                  if (isMyVote)
+                                    const PixelChip(
+                                      'YOUR VOTE',
+                                      style: PixelBoxStyle.green,
+                                      icon: JuanChoicePixelArt.stampSeal,
+                                      iconScale: 2,
+                                      textColor: PixelPalette.white,
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: grid.px(1)),
+                            ],
+                            Text(
+                              standing.spotName,
+                              maxLines: 2,
+                              style: PixelType.title(
+                                context,
+                                color: isMyVote || isFocused
+                                    ? PixelPalette.greenDark
+                                    : PixelPalette.ink,
+                              ),
                             ),
-                          if (isMyVote)
-                            const PixelChip(
-                              'YOUR VOTE',
-                              style: PixelBoxStyle.green,
-                              icon: JuanChoicePixelArt.stampSeal,
-                              iconScale: 2,
-                              textColor: PixelPalette.white,
+                            SizedBox(height: grid.px(1)),
+                            PixelStatRow(
+                              'Provisional votes',
+                              tallyHidden || votes == null ? 'Hidden' : '$votes',
+                              style: PixelType.body(context),
+                              labelColor: PixelPalette.slate,
+                              valueColor: PixelPalette.gold,
                             ),
-                        ],
-                      ),
-                      SizedBox(height: grid.px(1)),
-                    ],
-                    Text(
-                      standing.spotName,
-                      maxLines: 2,
-                      style: PixelType.title(context),
-                    ),
-                    SizedBox(height: grid.px(1)),
-                    PixelStatRow(
-                      'Provisional votes',
-                      tallyHidden || votes == null ? 'Hidden' : '$votes',
-                      style: PixelType.body(context),
-                      labelColor: PixelPalette.slate,
-                      valueColor: PixelPalette.gold,
-                    ),
-                    if (!tallyHidden && votes != null) ...[
-                      SizedBox(height: grid.px(1)),
-                      PixelProgressBar(
-                        value: totalVotes > 0 ? votes / totalVotes : 0.0,
-                        segments: 10,
-                        color: isLeader
-                            ? themeSpec.leadBarColor
-                            : themeSpec.barColor,
-                        height: 4,
-                        showTipGlint: isLeader || isMyVote,
-                      ),
-                      SizedBox(height: grid.px(1)),
-                      Text(
-                        '$sharePct% share',
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
+                            if (!tallyHidden && votes != null) ...[
+                              SizedBox(height: grid.px(1)),
+                              PixelProgressBar(
+                                value: totalVotes > 0 ? votes / totalVotes : 0.0,
+                                segments: 10,
+                                color: isLeader
+                                    ? themeSpec.leadBarColor
+                                    : themeSpec.barColor,
+                                height: 4,
+                                showTipGlint: isLeader || isMyVote,
+                              ),
+                              SizedBox(height: grid.px(1)),
+                              Text(
+                                '$sharePct% share',
+                                style: PixelType.small(
+                                  context,
+                                  color: PixelPalette.slate,
+                                ),
+                              ),
+                            ],
+                            if (authenticated &&
+                                overview?.current?.id == data.campaign.id &&
+                                isOpen &&
+                                data.eligibility?.canVoteNow == true) ...[
+                              SizedBox(height: grid.px(2)),
+                              PixelButton(
+                                label: vote.pending
+                                    ? 'Submitting'
+                                    : data.ballot == null
+                                        ? 'Vote for this place'
+                                        : 'Change vote',
+                                expand: true,
+                                loading: vote.pending,
+                                onPressed: vote.pending
+                                    ? null
+                                    : () => _confirm(
+                                          standing.candidateId,
+                                          standing.spotName,
+                                          data.ballot?.version ?? 0,
+                                          themeSpec,
+                                        ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                    ],
-                    if (authenticated &&
-                        overview?.current?.id == data.campaign.id &&
-                        isOpen &&
-                        data.eligibility?.canVoteNow == true) ...[
-                      SizedBox(height: grid.px(2)),
-                      PixelButton(
-                        label: vote.pending
-                            ? 'Submitting'
-                            : data.ballot == null
-                                ? 'Vote for this place'
-                                : 'Change vote',
-                        expand: true,
-                        loading: vote.pending,
-                        onPressed: vote.pending
-                            ? null
-                            : () => _confirm(
-                                  standing.candidateId,
-                                  standing.spotName,
-                                  data.ballot?.version ?? 0,
-                                  themeSpec,
-                                ),
-                      ),
-                    ],
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
+              ],
+            ],
           ),
-          SizedBox(height: grid.px(2)),
-        ],
+        ),
+        SizedBox(height: grid.px(2)),
         if (overview == null || !overview.votingEnabled)
           Text(
             'Voting is temporarily unavailable.',

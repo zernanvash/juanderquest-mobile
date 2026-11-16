@@ -13,6 +13,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/services/push_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -20,8 +21,10 @@ import '../../app_update/providers/app_update_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../dashboard/home_tips.dart';
+import '../../dashboard/pixel/home_pixel_art.dart';
 import '../../merchant/models/merchant_models.dart';
 import '../../merchant/providers/merchant_hub_provider.dart';
+import '../../vote/pixel/wave3_art.dart';
 import '../home_town.dart';
 
 /// Settings home: short categories that open their own pages, so a new
@@ -74,7 +77,7 @@ class SettingsScreen extends ConsumerWidget {
                               tiles: [
                                 _SettingsTile(
                                   key: const ValueKey('settings_appearance'),
-                                  icon: 'A',
+                                  pixelIcon: DesignerArt.navProfile,
                                   title: tr(context,
                                       en: 'Appearance',
                                       tl: 'Hitsura ng Profile'),
@@ -83,14 +86,14 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_home_town'),
-                                  icon: 'H',
+                                  pixelIcon: DesignerArt.navHome,
                                   title: tr(context,
                                       en: 'Home town', tl: 'Sariling Bayan'),
                                   onTap: () => showHomeTownPicker(context, ref),
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_interests'),
-                                  icon: 'I',
+                                  pixelIcon: DesignerArt.heartLiked,
                                   title: tr(context,
                                       en: 'Travel interests',
                                       tl: 'Hilig sa Paglalakbay'),
@@ -99,7 +102,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_wallet'),
-                                  icon: 'W',
+                                  pixelIcon: DesignerArt.gem,
                                   title: tr(context,
                                       en: 'Web3 Wallet', tl: 'Web3 Wallet'),
                                   // Keeps the testnet disclosure in one word.
@@ -114,7 +117,7 @@ class SettingsScreen extends ConsumerWidget {
                               tiles: [
                                 _SettingsTile(
                                   key: const ValueKey('settings_submissions'),
-                                  icon: 'S',
+                                  pixelIcon: HomePixelArt.stampCheck,
                                   title: tr(context,
                                       en: 'My submissions',
                                       tl: 'Mga Isinumite'),
@@ -122,7 +125,6 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_affiliate'),
-                                  icon: 'M',
                                   pixelIcon: DesignerArt.salakot,
                                   title: merchantHub.label,
                                   onTap: () => context.push(merchantHub.route),
@@ -133,7 +135,7 @@ class SettingsScreen extends ConsumerWidget {
                               tiles: [
                                 _SettingsTile(
                                   key: const ValueKey('settings_language'),
-                                  icon: 'L',
+                                  pixelIcon: DesignerArt.juanChoice,
                                   title:
                                       tr(context, en: 'Language', tl: 'Wika'),
                                   value: ref
@@ -145,7 +147,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_notifications'),
-                                  icon: 'N',
+                                  pixelIcon: DesignerArt.notifBell,
                                   title: tr(context,
                                       en: 'Notifications', tl: 'Mga Abiso'),
                                   onTap: () =>
@@ -154,7 +156,7 @@ class SettingsScreen extends ConsumerWidget {
                                 // Owner 2026-11-16: music and button sounds.
                                 _SettingsTile(
                                   key: const ValueKey('settings_music'),
-                                  icon: 'M',
+                                  pixelIcon: DesignerArt.questMarker,
                                   title: tr(context, en: 'Music', tl: 'Musika'),
                                   value: ref.watch(pixelSettingsProvider).music
                                       ? tr(context, en: 'On', tl: 'Bukas')
@@ -167,7 +169,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_sounds'),
-                                  icon: 'S',
+                                  pixelIcon: DesignerArt.plazaTrophy,
                                   title: tr(context,
                                       en: 'Button sounds',
                                       tl: 'Tunog ng button'),
@@ -182,7 +184,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_text_size'),
-                                  icon: 'T',
+                                  pixelIcon: DesignerArt.search,
                                   title: tr(context,
                                       en: 'Text size', tl: 'Laki ng Teksto'),
                                   value: ref
@@ -196,7 +198,7 @@ class SettingsScreen extends ConsumerWidget {
                                 _SettingsTile(
                                   key: const ValueKey(
                                       'settings_replay_tutorial'),
-                                  icon: 'R',
+                                  pixelIcon: Wave3Art.refresh,
                                   title: tr(context,
                                       en: 'Replay tutorial',
                                       tl: 'Ulitin ang Gabay'),
@@ -212,7 +214,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_updates'),
-                                  icon: 'U',
+                                  pixelIcon: DesignerArt.navShop,
                                   title: tr(context,
                                       en: 'App updates', tl: 'Update ng App'),
                                   value: updateState.hasUpdate
@@ -224,7 +226,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_developer'),
-                                  icon: 'D',
+                                  pixelIcon: DesignerArt.navSettings,
                                   title: tr(context,
                                       en: 'Developer tools',
                                       tl: 'Developer Tools'),
@@ -237,7 +239,7 @@ class SettingsScreen extends ConsumerWidget {
                               tiles: [
                                 _SettingsTile(
                                   key: const ValueKey('settings_about'),
-                                  icon: 'J',
+                                  pixelIcon: DesignerArt.questionMark,
                                   title: tr(context,
                                       en: 'About JuanDerQuest & team',
                                       tl: 'Tungkol sa JuanDerQuest'),
@@ -280,16 +282,12 @@ class SettingsScreen extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PixelPanel(
-            style: PixelBoxStyle.gold,
-            padding: 1,
-            child: CosmeticAvatar(
-              name: user?.displayName ?? 'Traveler',
-              imageUrl: user?.avatarUrl,
-              size: grid.px(22),
-              frame:
-                  user?.cosmetics?['frame']?['asset'] as Map<String, dynamic>?,
-            ),
+          CosmeticAvatar(
+            name: user?.displayName ?? 'Traveler',
+            imageUrl: user?.avatarUrl,
+            size: grid.px(22),
+            frame:
+                user?.cosmetics?['frame']?['asset'] as Map<String, dynamic>?,
           ),
           SizedBox(width: grid.px(2)),
           Expanded(
@@ -411,28 +409,20 @@ class _SettingsGroup extends StatelessWidget {
     final grid = PixelGrid.of(context);
     return Padding(
       padding: EdgeInsets.only(top: grid.px(3)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            title,
-            style: PixelType.small(context, color: PixelPalette.slate),
-          ),
-          SizedBox(height: grid.px(1)),
-          PixelPanel(
-            style: PixelBoxStyle.parchment,
-            padding: 1,
-            child: Column(
-              children: [
-                for (var i = 0; i < tiles.length; i++) ...[
-                  if (i > 0)
-                    Divider(height: grid.px(1), color: PixelPalette.mist),
-                  tiles[i],
-                ],
-              ],
-            ),
-          ),
-        ],
+      child: PixelPanel(
+        style: PixelBoxStyle.parchment,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            PixelSectionTitle(title),
+            SizedBox(height: grid.px(1)),
+            for (var i = 0; i < tiles.length; i++) ...[
+              if (i > 0)
+                Container(height: grid.unit, color: PixelPalette.paperDim),
+              tiles[i],
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -441,16 +431,14 @@ class _SettingsGroup extends StatelessWidget {
 class _SettingsTile extends StatelessWidget {
   const _SettingsTile({
     super.key,
-    required this.icon,
-    this.pixelIcon,
+    required this.pixelIcon,
     required this.title,
     this.value,
     required this.onTap,
     this.highlight = false,
   });
 
-  final String icon;
-  final PixelArt? pixelIcon;
+  final PixelArt pixelIcon;
   final String title;
 
   /// Plan 93b WP-8: one line per row; only status rows show a short value.
@@ -465,34 +453,10 @@ class _SettingsTile extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: grid.px(2),
-          vertical: grid.px(2),
-        ),
+        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
         child: Row(
           children: [
-            PixelPanel(
-              style: PixelBoxStyle.slot,
-              padding: 1,
-              child: SizedBox(
-                width: grid.px(10),
-                child: pixelIcon != null
-                    ? Center(
-                        child: SizedBox.square(
-                          dimension: 20,
-                          child: FittedBox(
-                            fit: BoxFit.contain,
-                            child: PixelSprite(pixelIcon!, scale: 1),
-                          ),
-                        ),
-                      )
-                    : Text(
-                        icon,
-                        textAlign: TextAlign.center,
-                        style: PixelType.title(context),
-                      ),
-              ),
-            ),
+            PixelIconFit(pixelIcon, box: 20),
             SizedBox(width: grid.px(2)),
             Expanded(
               child: Text(

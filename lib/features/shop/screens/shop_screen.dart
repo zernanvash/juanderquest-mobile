@@ -12,6 +12,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/designer_guide.dart';
@@ -653,10 +654,26 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ],
         ),
         SizedBox(height: grid.px(2)),
-        for (var i = 0; i < visibleItems.length; i++) ...[
-          if (i > 0) SizedBox(height: grid.px(2)),
-          _cosmeticCard(context, grid, visibleItems[i], points, live),
-        ],
+        PixelPanel(
+          style: PixelBoxStyle.parchment,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PixelSectionTitle(
+                _filters.firstWhere((f) => f.$1 == _filter).$2,
+                icon: DesignerArt.gem,
+                value: '${visibleItems.length}',
+                valueColor: PixelPalette.greenDark,
+              ),
+              SizedBox(height: grid.px(1)),
+              for (var i = 0; i < visibleItems.length; i++) ...[
+                if (i > 0)
+                  Container(height: grid.unit, color: PixelPalette.paperDim),
+                _cosmeticCard(context, grid, visibleItems[i], points, live),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -670,7 +687,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   ) {
     final banner = item.kind == 'banner';
     final details = Padding(
-      padding: EdgeInsets.all(grid.px(2)),
+      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
       child: Row(
         children: [
           if (!banner) ...[
@@ -728,12 +745,12 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     );
     return GestureDetector(
       key: ValueKey('shop_cosmetic_${item.id}'),
+      behavior: HitTestBehavior.opaque,
       onTap: () => _showCosmeticPreview(item, points),
-      child: PixelPanel(
-        style: PixelBoxStyle.parchment,
-        padding: 2,
-        child: banner
-            ? Column(
+      child: banner
+          ? Padding(
+              padding: EdgeInsets.only(top: grid.px(2)),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(
@@ -765,9 +782,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   ),
                   details,
                 ],
-              )
-            : details,
-      ),
+              ),
+            )
+          : details,
     );
   }
 
@@ -988,13 +1005,24 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         ),
       );
     }
-    return Column(
-      children: [
-        for (var i = 0; i < state.vouchers.length; i++) ...[
-          if (i > 0) SizedBox(height: grid.px(2)),
-          _voucherCard(context, grid, state.vouchers[i], points),
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PixelSectionTitle(
+            'Vouchers',
+            icon: DesignerArt.handshake,
+            value: '${state.vouchers.length}',
+            valueColor: PixelPalette.greenDark,
+          ),
+          SizedBox(height: grid.px(1)),
+          for (var i = 0; i < state.vouchers.length; i++) ...[
+            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+            _voucherCard(context, grid, state.vouchers[i], points),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -1005,93 +1033,84 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     int userPoints,
   ) {
     final canAfford = userPoints >= voucher.costPoints;
-    return PixelPanel(
+    return KeyedSubtree(
       key: ValueKey('shop_voucher_${voucher.id}'),
-      style: PixelBoxStyle.parchment,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minHeight: _offerCardMinHeight,
-          minWidth: double.infinity,
-        ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (voucher.availability == 'preview') ...[
-            PixelPanel(
-              style: PixelBoxStyle.gold.copyWith(shadowPx: 0),
-              padding: 1,
-              child: Text(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (voucher.availability == 'preview') ...[
+              const PixelChip(
                 'Sample offer · Partner coming soon',
-                textAlign: TextAlign.center,
-                style: PixelType.small(context),
+                style: PixelBoxStyle.gold,
               ),
+              SizedBox(height: grid.px(2)),
+            ],
+            Wrap(
+              spacing: grid.px(2),
+              runSpacing: grid.px(1),
+              children: [
+                PixelChip(voucher.category.replaceAll('_', ' '),
+                    style: PixelBoxStyle.slot),
+                MjdqChip(
+                  voucher.costPoints,
+                  style: canAfford
+                      ? PixelBoxStyle.gold
+                      : PixelBoxStyle.slot,
+                ),
+              ],
             ),
             SizedBox(height: grid.px(2)),
-          ],
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            children: [
-              PixelChip(voucher.category.replaceAll('_', ' '),
-                  style: PixelBoxStyle.slot),
-              MjdqChip(
-                voucher.costPoints,
-                style: canAfford
-                    ? PixelBoxStyle.gold
-                    : PixelBoxStyle.slot,
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          Text(voucher.offerTitle, style: PixelType.title(context)),
-          SizedBox(height: grid.px(1)),
-          Text(
-            voucher.merchantName,
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-          Text(
-            voucher.location,
-            style: PixelType.small(context, color: PixelPalette.slate),
-          ),
-          if (voucher.description.isNotEmpty) ...[
-            SizedBox(height: grid.px(2)),
+            Text(voucher.offerTitle, style: PixelType.title(context)),
+            SizedBox(height: grid.px(1)),
             Text(
-              voucher.description,
+              voucher.merchantName,
               style: PixelType.body(context, color: PixelPalette.slate),
             ),
-          ],
-          SizedBox(height: grid.px(3)),
-          if (!voucher.redeemable)
             Text(
-              'Planned offer · ${voucher.costPoints} mJDQ · not redeemable yet',
-              style: PixelType.body(
-                context,
-                color: PixelPalette.slate,
-              ),
-            )
-          else
-            PixelButton(
-              key: ValueKey('shop_redeem_${voucher.id}'),
-              label: canAfford
-                  ? 'Redeem voucher'
-                  : 'Need ${voucher.costPoints - userPoints} more mJDQ',
-              expand: true,
-              onPressed: canAfford && voucher.redeemable
-                  ? () async {
-                      if (!await _walletReady(voucher.offerTitle) ||
-                          !context.mounted) {
-                        return;
-                      }
-                      _showVoucherConfirmationDialog(
-                        context: context,
-                        voucher: voucher,
-                        userPoints: userPoints,
-                      );
-                    }
-                  : null,
+              voucher.location,
+              style: PixelType.small(context, color: PixelPalette.slate),
             ),
-        ],
-      ),
+            if (voucher.description.isNotEmpty) ...[
+              SizedBox(height: grid.px(2)),
+              Text(
+                voucher.description,
+                style: PixelType.body(context, color: PixelPalette.slate),
+              ),
+            ],
+            SizedBox(height: grid.px(3)),
+            if (!voucher.redeemable)
+              Text(
+                'Planned offer · ${voucher.costPoints} mJDQ · not redeemable yet',
+                style: PixelType.body(
+                  context,
+                  color: PixelPalette.slate,
+                ),
+              )
+            else
+              PixelButton(
+                key: ValueKey('shop_redeem_${voucher.id}'),
+                label: canAfford
+                    ? 'Redeem voucher'
+                    : 'Need ${voucher.costPoints - userPoints} more mJDQ',
+                expand: true,
+                onPressed: canAfford && voucher.redeemable
+                    ? () async {
+                        if (!await _walletReady(voucher.offerTitle) ||
+                            !context.mounted) {
+                          return;
+                        }
+                        _showVoucherConfirmationDialog(
+                          context: context,
+                          voucher: voucher,
+                          userPoints: userPoints,
+                        );
+                      }
+                    : null,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1108,28 +1127,31 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         message: 'More shop features are coming soon.',
       );
     }
-    return Column(
-      children: [
-        for (var i = 0; i < state.teasers.length; i++) ...[
-          if (i > 0) SizedBox(height: grid.px(2)),
-          _teaserCard(context, grid, state.teasers[i]),
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PixelSectionTitle(
+            'Coming soon',
+            icon: DesignerArt.navShop,
+            value: '${state.teasers.length}',
+            valueColor: PixelPalette.greenDark,
+          ),
+          SizedBox(height: grid.px(1)),
+          for (var i = 0; i < state.teasers.length; i++) ...[
+            if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+            _teaserCard(context, grid, state.teasers[i]),
+          ],
         ],
-      ],
+      ),
     );
   }
 
-  /// Plan 93b WP-10: teaser and voucher cards share a minimum height.
-  static const _offerCardMinHeight = 120.0;
-
   Widget _teaserCard(BuildContext context, PixelGrid grid, ShopTeaser teaser) {
-    return PixelPanel(
-      style: PixelBoxStyle.parchment,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minHeight: _offerCardMinHeight,
-          minWidth: double.infinity,
-        ),
-        child: Column(
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
@@ -1149,7 +1171,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
         ],
-      ),
       ),
     );
   }
@@ -1199,64 +1220,88 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             'name_color'
           ]) ...[
             if (state.owned.any((owned) => owned.item.kind == kind)) ...[
-              Text(
-                _kindLabel(kind),
-                style: PixelType.title(context),
-              ),
-              SizedBox(height: grid.px(2)),
-              for (final owned
-                  in state.owned.where((o) => o.item.kind == kind)) ...[
-                GestureDetector(
-                  key: ValueKey('shop_owned_${owned.item.id}'),
-                  onTap: () => _showCosmeticPreview(owned.item, 0),
-                  child: PixelPanel(
-                    style: PixelBoxStyle.parchment,
-                    child: Row(
-                      children: [
-                        _cosmeticSwatch(context, grid, owned.item),
-                        SizedBox(width: grid.px(2)),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+              PixelPanel(
+                style: PixelBoxStyle.parchment,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PixelSectionTitle(
+                      _kindLabel(kind),
+                      icon: DesignerArt.gem,
+                      value:
+                          '${state.owned.where((o) => o.item.kind == kind).length}',
+                      valueColor: PixelPalette.greenDark,
+                    ),
+                    SizedBox(height: grid.px(1)),
+                    for (final entry in state.owned
+                        .where((o) => o.item.kind == kind)
+                        .toList()
+                        .asMap()
+                        .entries) ...[
+                      if (entry.key > 0)
+                        Container(
+                          height: grid.unit,
+                          color: PixelPalette.paperDim,
+                        ),
+                      GestureDetector(
+                        key: ValueKey('shop_owned_${entry.value.item.id}'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            _showCosmeticPreview(entry.value.item, 0),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                          child: Row(
                             children: [
-                              Text(owned.item.name,
-                                  style: PixelType.title(context)),
-                              Text(
-                                owned.source == 'achievement'
-                                    ? 'Achievement unlock'
-                                    : owned.source == 'grant'
-                                        ? 'Admin grant'
-                                        : 'Purchased',
-                                style: PixelType.body(
-                                  context,
-                                  color: PixelPalette.slate,
+                              _cosmeticSwatch(
+                                  context, grid, entry.value.item),
+                              SizedBox(width: grid.px(2)),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(entry.value.item.name,
+                                        style: PixelType.title(context)),
+                                    Text(
+                                      entry.value.source == 'achievement'
+                                          ? 'Achievement unlock'
+                                          : entry.value.source == 'grant'
+                                              ? 'Admin grant'
+                                              : 'Purchased',
+                                      style: PixelType.body(
+                                        context,
+                                        color: PixelPalette.slate,
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              SizedBox(width: grid.px(1)),
+                              PixelButton(
+                                key: ValueKey(
+                                    'shop_owned_equip_${entry.value.item.id}'),
+                                label: entry.value.item.equipped
+                                    ? 'Unequip'
+                                    : 'Equip',
+                                variant: PixelButtonVariant.secondary,
+                                onPressed: () async {
+                                  final error = await ref
+                                      .read(cosmeticsProvider.notifier)
+                                      .equip(entry.value.item,
+                                          clear: entry.value.item.equipped);
+                                  if (error != null && context.mounted) {
+                                    showPixelToast(context, error);
+                                  }
+                                },
                               ),
                             ],
                           ),
                         ),
-                        SizedBox(width: grid.px(1)),
-                        PixelButton(
-                          key: ValueKey(
-                              'shop_owned_equip_${owned.item.id}'),
-                          label: owned.item.equipped ? 'Unequip' : 'Equip',
-                          variant: PixelButtonVariant.secondary,
-                          onPressed: () async {
-                            final error = await ref
-                                .read(cosmeticsProvider.notifier)
-                                .equip(owned.item,
-                                    clear: owned.item.equipped);
-                            if (error != null && context.mounted) {
-                              showPixelToast(context, error);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    ],
+                  ],
                 ),
-                SizedBox(height: grid.px(2)),
-              ],
+              ),
+              SizedBox(height: grid.px(2)),
             ],
           ],
         if (!_inventoryVouchers)
@@ -1274,71 +1319,85 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             ),
           )
         else
-          for (final redeemed in voucherState.redeemedVouchers) ...[
-            _redeemedCard(context, grid, redeemed),
-            SizedBox(height: grid.px(2)),
-          ],
+          PixelPanel(
+            style: PixelBoxStyle.parchment,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PixelSectionTitle(
+                  'My vouchers',
+                  icon: DesignerArt.handshake,
+                  value: '${voucherState.redeemedVouchers.length}',
+                  valueColor: PixelPalette.greenDark,
+                ),
+                SizedBox(height: grid.px(1)),
+                for (var i = 0;
+                    i < voucherState.redeemedVouchers.length;
+                    i++) ...[
+                  if (i > 0)
+                    Container(
+                      height: grid.unit,
+                      color: PixelPalette.paperDim,
+                    ),
+                  _redeemedCard(
+                      context, grid, voucherState.redeemedVouchers[i]),
+                ],
+              ],
+            ),
+          ),
       ],
     );
   }
 
   Widget _redeemedCard(
       BuildContext context, PixelGrid grid, RedeemedVoucherModel redeemed) {
-    return PixelPanel(
+    return KeyedSubtree(
       key: ValueKey('shop_redeemed_${redeemed.code}'),
-      style: PixelBoxStyle.parchment,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const PixelChip('Active voucher', style: PixelBoxStyle.green,
-                  textColor: PixelPalette.white),
-              Text(
-                'Expires in 30 days',
-                style: PixelType.small(context, color: PixelPalette.slate),
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(2)),
-          Text(redeemed.offerTitle, style: PixelType.title(context)),
-          Text(
-            redeemed.merchantName,
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-          SizedBox(height: grid.px(2)),
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(2),
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              PixelPanel(
-                style: PixelBoxStyle.slot,
-                padding: 1,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 48),
-                  child: Align(
-                    widthFactor: 1,
-                    child: Text(
-                      redeemed.code,
-                      style: PixelType.numbers(context),
-                    ),
-                  ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: grid.px(2),
+              runSpacing: grid.px(1),
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const PixelChip('Active voucher', style: PixelBoxStyle.green,
+                    textColor: PixelPalette.white),
+                Text(
+                  'Expires in 30 days',
+                  style: PixelType.small(context, color: PixelPalette.slate),
                 ),
-              ),
-              PixelButton(
-                key: ValueKey('shop_show_barcode_${redeemed.code}'),
-                label: 'Show Barcode',
-                variant: PixelButtonVariant.secondary,
-                onPressed: () =>
-                    _showRedeemedVoucherModal(context, redeemed),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(redeemed.offerTitle, style: PixelType.title(context)),
+            Text(
+              redeemed.merchantName,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(2)),
+            Wrap(
+              spacing: grid.px(2),
+              runSpacing: grid.px(2),
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                PixelChip(
+                  redeemed.code,
+                  style: PixelBoxStyle.slot,
+                ),
+                PixelButton(
+                  key: ValueKey('shop_show_barcode_${redeemed.code}'),
+                  label: 'Show Barcode',
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: () =>
+                      _showRedeemedVoucherModal(context, redeemed),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

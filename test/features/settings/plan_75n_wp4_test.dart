@@ -280,7 +280,7 @@ void main() {
       expect(find.byIcon(Icons.add), findsNothing);
       expect(find.text('+'), findsNothing);
       expect(find.text('Submit Proposal'), findsNothing);
-      expect(find.text('Historical Proposals (Archive)'), findsOneWidget);
+      expect(find.text('HISTORICAL PROPOSALS'), findsOneWidget);
 
       // Test ProposalListScreen
       await tester.pumpWidget(

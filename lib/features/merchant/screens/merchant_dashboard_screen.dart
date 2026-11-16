@@ -11,6 +11,7 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/merchant_models.dart';
@@ -218,9 +219,10 @@ class _MerchantDashboardScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            data.name.toUpperCase(),
-            style: PixelType.title(context, color: PixelPalette.paper),
+          PixelSectionTitle(
+            data.name,
+            icon: DesignerArt.salakot,
+            colors: PixelText3DColors.cream,
           ),
           Text(
             [
@@ -265,10 +267,8 @@ class _MerchantDashboardScreenState
     MerchantDashboardData data,
   ) {
     Widget metric(String label, String value) => Expanded(
-      child: PixelPanel(
-        style: PixelBoxStyle.slot,
-        sunken: true,
-        padding: 2,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(1)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -276,7 +276,10 @@ class _MerchantDashboardScreenState
               label,
               style: PixelType.small(context, color: PixelPalette.slate),
             ),
-            Text(value, style: PixelType.title(context)),
+            Text(
+              value,
+              style: PixelType.numbers(context, color: PixelPalette.greenDark),
+            ),
           ],
         ),
       ),
@@ -284,7 +287,10 @@ class _MerchantDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('OVERVIEW · STOREFRONT STATUS', style: PixelType.title(context)),
+        const PixelSectionTitle(
+          'Storefront status',
+          icon: DesignerArt.navShop,
+        ),
         SizedBox(height: grid.px(2)),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,49 +303,50 @@ class _MerchantDashboardScreenState
             ),
           ],
         ),
-        SizedBox(height: grid.px(3)),
+        Container(height: grid.unit, color: PixelPalette.paperDim),
+        SizedBox(height: grid.px(2)),
         Text(
           'SETUP CHECKLIST',
           style: PixelType.small(context, color: PixelPalette.slate),
         ),
         SizedBox(height: grid.px(1)),
-        for (final item in data.checklist)
+        for (var i = 0; i < data.checklist.length; i++) ...[
+          if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
           Padding(
-            padding: EdgeInsets.only(bottom: grid.px(1)),
+            padding: EdgeInsets.symmetric(vertical: grid.px(2)),
             child: Row(
               children: [
                 PixelChip(
-                  item.completed ? 'DONE' : 'TODO',
-                  style: item.completed
+                  data.checklist[i].completed ? 'DONE' : 'TODO',
+                  style: data.checklist[i].completed
                       ? PixelBoxStyle.green
                       : PixelBoxStyle.parchment,
-                  textColor: item.completed
+                  textColor: data.checklist[i].completed
                       ? PixelPalette.white
                       : PixelPalette.ink,
                 ),
                 SizedBox(width: grid.px(2)),
                 Expanded(
-                  child: Text(item.title, style: PixelType.body(context)),
+                  child: Text(data.checklist[i].title,
+                      style: PixelType.body(context)),
                 ),
-                if (!item.completed)
+                if (!data.checklist[i].completed)
                   PixelButton(
-                    key: ValueKey('merchant_checklist_${item.id}'),
+                    key: ValueKey('merchant_checklist_${data.checklist[i].id}'),
                     label: 'Do it',
                     variant: PixelButtonVariant.ghost,
-                    onPressed: () => _openChecklistItem(item.id),
+                    onPressed: () => _openChecklistItem(data.checklist[i].id),
                   ),
               ],
             ),
           ),
+        ],
         if (data.notice.isNotEmpty) ...[
+          Container(height: grid.unit, color: PixelPalette.paperDim),
           SizedBox(height: grid.px(2)),
-          PixelPanel(
-            style: PixelBoxStyle.slot,
-            padding: 2,
-            child: Text(
-              data.notice,
-              style: PixelType.small(context, color: PixelPalette.slate),
-            ),
+          Text(
+            data.notice,
+            style: PixelType.small(context, color: PixelPalette.slate),
           ),
         ],
       ],
@@ -435,7 +442,10 @@ class _ProfileTabState extends ConsumerState<_ProfileTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('PROFILE · SHOWCASE DETAILS', style: PixelType.title(context)),
+        const PixelSectionTitle(
+          'Profile · Showcase details',
+          icon: DesignerArt.navProfile,
+        ),
         SizedBox(height: grid.px(2)),
         for (final f in _fields) ...[
           PixelTextField(
@@ -586,9 +596,11 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Text(
-              'CATALOG · ${items.length} ITEMS',
-              style: PixelType.title(context),
+            PixelSectionTitle(
+              'Catalog',
+              icon: merchantCatalogList,
+              value: '${items.length}',
+              valueColor: PixelPalette.greenDark,
             ),
             PixelButton(
               key: const ValueKey('merchant_add_product'),
@@ -603,22 +615,21 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
             'No items yet. Add your first product or specialty.',
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
-        for (final item in items)
-          Padding(
-            padding: EdgeInsets.only(bottom: grid.px(2)),
-            child: PixelPanel(
-              key: ValueKey('merchant_product_${item.id}'),
-              style: PixelBoxStyle.slot,
-              padding: 2,
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+          KeyedSubtree(
+            key: ValueKey('merchant_product_${items[i].id}'),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: grid.px(2)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.name, style: PixelType.title(context)),
+                  Text(items[i].name, style: PixelType.title(context)),
                   SizedBox(height: grid.px(1)),
-                  PixelChip(item.priceLabel),
-                  if (item.description.isNotEmpty) ...[
+                  PixelChip(items[i].priceLabel),
+                  if (items[i].description.isNotEmpty) ...[
                     SizedBox(height: grid.px(1)),
-                    Text(item.description, style: PixelType.body(context)),
+                    Text(items[i].description, style: PixelType.body(context)),
                   ],
                   SizedBox(height: grid.px(1)),
                   Wrap(
@@ -626,16 +637,16 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
                     runSpacing: grid.px(1),
                     children: [
                       PixelButton(
-                        key: ValueKey('merchant_edit_${item.id}'),
+                        key: ValueKey('merchant_edit_${items[i].id}'),
                         label: 'Edit',
                         variant: PixelButtonVariant.secondary,
-                        onPressed: () => _edit(item),
+                        onPressed: () => _edit(items[i]),
                       ),
                       PixelButton(
-                        key: ValueKey('merchant_remove_${item.id}'),
+                        key: ValueKey('merchant_remove_${items[i].id}'),
                         label: 'Remove',
                         variant: PixelButtonVariant.danger,
-                        onPressed: () => _archive(item),
+                        onPressed: () => _archive(items[i]),
                       ),
                     ],
                   ),
@@ -643,6 +654,7 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
               ),
             ),
           ),
+        ],
       ],
     );
   }
@@ -804,54 +816,59 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('SPONSORSHIPS & POINTS', style: PixelType.title(context)),
-        SizedBox(height: grid.px(2)),
-        PixelPanel(
-          style: PixelBoxStyle.gold,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                points == null
-                    ? (_pointsError ?? 'Loading points')
-                    : '${points.balance} PTS',
-                key: const ValueKey('merchant_points_balance'),
-                style: PixelType.title(context),
-              ),
-              Text(
-                'Simulated prototype credits — no real money is charged.',
-                style: PixelType.small(context, color: PixelPalette.woodDeep),
-              ),
-              if (points != null) ...[
-                SizedBox(height: grid.px(2)),
-                Wrap(
-                  spacing: grid.px(2),
-                  runSpacing: grid.px(1),
-                  children: [
-                    for (final p in _packages)
-                      PixelButton(
-                        key: ValueKey('merchant_buy_$p'),
-                        label: '+$p',
-                        variant: PixelButtonVariant.secondary,
-                        onPressed: _busy
-                            ? null
-                            : () => _run(
-                                () => api.buyPoints(p),
-                                'Added $p simulated points.',
-                              ),
-                      ),
-                  ],
-                ),
-                for (final credit in points.history.take(5))
-                  Text(
-                    '+${credit.points} · ${credit.source}',
-                    style: PixelType.small(context),
-                  ),
-              ],
-            ],
-          ),
+        PixelSectionTitle(
+          'Sponsorships & points',
+          icon: DesignerArt.handshake,
+          value: points != null ? '${points.balance}' : null,
+          valueColor: PixelPalette.greenDark,
         ),
-        SizedBox(height: grid.px(3)),
+        SizedBox(height: grid.px(2)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              points == null
+                  ? (_pointsError ?? 'Loading points')
+                  : '${points.balance} PTS',
+              key: const ValueKey('merchant_points_balance'),
+              style: PixelType.numbers(context, color: PixelPalette.greenDark),
+            ),
+            Text(
+              'Simulated prototype credits — no real money is charged.',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            if (points != null) ...[
+              SizedBox(height: grid.px(2)),
+              Wrap(
+                spacing: grid.px(2),
+                runSpacing: grid.px(1),
+                children: [
+                  for (final p in _packages)
+                    PixelButton(
+                      key: ValueKey('merchant_buy_$p'),
+                      label: '+$p',
+                      variant: PixelButtonVariant.secondary,
+                      onPressed: _busy
+                          ? null
+                          : () => _run(
+                              () => api.buyPoints(p),
+                              'Added $p simulated points.',
+                            ),
+                    ),
+                ],
+              ),
+              SizedBox(height: grid.px(1)),
+              for (final credit in points.history.take(5))
+                Text(
+                  '+${credit.points} · ${credit.source}',
+                  style: PixelType.small(context, color: PixelPalette.slate),
+                ),
+            ],
+          ],
+        ),
+        SizedBox(height: grid.px(2)),
+        Container(height: grid.unit, color: PixelPalette.paperDim),
+        SizedBox(height: grid.px(2)),
         Text(
           'QUEST SPONSORSHIP REQUESTS',
           style: PixelType.small(context, color: PixelPalette.slate),
@@ -864,14 +881,15 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
             'No sponsorship requests yet.',
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
-        for (final item in items ?? const <MerchantSponsorshipItem>[])
-          Padding(
-            padding: EdgeInsets.only(bottom: grid.px(2)),
-            child: PixelPanel(
+        for (var i = 0; i < (items ?? const <MerchantSponsorshipItem>[]).length; i++) ...[
+          if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
+          Builder(builder: (context) {
+            final item = items![i];
+            return KeyedSubtree(
               key: ValueKey('merchant_sponsorship_${item.id}'),
-              style: PixelBoxStyle.slot,
-              padding: 2,
-              child: Column(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.questTitle, style: PixelType.title(context)),
@@ -953,7 +971,9 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
                 ],
               ),
             ),
-          ),
+          );
+          }),
+        ],
       ],
     );
   }
