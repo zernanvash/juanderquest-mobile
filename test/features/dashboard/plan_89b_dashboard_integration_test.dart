@@ -308,7 +308,12 @@ void main() {
     await _pumpRouter(tester);
 
     final sprites = tester.widgetList<PixelSprite>(find.byType(PixelSprite));
-    final arts = sprites.map((s) => s.art).toSet();
+    // PixelIconFit draws a margin-trimmed copy named '<name>#trim'.
+    final names = sprites.map((s) => s.art.name.split('#').first).toSet();
+    final arts = {
+      for (final a in [DesignerArt.navProfile, DesignerArt.navMap, DesignerArt.plazaTrophy, DesignerArt.search, DesignerArt.navSettings])
+        if (names.contains(a.name)) a,
+    };
 
     expect(arts.contains(DesignerArt.navProfile), isTrue);
     expect(arts.contains(DesignerArt.navMap), isTrue);
