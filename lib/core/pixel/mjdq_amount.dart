@@ -40,7 +40,7 @@ class MjdqAmount extends StatefulWidget {
   /// Plan 100 WP-6: replay the coin spin every [idleSpinEvery] (balances on
   /// Home and Profile), so the coin is visibly alive.
   final bool idleSpin;
-  static const idleSpinEvery = Duration(seconds: 4);
+  static const idleSpinEvery = Duration(seconds: 2);
   final String? prefix;
   final String? suffix;
   final TextStyle? style;
@@ -49,6 +49,52 @@ class MjdqAmount extends StatefulWidget {
 
   @override
   State<MjdqAmount> createState() => _MjdqAmountState();
+}
+
+/// The coin strip turns edge-on (0) to face-on (3) and back to edge-on (6);
+/// the coin rests facing front.
+const _coinFront = 3;
+
+/// One full turn from front to front: 3 4 5 6 0 1 2 3.
+const _coinTurn = [3, 4, 5, 6, 0, 1, 2, 3];
+
+/// Owner 2026-11-16: start facing front, smooth in and out. Plays one eased
+/// turn (slow, fast in the middle, slow again) instead of a flat frame rate.
+class _CoinSpin extends StatefulWidget {
+  const _CoinSpin({required this.onDone});
+
+  final VoidCallback onDone;
+
+  @override
+  State<_CoinSpin> createState() => _CoinSpinState();
+}
+
+class _CoinSpinState extends State<_CoinSpin>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _turn = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..forward().whenComplete(() {
+      if (mounted) widget.onDone();
+    });
+  late final Animation<double> _eased =
+      CurvedAnimation(parent: _turn, curve: Curves.easeInOutSine);
+
+  @override
+  void dispose() {
+    _turn.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _eased,
+        builder: (context, _) {
+          final i = (_eased.value * (_coinTurn.length - 1)).round();
+          return PixelSprite(DesignerArt.coinAnim.frames[_coinTurn[i]],
+              scale: 1);
+        },
+      );
 }
 
 class _MjdqAmountState extends State<MjdqAmount> {
@@ -145,16 +191,15 @@ class _MjdqAmountState extends State<MjdqAmount> {
             child: FittedBox(
               fit: BoxFit.contain,
               child: play
-                  ? PixelAnimation(
-                      DesignerArt.coinAnim,
-                      scale: 1,
-                      loop: false,
-                      playing: true,
+                  ? _CoinSpin(
                       onDone: () {
                         if (mounted) setState(() => _playing = false);
                       },
                     )
-                  : PixelSprite(DesignerArt.coinAnim.frames.first, scale: 1),
+                  : PixelSprite(
+                      DesignerArt.coinAnim.frames[_coinFront],
+                      scale: 1,
+                    ),
             ),
           ),
           if (rightText.isNotEmpty) ...[
