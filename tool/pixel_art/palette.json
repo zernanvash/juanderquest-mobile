@@ -25,9 +25,9 @@
     {"key": "j", "name": "cream",       "hex": "FFF8E1", "source": "web brand-accent-light"},
 
     {"key": "k", "name": "woodNight",   "mix": ["woodDeep", "ink", 0.5], "source": "mix brand-brown-dark -> deepInk 50%"},
-    {"key": "l", "name": "woodDeep",    "hex": "432A18", "source": "logo dark brown (owner 2026-11-17)"},
-    {"key": "m", "name": "wood",        "hex": "8E4E2E", "source": "logo brown (owner 2026-11-17)"},
-    {"key": "n", "name": "woodMid",     "hex": "A85E3A", "source": "logo light brown (owner 2026-11-17)"},
+    {"key": "l", "name": "woodDeep",    "hex": "3E1F0A", "source": "web brand-brown-dark"},
+    {"key": "m", "name": "wood",        "hex": "582F0E", "source": "app woodBrown / web brand-brown (owner 2026-11-17: keep the dark brown)"},
+    {"key": "n", "name": "woodMid",     "hex": "7B4B27", "source": "web brand-brown-light"},
     {"key": "o", "name": "woodLight",   "mix": ["woodMid", "sunLight", 0.55], "source": "mix brand-brown-light -> secondaryContainer 55%"},
     {"key": "p", "name": "parchment",   "hex": "F7EBE1", "source": "app openDataBg"},
 

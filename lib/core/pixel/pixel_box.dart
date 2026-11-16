@@ -75,7 +75,7 @@ class PixelBoxStyle {
   /// lighter logo brown looked off on them).
   static const darkWood = PixelBoxStyle(
     fill: PixelPalette.woodDark,
-    highlight: PixelPalette.wood,
+    highlight: PixelPalette.woodMid,
     shade: PixelPalette.woodDeep,
   );
 

@@ -426,7 +426,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
         children: [
           ShadowText(
             'No destinations found in feed',
-            style: PixelType.title(context, color: PixelPalette.wood),
+            style: PixelType.title(context, color: PixelPalette.ink),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: grid.px(1)),

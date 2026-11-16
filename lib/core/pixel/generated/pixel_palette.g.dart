@@ -45,15 +45,15 @@ abstract final class PixelPalette {
   /// web brand-accent-light
   static const cream = Color(0xFFFFF8E1);
   /// mix brand-brown-dark -> deepInk 50%
-  static const woodNight = Color(0xFF282221);
-  /// logo dark brown (owner 2026-11-17)
-  static const woodDeep = Color(0xFF432A18);
-  /// logo brown (owner 2026-11-17)
-  static const wood = Color(0xFF8E4E2E);
-  /// logo light brown (owner 2026-11-17)
-  static const woodMid = Color(0xFFA85E3A);
+  static const woodNight = Color(0xFF261D1A);
+  /// web brand-brown-dark
+  static const woodDeep = Color(0xFF3E1F0A);
+  /// app woodBrown / web brand-brown (owner 2026-11-17: keep the dark brown)
+  static const wood = Color(0xFF582F0E);
+  /// web brand-brown-light
+  static const woodMid = Color(0xFF7B4B27);
   /// mix brand-brown-light -> secondaryContainer 55%
-  static const woodLight = Color(0xFFD8A477);
+  static const woodLight = Color(0xFFC49C6E);
   /// app openDataBg
   static const parchment = Color(0xFFF7EBE1);
   /// mix crowd-surging -> deepInk 60%

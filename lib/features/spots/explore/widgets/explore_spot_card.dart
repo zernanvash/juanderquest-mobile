@@ -74,7 +74,7 @@ class ExploreSpotCard extends StatelessWidget {
                 children: [
                   ShadowText(
                     spot.name,
-                    style: PixelType.title(context, color: PixelPalette.wood),
+                    style: PixelType.title(context, color: PixelPalette.ink),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

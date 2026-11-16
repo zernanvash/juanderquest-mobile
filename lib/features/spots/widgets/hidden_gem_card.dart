@@ -173,7 +173,8 @@ class _ImageFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     return DitherBackground(
-      top: PixelPalette.ink,
+      // Brown, to sit inside the brown card (owner 2026-11-17).
+      top: PixelPalette.woodMid,
       bottom: PixelPalette.woodDeep,
       // Marker and label side by side: fits the compact 72 dp banner even
       // with large text.

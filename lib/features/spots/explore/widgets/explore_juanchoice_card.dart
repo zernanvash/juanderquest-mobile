@@ -69,7 +69,7 @@ class ExploreJuanChoiceCard extends StatelessWidget {
             // Theme
             ShadowText(
               spotlight.theme,
-              style: PixelType.title(context, color: PixelPalette.wood),
+              style: PixelType.title(context, color: PixelPalette.ink),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
