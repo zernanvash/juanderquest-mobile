@@ -214,6 +214,7 @@ class HomeHero extends ConsumerWidget {
                             child: MjdqAmount(
                               points,
                               animateOnIncrease: true,
+                              idleSpin: true,
                               style: PixelType.small(
                                 context,
                                 color: PixelPalette.ink,

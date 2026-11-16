@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'generated/designer_art.g.dart';
@@ -21,6 +23,7 @@ class MjdqAmount extends StatefulWidget {
     this.scale = 1.0,
     this.animate = false,
     this.animateOnIncrease = false,
+    this.idleSpin = false,
     this.prefix,
     this.suffix,
     this.style,
@@ -33,6 +36,11 @@ class MjdqAmount extends StatefulWidget {
   final double scale;
   final bool animate;
   final bool animateOnIncrease;
+
+  /// Plan 100 WP-6: replay the coin spin every [idleSpinEvery] (balances on
+  /// Home and Profile), so the coin is visibly alive.
+  final bool idleSpin;
+  static const idleSpinEvery = Duration(seconds: 4);
   final String? prefix;
   final String? suffix;
   final TextStyle? style;
@@ -45,11 +53,34 @@ class MjdqAmount extends StatefulWidget {
 
 class _MjdqAmountState extends State<MjdqAmount> {
   bool _playing = false;
+  Timer? _idle;
 
   @override
   void initState() {
     super.initState();
     _playing = widget.animate;
+    _syncIdle();
+  }
+
+  void _syncIdle() {
+    if (widget.idleSpin && _idle == null) {
+      _idle = Timer.periodic(MjdqAmount.idleSpinEvery, (_) {
+        // Off-screen routes and reduced motion keep the coin still.
+        if (!mounted || _playing || !TickerMode.of(context)) {
+          return;
+        }
+        setState(() => _playing = true);
+      });
+    } else if (!widget.idleSpin) {
+      _idle?.cancel();
+      _idle = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _idle?.cancel();
+    super.dispose();
   }
 
   @override
@@ -60,9 +91,12 @@ class _MjdqAmountState extends State<MjdqAmount> {
         widget.animateOnIncrease && widget.amount > oldWidget.amount;
     if (triggeredByFlag || triggeredByGain) {
       _playing = true;
-    } else if (!widget.animate && !widget.animateOnIncrease) {
+    } else if (!widget.animate &&
+        !widget.animateOnIncrease &&
+        !widget.idleSpin) {
       _playing = false;
     }
+    _syncIdle();
   }
 
   String get _numberText {
@@ -146,6 +180,7 @@ class MjdqChip extends StatelessWidget {
     this.scale = 1.0,
     this.animate = false,
     this.animateOnIncrease = false,
+    this.idleSpin = false,
     this.prefix,
     this.suffix,
     this.style = PixelBoxStyle.gold,
@@ -157,6 +192,7 @@ class MjdqChip extends StatelessWidget {
   final double scale;
   final bool animate;
   final bool animateOnIncrease;
+  final bool idleSpin;
   final String? prefix;
   final String? suffix;
   final PixelBoxStyle style;
@@ -173,6 +209,7 @@ class MjdqChip extends StatelessWidget {
         scale: scale,
         animate: animate,
         animateOnIncrease: animateOnIncrease,
+        idleSpin: idleSpin,
         prefix: prefix,
         suffix: suffix,
         color: textColor,

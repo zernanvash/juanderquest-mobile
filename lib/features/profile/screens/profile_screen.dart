@@ -311,7 +311,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 style: PixelBoxStyle.green,
                 textColor: PixelPalette.white,
               ),
-              MjdqChip(pointsBalance),
+              MjdqChip(pointsBalance, idleSpin: true),
             ],
           ),
           if (isMine) ...[
