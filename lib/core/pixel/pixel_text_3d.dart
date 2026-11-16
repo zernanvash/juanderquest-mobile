@@ -121,6 +121,7 @@ class PixelText3DButton extends StatefulWidget {
     super.key,
     required this.onPressed,
     this.icon,
+    this.iconBox,
     this.size = 16,
     this.colors = PixelText3DColors.gold,
   });
@@ -128,6 +129,9 @@ class PixelText3DButton extends StatefulWidget {
   final String label;
   final VoidCallback? onPressed;
   final PixelArt? icon;
+
+  /// Icon square in logical pixels (default: twice the text size).
+  final double? iconBox;
   final double size;
   final PixelText3DColors colors;
 
@@ -168,7 +172,7 @@ class _PixelText3DButtonState extends State<PixelText3DButton> {
                   if (widget.icon != null) ...[
                     Transform.translate(
                       offset: Offset(0, _down ? grid.unit : 0),
-                      child: PixelIconFit(widget.icon!, box: widget.size * 2),
+                      child: PixelIconFit(widget.icon!, box: widget.iconBox ?? widget.size * 2),
                     ),
                   ],
                   // Only the text shrinks to fit; the icon keeps whole pixels.
@@ -203,7 +207,30 @@ class PixelIconFit extends StatelessWidget {
   /// Force one scale for every icon (uniform pixel size) instead of filling.
   final int? scale;
 
+  static final _trimmed = <String, PixelArt>{};
+
+  /// [art] without its transparent margins, so the visible drawing (not the
+  /// canvas) decides the size. Cached per sprite.
+  static PixelArt trim(PixelArt art) => _trimmed.putIfAbsent(art.name, () {
+        var top = art.height, bottom = -1, left = art.width, right = -1;
+        for (var y = 0; y < art.height; y++) {
+          final row = art.rows[y];
+          for (var x = 0; x < row.length; x++) {
+            if (row[x] == '.') continue;
+            if (y < top) top = y;
+            if (y > bottom) bottom = y;
+            if (x < left) left = x;
+            if (x > right) right = x;
+          }
+        }
+        if (bottom < 0) return art;
+        return PixelArt('${art.name}#trim', [
+          for (var y = top; y <= bottom; y++) art.rows[y].substring(left, right + 1),
+        ]);
+      });
+
   static int fitScale(PixelArt art, double box, double dpr) {
+    art = trim(art);
     final longest = art.width > art.height ? art.width : art.height;
     final s = (box * dpr / longest).floor();
     return s < 1 ? 1 : s;
@@ -215,7 +242,7 @@ class PixelIconFit extends StatelessWidget {
     return SizedBox.square(
       dimension: box,
       child: Center(
-        child: PixelSprite(art, scale: scale ?? fitScale(art, box, dpr)),
+        child: PixelSprite(trim(art), scale: scale ?? fitScale(art, box, dpr)),
       ),
     );
   }
