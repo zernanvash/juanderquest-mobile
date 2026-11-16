@@ -8,6 +8,7 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../explore/spot_filter_state.dart';
 import '../models/spot_model.dart';
+import 'theater_still_photo.dart';
 
 /// Strips a leading `PHOTO:` (any case) from a spot credit name.
 String spotCreditName(String sourceName) {
@@ -29,6 +30,7 @@ class TheaterFirstViewport extends StatelessWidget {
     required this.scrollOffset,
     required this.onDirections,
     required this.onPlayQuest,
+    this.hasPhoto = true,
   });
 
   final SpotModel spot;
@@ -36,9 +38,40 @@ class TheaterFirstViewport extends StatelessWidget {
   final VoidCallback onDirections;
   final VoidCallback onPlayQuest;
 
+  /// Plan 98 Option A: with no working photo there is nothing to look at, so
+  /// the header shrinks to the badge and the title and Overview shows sooner.
+  final bool hasPhoto;
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    if (!hasPhoto) {
+      final grid = PixelGrid.of(context);
+      return Padding(
+        key: const Key('theater_first_viewport_compact'),
+        // Clears the sticky top bar.
+        padding: EdgeInsets.fromLTRB(
+          grid.px(3),
+          mediaQuery.padding.top + 88,
+          grid.px(3),
+          grid.px(3),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Center(child: SpotNoPhotoPlaceholder()),
+            SizedBox(height: grid.px(4)),
+            _HeroTitleBlock(
+              spot: spot,
+              scrollOffset: scrollOffset,
+              onDirections: onDirections,
+              onPlayQuest: onPlayQuest,
+            ),
+          ],
+        ),
+      );
+    }
     final viewportHeight = mediaQuery.size.height;
     final grid = PixelGrid.of(context);
     // On landscape or extreme font scaling, ensure enough height for hero block

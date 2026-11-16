@@ -53,6 +53,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   /// 0 at the top of the page, 1 once the details cover most of the screen.
   final ValueNotifier<double> _reveal = ValueNotifier(0.0);
 
+  /// Plan 98: the photo the page settled on after skipping broken ones; null
+  /// when none loaded (shorter header + "no photo" badge).
+  late final ValueNotifier<String?> _photoUrl =
+      ValueNotifier(SpotStillPhoto.urlFor(widget.spot));
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +78,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     _scrollController.dispose();
     _scrolled.dispose();
     _reveal.dispose();
+    _photoUrl.dispose();
     super.dispose();
   }
 
@@ -269,12 +275,24 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
             // 1. Stationary background photo layer: never scrolls, pans or zooms
             Positioned.fill(
               key: const Key('theater_still_photo'),
-              child: RepaintBoundary(child: SpotStillPhoto(spot: spot)),
+              child: RepaintBoundary(
+                child: SpotStillPhoto(
+                  spot: spot,
+                  onPhotoChanged: (url) => _photoUrl.value = url,
+                ),
+              ),
             ),
 
             // 1b. Stationary scrims + the Pixel-lab backdrop treatment.
             Positioned.fill(
-              child: TheaterBackdropLayers(spot: spot, reveal: _reveal),
+              child: ValueListenableBuilder<String?>(
+                valueListenable: _photoUrl,
+                builder: (context, photoUrl, _) => TheaterBackdropLayers(
+                  spot: spot,
+                  reveal: _reveal,
+                  photoUrl: photoUrl,
+                ),
+              ),
             ),
 
             // 2. Story content: scrolls over the stationary photo.
@@ -287,14 +305,19 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                 slivers: [
                   // First Viewport: unobstructed photo, top controls, hero block, scroll hint
                   SliverToBoxAdapter(
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: _scrolled,
-                      builder: (context, scrolled, _) => TheaterFirstViewport(
-                        spot: spot,
-                        // Only whether the page has left the top matters here.
-                        scrollOffset: scrolled ? 10 : 0,
-                        onDirections: _openDirections,
-                        onPlayQuest: _playQuest,
+                    child: ValueListenableBuilder<String?>(
+                      valueListenable: _photoUrl,
+                      builder: (context, photoUrl, _) =>
+                          ValueListenableBuilder<bool>(
+                        valueListenable: _scrolled,
+                        builder: (context, scrolled, _) => TheaterFirstViewport(
+                          spot: spot,
+                          // Only whether the page has left the top matters here.
+                          scrollOffset: scrolled ? 10 : 0,
+                          onDirections: _openDirections,
+                          onPlayQuest: _playQuest,
+                          hasPhoto: photoUrl != null,
+                        ),
                       ),
                     ),
                   ),

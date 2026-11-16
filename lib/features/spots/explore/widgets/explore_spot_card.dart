@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/pixel/generated/designer_art.g.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_box.dart';
 import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/pixel/pixel_grid.dart';
@@ -12,6 +11,7 @@ import '../../theater/theater_backdrop.dart';
 import '../explore_art.dart';
 import '../recommendation_reason.dart';
 import '../spot_filter_state.dart';
+import 'collapsible_spot_photo.dart';
 
 class ExploreSpotCard extends StatelessWidget {
   const ExploreSpotCard({
@@ -42,7 +42,6 @@ class ExploreSpotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final hasPhoto = spot.imageUrl != null && spot.imageUrl!.trim().isNotEmpty;
     final cardWidth = MediaQuery.sizeOf(context).width;
     final cacheWidth =
         (cardWidth * MediaQuery.devicePixelRatioOf(context)).round();
@@ -126,7 +125,7 @@ class ExploreSpotCard extends StatelessWidget {
             ),
             SizedBox(height: grid.px(2)),
 
-            // Photo or 64px placeholder strip
+            // Photo (takes no space when there is none or it fails)
             TheaterDoubleTapHearts(
               onDoubleTapLike: onDoubleTapLike,
               child: GestureDetector(
@@ -138,29 +137,14 @@ class ExploreSpotCard extends StatelessWidget {
                 // A double-tap handler makes a single tap wait briefly, so the
                 // first tap of a double-tap does not open the spot.
                 onDoubleTap: onDoubleTapLike == null ? null : () {},
-                child: hasPhoto
-                    ? PixelPanel(
-                        style: PixelBoxStyle.slot.copyWith(
-                          corner: 0,
-                          shadowPx: 0,
-                        ),
-                        padding: 1,
-                        child: AspectRatio(
-                          aspectRatio: 16 / 10,
-                          child: Image.network(
-                            spot.imageUrl!,
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.medium,
-                            cacheWidth: cacheWidth > 0 ? cacheWidth : null,
-                            errorBuilder: (_, __, ___) =>
-                                _errorPhotoFallback(context),
-                          ),
-                        ),
-                      )
-                    : _categoryStripPlaceholder(context),
+                child: CollapsibleSpotPhoto(
+                  url: spot.imageUrl,
+                  aspectRatio: 16 / 10,
+                  gapBelow: grid.px(2),
+                  cacheWidth: cacheWidth > 0 ? cacheWidth : null,
+                ),
               ),
             ),
-            SizedBox(height: grid.px(2)),
 
             // Action Row: LIKE (count, pixel heart), SAVE (bookmark), and
             // PLAY QUEST or VIEW SPOT.
@@ -249,61 +233,6 @@ class ExploreSpotCard extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _errorPhotoFallback(BuildContext context) {
-    return Container(
-      color: PixelPalette.slate,
-      alignment: Alignment.center,
-      child: Text(
-        'Photo unavailable',
-        style: PixelType.small(context, color: PixelPalette.mist),
-      ),
-    );
-  }
-
-  Widget _categoryStripPlaceholder(BuildContext context) {
-    final grid = PixelGrid.of(context);
-    final strip = ExploreArt.categoryStrip(spot.category);
-
-    return PixelPanel(
-      style: PixelBoxStyle.slot.copyWith(corner: 0, shadowPx: 0),
-      padding: 1,
-      child: Container(
-        height: 64,
-        color: PixelPalette.slate,
-        child: ClipRect(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.6,
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    child: PixelSprite(strip, scale: 4),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: grid.px(2),
-                bottom: grid.px(2),
-                child: PixelPanel(
-                  style: PixelBoxStyle.inkDialogue.copyWith(
-                    corner: 0,
-                    shadowPx: 0,
-                  ),
-                  padding: 1,
-                  child: Text(
-                    '${categoryLabel(spot.category).toUpperCase()} · EXPLORE ›',
-                    style: PixelType.small(context, color: PixelPalette.paper),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -40,10 +40,15 @@ class TheaterBackdropLayers extends ConsumerWidget {
     super.key,
     required this.spot,
     required this.reveal,
+    required this.photoUrl,
   });
 
   final SpotModel spot;
   final ValueListenable<double> reveal;
+
+  /// Plan 98: the photo the page settled on (null when none loaded), so the
+  /// blur or painting never runs on a broken cover photo.
+  final String? photoUrl;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -65,7 +70,7 @@ class TheaterBackdropLayers extends ConsumerWidget {
               reveal: reveal,
               child: RepaintBoundary(
                 child: TheaterBackdropTreatment(
-                  image: TheaterBackdropTreatment.imageFor(spot),
+                  image: photoUrl == null ? null : NetworkImage(photoUrl!),
                   mode: mode,
                 ),
               ),

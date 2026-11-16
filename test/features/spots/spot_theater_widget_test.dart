@@ -11,6 +11,7 @@ import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
 import 'package:juanderquest_app/features/spots/theater/theater_backdrop.dart';
+import 'package:juanderquest_app/features/spots/theater/theater_still_photo.dart';
 import 'package:juanderquest_app/features/spots/theater/theater_gallery_dialog.dart';
 
 class _InertAuthNotifier extends AuthNotifier {
@@ -299,6 +300,7 @@ void main() {
             home: TheaterBackdropLayers(
               spot: _fullSpot,
               reveal: ValueNotifier(1.0),
+              photoUrl: SpotStillPhoto.urlFor(_fullSpot),
             ),
           ),
         ));

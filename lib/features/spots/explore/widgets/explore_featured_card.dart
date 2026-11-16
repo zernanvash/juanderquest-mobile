@@ -6,6 +6,7 @@ import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/pixel/pixel_grid.dart';
 import '../../../../core/pixel/pixel_text.dart';
 import '../../models/spot_model.dart';
+import 'collapsible_spot_photo.dart';
 
 class ExploreFeaturedCard extends StatelessWidget {
   const ExploreFeaturedCard({
@@ -66,29 +67,13 @@ class ExploreFeaturedCard extends StatelessWidget {
               ),
               SizedBox(height: grid.px(2)),
 
-              // Sunken photo frame
-              PixelPanel(
-                style: PixelBoxStyle.slot.copyWith(corner: 0, shadowPx: 0),
-                padding: 1,
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Image.network(
-                    spot.imageUrl!,
-                    fit: BoxFit.cover,
-                    filterQuality: FilterQuality.medium,
-                    cacheWidth: cacheWidth > 0 ? cacheWidth : null,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: PixelPalette.slate,
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Photo unavailable',
-                        style: PixelType.small(context, color: PixelPalette.mist),
-                      ),
-                    ),
-                  ),
-                ),
+              // Sunken photo frame (takes no space when the photo fails)
+              CollapsibleSpotPhoto(
+                url: spot.imageUrl,
+                aspectRatio: 16 / 9,
+                gapBelow: grid.px(2),
+                cacheWidth: cacheWidth > 0 ? cacheWidth : null,
               ),
-              SizedBox(height: grid.px(2)),
 
               // Name title
               ShadowText(
