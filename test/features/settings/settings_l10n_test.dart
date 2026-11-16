@@ -82,7 +82,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('settings_language_tagalog')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mga Setting'), findsOneWidget);
+    expect(find.text('MGA SETTING'), findsOneWidget);
     expect(find.text('Hitsura ng Profile'), findsOneWidget);
     expect(find.text('Wika'), findsOneWidget);
     expect(find.text('Tagalog'), findsOneWidget);

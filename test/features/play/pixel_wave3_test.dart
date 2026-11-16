@@ -823,7 +823,7 @@ void main() {
           GovernanceState(proposals: [_proposal]),
         ),
       );
-      expect(find.text('All Proposals'), findsOneWidget);
+      expect(find.text('ALL PROPOSALS'), findsOneWidget);
       expect(find.text('Patar White Beach Eco Trail'), findsOneWidget);
       expect(find.byKey(const ValueKey('proposal_yes_p1')), findsNothing);
       expect(find.byKey(const ValueKey('proposal_no_p1')), findsNothing);

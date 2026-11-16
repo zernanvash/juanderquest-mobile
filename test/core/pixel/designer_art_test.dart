@@ -68,7 +68,7 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Pixel lab'), findsOneWidget);
+    expect(find.text('PIXEL LAB'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('pixel_lab_like')),
       400,
