@@ -38,7 +38,6 @@ class ExploreFeaturedCard extends StatelessWidget {
         },
         child: PixelPanel(
           style: PixelBoxStyle.darkWood.copyWith(corner: 2, shadowPx: 2),
-          padding: 2,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,

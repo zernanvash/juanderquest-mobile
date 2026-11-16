@@ -131,7 +131,7 @@ class _MissionBentoBox extends StatelessWidget {
 
     return PixelPanel(
       style: style,
-      padding: 2,
+      padding: PixelPanel.sectionPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -236,7 +236,7 @@ class _StampBentoBox extends StatelessWidget {
       enabled: claimedToday,
       child: PixelPanel(
         style: style,
-        padding: 2,
+        padding: PixelPanel.sectionPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

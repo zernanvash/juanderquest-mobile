@@ -294,9 +294,10 @@ class PixelGrid {
 
   double px(num artPixels) => artPixels * unit;
 
-  /// Side padding for page content (owner 2026-11-17: more room at the
-  /// screen edges, everywhere).
-  double get gutter => px(10);
+  /// Side padding for page content. Owner 2026-11-17: panels run nearly
+  /// edge to edge; the breathing room is inside them
+  /// ([PixelPanel.sectionPadding]).
+  double get gutter => px(4);
 }
 
 abstract interface class PixelSettingsStore {

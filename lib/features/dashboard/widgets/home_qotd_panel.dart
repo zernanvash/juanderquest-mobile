@@ -92,7 +92,7 @@ class HomeQotdPanel extends ConsumerWidget {
     return PixelPanel(
       key: const ValueKey('home_qotd_panel'),
       style: PixelBoxStyle.wood,
-      padding: 2,
+      padding: PixelPanel.sectionPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

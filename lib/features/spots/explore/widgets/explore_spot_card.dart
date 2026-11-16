@@ -55,7 +55,6 @@ class ExploreSpotCard extends StatelessWidget {
       // each post).
       child: PixelPanel(
         style: PixelBoxStyle.parchment,
-        padding: 3,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,

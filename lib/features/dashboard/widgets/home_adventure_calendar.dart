@@ -186,7 +186,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
     return PixelPanel(
       key: const ValueKey('home_calendar_panel'),
       style: _greenDeepStyle,
-      padding: 2,
+      padding: PixelPanel.sectionPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

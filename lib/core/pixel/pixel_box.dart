@@ -237,10 +237,14 @@ class PixelPanel extends StatelessWidget {
     super.key,
     required this.child,
     this.style = PixelBoxStyle.parchment,
-    this.padding = 3,
+    this.padding = sectionPadding,
     this.pressed = false,
     this.sunken = false,
   });
+
+  /// Inside padding (art px) of a section panel, the default (owner
+  /// 2026-11-17: wide panels, roomy inside).
+  static const sectionPadding = 6;
 
   final Widget child;
   final PixelBoxStyle style;
