@@ -2,8 +2,12 @@ import '../../../core/network/api_client.dart';
 
 bool isVideoMedia(String? url, {String? mimeType, String? mediaType}) {
   if (mediaType == 'video') return true;
-  if (mimeType != null && mimeType.toLowerCase().startsWith('video/')) return true;
-  if (url == null || url.isEmpty) return false;
+  if (mimeType != null && mimeType.toLowerCase().startsWith('video/')) {
+    return true;
+  }
+  if (url == null || url.isEmpty) {
+    return false;
+  }
   final cleanUrl = url.toLowerCase().split('?').first;
   return cleanUrl.endsWith('.mp4') ||
       cleanUrl.endsWith('.webm') ||
@@ -49,10 +53,41 @@ class SpotPhoto {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is SpotPhoto && runtimeType == other.runtimeType && url == other.url;
+      other is SpotPhoto &&
+          runtimeType == other.runtimeType &&
+          url == other.url;
 
   @override
   int get hashCode => url.hashCode;
+}
+
+class SpotDuplicateHint {
+  final String id;
+  final String slug;
+  final String name;
+  final String municipality;
+
+  const SpotDuplicateHint({
+    required this.id,
+    required this.slug,
+    required this.name,
+    required this.municipality,
+  });
+
+  factory SpotDuplicateHint.fromJson(Map<String, dynamic> j) =>
+      SpotDuplicateHint(
+        id: j['id']?.toString() ?? '',
+        slug: j['slug']?.toString() ?? '',
+        name: j['name']?.toString() ?? '',
+        municipality: j['municipality']?.toString() ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'slug': slug,
+        'name': name,
+        'municipality': municipality,
+      };
 }
 
 class SpotModel {
@@ -87,6 +122,11 @@ class SpotModel {
   final String? sourceUrl;
   final bool isTest;
   final List<SpotPhoto> media;
+  final String status;
+  final List<String> moderationReasons;
+  final List<String> moderationMessages;
+  final SpotDuplicateHint? duplicateSpot;
+  final bool appealSubmitted;
 
   const SpotModel({
     required this.id,
@@ -119,6 +159,11 @@ class SpotModel {
     this.sourceUrl,
     this.isTest = false,
     this.media = const [],
+    this.status = 'published',
+    this.moderationReasons = const [],
+    this.moderationMessages = const [],
+    this.duplicateSpot,
+    this.appealSubmitted = false,
   });
 
   List<SpotPhoto> get photos => media.isNotEmpty
@@ -195,7 +240,8 @@ class SpotModel {
       final resolved = resolveImageUrl(trimmed);
       if (seenUrls.contains(resolved)) return;
       seenUrls.add(resolved);
-      final isVid = isVideoMedia(resolved, mimeType: mimeType, mediaType: mediaType);
+      final isVid =
+          isVideoMedia(resolved, mimeType: mimeType, mediaType: mediaType);
       mediaList.add(SpotPhoto(
         url: resolved,
         isVideo: isVid,
@@ -261,12 +307,18 @@ class SpotModel {
 
     final rawGoodFor = j['good_for'] ?? j['goodFor'];
     final goodFor = rawGoodFor is List
-        ? rawGoodFor.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList()
+        ? rawGoodFor
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
         : const <String>[];
 
     final rawBestTime = j['best_time'] ?? j['bestTime'];
     final bestTime = rawBestTime is List
-        ? rawBestTime.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList()
+        ? rawBestTime
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
         : const <String>[];
 
     final rawHours = j['hours'];
@@ -276,11 +328,32 @@ class SpotModel {
 
     final rawAmenities = j['amenities'];
     final amenities = rawAmenities is List
-        ? rawAmenities.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList()
+        ? rawAmenities
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
         : const <String>[];
 
     final sourceUrl = j['source_url']?.toString() ?? j['sourceUrl']?.toString();
     final isTest = j['is_test'] == true || j['isTest'] == true;
+    final rawModReasons = j['moderation_reasons'];
+    final modReasons = rawModReasons is List
+        ? rawModReasons
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
+        : const <String>[];
+    final rawModMessages = j['moderation_messages'];
+    final modMessages = rawModMessages is List
+        ? rawModMessages
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
+        : const <String>[];
+    final rawDup = j['duplicate_spot'];
+    final dupHint = rawDup is Map
+        ? SpotDuplicateHint.fromJson(Map<String, dynamic>.from(rawDup))
+        : null;
 
     return SpotModel(
       id: j['id']?.toString() ?? '',
@@ -313,6 +386,11 @@ class SpotModel {
       sourceUrl: sourceUrl,
       isTest: isTest,
       media: mediaList,
+      status: j['status']?.toString() ?? 'published',
+      moderationReasons: modReasons,
+      moderationMessages: modMessages,
+      duplicateSpot: dupHint,
+      appealSubmitted: j['appeal_submitted'] == true,
     );
   }
 
@@ -363,6 +441,11 @@ class SpotModel {
     List<String>? amenities,
     bool? isTest,
     List<SpotPhoto>? media,
+    String? status,
+    List<String>? moderationReasons,
+    List<String>? moderationMessages,
+    SpotDuplicateHint? duplicateSpot,
+    bool? appealSubmitted,
   }) =>
       SpotModel(
         id: id ?? this.id,
@@ -395,6 +478,11 @@ class SpotModel {
         amenities: amenities ?? this.amenities,
         isTest: isTest ?? this.isTest,
         media: media ?? this.media,
+        status: status ?? this.status,
+        moderationReasons: moderationReasons ?? this.moderationReasons,
+        moderationMessages: moderationMessages ?? this.moderationMessages,
+        duplicateSpot: duplicateSpot ?? this.duplicateSpot,
+        appealSubmitted: appealSubmitted ?? this.appealSubmitted,
       );
 
   Map<String, dynamic> toJson() => {

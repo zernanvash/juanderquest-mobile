@@ -645,7 +645,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           height: grid.unit, color: PixelPalette.paperDim),
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: grid.px(2)),
-                      child: _spotCard(context, grid, spot),
+                      child: _spotCard(context, grid, spot, isMine: isMine),
                     ),
                   ],
                 ],
@@ -657,9 +657,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _spotCard(BuildContext context, PixelGrid grid, SpotModel spot) {
+  Widget _spotCard(
+    BuildContext context,
+    PixelGrid grid,
+    SpotModel spot, {
+    bool isMine = false,
+  }) {
     final photo = spot.imageUrl;
     final hasPhoto = photo != null && photo.trim().isNotEmpty;
+    final isFlagged = isMine &&
+        (spot.status == 'held' || spot.status == 'hidden_pending_review');
+    final flagLabel = spot.status == 'held' ? 'HELD' : 'AUTO-HIDDEN';
+    final flagReason = spot.moderationMessages.isNotEmpty
+        ? spot.moderationMessages.first
+        : (spot.moderationReasons.isNotEmpty
+            ? spot.moderationReasons.first.replaceAll('_', ' ')
+            : (spot.status == 'held'
+                ? 'Needs an update before publishing'
+                : 'Under moderator review'));
 
     return Semantics(
       button: true,
@@ -702,6 +717,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     style:
                         PixelType.small(context, color: PixelPalette.greenDark),
                   ),
+                  if (isFlagged) ...[
+                    SizedBox(height: grid.px(1)),
+                    Wrap(
+                      spacing: grid.px(1),
+                      runSpacing: grid.px(0.5),
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        PixelChip(
+                          flagLabel,
+                          style: spot.status == 'held'
+                              ? PixelBoxStyle.gold
+                              : PixelBoxStyle.red,
+                          textColor: spot.status == 'held'
+                              ? PixelPalette.ink
+                              : PixelPalette.white,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: grid.px(0.5)),
+                    Text(
+                      flagReason,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.redDeep,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

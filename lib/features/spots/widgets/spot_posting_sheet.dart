@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/pixel/generated/designer_art.g.dart';
@@ -52,6 +53,7 @@ class SpotPostingSheet extends ConsumerStatefulWidget {
   final ValueChanged<SpotModel>? onPublished;
   final ValueChanged<SpotPostingDraft>? onDraftChanged;
   final ValueChanged<XFile>? onPhotoPicked;
+  final ValueChanged<SpotDuplicateHint>? onUseDuplicate;
 
   const SpotPostingSheet({
     super.key,
@@ -65,6 +67,7 @@ class SpotPostingSheet extends ConsumerStatefulWidget {
     this.onPublished,
     this.onDraftChanged,
     this.onPhotoPicked,
+    this.onUseDuplicate,
   });
 
   @override
@@ -85,6 +88,9 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
   bool _submitting = false;
   String? _submitError;
   SpotModel? _publishedSpot;
+  String? _heldSpotId;
+  List<String> _holdMessages = const [];
+  SpotDuplicateHint? _duplicateHint;
 
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -326,21 +332,46 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     });
     try {
       final client = ref.read(apiClientProvider);
-      final response = await client.dio.post('/spots',
-          data: buildSpotPayload(_draft,
-              assetId: _mediaAssetId, imageUrl: _mediaUrl));
-      if (response.statusCode == 201 && response.data['success'] == true) {
+      final payload =
+          buildSpotPayload(_draft, assetId: _mediaAssetId, imageUrl: _mediaUrl);
+      final response = _heldSpotId != null
+          ? await client.dio.patch('/spots/$_heldSpotId', data: payload)
+          : await client.dio.post('/spots', data: payload);
+      if ((response.statusCode == 201 || response.statusCode == 200) &&
+          response.data['success'] == true) {
         final spot = SpotModel.fromJson(
             Map<String, dynamic>.from(response.data['data'] as Map));
-        setState(() => _publishedSpot = spot);
-        widget.onPublished?.call(spot);
+        if (spot.status == 'held') {
+          setState(() {
+            _heldSpotId = spot.id;
+            _holdMessages = spot.moderationMessages.isNotEmpty
+                ? spot.moderationMessages
+                : const ['Needs a quick edit before publishing.'];
+            _duplicateHint = spot.duplicateSpot;
+          });
+        } else {
+          setState(() {
+            _heldSpotId = null;
+            _holdMessages = const [];
+            _duplicateHint = null;
+            _publishedSpot = spot;
+          });
+          widget.onPublished?.call(spot);
+        }
       } else {
         setState(() => _submitError =
             response.data['error']?['message'] ?? 'Failed to add spot.');
       }
     } on DioException catch (e) {
-      setState(() => _submitError = e.response?.data?['error']?['message'] ??
-          'Failed to connect to server.');
+      final errObj = e.response?.data?['error'];
+      String message =
+          errObj?['message']?.toString() ?? 'Failed to connect to server.';
+      final retrySec = errObj?['retry_after_seconds'];
+      if (retrySec is num && retrySec > 0 && !message.contains('Try again')) {
+        final mins = (retrySec / 60).ceil();
+        message = '$message Try again in ~$mins min.';
+      }
+      setState(() => _submitError = message);
     } catch (_) {
       setState(() => _submitError =
           'Publishing failed. Your answers are kept; try again.');
@@ -462,6 +493,57 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
                   SizedBox(height: grid.px(1)),
                   widget.footerBuilder!(
                       _currentDraft, _mediaFile, _mediaIsVideo),
+                ],
+                if (_holdMessages.isNotEmpty) ...[
+                  SizedBox(height: grid.px(2)),
+                  PixelPanel(
+                    key: const ValueKey('spot_hold_banner'),
+                    style: PixelBoxStyle.gold,
+                    padding: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Held for a quick check',
+                          style:
+                              PixelType.title(context, color: PixelPalette.ink),
+                        ),
+                        SizedBox(height: grid.px(1)),
+                        for (final msg in _holdMessages) ...[
+                          Text(
+                            msg,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.ink,
+                            ),
+                          ),
+                          SizedBox(height: grid.px(0.5)),
+                        ],
+                        if (_duplicateHint != null) ...[
+                          SizedBox(height: grid.px(1)),
+                          PixelButton(
+                            key: const ValueKey('spot_use_duplicate'),
+                            label: 'Use ${_duplicateHint!.name} instead',
+                            variant: PixelButtonVariant.secondary,
+                            expand: true,
+                            onPressed: () {
+                              final hint = _duplicateHint!;
+                              if (widget.onUseDuplicate != null) {
+                                widget.onUseDuplicate!(hint);
+                                return;
+                              }
+                              final router = GoRouter.maybeOf(context);
+                              if (!widget.embedded &&
+                                  Navigator.of(context).canPop()) {
+                                Navigator.of(context).pop();
+                              }
+                              router?.push('/explore/${hint.slug}');
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
                 if (_submitError != null) ...[
                   SizedBox(height: grid.px(2)),
@@ -1175,7 +1257,11 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
             SizedBox(height: grid.px(1)),
             PixelButton(
               key: const ValueKey('studio_publish'),
-              label: _submitting ? 'Publishing' : 'Publish spot',
+              label: _submitting
+                  ? 'Publishing'
+                  : (_heldSpotId != null
+                      ? 'Update & resubmit'
+                      : 'Publish spot'),
               icon: StudioIcons.edit,
               // Owner 2026-11-17: a bigger icon on the main action.
               iconScale: 3,
