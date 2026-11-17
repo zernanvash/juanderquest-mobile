@@ -172,6 +172,7 @@ class PixelBoxPainter extends CustomPainter {
     this.pressed = false,
     this.sunken = false,
     this.textured = false,
+    this.textureStrength = 1,
   });
 
   final PixelBoxStyle style;
@@ -181,6 +182,9 @@ class PixelBoxPainter extends CustomPainter {
 
   /// Faint scatter speckles on the fill (see [PixelPanelTexture]).
   final bool textured;
+
+  /// How far the ramp's bottom colour is from the fill, 0..1.
+  final double textureStrength;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -255,6 +259,7 @@ class PixelBoxPainter extends CustomPainter {
         ? Color.lerp(
             style.fill, PixelPalette.woodLight, PixelTexture.panelCreamTone)!
         : style.shade;
+    final bottom = Color.lerp(style.fill, target, textureStrength)!;
     const tones = PixelNoisePainter.tones;
     const reach = PixelTexture.panelReach;
     final buckets = List.generate(tones, (_) => <double>[]);
@@ -284,7 +289,7 @@ class PixelBoxPainter extends CustomPainter {
           ..isAntiAlias = false
           ..strokeWidth = 2 * u
           ..strokeCap = StrokeCap.square
-          ..color = Color.lerp(style.fill, target, k / (tones - 1))!,
+          ..color = Color.lerp(style.fill, bottom, k / (tones - 1))!,
       );
     }
     canvas.restore();
@@ -296,19 +301,29 @@ class PixelBoxPainter extends CustomPainter {
       old.grid.unit != grid.unit ||
       old.pressed != pressed ||
       old.sunken != sunken ||
-      old.textured != textured;
+      old.textured != textured ||
+      old.textureStrength != textureStrength;
 }
 
 /// Turns on the subtle scatter texture for every [PixelPanel] below it big
 /// enough to carry it (owner 2026-11-17: tried on Home first).
 class PixelPanelTexture extends InheritedWidget {
-  const PixelPanelTexture({super.key, required super.child});
+  const PixelPanelTexture({super.key, required super.child, this.strength = 1});
 
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<PixelPanelTexture>() != null;
+  /// How strong the fade is under this scope, 0..1 (Explore uses a faint
+  /// one; owner 2026-11-17: "too distracting").
+  final double strength;
+
+  /// The nearest scope's strength, or 0 when there is none.
+  static double of(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<PixelPanelTexture>()
+          ?.strength ??
+      0;
 
   @override
-  bool updateShouldNotify(PixelPanelTexture oldWidget) => false;
+  bool updateShouldNotify(PixelPanelTexture oldWidget) =>
+      oldWidget.strength != strength;
 }
 
 class PixelPanel extends StatelessWidget {
@@ -337,6 +352,7 @@ class PixelPanel extends StatelessWidget {
     final frame = 1 + (style.bevel ? 1 : 0) + padding;
     final sh = style.shadowPx;
     final shift = pressed ? sh : 0;
+    final texture = PixelPanelTexture.of(context);
     return PixelSnap(
       child: CustomPaint(
         painter: PixelBoxPainter(
@@ -345,7 +361,8 @@ class PixelPanel extends StatelessWidget {
           pressed: pressed,
           sunken: sunken,
           // Only section panels; buttons, chips and small boxes stay plain.
-          textured: padding >= sectionPadding && PixelPanelTexture.of(context),
+          textured: padding >= sectionPadding && texture > 0,
+          textureStrength: texture,
         ),
         child: Padding(
           padding: EdgeInsets.fromLTRB(

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/pixel/generated/designer_art.g.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
-import '../../../../core/pixel/pixel_background.dart';
 import '../../../../core/pixel/pixel_box.dart';
 import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/pixel/pixel_grid.dart';
@@ -119,33 +118,37 @@ class _SpotlightTile extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: grid.px(2)),
-                // Photo frame: square corners (photos are never stepped).
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: PixelPalette.parchment,
-                      width: grid.unit,
+                // Owner 2026-11-17: no photo, no placeholder box; the name
+                // gets the room and is set larger instead.
+                if (hasImage) ...[
+                  // Photo frame: square corners (photos are never stepped).
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: PixelPalette.parchment,
+                        width: grid.unit,
+                      ),
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 4 / 3,
+                      child: Image.network(
+                        url,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                        errorBuilder: (_, __, ___) => const _NoPhoto(),
+                      ),
                     ),
                   ),
-                  child: AspectRatio(
-                    aspectRatio: 4 / 3,
-                    child: hasImage
-                        ? Image.network(
-                            url,
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.medium,
-                            errorBuilder: (_, __, ___) => const _NoPhoto(),
-                          )
-                        : const _NoPhoto(),
-                  ),
-                ),
-                SizedBox(height: grid.px(2)),
+                  SizedBox(height: grid.px(2)),
+                ],
                 Text(
                   name,
-                  maxLines: 2,
+                  maxLines: hasImage ? 2 : 4,
                   overflow: TextOverflow.ellipsis,
-                  style: PixelType.body(context, color: PixelPalette.paper)
-                      .copyWith(fontWeight: FontWeight.w700),
+                  style: hasImage
+                      ? PixelType.body(context, color: PixelPalette.paper)
+                          .copyWith(fontWeight: FontWeight.w700)
+                      : PixelType.title(context, color: PixelPalette.paper),
                 ),
                 Text(
                   town,
@@ -167,9 +170,9 @@ class _NoPhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DitherBackground(
-      top: PixelPalette.woodMid,
-      bottom: PixelPalette.woodDeep,
+    // A photo that fails to load: a plain panel, no gradient.
+    return const ColoredBox(
+      color: PixelPalette.woodMid,
       child: Center(child: PixelIconFit(DesignerArt.gem, box: 36)),
     );
   }

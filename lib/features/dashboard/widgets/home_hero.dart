@@ -201,7 +201,8 @@ class HomeHero extends ConsumerWidget {
                     PixelProgressBar(
                       value: xpInLevel / 50,
                       segments: 10,
-                      color: PixelPalette.greenBright,
+                      // Sun on the green card (green would vanish).
+                      color: PixelPalette.sun,
                       showTipGlint: true,
                     ),
                     SizedBox(height: grid.px(1)),
@@ -255,7 +256,8 @@ class HomeHero extends ConsumerWidget {
 
   Widget _cardPanel(PixelFrameSkin? frame, Widget child) {
     if (frame == null) {
-      return PixelPanel(style: PixelBoxStyle.wood, child: child);
+      // Owner 2026-11-17: the name card is green.
+      return PixelPanel(style: PixelBoxStyle.green, child: child);
     }
     return PixelFramedPanel(
       key: const ValueKey('home_hero_frame'),
@@ -346,7 +348,9 @@ class HomePurseStrip extends ConsumerWidget {
                       points,
                       animateOnIncrease: true,
                       idleSpin: true,
-                      style: PixelType.title(context, color: color),
+                      // Owner 2026-11-17: smaller currencies.
+                      style: PixelType.body(context, color: color)
+                          .copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -400,12 +404,13 @@ class HomePurseStrip extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                PixelIconFit(icon, box: 18),
+                PixelIconFit(icon, box: 14),
                 SizedBox(width: grid.px(1)),
                 Text(
                   value,
                   maxLines: 1,
-                  style: PixelType.title(context, color: color),
+                  style: PixelType.body(context, color: color)
+                      .copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             ),

@@ -171,60 +171,110 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 ],
               ),
             ),
-            body: RefreshIndicator(
-              onRefresh: () => _load(refresh: true),
-              color: PixelPalette.green,
-              backgroundColor: PixelPalette.paper,
-              child: ListView(
-                controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                // Owner 2026-11-16: more side margin on Explore posts.
-                padding: EdgeInsets.symmetric(
-                  horizontal: grid.gutter,
-                  vertical: grid.px(2),
-                ),
-                children: [
-                  ExploreSearchBar(onOpen: () => context.push('/search')),
-                  SizedBox(height: grid.px(3)),
-                  // App-only blocks preserved in order
-                  // Offline Fallback Banner
-                  if (state.isOfflineFallback) ...[
-                    PixelPanel(
-                      style:
-                          PixelBoxStyle.gold.copyWith(corner: 2, shadowPx: 0),
-                      padding: 2,
-                      child: Text(
-                        'OFFLINE MODE • VIEWING CACHED DESTINATIONS FROM DEVICE STORAGE. CONNECT TO REFRESH.',
+            body: // Owner 2026-11-17: a faint fade on Explore ("too distracting").
+                PixelPanelTexture(
+              strength: 0.35,
+              child: RefreshIndicator(
+                onRefresh: () => _load(refresh: true),
+                color: PixelPalette.green,
+                backgroundColor: PixelPalette.paper,
+                child: ListView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  // Owner 2026-11-16: more side margin on Explore posts.
+                  padding: EdgeInsets.symmetric(
+                    horizontal: grid.gutter,
+                    vertical: grid.px(2),
+                  ),
+                  children: [
+                    ExploreSearchBar(onOpen: () => context.push('/search')),
+                    SizedBox(height: grid.px(3)),
+                    // App-only blocks preserved in order
+                    // Offline Fallback Banner
+                    if (state.isOfflineFallback) ...[
+                      PixelPanel(
                         style:
-                            PixelType.small(context, color: PixelPalette.ink),
+                            PixelBoxStyle.gold.copyWith(corner: 2, shadowPx: 0),
+                        padding: 2,
+                        child: Text(
+                          'OFFLINE MODE • VIEWING CACHED DESTINATIONS FROM DEVICE STORAGE. CONNECT TO REFRESH.',
+                          style:
+                              PixelType.small(context, color: PixelPalette.ink),
+                        ),
                       ),
-                    ),
-                    SizedBox(height: grid.px(2)),
-                  ],
+                      SizedBox(height: grid.px(2)),
+                    ],
 
-                  // Hidden gem + featured destination, one row, two columns
-                  // (owner 2026-11-16).
-                  ExploreSpotlightRow(featured: topHeroSpot),
+                    // Hidden gem + featured destination, one row, two columns
+                    // (owner 2026-11-16).
+                    ExploreSpotlightRow(featured: topHeroSpot),
 
-                  // Loading State
-                  if (state.isInitialLoading && state.spots.isEmpty)
-                    _buildLoadingSkeleton(context, grid)
+                    // Loading State
+                    if (state.isInitialLoading && state.spots.isEmpty)
+                      _buildLoadingSkeleton(context, grid)
 
-                  // Error State
-                  else if (state.failure != null && state.spots.isEmpty)
-                    _buildErrorCard(context, grid, state.failure!.message)
+                    // Error State
+                    else if (state.failure != null && state.spots.isEmpty)
+                      _buildErrorCard(context, grid, state.failure!.message)
 
-                  // Empty State
-                  else if (visibleSpots.isEmpty &&
-                      !spotlightPlacement.hasSpotlight)
-                    _buildEmptyCard(context, grid)
+                    // Empty State
+                    else if (visibleSpots.isEmpty &&
+                        !spotlightPlacement.hasSpotlight)
+                      _buildEmptyCard(context, grid)
 
-                  // Feed Stream List
-                  else ...[
-                    // Feed Cards + JuanChoice Insertion
-                    for (var i = 0; i < pagedSpots.length; i++) ...[
+                    // Feed Stream List
+                    else ...[
+                      // Feed Cards + JuanChoice Insertion
+                      for (var i = 0; i < pagedSpots.length; i++) ...[
+                        if (spotlightPlacement.hasSpotlight &&
+                            spotlightPlacement.insertionIndex == i) ...[
+                          ExploreJuanChoiceCard(
+                            spotlight: spotlightPlacement.spotlight!,
+                            winnerSpots: winnerSpots,
+                            onTapWinner: (winner) => context.push(
+                              '/explore/${winner.slug}',
+                              extra: winner,
+                            ),
+                            onSeeResults: () => context.push('/juanchoice'),
+                          ),
+                          SizedBox(height: grid.px(2)),
+                        ],
+                        ExploreSpotCard(
+                          badges: exploreBadgesFor(
+                            pagedSpots[i],
+                            gemIds: gemIds,
+                            fiestaTowns: fiestaTowns,
+                          ),
+                          spot: pagedSpots[i],
+                          likeCount: pagedSpots[i].likeCount,
+                          isLiked: pagedSpots[i].liked,
+                          isSaved: pagedSpots[i].saved,
+                          onTapCard: () => context.push(
+                            '/explore/${pagedSpots[i].slug}',
+                            extra: pagedSpots[i],
+                          ),
+                          onToggleLike: () => ref
+                              .read(spotDiscoveryProvider.notifier)
+                              .toggleLiked(pagedSpots[i]),
+                          onDoubleTapLike: () => ref
+                              .read(spotDiscoveryProvider.notifier)
+                              .setLiked(pagedSpots[i], liked: true),
+                          onToggleSave: () => ref
+                              .read(spotDiscoveryProvider.notifier)
+                              .toggleSaved(pagedSpots[i]),
+                          onPlayQuest: pagedSpots[i].questId != null &&
+                                  pagedSpots[i].questId!.trim().isNotEmpty
+                              ? () => context
+                                  .push('/quests/${pagedSpots[i].questId}')
+                              : null,
+                        ),
+                        SizedBox(height: grid.px(4)),
+                      ],
+
+                      // End-of-feed JuanChoice insertion if insertion index is at or beyond pagedSpots length
                       if (spotlightPlacement.hasSpotlight &&
-                          spotlightPlacement.insertionIndex == i) ...[
+                          spotlightPlacement.insertionIndex >=
+                              pagedSpots.length) ...[
                         ExploreJuanChoiceCard(
                           spotlight: spotlightPlacement.spotlight!,
                           winnerSpots: winnerSpots,
@@ -236,59 +286,13 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         ),
                         SizedBox(height: grid.px(2)),
                       ],
-                      ExploreSpotCard(
-                        badges: exploreBadgesFor(
-                          pagedSpots[i],
-                          gemIds: gemIds,
-                          fiestaTowns: fiestaTowns,
-                        ),
-                        spot: pagedSpots[i],
-                        likeCount: pagedSpots[i].likeCount,
-                        isLiked: pagedSpots[i].liked,
-                        isSaved: pagedSpots[i].saved,
-                        onTapCard: () => context.push(
-                          '/explore/${pagedSpots[i].slug}',
-                          extra: pagedSpots[i],
-                        ),
-                        onToggleLike: () => ref
-                            .read(spotDiscoveryProvider.notifier)
-                            .toggleLiked(pagedSpots[i]),
-                        onDoubleTapLike: () => ref
-                            .read(spotDiscoveryProvider.notifier)
-                            .setLiked(pagedSpots[i], liked: true),
-                        onToggleSave: () => ref
-                            .read(spotDiscoveryProvider.notifier)
-                            .toggleSaved(pagedSpots[i]),
-                        onPlayQuest: pagedSpots[i].questId != null &&
-                                pagedSpots[i].questId!.trim().isNotEmpty
-                            ? () =>
-                                context.push('/quests/${pagedSpots[i].questId}')
-                            : null,
-                      ),
-                      SizedBox(height: grid.px(4)),
-                    ],
 
-                    // End-of-feed JuanChoice insertion if insertion index is at or beyond pagedSpots length
-                    if (spotlightPlacement.hasSpotlight &&
-                        spotlightPlacement.insertionIndex >=
-                            pagedSpots.length) ...[
-                      ExploreJuanChoiceCard(
-                        spotlight: spotlightPlacement.spotlight!,
-                        winnerSpots: winnerSpots,
-                        onTapWinner: (winner) => context.push(
-                          '/explore/${winner.slug}',
-                          extra: winner,
-                        ),
-                        onSeeResults: () => context.push('/juanchoice'),
-                      ),
-                      SizedBox(height: grid.px(2)),
+                      // Paging Controls
+                      _buildPagingFooter(
+                          context, grid, hasMore, state.failure != null),
                     ],
-
-                    // Paging Controls
-                    _buildPagingFooter(
-                        context, grid, hasMore, state.failure != null),
                   ],
-                ],
+                ),
               ),
             ),
           );

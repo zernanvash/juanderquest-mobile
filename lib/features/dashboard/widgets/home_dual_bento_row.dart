@@ -39,13 +39,6 @@ class HomeDualBentoRow extends StatelessWidget {
   final VoidCallback? onClaimDaily;
   final ValueChanged<String>? onNavigate;
 
-  static const _greenStyle = PixelBoxStyle(
-    fill: PixelPalette.green,
-    highlight: PixelPalette.greenMid,
-    shade: PixelPalette.greenDeep,
-    outline: PixelPalette.ink,
-  );
-
   static const _woodStyle = PixelBoxStyle(
     fill: PixelPalette.wood,
     highlight: PixelPalette.woodMid,
@@ -73,7 +66,8 @@ class HomeDualBentoRow extends StatelessWidget {
             // Owner 2026-11-16: panels take the full width, stacked.
             final missionBox = _MissionBentoBox(
               key: const ValueKey('home_bento_mission'),
-              style: _greenStyle,
+              // Owner 2026-11-17: the mission panel is brown.
+              style: _woodStyle,
               activeQuest: activeQuest,
               recommendedQuest: recommendedQuest,
               recommendedReason: recommendedReason,
@@ -161,15 +155,15 @@ class _MissionBentoBox extends StatelessWidget {
                     quest.locationName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: PixelType.small(context,
-                        color: PixelPalette.greenLight),
+                    style:
+                        PixelType.small(context, color: PixelPalette.sunLight),
                   )
                 else
                   MjdqAmount(
                     quest.rewardPoints,
                     sign: true,
-                    style: PixelType.small(context,
-                        color: PixelPalette.greenLight),
+                    style:
+                        PixelType.small(context, color: PixelPalette.sunLight),
                   ),
               ] else ...[
                 Text(
