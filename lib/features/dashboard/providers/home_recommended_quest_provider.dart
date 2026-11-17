@@ -106,8 +106,13 @@ final homeRecommendedQuestProvider = Provider<HomeRecommendedQuest?>((ref) {
       }
     }
     if (closest != null && bestMeters != null) {
-      final km = (bestMeters / 1000).toStringAsFixed(1);
-      return HomeRecommendedQuest(quest: closest, reason: '$km km away');
+      // QA 2026-11-17: "0.0 km away" read as broken at the place itself.
+      final reason = bestMeters < 15
+          ? 'You are here'
+          : bestMeters < 950
+              ? '${(bestMeters / 10).round() * 10} m away'
+              : '${(bestMeters / 1000).toStringAsFixed(1)} km away';
+      return HomeRecommendedQuest(quest: closest, reason: reason);
     }
   }
 
