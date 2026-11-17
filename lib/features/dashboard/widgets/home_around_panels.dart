@@ -20,9 +20,12 @@ import '../pixel/home_pixel_art.dart';
 import '../providers/home_calendar_provider.dart';
 import '../providers/home_recommended_quest_provider.dart';
 
-String _distance(double meters) => meters < 950
-    ? '${(meters / 10).round() * 10} m'
-    : '${(meters / 1000).toStringAsFixed(meters < 9950 ? 1 : 0)} km';
+// QA 2026-11-17: "0 m" read as broken when standing at the place.
+String _distance(double meters) => meters < 15
+    ? 'HERE'
+    : meters < 950
+        ? '${(meters / 10).round() * 10} m'
+        : '${(meters / 1000).toStringAsFixed(meters < 9950 ? 1 : 0)} km';
 
 /// Owner 2026-11-17: the three closest places, from the spots Home already
 /// loads and the phone's last known position (Home never asks for location).
@@ -127,8 +130,11 @@ class HomeNearbyPanel extends ConsumerWidget {
                     ),
                     SizedBox(width: grid.px(2)),
                     Flexible(
+                      // QA 2026-11-17: distances line up on the right.
+                      fit: FlexFit.tight,
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
                         child: Text(
                           _distance(n.meters),
                           style: PixelType.numbers(

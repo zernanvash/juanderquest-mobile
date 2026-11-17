@@ -280,11 +280,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     }
     if (!mounted) return;
     if (shape == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('The boundary of ${area.name} is not available yet.'),
-        ),
-      );
+      showPixelToast(
+          context, 'The boundary of ${area.name} is not available yet.');
       return;
     }
     final camera = _camera;
@@ -493,13 +490,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Location services are turned off. Turn them on, or search and pan the map instead.',
-            ),
-          ),
-        );
+        showPixelToastOn(messenger,
+            'Location services are turned off. Turn them on, or search and pan the map instead.',
+            duration: const Duration(seconds: 4));
         return;
       }
 
@@ -509,13 +502,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Location permission was denied. Search or pan the map instead.',
-            ),
-          ),
-        );
+        showPixelToastOn(messenger,
+            'Location permission was denied. Search or pan the map instead.',
+            duration: const Duration(seconds: 4));
         return;
       }
 
@@ -544,22 +533,14 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
             : (camera.zoom < 14 ? 14.0 : camera.zoom),
       );
       if (position.accuracy > 2000) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'Approximate location shown (±${position.accuracy.round()} m). Move to an open area for a better fix.',
-            ),
-          ),
-        );
+        showPixelToastOn(messenger,
+            'Approximate location shown (±${position.accuracy.round()} m). Move to an open area for a better fix.',
+            duration: const Duration(seconds: 4));
       }
     } catch (_) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Finding your location timed out or failed. Try again, or search and pan the map instead.',
-          ),
-        ),
-      );
+      showPixelToastOn(messenger,
+          'Finding your location timed out or failed. Try again, or search and pan the map instead.',
+          duration: const Duration(seconds: 4));
     } finally {
       if (mounted) setState(() => _locating = false);
     }

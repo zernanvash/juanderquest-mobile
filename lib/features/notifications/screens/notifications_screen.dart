@@ -11,6 +11,7 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../../../app/open_route.dart';
 import '../../../core/services/push_routing.dart';
 import '../../../core/services/push_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -343,7 +344,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             behavior: HitTestBehavior.opaque,
             onTap: () {
               if (!read) _markRead(id);
-              context.push(appRouteForPushHref(href));
+              openRoute(context, appRouteForPushHref(href));
             },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,7 +380,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   variant: PixelButtonVariant.secondary,
                   onPressed: () {
                     if (!read) _markRead(id);
-                    context.push(appRouteForPushHref(href));
+                    openRoute(context, appRouteForPushHref(href));
                   },
                 ),
               if (read)

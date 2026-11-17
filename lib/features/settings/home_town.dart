@@ -39,8 +39,12 @@ class HomeTownInfo {
       town: data['home_municipality'] as String?,
       source: data['home_town_source'] as String?,
       gpsEnabled: data['home_town_gps'] as bool? ?? true,
-      currentDays: progress is Map ? (progress['current_days'] as num?)?.toInt() ?? 0 : 0,
-      requiredDays: progress is Map ? (progress['required_days'] as num?)?.toInt() ?? 5 : 5,
+      currentDays: progress is Map
+          ? (progress['current_days'] as num?)?.toInt() ?? 0
+          : 0,
+      requiredDays: progress is Map
+          ? (progress['required_days'] as num?)?.toInt() ?? 5
+          : 5,
       leadingTown: progress is Map ? progress['leading_town'] as String? : null,
       options: List<String>.from(data['options'] as List? ?? const []),
     );
@@ -171,9 +175,7 @@ Future<bool> showHomeTownPicker(BuildContext context, WidgetRef ref) async {
         final town = currentTown;
         final statusText = town != null
             ? (currentSource == 'gps'
-                ? tr(ctx,
-                    en: '$town · from GPS',
-                    tl: '$town · mula sa GPS')
+                ? tr(ctx, en: '$town · from GPS', tl: '$town · mula sa GPS')
                 : town)
             : (gpsEnabled
                 ? tr(ctx,
@@ -181,16 +183,17 @@ Future<bool> showHomeTownPicker(BuildContext context, WidgetRef ref) async {
                     tl: 'hinahanap… ($currentDays/$requiredDays araw)')
                 : tr(ctx, en: 'Not set', tl: 'Hindi nakatakda'));
 
+        // QA 2026-11-17: one short line, so the towns stay in view.
         final explanation = gpsEnabled
             ? tr(
                 ctx,
-                en: 'Uses the town seen on at least 5 distinct days in the last 30 days. Sends one sighting at most every 30 minutes while the app is open, never in the background. Turn off GPS to pick manually.',
-                tl: 'Ginagamit ang bayang nakita sa hindi bababa sa 5 magkaibang araw sa nakaraang 30 araw. Nagpapadala nang hindi hihigit sa isang beses bawat 30 minuto habang bukas ang app. I-off ang GPS upang pumili nang mano-mano.',
+                en: 'Set from the town you are in on 5 of the last 30 days. Turn off to pick.',
+                tl: 'Mula sa bayang kinaroroonan mo sa 5 sa huling 30 araw. I-off para pumili.',
               )
             : tr(
                 ctx,
-                en: 'GPS home town is off. Choose your home town below or pick Visiting.',
-                tl: 'Naka-off ang GPS home town. Piliin ang iyong sariling bayan sa ibaba.',
+                en: 'Pick your home town, or Visiting.',
+                tl: 'Piliin ang iyong bayan, o Bumisita.',
               );
 
         return SizedBox(
@@ -264,16 +267,18 @@ Future<bool> showHomeTownPicker(BuildContext context, WidgetRef ref) async {
                 style: PixelType.small(ctx, color: PixelPalette.greenDeep)
                     .copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 4),
-              Text(
-                explanation,
-                style: PixelType.small(ctx, color: PixelPalette.slate),
-              ),
               const SizedBox(height: 8),
+              // QA 2026-11-17: the explanation scrolls with the towns, so
+              // the list never gets squeezed out of the fixed-height sheet.
               Expanded(
                 child: ListView(
                   key: const ValueKey('home_town_list'),
                   children: [
+                    Text(
+                      explanation,
+                      style: PixelType.small(ctx, color: PixelPalette.slate),
+                    ),
+                    const SizedBox(height: 8),
                     for (final t in ['', ...info.options])
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 3),
@@ -299,8 +304,8 @@ Future<bool> showHomeTownPicker(BuildContext context, WidgetRef ref) async {
                           expand: true,
                           onPressed: gpsEnabled
                               ? null
-                              : () => Navigator.of(ctx, rootNavigator: true)
-                                  .pop(t),
+                              : () =>
+                                  Navigator.of(ctx, rootNavigator: true).pop(t),
                         ),
                       ),
                   ],

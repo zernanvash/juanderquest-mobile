@@ -1784,7 +1784,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                   key: const ValueKey('quest_signin_btn'),
                   label: 'Sign in to accept',
                   expand: true,
-                  onPressed: () => context.push('/login'),
+                  // Sign-in is '/'; it returns here afterwards.
+                  onPressed: () => context.go(
+                      '/?redirect=${Uri.encodeComponent(GoRouterState.of(context).uri.toString())}'),
                 )
               else if (!_completed && !hasAttempt)
                 PixelButton(

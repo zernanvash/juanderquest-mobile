@@ -164,10 +164,10 @@ Widget _buildHarness({
         },
       ),
       GoRoute(
-        path: '/juanchoice',
+        path: '/choice',
         builder: (_, __) {
-          pushedRoutes?.add('/juanchoice');
-          return const Scaffold(body: Text('ROUTE:/juanchoice'));
+          pushedRoutes?.add('/choice');
+          return const Scaffold(body: Text('ROUTE:/choice'));
         },
       ),
       GoRoute(
@@ -363,9 +363,9 @@ void main() {
       expect(seeResultsBtn, findsOneWidget);
       await tester.tap(seeResultsBtn);
       await tester.pumpAndSettle();
-      expect(pushedRoutes, contains('/juanchoice'));
+      expect(pushedRoutes, contains('/choice'));
 
-      // Pop back from /juanchoice to return to feed
+      // Pop back from /choice to return to feed
       final nav = tester.state<NavigatorState>(find.byType(Navigator).last);
       nav.pop();
       await tester.pumpAndSettle();

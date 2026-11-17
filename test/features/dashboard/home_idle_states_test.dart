@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juanderquest_app/core/pixel/pixel_box.dart';
 import 'package:juanderquest_app/core/pixel/pixel_idle.dart';
+import 'package:juanderquest_app/core/pixel/pixel_rpg.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/widgets/home_daily_tasks_panel.dart';
@@ -86,6 +88,24 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  // QA 2026-11-17: MISSED showed only the red pick, not the right answer.
+  testWidgets('a missed QOTD marks the correct option green', (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [homeQotdProvider.overrideWith((ref) => _Missed(ref))],
+      child: MaterialApp(
+        theme: AppTheme.pixel,
+        home: const Scaffold(body: HomeQotdPanel()),
+      ),
+    ));
+    expect(find.text('MISSED'), findsOneWidget);
+    PixelBoxStyle styleOf(String id) => tester
+        .widget<PixelTappableSlot>(find.byKey(ValueKey('home_qotd_option_$id')))
+        .style;
+    expect(styleOf('o1'), PixelBoxStyle.red);
+    expect(styleOf('o2'), PixelBoxStyle.green);
+    expect(styleOf('o3'), PixelBoxStyle.parchment);
+  });
+
   testWidgets('daily tasks panel shows with no tasks, plus the weekly chest',
       (tester) async {
     await tester.pumpWidget(_wrap(HomeDailyTasksPanel(
@@ -164,6 +184,28 @@ class _Qotd extends HomeQotdNotifier {
         selectedOptionId: answered ? 'o1' : null,
         correct: answered,
         explanation: answered ? 'Alaminos City has them.' : null,
+      ),
+    );
+  }
+}
+
+class _Missed extends HomeQotdNotifier {
+  _Missed(super.ref) : super(autoLoad: false) {
+    state = const AsyncValue.data(
+      HomeQotdState(
+        date: '2026-11-17',
+        quizTitle: 'Daily Lore',
+        questionId: 'qq-2',
+        questionText: 'Patar Beach is in which town?',
+        options: [
+          HomeQotdOption(id: 'o1', ordinal: 1, text: 'Anda'),
+          HomeQotdOption(id: 'o2', ordinal: 2, text: 'Bolinao'),
+          HomeQotdOption(id: 'o3', ordinal: 3, text: 'Sual'),
+        ],
+        answered: true,
+        selectedOptionId: 'o1',
+        correct: false,
+        correctOptionId: 'o2',
       ),
     );
   }

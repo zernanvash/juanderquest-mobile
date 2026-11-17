@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../core/l10n/app_language.dart';
 import '../core/pixel/generated/designer_art.g.dart';
 import '../core/pixel/generated/pixel_palette.g.dart';
+import '../core/pixel/pixel_feedback.dart';
 import '../core/pixel/pixel_nav.dart';
 import '../features/companion/widgets/companion_card.dart';
 import '../features/dashboard/home_tips.dart';
@@ -122,12 +123,8 @@ class _MainShellState extends ConsumerState<MainShell> {
           SystemNavigator.pop();
         } else {
           _lastBackPress = now;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Press back again to exit'),
-              duration: Duration(seconds: 2),
-            ),
-          );
+          showPixelToast(context, 'Press back again to exit',
+              duration: const Duration(seconds: 2));
         }
       },
       child: Stack(

@@ -40,7 +40,9 @@ class _CulturalQuizDetailScreenState
     final user = ref.read(authProvider).user;
     if (user == null) {
       showPixelToast(context, 'Please sign in to take cultural quizzes.');
-      context.push('/login');
+      // Sign-in is '/'; it returns here afterwards.
+      context.go(
+          '/?redirect=${Uri.encodeComponent(GoRouterState.of(context).uri.toString())}');
       return;
     }
 

@@ -226,7 +226,8 @@ void main() {
       ProviderScope(
         overrides: [
           apiClientProvider.overrideWithValue(api),
-          authProvider.overrideWith((ref) => _InertAuth(api, refresh, testUser)),
+          authProvider
+              .overrideWith((ref) => _InertAuth(api, refresh, testUser)),
         ],
         child: MaterialApp(
           home: Consumer(
@@ -247,7 +248,18 @@ void main() {
     expect(find.text('Set my home town from GPS'), findsOneWidget);
     expect(find.text('finding… (2/5 days)'), findsOneWidget);
 
+    // The town list scrolls inside the sheet (QA 2026-11-17).
+    Future<void> showBolinao() => tester.scrollUntilVisible(
+          find.byKey(const ValueKey('home_town_Bolinao')),
+          40,
+          scrollable: find.descendant(
+            of: find.byKey(const ValueKey('home_town_list')),
+            matching: find.byType(Scrollable),
+          ),
+        );
+
     // Tapping Bolinao while GPS is ON does nothing (read-only)
+    await showBolinao();
     await tester.tap(find.byKey(const ValueKey('home_town_Bolinao')));
     await tester.pumpAndSettle();
     expect(find.text('Set my home town from GPS'), findsOneWidget);
@@ -257,6 +269,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Now tapping Bolinao saves and closes dialog
+    await showBolinao();
     await tester.tap(find.byKey(const ValueKey('home_town_Bolinao')));
     await tester.pumpAndSettle();
     expect(find.text('Set my home town from GPS'), findsNothing);

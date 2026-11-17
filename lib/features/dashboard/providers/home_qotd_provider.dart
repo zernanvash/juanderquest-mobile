@@ -101,7 +101,10 @@ class HomeQotdState {
       answered: data['answered'] == true,
       selectedOptionId: answer['option_id']?.toString(),
       correct: answer['correct'] == true,
-      correctOptionId: null,
+      // The server adds this to the answer (QA 2026-11-17); a correct
+      // answer is its own correct option.
+      correctOptionId: answer['correct_option_id']?.toString() ??
+          (answer['correct'] == true ? answer['option_id']?.toString() : null),
       explanation: answer['explanation']?.toString(),
       sourceUrl: answer['source_url']?.toString(),
     );

@@ -415,8 +415,21 @@ Future<T?> showPixelDialog<T>({
   );
 }
 
-void showPixelToast(BuildContext context, String message) {
-  final messenger = ScaffoldMessenger.of(context);
+void showPixelToast(
+  BuildContext context,
+  String message, {
+  Duration duration = const Duration(milliseconds: 1600),
+}) =>
+    showPixelToastOn(ScaffoldMessenger.of(context), message,
+        duration: duration);
+
+/// [showPixelToast] for code that kept the messenger across an `await`.
+void showPixelToastOn(
+  ScaffoldMessengerState messenger,
+  String message, {
+  Duration duration = const Duration(milliseconds: 1600),
+}) {
+  final context = messenger.context;
   messenger.hideCurrentSnackBar();
   messenger.showSnackBar(
     SnackBar(
@@ -424,7 +437,7 @@ void showPixelToast(BuildContext context, String message) {
       elevation: 0,
       padding: EdgeInsets.zero,
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(milliseconds: 1600),
+      duration: duration,
       content: PixelPanel(
         style: PixelBoxStyle.inkDialogue,
         padding: 2,

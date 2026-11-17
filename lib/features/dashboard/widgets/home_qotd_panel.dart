@@ -51,9 +51,12 @@ class HomeQotdPanel extends ConsumerWidget {
             SizedBox(height: grid.px(2)),
             PixelTappableSlot(
               key: ValueKey('home_qotd_option_${option.id}'),
+              // QA 2026-11-17: a missed answer also shows the right one.
               style: q.selectedOptionId == option.id
                   ? (q.correct ? PixelBoxStyle.green : PixelBoxStyle.red)
-                  : PixelBoxStyle.parchment,
+                  : answered && q.correctOptionId == option.id
+                      ? PixelBoxStyle.green
+                      : PixelBoxStyle.parchment,
               padding: 2,
               onTap: answered || q.submitting
                   ? () => showPixelToast(context,
@@ -70,7 +73,8 @@ class HomeQotdPanel extends ConsumerWidget {
                     option.text,
                     style: PixelType.body(
                       context,
-                      color: q.selectedOptionId == option.id
+                      color: q.selectedOptionId == option.id ||
+                              (answered && q.correctOptionId == option.id)
                           ? PixelPalette.white
                           : PixelPalette.ink,
                     ),
