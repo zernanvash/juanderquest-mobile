@@ -23,10 +23,12 @@ import '../../spots/providers/spot_discovery_provider.dart';
 import '../providers/profile_stats_provider.dart';
 import '../providers/user_spots_provider.dart';
 import '../showcase.dart';
+import '../widgets/profile_hub_tabs.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   final String? username;
-  const ProfileScreen({super.key, this.username});
+  final String? initialTab;
+  const ProfileScreen({super.key, this.username, this.initialTab});
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
@@ -34,6 +36,41 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isFollowing = false;
+  late String _tab;
+
+  static String _normalizeTab(String? raw) =>
+      switch (raw?.trim().toLowerCase()) {
+        'quests' => 'quests',
+        'progress' => 'progress',
+        'timeline' => 'timeline',
+        _ => 'overview',
+      };
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = _normalizeTab(widget.initialTab);
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab) {
+      _tab = _normalizeTab(widget.initialTab);
+    }
+  }
+
+  void _selectTab(String tab) {
+    if (_tab == tab) return;
+    setState(() => _tab = tab);
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      final base = widget.username != null && widget.username!.isNotEmpty
+          ? '/profile/${Uri.encodeComponent(widget.username!)}'
+          : '/profile';
+      context.go(tab == 'overview' ? base : '$base?tab=$tab');
+    }
+  }
 
   Color? _cosmeticColor(dynamic value) {
     if (value is! String || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) {
@@ -197,22 +234,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           level,
                           pointsBalance,
                         ),
-                        if (showcase != null) ...[
-                          SizedBox(height: grid.px(3)),
-                          ProfileShowcaseSection(
-                              showcase: showcase, isMine: isMine),
-                        ],
                         SizedBox(height: grid.px(3)),
-                        _actionButtons(
-                            context, grid, isMine, earnedBadges, savedSpots),
-                        SizedBox(height: grid.px(4)),
-                        _postedDestinations(
-                          context,
-                          grid,
-                          isMine,
-                          targetHandle,
-                          userSpotsAsync,
-                        ),
+                        _tabBar(context, grid),
+                        if (_tab == 'overview') ...[
+                          if (showcase != null) ...[
+                            SizedBox(height: grid.px(3)),
+                            ProfileShowcaseSection(
+                                showcase: showcase, isMine: isMine),
+                          ],
+                          SizedBox(height: grid.px(3)),
+                          _actionButtons(
+                              context, grid, isMine, earnedBadges, savedSpots),
+                          SizedBox(height: grid.px(4)),
+                          _postedDestinations(
+                            context,
+                            grid,
+                            isMine,
+                            targetHandle,
+                            userSpotsAsync,
+                          ),
+                        ] else if (_tab == 'quests') ...[
+                          SizedBox(height: grid.px(3)),
+                          ProfileQuestsTab(
+                            targetHandle: targetHandle,
+                            isMine: isMine,
+                            userSpotsAsync: userSpotsAsync,
+                          ),
+                        ] else if (_tab == 'progress') ...[
+                          SizedBox(height: grid.px(3)),
+                          ProfileProgressTab(
+                            targetKey: isMine ? '' : targetHandle,
+                            isMine: isMine,
+                          ),
+                        ] else ...[
+                          SizedBox(height: grid.px(3)),
+                          ProfileTimelineTab(targetHandle: targetHandle),
+                        ],
                       ],
                     ),
                   ),
@@ -222,6 +279,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _tabBar(BuildContext context, PixelGrid grid) {
+    final tabs = [
+      ('overview', tr(context, en: 'Overview', tl: 'Buod')),
+      ('quests', tr(context, en: 'Quests', tl: 'Mga Quest')),
+      ('progress', tr(context, en: 'Progress', tl: 'Progreso')),
+      ('timeline', tr(context, en: 'Timeline', tl: 'Kasaysayan')),
+    ];
+    return Wrap(
+      key: const ValueKey('profile_hub_tabs'),
+      spacing: grid.px(2),
+      runSpacing: grid.px(1),
+      children: [
+        for (final (key, label) in tabs)
+          PixelChip(
+            label,
+            key: ValueKey('profile_tab_$key'),
+            style: _tab == key ? PixelBoxStyle.gold : PixelBoxStyle.parchment,
+            onTap: () => _selectTab(key),
+          ),
+      ],
     );
   }
 
