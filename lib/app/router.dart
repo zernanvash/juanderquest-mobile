@@ -47,6 +47,7 @@ import '../features/quests/models/campaign_model.dart';
 import '../features/spots/models/spot_model.dart';
 import '../features/quests/screens/quest_builder_screen.dart';
 import '../features/quests/screens/qr_sheet_screen.dart';
+import '../features/recap/recap_screen.dart';
 import '../features/plaza/plaza_screen.dart';
 import '../features/about/screens/about_screen.dart';
 import '../features/trail/trail_catalog_screen.dart';
@@ -403,6 +404,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const TrailCatalogScreen(),
+        ),
+      ),
+      // Plan 62 Juander Recap.
+      GoRoute(
+        path: '/recap',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const RecapScreen(),
         ),
       ),
       GoRoute(
