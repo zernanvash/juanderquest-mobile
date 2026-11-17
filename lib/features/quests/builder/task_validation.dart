@@ -12,33 +12,52 @@ class ValidationError {
   });
 
   @override
-  String toString() => 'ValidationError(field: $field, message: $message, taskIndex: $taskIndex)';
+  String toString() =>
+      'ValidationError(field: $field, message: $message, taskIndex: $taskIndex)';
 }
 
 List<ValidationError> validateQuestBuilder(QuestBuilderState state) {
   final errors = <ValidationError>[];
 
-  if (state.title.trim().isEmpty || state.title.trim().length < 3) {
-    errors.add(const ValidationError(field: 'title', message: 'Title must be at least 3 characters.'));
-  } else if (state.title.trim().length > 100) {
-    errors.add(const ValidationError(field: 'title', message: 'Title cannot exceed 100 characters.'));
+  // Plan 56: a draft saves with any title; publishing needs the checklist
+  // (same limits as the server's publishChecklist: title 5+, description 15+).
+  final publishing = state.status == 'published';
+  final title = state.title.trim();
+  if (title.isEmpty) {
+    errors.add(const ValidationError(
+        field: 'title', message: 'Give your quest a title.'));
+  } else if (title.length > 100) {
+    errors.add(const ValidationError(
+        field: 'title', message: 'Title cannot exceed 100 characters.'));
+  } else if (publishing && title.length < 5) {
+    errors.add(const ValidationError(
+        field: 'title',
+        message: 'To publish: title needs at least 5 characters.'));
   }
 
-  if (state.description.trim().isEmpty || state.description.trim().length < 10) {
-    errors.add(const ValidationError(field: 'description', message: 'Description must be at least 10 characters.'));
+  if (publishing && state.description.trim().length < 15) {
+    errors.add(const ValidationError(
+        field: 'description',
+        message: 'To publish: description needs at least 15 characters.'));
   }
 
   if (state.tasks.length > 10) {
-    errors.add(const ValidationError(field: 'tasks', message: 'A quest cannot have more than 10 tasks.'));
+    errors.add(const ValidationError(
+        field: 'tasks', message: 'A quest cannot have more than 10 tasks.'));
   }
 
   if (state.status == 'published') {
     if (state.tasks.isEmpty) {
-      errors.add(const ValidationError(field: 'tasks', message: 'At least one task is required to publish.'));
+      errors.add(const ValidationError(
+          field: 'tasks',
+          message: 'At least one task is required to publish.'));
     } else {
       final hasRequired = state.tasks.any((t) => t.required);
       if (!hasRequired) {
-        errors.add(const ValidationError(field: 'tasks', message: 'At least one task must be marked as required to publish.'));
+        errors.add(const ValidationError(
+            field: 'tasks',
+            message:
+                'At least one task must be marked as required to publish.'));
       }
     }
   }

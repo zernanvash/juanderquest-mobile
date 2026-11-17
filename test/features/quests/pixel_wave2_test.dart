@@ -872,7 +872,7 @@ void main() {
     await tester.tap(find.byKey(const Key('builder_publish_btn')));
     await tester.pumpAndSettle();
     expect(find.text('FIX BEFORE PUBLISHING'), findsOneWidget);
-    expect(find.text('Title must be at least 3 characters.'), findsOneWidget);
+    expect(find.text('Give your quest a title.'), findsOneWidget);
     expect(repo.lastCreatedPayload, isNull);
   });
 

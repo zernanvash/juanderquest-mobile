@@ -345,9 +345,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // Plan 62: the season/year story.
             PixelButton(
               key: const ValueKey('profile_recap'),
-              label: tr(context, en: 'My Juander Recap ›', tl: 'Juander Recap ko ›'),
+              label: tr(context,
+                  en: 'My Juander Recap ›', tl: 'Juander Recap ko ›'),
               variant: PixelButtonVariant.secondary,
               onPressed: () => context.push('/recap'),
+            ),
+            SizedBox(height: grid.px(2)),
+            // Plan 56: drafts and published quests.
+            PixelButton(
+              key: const ValueKey('profile_my_quests'),
+              label: tr(context, en: 'My quests ›', tl: 'Mga quest ko ›'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => context.push('/my-quests'),
             ),
           ] else ...[
             SizedBox(height: grid.px(3)),
