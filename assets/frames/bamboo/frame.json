@@ -1,0 +1,17 @@
+{
+  "name": "bamboo",
+  "edge": 10,
+  "corner": 32,
+  "text": "ink",
+  "files": [
+    "corner-bl.png",
+    "corner-br.png",
+    "corner-tl.png",
+    "corner-tr.png",
+    "edge-bottom.png",
+    "edge-left.png",
+    "edge-right.png",
+    "edge-top.png",
+    "fill.png"
+  ]
+}

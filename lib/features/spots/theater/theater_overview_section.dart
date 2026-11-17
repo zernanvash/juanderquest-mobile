@@ -175,19 +175,27 @@ class TheaterOverviewSection extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Bounty',
-                          style: PixelType.body(
-                            context,
-                            color: PixelPalette.paperDim,
+                        Flexible(
+                          child: Text(
+                            'Bounty',
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.paperDim,
+                            ),
                           ),
                         ),
-                        MjdqAmount(
-                          250,
-                          sign: true,
-                          style: PixelType.body(
-                            context,
-                            color: PixelPalette.gold,
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: MjdqAmount(
+                              250,
+                              sign: true,
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.gold,
+                              ),
+                            ),
                           ),
                         ),
                       ],

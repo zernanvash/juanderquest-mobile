@@ -51,6 +51,7 @@ flutter:
   assets:
     - assets/images/
     - assets/licenses/
+    - assets/frames/bamboo/
     - assets/ar_sprites/
     - assets/audio/sfx/
     - assets/audio/music/
@@ -76,6 +77,10 @@ flutter:
     - family: VT323
       fonts:
         - asset: assets/fonts/VT323-Regular.ttf
+    # Owner 2026-11-17: plain text and descriptions (CC0, SpicyGame Studios).
+    - family: RetroSans
+      fonts:
+        - asset: assets/fonts/RetroSans.ttf
     - family: PressStart2P
       fonts:
         - asset: assets/fonts/PressStart2P-Regular.ttf

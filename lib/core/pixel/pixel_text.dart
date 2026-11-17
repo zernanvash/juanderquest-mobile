@@ -15,12 +15,12 @@ abstract final class PixelType {
     double scale = headerScale,
   }) {
     // Owner 2026-11-17: three fonts. PressStart2P for headers, Silkscreen
-    // for buttons, chips and tags, VT323 for plain text.
+    // for buttons, chips and tags, Retro Sans for plain text.
     return TextStyle(
       fontFamily: font,
       fontFamilyFallback: PixelFonts.fallback,
       fontSize: size * scale,
-      height: 1.25,
+      height: font == plainFont ? plainHeight : 1.25,
       color: color,
       fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
       // PressStart2P sets its letters far apart; pull them together.
@@ -36,11 +36,15 @@ abstract final class PixelType {
   static const headerScale = 0.78;
 
   static const labelFont = 'Silkscreen';
-  static const plainFont = 'VT323';
+  static const plainFont = 'RetroSans';
 
-  /// VT323 draws small for its size; this matches its letters to the
+  /// Retro Sans draws small for its size; this matches its capitals to the
   /// pixel fonts' size scale.
-  static const plainScale = 1.2;
+  static const plainScale = 1.55;
+
+  /// Line height that keeps a row of plain text as tall as it was with
+  /// VT323 (1.2 scale x 1.25 height), so layouts keep their sizes.
+  static const plainHeight = 1.5 / plainScale;
 
   static TextStyle display(BuildContext context,
           {Color color = PixelPalette.ink}) =>

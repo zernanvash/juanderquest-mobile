@@ -10,6 +10,7 @@ import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_frame.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
@@ -72,6 +73,16 @@ class HomeHero extends ConsumerWidget {
     final nameColorAsset = _cosmeticAsset(currentUser?.cosmetics, 'nameColor');
     final nameColor = _cosmeticColor(nameColorAsset?['color']);
     final cosmeticTitle = titleAsset?['text']?.toString() ?? '';
+    // A bought panel frame (Plan 104b) puts the card on its light fill, so
+    // the cream-on-wood text turns dark.
+    final frame = PixelFrameSkin.resolve(
+      user == null ? ref.watch(panelFramePreviewProvider) : null,
+      currentUser?.cosmetics,
+    );
+    final textMain = frame?.text ?? PixelPalette.paper;
+    final textSoft = frame?.textSoft ?? PixelPalette.cream;
+    final accentToken = frame?.accentToken ?? 'sun';
+    final mainToken = frame?.textToken ?? 'paper';
     final initial = displayName.isEmpty ? 'J' : displayName[0].toUpperCase();
     final avatarUrl = currentUser?.avatarUrl ?? '';
     final validAvatar = avatarUrl.isNotEmpty &&
@@ -88,9 +99,9 @@ class HomeHero extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        PixelPanel(
-          style: PixelBoxStyle.wood,
-          child: Column(
+        _cardPanel(
+          frame,
+          Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
@@ -131,7 +142,7 @@ class HomeHero extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                           style: PixelType.title(
                             context,
-                            color: nameColor ?? PixelPalette.paper,
+                            color: nameColor ?? textMain,
                           ),
                         ),
                         if (handle != null) ...[
@@ -142,7 +153,7 @@ class HomeHero extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                             style: PixelType.small(
                               context,
-                              color: PixelPalette.cream,
+                              color: textSoft,
                             ),
                           ),
                         ],
@@ -186,10 +197,9 @@ class HomeHero extends ConsumerWidget {
                     ),
                     SizedBox(height: grid.px(1)),
                     PixelText.rich(
-                      '{sun:$xpInLevel / 50 XP} to level {paper:${level + 1}} · {paper:$points total XP}',
+                      '{$accentToken:$xpInLevel / 50 XP} to level {$mainToken:${level + 1}} · {$mainToken:$points total XP}',
                       maxLines: 2,
-                      style:
-                          PixelType.small(context, color: PixelPalette.cream),
+                      style: PixelType.small(context, color: textSoft),
                     ),
                   ],
                 ),
@@ -206,10 +216,10 @@ class HomeHero extends ConsumerWidget {
                   spacing: grid.px(1),
                   runSpacing: grid.px(1),
                   children: [
-                    _statItem(context, 'QUESTS', '$questsCount'),
-                    _statItem(context, 'VISITS', '$visitsCount'),
-                    _statItem(context, 'TOWNS', '$townsCount'),
-                    _statItem(context, 'STREAK', '${streakDays}D'),
+                    _statItem(context, 'QUESTS', '$questsCount', textSoft),
+                    _statItem(context, 'VISITS', '$visitsCount', textSoft),
+                    _statItem(context, 'TOWNS', '$townsCount', textSoft),
+                    _statItem(context, 'STREAK', '${streakDays}D', textSoft),
                   ],
                 ),
               ),
@@ -220,10 +230,22 @@ class HomeHero extends ConsumerWidget {
     );
   }
 
-  Widget _statItem(BuildContext context, String title, String value) {
+  Widget _cardPanel(PixelFrameSkin? frame, Widget child) {
+    if (frame == null) {
+      return PixelPanel(style: PixelBoxStyle.wood, child: child);
+    }
+    return PixelFramedPanel(
+      key: const ValueKey('home_hero_frame'),
+      skin: frame,
+      child: child,
+    );
+  }
+
+  Widget _statItem(
+      BuildContext context, String title, String value, Color color) {
     return Text(
       '$title: $value',
-      style: PixelType.small(context, color: PixelPalette.cream).copyWith(
+      style: PixelType.small(context, color: color).copyWith(
         fontWeight: FontWeight.w700,
       ),
     );

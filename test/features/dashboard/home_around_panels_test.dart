@@ -96,6 +96,9 @@ void main() {
       expect(tester.takeException(), isNull);
       // No location: Home never asks; it points to the Map instead.
       expect(find.byKey(const ValueKey('home_nearby_empty')), findsOneWidget);
+      // At 2x text the event panel can sit below the fold.
+      await tester.scrollUntilVisible(find.text('Event soon'), 100);
+      expect(tester.takeException(), isNull);
       expect(find.text('Event soon'), findsOneWidget);
       expect(find.text('IN 3 DAYS'), findsOneWidget);
     });

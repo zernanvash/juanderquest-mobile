@@ -127,11 +127,16 @@ class _TheaterGalleryDialogState extends State<TheaterGalleryDialog> {
                   ),
                   const Spacer(),
                   if (count > 0)
-                    Text(
-                      '${_currentIndex + 1} / $count',
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.paper,
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '${_currentIndex + 1} / $count',
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.paper,
+                          ),
+                        ),
                       ),
                     ),
                   if (current?.sourceName != null &&
@@ -205,41 +210,46 @@ class _TheaterGalleryDialogState extends State<TheaterGalleryDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Semantics(
-                    button: true,
-                    label: 'Previous photo',
-                    child: InkWell(
-                      key: const Key('gallery_prev_btn'),
-                      onTap: _currentIndex > 0
-                          ? () => _goTo(_currentIndex - 1)
-                          : null,
-                      child: Container(
-                        constraints:
-                            const BoxConstraints(minWidth: 48, minHeight: 48),
-                        alignment: Alignment.center,
-                        child: PixelPanel(
-                          style: _currentIndex > 0
-                              ? PixelBoxStyle.parchment
-                                  .copyWith(corner: 1, shadowPx: 0)
-                              : PixelBoxStyle.stone.copyWith(
-                                  fill: PixelPalette.slate,
-                                  outline: PixelPalette.stone,
-                                  corner: 1,
-                                  shadowPx: 0,
+                  Flexible(
+                    child: Semantics(
+                      button: true,
+                      label: 'Previous photo',
+                      child: InkWell(
+                        key: const Key('gallery_prev_btn'),
+                        onTap: _currentIndex > 0
+                            ? () => _goTo(_currentIndex - 1)
+                            : null,
+                        child: Container(
+                          constraints:
+                              const BoxConstraints(minWidth: 48, minHeight: 48),
+                          alignment: Alignment.center,
+                          child: PixelPanel(
+                            style: _currentIndex > 0
+                                ? PixelBoxStyle.parchment
+                                    .copyWith(corner: 1, shadowPx: 0)
+                                : PixelBoxStyle.stone.copyWith(
+                                    fill: PixelPalette.slate,
+                                    outline: PixelPalette.stone,
+                                    corner: 1,
+                                    shadowPx: 0,
+                                  ),
+                            padding: 1,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: grid.px(3),
+                                vertical: grid.px(2),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '◀ PREV',
+                                  style: PixelType.small(
+                                    context,
+                                    color: _currentIndex > 0
+                                        ? PixelPalette.ink
+                                        : PixelPalette.stone,
+                                  ),
                                 ),
-                          padding: 1,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: grid.px(3),
-                              vertical: grid.px(2),
-                            ),
-                            child: Text(
-                              '◀ PREV',
-                              style: PixelType.small(
-                                context,
-                                color: _currentIndex > 0
-                                    ? PixelPalette.ink
-                                    : PixelPalette.stone,
                               ),
                             ),
                           ),
@@ -247,41 +257,46 @@ class _TheaterGalleryDialogState extends State<TheaterGalleryDialog> {
                       ),
                     ),
                   ),
-                  Semantics(
-                    button: true,
-                    label: 'Next photo',
-                    child: InkWell(
-                      key: const Key('gallery_next_btn'),
-                      onTap: _currentIndex < count - 1
-                          ? () => _goTo(_currentIndex + 1)
-                          : null,
-                      child: Container(
-                        constraints:
-                            const BoxConstraints(minWidth: 48, minHeight: 48),
-                        alignment: Alignment.center,
-                        child: PixelPanel(
-                          style: _currentIndex < count - 1
-                              ? PixelBoxStyle.parchment
-                                  .copyWith(corner: 1, shadowPx: 0)
-                              : PixelBoxStyle.stone.copyWith(
-                                  fill: PixelPalette.slate,
-                                  outline: PixelPalette.stone,
-                                  corner: 1,
-                                  shadowPx: 0,
+                  Flexible(
+                    child: Semantics(
+                      button: true,
+                      label: 'Next photo',
+                      child: InkWell(
+                        key: const Key('gallery_next_btn'),
+                        onTap: _currentIndex < count - 1
+                            ? () => _goTo(_currentIndex + 1)
+                            : null,
+                        child: Container(
+                          constraints:
+                              const BoxConstraints(minWidth: 48, minHeight: 48),
+                          alignment: Alignment.center,
+                          child: PixelPanel(
+                            style: _currentIndex < count - 1
+                                ? PixelBoxStyle.parchment
+                                    .copyWith(corner: 1, shadowPx: 0)
+                                : PixelBoxStyle.stone.copyWith(
+                                    fill: PixelPalette.slate,
+                                    outline: PixelPalette.stone,
+                                    corner: 1,
+                                    shadowPx: 0,
+                                  ),
+                            padding: 1,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: grid.px(3),
+                                vertical: grid.px(2),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'NEXT ▶',
+                                  style: PixelType.small(
+                                    context,
+                                    color: _currentIndex < count - 1
+                                        ? PixelPalette.ink
+                                        : PixelPalette.stone,
+                                  ),
                                 ),
-                          padding: 1,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: grid.px(3),
-                              vertical: grid.px(2),
-                            ),
-                            child: Text(
-                              'NEXT ▶',
-                              style: PixelType.small(
-                                context,
-                                color: _currentIndex < count - 1
-                                    ? PixelPalette.ink
-                                    : PixelPalette.stone,
                               ),
                             ),
                           ),

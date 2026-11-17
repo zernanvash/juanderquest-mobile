@@ -9,10 +9,12 @@ import '../../core/pixel/pixel_background.dart';
 import '../../core/pixel/pixel_box.dart';
 import '../../core/pixel/pixel_controls.dart';
 import '../../core/pixel/pixel_feedback.dart';
+import '../../core/pixel/pixel_frame.dart';
 import '../../core/pixel/pixel_grid.dart';
 import '../../core/pixel/pixel_input.dart';
 import '../../core/pixel/pixel_nav.dart';
 import '../../core/pixel/pixel_text.dart';
+import '../../core/pixel/pixel_texture.dart';
 import '../../core/pixel/pixel_theme.dart';
 import '../../core/theme/app_theme.dart';
 import '../celebrations/celebration.dart';
@@ -99,6 +101,10 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                           _section(context, 'RPG feel (75k)',
                               const RpgFeelSection()),
                           SizedBox(height: grid.px(3)),
+                          _textures(context, grid),
+                          SizedBox(height: grid.px(3)),
+                          _panelFrames(context, grid),
+                          SizedBox(height: grid.px(3)),
                           _homeOptions(context, grid),
                           SizedBox(height: grid.px(3)),
                           _section(context, 'Sound lab (84 sample)',
@@ -179,6 +185,129 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
           Text(
             current.hint,
             style: PixelType.small(context, color: PixelPalette.woodDeep),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Owner 2026-11-17: noisy pixel gradients instead of straight bands. The
+  // pick applies to every dither background until the app restarts.
+  Widget _textures(BuildContext context, PixelGrid grid) {
+    return _section(
+      context,
+      'Gradient textures · pick one',
+      ValueListenableBuilder<PixelTextureStyle>(
+        valueListenable: PixelTexture.style,
+        builder: (context, current, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Tap one to use it on every gradient in the app (banners, '
+              'avatars, page backgrounds) until the app restarts.',
+              style: PixelType.small(context, color: PixelPalette.ink),
+            ),
+            SizedBox(height: grid.px(2)),
+            for (final style in PixelTextureStyle.values) ...[
+              GestureDetector(
+                key: ValueKey('lab_texture_${style.name}'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => PixelTexture.style.value = style,
+                child: PixelPanel(
+                  style: current == style
+                      ? PixelBoxStyle.gold
+                      : PixelBoxStyle.parchment,
+                  padding: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        current == style
+                            ? '${style.label} (in use)'
+                            : style.label,
+                        style: PixelType.label(context),
+                      ),
+                      Text(
+                        style.hint,
+                        style:
+                            PixelType.small(context, color: PixelPalette.slate),
+                      ),
+                      SizedBox(height: grid.px(1)),
+                      Row(
+                        children: [
+                          for (final pair in const [
+                            [PixelPalette.greenMid, PixelPalette.green],
+                            [PixelPalette.paper, PixelPalette.parchment],
+                            [PixelPalette.woodMid, PixelPalette.wood],
+                          ])
+                            Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(right: grid.px(1)),
+                                child: SizedBox(
+                                  height: grid.px(28),
+                                  child: DitherBackground(
+                                    top: pair[0],
+                                    bottom: pair[1],
+                                    style: style,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: grid.px(2)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Plan 104b: try a cosmetic panel frame on the Home player card and the
+  // Passport header before it is in the shop.
+  Widget _panelFrames(BuildContext context, PixelGrid grid) {
+    final current = ref.watch(panelFramePreviewProvider);
+    Widget pick(String label, String? name) => PixelButton(
+          key: ValueKey('lab_frame_${name ?? 'none'}'),
+          label: label,
+          variant: current == name
+              ? PixelButtonVariant.primary
+              : PixelButtonVariant.secondary,
+          onPressed: () =>
+              ref.read(panelFramePreviewProvider.notifier).state = name,
+        );
+    return _section(
+      context,
+      'Panel frames · try one',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Dresses the Home player card and the Passport header until '
+            'the app restarts.',
+            style: PixelType.small(context, color: PixelPalette.ink),
+          ),
+          SizedBox(height: grid.px(2)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(2),
+            children: [
+              pick('No frame', null),
+              for (final skin in PixelFrameSkin.all)
+                pick(skin.name.toUpperCase(), skin.name),
+            ],
+          ),
+          SizedBox(height: grid.px(3)),
+          PixelFramedPanel(
+            skin: PixelFrameSkin.bamboo,
+            child: Text(
+              'Bamboo frame sample. Plain text sits on the woven fill.',
+              style: PixelType.body(context, color: PixelPalette.ink),
+            ),
           ),
         ],
       ),

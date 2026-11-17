@@ -89,23 +89,28 @@ class _PassportPreviewState extends State<PassportPreview> {
               ),
             ),
             if (banner != null)
-              GestureDetector(
-                key: const ValueKey('passport_motion_toggle'),
-                onTap: () {
-                  pixelTick(context);
-                  setState(() => _animated = !_animated);
-                },
-                child: PixelPanel(
-                  style: PixelBoxStyle.slot,
-                  padding: 1,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: grid.px(2),
-                      vertical: grid.px(1),
-                    ),
-                    child: Text(
-                      _animated ? 'Animated' : 'Still',
-                      style: PixelType.small(context),
+              Flexible(
+                child: GestureDetector(
+                  key: const ValueKey('passport_motion_toggle'),
+                  onTap: () {
+                    pixelTick(context);
+                    setState(() => _animated = !_animated);
+                  },
+                  child: PixelPanel(
+                    style: PixelBoxStyle.slot,
+                    padding: 1,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: grid.px(2),
+                        vertical: grid.px(1),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _animated ? 'Animated' : 'Still',
+                          style: PixelType.small(context),
+                        ),
+                      ),
                     ),
                   ),
                 ),

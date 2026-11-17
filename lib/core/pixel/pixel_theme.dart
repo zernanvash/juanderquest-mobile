@@ -22,6 +22,7 @@ abstract final class PixelFonts {
     'Monocraft': 'assets/licenses/ofl-monocraft.txt',
     'PixelifySans': 'assets/licenses/ofl-pixelifysans.txt',
     'VT323': 'assets/licenses/ofl-vt323.txt',
+    'RetroSans': 'assets/licenses/cc0-retrosans.txt',
     'PressStart2P': 'assets/licenses/ofl-pressstart2p.txt',
   };
 
@@ -50,12 +51,12 @@ abstract final class PixelTheme {
     bool header = false,
   }) =>
       TextStyle(
-        // Owner 2026-11-17: PressStart2P headers, Silkscreen labels, VT323
+        // Owner 2026-11-17: PressStart2P headers, Silkscreen labels, Retro Sans
         // plain text.
         fontFamily: header
             ? 'PressStart2P'
             : plain
-                ? 'VT323'
+                ? 'RetroSans'
                 : 'Silkscreen',
         fontFamilyFallback: PixelFonts.fallback,
         fontSize: header ? size * 0.78 : size,

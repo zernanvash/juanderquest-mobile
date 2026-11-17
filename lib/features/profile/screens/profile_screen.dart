@@ -6,6 +6,7 @@ import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_frame.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
@@ -237,9 +238,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     int pointsBalance,
   ) {
     final nameColor = _cosmeticColor(nameColorAsset?['color']);
-    return PixelPanel(
-      style: PixelBoxStyle.parchment,
-      child: Column(
+    // A bought panel frame (Plan 104b) dresses the Passport header.
+    final frame = isMine
+        ? PixelFrameSkin.resolve(
+            ref.watch(panelFramePreviewProvider), cosmetics)
+        : null;
+    Widget panel(Widget child) => frame == null
+        ? PixelPanel(style: PixelBoxStyle.parchment, child: child)
+        : PixelFramedPanel(
+            key: const ValueKey('profile_header_frame'),
+            skin: frame,
+            child: child,
+          );
+    return panel(
+      Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isMine)

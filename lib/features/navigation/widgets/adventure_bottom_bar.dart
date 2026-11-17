@@ -169,12 +169,17 @@ class _AdventureBottomBarState extends State<AdventureBottomBar> {
                       nextStopPosition: nextStop.position,
                     ),
                     SizedBox(width: grid.px(1)),
-                    Text(
-                      'STOP ${widget.currentStopNumber} OF ${widget.totalStops}',
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.woodDeep,
-                      ).copyWith(fontWeight: FontWeight.w700),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'STOP ${widget.currentStopNumber} OF ${widget.totalStops}',
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.woodDeep,
+                          ).copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
                     ),
                     SizedBox(width: grid.px(1)),
                     Expanded(
@@ -190,11 +195,16 @@ class _AdventureBottomBarState extends State<AdventureBottomBar> {
                     ),
                     if (distanceToStopMeters != null) ...[
                       SizedBox(width: grid.px(1)),
-                      Text(
-                        _formatMeters(distanceToStopMeters),
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _formatMeters(distanceToStopMeters),
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.slate,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -223,29 +233,32 @@ class _AdventureBottomBarState extends State<AdventureBottomBar> {
                       color: isMovingTooFast
                           ? PixelPalette.parchment
                           : PixelPalette.gold,
-                      border: (!isMovingTooFast && !isCheckingIn && _bevelRaised)
+                      border: (!isMovingTooFast &&
+                              !isCheckingIn &&
+                              _bevelRaised)
                           ? const Border(
                               top: BorderSide(
                                   color: PixelPalette.sunLight, width: 3),
                               left: BorderSide(
                                   color: PixelPalette.sunLight, width: 3),
-                              right: BorderSide(
-                                  color: PixelPalette.ink, width: 3),
-                              bottom: BorderSide(
-                                  color: PixelPalette.ink, width: 3),
+                              right:
+                                  BorderSide(color: PixelPalette.ink, width: 3),
+                              bottom:
+                                  BorderSide(color: PixelPalette.ink, width: 3),
                             )
                           : const Border.fromBorderSide(
                               BorderSide(color: PixelPalette.ink, width: 2),
                             ),
-                      boxShadow: (!isMovingTooFast && !isCheckingIn && _bevelRaised)
-                          ? const [
-                              BoxShadow(
-                                color: PixelPalette.ink,
-                                offset: Offset(3, 3),
-                                blurRadius: 0,
-                              ),
-                            ]
-                          : const [],
+                      boxShadow:
+                          (!isMovingTooFast && !isCheckingIn && _bevelRaised)
+                              ? const [
+                                  BoxShadow(
+                                    color: PixelPalette.ink,
+                                    offset: Offset(3, 3),
+                                    blurRadius: 0,
+                                  ),
+                                ]
+                              : const [],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

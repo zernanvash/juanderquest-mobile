@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'generated/pixel_palette.g.dart';
 import 'pixel_box.dart';
 import 'pixel_grid.dart';
+import 'pixel_texture.dart';
 
 abstract final class PixelShaders {
   static ui.FragmentProgram? _ditherBg;
@@ -31,6 +32,7 @@ class DitherBackground extends StatelessWidget {
     required this.bottom,
     this.bands = 6,
     this.child,
+    this.style,
   });
 
   final Color top;
@@ -38,14 +40,32 @@ class DitherBackground extends StatelessWidget {
   final int bands;
   final Widget? child;
 
+  /// Fixed texture (Pixel Lab swatches); null follows [PixelTexture.style].
+  final PixelTextureStyle? style;
+
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    return PixelSnap(
-      child: CustomPaint(
-        painter: _DitherPainter(grid.unit * 2, top, bottom, bands),
-        child: child ?? const SizedBox.expand(),
-      ),
+    // Owner 2026-11-17: Pixel Lab can swap the bands for a noisy texture.
+    return ValueListenableBuilder<PixelTextureStyle>(
+      valueListenable: PixelTexture.style,
+      builder: (context, picked, _) {
+        final style = this.style ?? picked;
+        return PixelSnap(
+          child: CustomPaint(
+            isComplex: true,
+            painter: style == PixelTextureStyle.classic
+                ? _DitherPainter(grid.unit * 2, top, bottom, bands)
+                : PixelNoisePainter(
+                    unit: grid.unit,
+                    top: top,
+                    bottom: bottom,
+                    style: style,
+                  ),
+            child: child ?? const SizedBox.expand(),
+          ),
+        );
+      },
     );
   }
 }

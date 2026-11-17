@@ -69,12 +69,38 @@ NearbyQuizInvitationModel _inv({
 }
 
 void main() {
-  test('sortNearbyQuizInvitations orders incomplete, inRange, distance asc, xp desc', () {
+  test(
+      'sortNearbyQuizInvitations orders incomplete, inRange, distance asc, xp desc',
+      () {
     final sorted = sortNearbyQuizInvitations([
-      _inv(id: 'done', title: 'Done', distance: 10, radius: 100, xp: 90, isCompleted: true),
-      _inv(id: 'far', title: 'Far', distance: 250, radius: 100, xp: 80, inRange: false),
-      _inv(id: 'low', title: 'LowXP', distance: 20, radius: 100, xp: 15, inRange: true),
-      _inv(id: 'high', title: 'HighXP', distance: 20, radius: 100, xp: 60, inRange: true),
+      _inv(
+          id: 'done',
+          title: 'Done',
+          distance: 10,
+          radius: 100,
+          xp: 90,
+          isCompleted: true),
+      _inv(
+          id: 'far',
+          title: 'Far',
+          distance: 250,
+          radius: 100,
+          xp: 80,
+          inRange: false),
+      _inv(
+          id: 'low',
+          title: 'LowXP',
+          distance: 20,
+          radius: 100,
+          xp: 15,
+          inRange: true),
+      _inv(
+          id: 'high',
+          title: 'HighXP',
+          distance: 20,
+          radius: 100,
+          xp: 60,
+          inRange: true),
     ]);
 
     expect(
@@ -83,7 +109,9 @@ void main() {
     );
   });
 
-  test('NearbyQuizInvitationModel.inRange falls back to distance <= radius when missing', () {
+  test(
+      'NearbyQuizInvitationModel.inRange falls back to distance <= radius when missing',
+      () {
     final inside = NearbyQuizInvitationModel.fromJson({
       'quiz_id': 'q1',
       'radius_meters': 100,
@@ -98,17 +126,25 @@ void main() {
     expect(outside.inRange, isFalse);
   });
 
-  testWidgets('banner shows 1 quiz with dynamic xp_reward and N quizzes with VIEW ALL', (tester) async {
+  testWidgets(
+      'banner shows 1 quiz with dynamic xp_reward and N quizzes with VIEW ALL',
+      (tester) async {
     final oneState = QuizRadarState(
       items: [
-        _inv(id: 'q1', title: 'Bolinao Heritage', distance: 45, radius: 100, xp: 60),
+        _inv(
+            id: 'q1',
+            title: 'Bolinao Heritage',
+            distance: 45,
+            radius: 100,
+            xp: 60),
       ],
     );
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          quizRadarProvider.overrideWith((ref) => _FixedRadarNotifier(ref, oneState)),
+          quizRadarProvider
+              .overrideWith((ref) => _FixedRadarNotifier(ref, oneState)),
         ],
         child: const MaterialApp(home: Scaffold(body: NearbyQuizRadarBanner())),
       ),
@@ -130,7 +166,8 @@ void main() {
       ProviderScope(
         key: UniqueKey(),
         overrides: [
-          quizRadarProvider.overrideWith((ref) => _FixedRadarNotifier(ref, multiState)),
+          quizRadarProvider
+              .overrideWith((ref) => _FixedRadarNotifier(ref, multiState)),
         ],
         child: const MaterialApp(home: Scaffold(body: NearbyQuizRadarBanner())),
       ),
@@ -141,28 +178,45 @@ void main() {
     expect(find.text('VIEW ALL (2)'), findsOneWidget);
   });
 
-  testWidgets('banner does not show for completed or out-of-range quizzes', (tester) async {
+  testWidgets('banner does not show for completed or out-of-range quizzes',
+      (tester) async {
     final hiddenState = QuizRadarState(
       items: [
-        _inv(id: 'done', title: 'Done', distance: 10, radius: 100, xp: 50, isCompleted: true),
-        _inv(id: 'out', title: 'Out', distance: 150, radius: 100, xp: 50, inRange: false),
+        _inv(
+            id: 'done',
+            title: 'Done',
+            distance: 10,
+            radius: 100,
+            xp: 50,
+            isCompleted: true),
+        _inv(
+            id: 'out',
+            title: 'Out',
+            distance: 150,
+            radius: 100,
+            xp: 50,
+            inRange: false),
       ],
     );
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          quizRadarProvider.overrideWith((ref) => _FixedRadarNotifier(ref, hiddenState)),
+          quizRadarProvider
+              .overrideWith((ref) => _FixedRadarNotifier(ref, hiddenState)),
         ],
         child: const MaterialApp(home: Scaffold(body: NearbyQuizRadarBanner())),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('nearby_quiz_radar_banner')), findsNothing);
+    expect(
+        find.byKey(const ValueKey('nearby_quiz_radar_banner')), findsNothing);
   });
 
-  test('radar throttle skips calls under 50m or under 30s and Home never requests permission', () async {
+  test(
+      'radar throttle skips calls under 50m or under 30s and Home never requests permission',
+      () async {
     var apiCalls = 0;
     var now = DateTime(2026, 11, 15, 10, 0, 0);
     final fakeClient = _FakeQuizApiClient((options) async {
@@ -216,7 +270,8 @@ void main() {
 
     // Move ~100m, only 10s elapsed -> throttled
     now = now.add(const Duration(seconds: 10));
-    await testNotifier.checkWithLocation(lat: 16.025, lng: 120.23, origin: 'gps');
+    await testNotifier.checkWithLocation(
+        lat: 16.025, lng: 120.23, origin: 'gps');
     expect(apiCalls, 1);
 
     // 40s elapsed total, but 0m moved from last query -> throttled
@@ -229,17 +284,20 @@ void main() {
     expect(apiCalls, 1);
 
     // >= 50m moved AND >= 30s elapsed -> fires!
-    await testNotifier.checkWithLocation(lat: 16.030, lng: 120.23, origin: 'gps');
+    await testNotifier.checkWithLocation(
+        lat: 16.030, lng: 120.23, origin: 'gps');
     expect(apiCalls, 2);
   });
 
-  test('markCompleted moves a passed quiz to completed and drops the banner', () {
+  test('markCompleted moves a passed quiz to completed and drops the banner',
+      () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
     final notifier = _FixedRadarNotifier(
       container.read(Provider((ref) => ref)),
       QuizRadarState(items: [
-        _inv(id: 'q1', title: 'Capitol Quiz', distance: 30, radius: 100, xp: 35),
+        _inv(
+            id: 'q1', title: 'Capitol Quiz', distance: 30, radius: 100, xp: 35),
       ]),
     );
     addTearDown(notifier.dispose);
@@ -252,20 +310,42 @@ void main() {
     expect(notifier.state.completed.single.quizId, 'q1');
   });
 
-  testWidgets('NearbyQuizzesScreen renders Ready to play, Walk closer, and Completed sections', (tester) async {
+  testWidgets(
+      'NearbyQuizzesScreen renders Ready to play, Walk closer, and Completed sections',
+      (tester) async {
     final hubState = QuizRadarState(
       origin: 'gps',
       items: [
-        _inv(id: 'q1', title: 'Ready Quiz', distance: 25, radius: 100, xp: 45, inRange: true),
-        _inv(id: 'q2', title: 'Walk Quiz', distance: 220, radius: 100, xp: 30, inRange: false),
-        _inv(id: 'q3', title: 'Done Quiz', distance: 15, radius: 100, xp: 50, inRange: true, isCompleted: true),
+        _inv(
+            id: 'q1',
+            title: 'Ready Quiz',
+            distance: 25,
+            radius: 100,
+            xp: 45,
+            inRange: true),
+        _inv(
+            id: 'q2',
+            title: 'Walk Quiz',
+            distance: 220,
+            radius: 100,
+            xp: 30,
+            inRange: false),
+        _inv(
+            id: 'q3',
+            title: 'Done Quiz',
+            distance: 15,
+            radius: 100,
+            xp: 50,
+            inRange: true,
+            isCompleted: true),
       ],
     );
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          quizRadarProvider.overrideWith((ref) => _FixedRadarNotifier(ref, hubState)),
+          quizRadarProvider
+              .overrideWith((ref) => _FixedRadarNotifier(ref, hubState)),
         ],
         child: const MaterialApp(home: NearbyQuizzesScreen()),
       ),
@@ -274,15 +354,23 @@ void main() {
 
     expect(find.text('1 IN RANGE · 1 DONE'), findsOneWidget);
     expect(find.text('Near you'), findsOneWidget);
-    expect(find.byKey(const ValueKey('quiz_radar_section_ready')), findsOneWidget);
-    expect(find.byKey(const ValueKey('quiz_radar_section_approaching')), findsOneWidget);
-    expect(find.byKey(const ValueKey('quiz_radar_section_completed')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('quiz_radar_section_ready')), findsOneWidget);
+    expect(find.byKey(const ValueKey('quiz_radar_section_approaching')),
+        findsOneWidget);
     expect(find.text('PLAY NOW'), findsOneWidget);
     expect(find.text('ROUTE'), findsOneWidget);
+    // The completed section can sit below the fold.
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('quiz_radar_section_completed')), 200);
+    expect(find.byKey(const ValueKey('quiz_radar_section_completed')),
+        findsOneWidget);
     expect(find.text('REPLAY · 0 XP'), findsOneWidget);
   });
 
-  testWidgets('SpotDetailScreen hides CULTURAL QUIZZES HERE when empty and shows when present', (tester) async {
+  testWidgets(
+      'SpotDetailScreen hides CULTURAL QUIZZES HERE when empty and shows when present',
+      (tester) async {
     const spot = SpotModel(
       id: 'spot-91a',
       slug: 'spot-91a',
@@ -312,7 +400,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('spot_cultural_quizzes_section')), findsNothing);
+    expect(find.byKey(const ValueKey('spot_cultural_quizzes_section')),
+        findsNothing);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -336,7 +425,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('spot_cultural_quizzes_section')), findsOneWidget);
+    expect(find.byKey(const ValueKey('spot_cultural_quizzes_section')),
+        findsOneWidget);
     expect(find.text('CULTURAL QUIZZES HERE'), findsOneWidget);
     expect(find.text('Capitol Trivia'), findsOneWidget);
     expect(find.text('+55 XP'), findsOneWidget);
