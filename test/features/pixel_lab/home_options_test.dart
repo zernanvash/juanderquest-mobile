@@ -241,8 +241,19 @@ void main() {
     );
     await tester.pump();
 
+    // The section sits below the texture and frame pickers.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('home_option_a')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
     expect(find.text('HOME LAYOUT · PICK ONE'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('home_option_a')));
+    // The card is tall; tap its visible top so the hit lands on it.
+    await tester.tapAt(
+      tester.getTopLeft(find.byKey(const ValueKey('home_option_a'))) +
+          const Offset(20, 20),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Home · A Character Sheet'), findsOneWidget);

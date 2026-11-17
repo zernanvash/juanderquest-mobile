@@ -135,149 +135,152 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           return Scaffold(
             backgroundColor: PixelPalette.paper,
             body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  PixelAppBar(
-                    title: 'JuanderQuest',
-                    isTab: true,
-                    // Owner 2026-11-16: the logo instead of "HOME".
-                    // Owner 2026-11-17: the currencies sit in the top bar.
-                    titleWidget: Image.asset(
-                      'assets/images/logo.png',
-                      key: const ValueKey('home_logo'),
-                      height: 44,
-                      filterQuality: FilterQuality.medium,
-                    ),
-                    actions: [
-                      // The strip takes most of the bar and shrinks to fit.
-                      const Flexible(flex: 3, child: HomePurseStrip()),
-                      // Owner 2026-11-16: only the bell on Home (Search is on
-                      // Explore, the Map in the menu, Settings on Profile).
-                      Tooltip(
-                        message: 'Notifications',
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            PixelIconButton(
-                              icon: DesignerArt.notifBell,
-                              semanticLabel: unread > 0
-                                  ? 'Notifications, $unread unread'
-                                  : 'Notifications',
-                              // App-bar icons share one size (owner 2026-11-17).
-                              iconHeight: 24,
-                              // Owner 2026-11-17: no box behind the bell.
-                              boxed: false,
-                              onPressed: () => context.go('/notifications'),
-                            ),
-                            if (unread > 0)
-                              Positioned(
-                                right: -2,
-                                top: -2,
-                                child: IgnorePointer(
-                                  child: PixelChip(
-                                    unread > 9 ? '9+' : '$unread',
-                                    key: const ValueKey('home_bell_count'),
-                                    style: PixelBoxStyle.red,
-                                    textColor: PixelPalette.white,
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                // Owner 2026-11-17: subtle scatter on Home's panels (trial).
+                child: PixelPanelTexture(
+                  child: Column(
+                    children: [
+                      PixelAppBar(
+                        title: 'JuanderQuest',
+                        isTab: true,
+                        // Owner 2026-11-16: the logo instead of "HOME".
+                        // Owner 2026-11-17: the currencies sit in the top bar.
+                        titleWidget: Image.asset(
+                          'assets/images/logo.png',
+                          key: const ValueKey('home_logo'),
+                          height: 44,
+                          filterQuality: FilterQuality.medium,
+                        ),
+                        actions: [
+                          // The strip takes most of the bar and shrinks to fit.
+                          const Flexible(flex: 3, child: HomePurseStrip()),
+                          // Owner 2026-11-16: only the bell on Home (Search is on
+                          // Explore, the Map in the menu, Settings on Profile).
+                          Tooltip(
+                            message: 'Notifications',
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                PixelIconButton(
+                                  icon: DesignerArt.notifBell,
+                                  semanticLabel: unread > 0
+                                      ? 'Notifications, $unread unread'
+                                      : 'Notifications',
+                                  // App-bar icons share one size (owner 2026-11-17).
+                                  iconHeight: 24,
+                                  // Owner 2026-11-17: no box behind the bell.
+                                  boxed: false,
+                                  onPressed: () => context.go('/notifications'),
+                                ),
+                                if (unread > 0)
+                                  Positioned(
+                                    right: -2,
+                                    top: -2,
+                                    child: IgnorePointer(
+                                      child: PixelChip(
+                                        unread > 9 ? '9+' : '$unread',
+                                        key: const ValueKey('home_bell_count'),
+                                        style: PixelBoxStyle.red,
+                                        textColor: PixelPalette.white,
+                                      ),
+                                    ),
                                   ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Expanded(
+                        child: RefreshIndicator(
+                          color: PixelPalette.green,
+                          backgroundColor: PixelPalette.parchment,
+                          onRefresh: _refresh,
+                          child: ListView(
+                            padding: EdgeInsets.fromLTRB(
+                              grid.gutter,
+                              grid.px(3),
+                              grid.gutter,
+                              grid.px(8) + MediaQuery.paddingOf(context).bottom,
+                            ),
+                            children: [
+                              // Plan 100 WP-5: nearby-quiz alerts moved to the
+                              // bell (Notifications); the Map keeps its banner.
+                              // BAND 1: CONDENSED HERO, PURSE & NUMBERS
+                              KeyedSubtree(
+                                key: tipsKeys.hero,
+                                child: UiSpecContainer(
+                                  spec: const UiSpec(
+                                    title: 'Traveler dashboard',
+                                    figmaLayer: 'Mobile / Dashboard / Home',
+                                    dimensions:
+                                        'Responsive, single-page RPG status menu and command center',
+                                    dataBinding:
+                                        'Authenticated profile, daily passport check-in, QOTD, active quest, command grid, and adventure calendar',
+                                    stateNotes:
+                                        'Real-time stats from backend; zero synthetic rankings or unverified counts',
+                                    uxNotes:
+                                        'Concept B: condensed hero, 4x2 icon-first command matrix, dual bento mission/stamp row, and week/month almanac',
+                                  ),
+                                  child: HomeHero(user: user),
                                 ),
                               ),
-                          ],
+                              SizedBox(height: grid.px(5)),
+
+                              // Plan 100 WP-4: today's tasks (they earn the stamps); owner
+                              // 2026-11-16: right under the player card.
+                              // Owner 2026-11-17: always on Home (it hid when
+                              // today's list was empty).
+                              HomeDailyTasksPanel(
+                                missions: daily?.missions ?? const [],
+                                daily: daily,
+                                loading: daily == null && dailyAsync.isLoading,
+                                onOpen: (m) => switch (m.kind) {
+                                  'qotd' => Scrollable.ensureVisible(
+                                      _qotdKey.currentContext!,
+                                      duration:
+                                          const Duration(milliseconds: 300),
+                                    ),
+                                  'cheer_post' => context.push('/plaza'),
+                                  _ => context.push('/quests'),
+                                },
+                              ),
+                              SizedBox(height: grid.px(5)),
+
+                              // BAND 2 (main menu) moved to the MENU button in
+                              // the bottom bar (owner 2026-11-16).
+                              // BAND 3: DUAL BENTO (MISSION + DAILY STAMP + QOTD/GEM)
+                              HomeDualBentoRow(
+                                activeQuest: activeQuest,
+                                recommendedQuest: recommended?.quest,
+                                recommendedReason: recommended?.reason,
+                                dailyState: daily,
+                                claimingDaily: claimState.claiming,
+                                onClaimDaily: daily == null
+                                    ? null
+                                    : () => ref
+                                        .read(homeDailyClaimProvider.notifier)
+                                        .claim(daily),
+                              ),
+                              SizedBox(height: grid.px(5)),
+                              // Owner 2026-11-17: the question is open on Home.
+                              HomeQotdPanel(key: _qotdKey),
+                              SizedBox(height: grid.px(5)),
+                              // Owner 2026-11-17: places near you and the next
+                              // Almanac event.
+                              const HomeNearbyPanel(),
+                              SizedBox(height: grid.px(5)),
+                              const HomeNextEventPanel(),
+                              SizedBox(height: grid.px(5)),
+
+                              // The Almanac moved to the main menu (owner 2026-11-16).
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: PixelPalette.green,
-                      backgroundColor: PixelPalette.parchment,
-                      onRefresh: _refresh,
-                      child: ListView(
-                        padding: EdgeInsets.fromLTRB(
-                          grid.gutter,
-                          grid.px(3),
-                          grid.gutter,
-                          grid.px(8) + MediaQuery.paddingOf(context).bottom,
-                        ),
-                        children: [
-                          // Plan 100 WP-5: nearby-quiz alerts moved to the
-                          // bell (Notifications); the Map keeps its banner.
-                          // BAND 1: CONDENSED HERO, PURSE & NUMBERS
-                          KeyedSubtree(
-                            key: tipsKeys.hero,
-                            child: UiSpecContainer(
-                              spec: const UiSpec(
-                                title: 'Traveler dashboard',
-                                figmaLayer: 'Mobile / Dashboard / Home',
-                                dimensions:
-                                    'Responsive, single-page RPG status menu and command center',
-                                dataBinding:
-                                    'Authenticated profile, daily passport check-in, QOTD, active quest, command grid, and adventure calendar',
-                                stateNotes:
-                                    'Real-time stats from backend; zero synthetic rankings or unverified counts',
-                                uxNotes:
-                                    'Concept B: condensed hero, 4x2 icon-first command matrix, dual bento mission/stamp row, and week/month almanac',
-                              ),
-                              child: HomeHero(user: user),
-                            ),
-                          ),
-                          SizedBox(height: grid.px(5)),
-
-                          // Plan 100 WP-4: today's tasks (they earn the stamps); owner
-                          // 2026-11-16: right under the player card.
-                          // Owner 2026-11-17: always on Home (it hid when
-                          // today's list was empty).
-                          HomeDailyTasksPanel(
-                            missions: daily?.missions ?? const [],
-                            daily: daily,
-                            loading: daily == null && dailyAsync.isLoading,
-                            onOpen: (m) => switch (m.kind) {
-                              'qotd' => Scrollable.ensureVisible(
-                                  _qotdKey.currentContext!,
-                                  duration: const Duration(milliseconds: 300),
-                                ),
-                              'cheer_post' => context.push('/plaza'),
-                              _ => context.push('/quests'),
-                            },
-                          ),
-                          SizedBox(height: grid.px(5)),
-
-                          // BAND 2 (main menu) moved to the MENU button in
-                          // the bottom bar (owner 2026-11-16).
-                          // BAND 3: DUAL BENTO (MISSION + DAILY STAMP + QOTD/GEM)
-                          HomeDualBentoRow(
-                            activeQuest: activeQuest,
-                            recommendedQuest: recommended?.quest,
-                            recommendedReason: recommended?.reason,
-                            dailyState: daily,
-                            claimingDaily: claimState.claiming,
-                            onClaimDaily: daily == null
-                                ? null
-                                : () => ref
-                                    .read(homeDailyClaimProvider.notifier)
-                                    .claim(daily),
-                          ),
-                          SizedBox(height: grid.px(5)),
-                          // Owner 2026-11-17: the question is open on Home.
-                          HomeQotdPanel(key: _qotdKey),
-                          SizedBox(height: grid.px(5)),
-                          // Owner 2026-11-17: places near you and the next
-                          // Almanac event.
-                          const HomeNearbyPanel(),
-                          SizedBox(height: grid.px(5)),
-                          const HomeNextEventPanel(),
-                          SizedBox(height: grid.px(5)),
-
-                          // The Almanac moved to the main menu (owner 2026-11-16).
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                )),
           );
         },
       ),

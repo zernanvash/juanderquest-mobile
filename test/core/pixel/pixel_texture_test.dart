@@ -6,7 +6,7 @@ import 'package:juanderquest_app/core/pixel/pixel_texture.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 
 void main() {
-  tearDown(() => PixelTexture.style.value = PixelTextureStyle.classic);
+  tearDown(() => PixelTexture.style.value = PixelTextureStyle.scatter);
 
   for (final style in PixelTextureStyle.values) {
     testWidgets('${style.name} paints without errors', (tester) async {

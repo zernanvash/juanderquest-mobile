@@ -1,8 +1,13 @@
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import 'generated/pixel_palette.g.dart';
 import 'pixel_grid.dart';
+import 'pixel_texture.dart';
 
 class PixelBoxStyle {
   const PixelBoxStyle({
@@ -166,12 +171,16 @@ class PixelBoxPainter extends CustomPainter {
     required this.grid,
     this.pressed = false,
     this.sunken = false,
+    this.textured = false,
   });
 
   final PixelBoxStyle style;
   final PixelGrid grid;
   final bool pressed;
   final bool sunken;
+
+  /// Faint scatter speckles on the fill (see [PixelPanelTexture]).
+  final bool textured;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -222,6 +231,59 @@ class PixelBoxPainter extends CustomPainter {
     } else {
       fill(o + 1, o + 1, cols - 2, rows - 2, innerCorner, style.fill);
     }
+    if (textured) _speckle(canvas, o, cols, rows, innerCorner);
+  }
+
+  // Owner 2026-11-17: panel fills are a visible four-tone ramp, top to
+  // bottom: white panels fade toward gray, coloured panels toward their own
+  // shade. Neighbouring tones mix as 2-unit scatter cells (no bands).
+  void _speckle(Canvas canvas, int o, int cols, int rows, int corner) {
+    final b = style.bevel ? 2 : 1;
+    final x0 = o + b, y0 = o + b;
+    final w = cols - 2 * b, h = rows - 2 * b;
+    if (w < 4 || h < 4) return;
+    final u = grid.unit;
+    final steps = style.bevel && corner > 0 ? corner - 1 : corner;
+    final clip = Path();
+    for (final r in steppedRects(x0, y0, w, h, steps)) {
+      clip.addRect(Rect.fromLTRB(grid.snap(r.left * u), grid.snap(r.top * u),
+          grid.snap(r.right * u), grid.snap(r.bottom * u)));
+    }
+    final light = style.fill.computeLuminance() > 0.6;
+    final target = light ? PixelPalette.mist : style.shade;
+    const tones = PixelNoisePainter.tones;
+    const reach = PixelTexture.panelReach;
+    final buckets = List.generate(tones, (_) => <double>[]);
+    final cellsX = (w + 1) ~/ 2, cellsY = (h + 1) ~/ 2;
+    for (var r = 0; r < cellsY; r++) {
+      final t = cellsY <= 1 ? 1.0 : r / (cellsY - 1);
+      final v = t * reach * (tones - 1);
+      final lo = v.floor();
+      for (var c = 0; c < cellsX; c++) {
+        final tone = math.min(
+            PixelNoisePainter.hash(c, r, w * 31 + h) < v - lo ? lo + 1 : lo,
+            tones - 1);
+        if (tone == 0) continue;
+        buckets[tone]
+          ..add((x0 + c * 2 + 1) * u)
+          ..add((y0 + r * 2 + 1) * u);
+      }
+    }
+    canvas.save();
+    canvas.clipPath(clip, doAntiAlias: false);
+    for (var k = 1; k < tones; k++) {
+      if (buckets[k].isEmpty) continue;
+      canvas.drawRawPoints(
+        ui.PointMode.points,
+        Float32List.fromList(buckets[k]),
+        Paint()
+          ..isAntiAlias = false
+          ..strokeWidth = 2 * u
+          ..strokeCap = StrokeCap.square
+          ..color = Color.lerp(style.fill, target, k / (tones - 1))!,
+      );
+    }
+    canvas.restore();
   }
 
   @override
@@ -229,7 +291,20 @@ class PixelBoxPainter extends CustomPainter {
       old.style != style ||
       old.grid.unit != grid.unit ||
       old.pressed != pressed ||
-      old.sunken != sunken;
+      old.sunken != sunken ||
+      old.textured != textured;
+}
+
+/// Turns on the subtle scatter texture for every [PixelPanel] below it big
+/// enough to carry it (owner 2026-11-17: tried on Home first).
+class PixelPanelTexture extends InheritedWidget {
+  const PixelPanelTexture({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PixelPanelTexture>() != null;
+
+  @override
+  bool updateShouldNotify(PixelPanelTexture oldWidget) => false;
 }
 
 class PixelPanel extends StatelessWidget {
@@ -265,6 +340,8 @@ class PixelPanel extends StatelessWidget {
           grid: grid,
           pressed: pressed,
           sunken: sunken,
+          // Only section panels; buttons, chips and small boxes stay plain.
+          textured: padding >= sectionPadding && PixelPanelTexture.of(context),
         ),
         child: Padding(
           padding: EdgeInsets.fromLTRB(

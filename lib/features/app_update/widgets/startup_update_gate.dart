@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/app_release.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
+import '../../../core/pixel/pixel_texture.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
@@ -51,6 +52,8 @@ class _StartupLoadingView extends StatelessWidget {
       body: DitherBackground(
         top: PixelPalette.ink,
         bottom: PixelPalette.slate,
+        // Owner 2026-11-17: the loading screen keeps the classic bands.
+        style: PixelTextureStyle.classic,
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -75,7 +78,8 @@ class _StartupLoadingView extends StatelessWidget {
                   Text(
                     'Community-Powered Travel & Discovery',
                     textAlign: TextAlign.center,
-                    style: PixelType.body(context, color: PixelPalette.paperDim),
+                    style:
+                        PixelType.body(context, color: PixelPalette.paperDim),
                   ),
                   const SizedBox(height: 36),
                   if (state.phase == GatePhase.downloading) ...[
@@ -147,6 +151,8 @@ class _BaseRequiredView extends StatelessWidget {
       body: DitherBackground(
         top: PixelPalette.ink,
         bottom: PixelPalette.slate,
+        // Owner 2026-11-17: the loading screen keeps the classic bands.
+        style: PixelTextureStyle.classic,
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -174,7 +180,8 @@ class _BaseRequiredView extends StatelessWidget {
                   Text(
                     'A new base platform version of JuanDerQuest (v${state.latestVersion?.versionName ?? 'latest'}) is required for updated native plugins and system security.',
                     textAlign: TextAlign.center,
-                    style: PixelType.body(context, color: PixelPalette.paperDim),
+                    style:
+                        PixelType.body(context, color: PixelPalette.paperDim),
                   ),
                   const SizedBox(height: 20),
                   if (state.latestVersion?.changelog != null &&

@@ -29,12 +29,20 @@ enum PixelTextureStyle {
 abstract final class PixelTexture {
   /// The texture every [DitherBackground] uses. Not saved yet; Pixel Lab
   /// sets it while the owner picks.
+  // Owner 2026-11-17: "lets do scatter but more subtle".
   static final style =
-      ValueNotifier<PixelTextureStyle>(PixelTextureStyle.classic);
+      ValueNotifier<PixelTextureStyle>(PixelTextureStyle.scatter);
 
   /// How far down the ramp the noisy styles get at the very bottom (owner:
   /// the green was too dark at the bottom, keep it gentle).
   static const reach = 0.8;
+
+  /// Scatter is chunkier, so it stops earlier to stay subtle.
+  static const scatterReach = 0.5;
+
+  /// How far down the four-tone ramp a textured panel gets at its bottom
+  /// (white panels ramp toward gray, coloured ones toward their shade).
+  static const panelReach = 0.85;
 }
 
 /// Paints a noisy two-colour gradient from [top] to [bottom] in pixel cells.
@@ -54,6 +62,8 @@ class PixelNoisePainter extends CustomPainter {
   final PixelTextureStyle style;
   final double reach;
   final int seed;
+
+  static double hash(int x, int y, int seed) => _hash(x, y, seed);
 
   static double _hash(int x, int y, int seed) {
     var h = x * 374761393 + y * 668265263 + seed * 2246822519;
@@ -89,7 +99,10 @@ class PixelNoisePainter extends CustomPainter {
     for (var r = 0; r < rows; r++) {
       final t = rows <= 1 ? 1.0 : r / (rows - 1);
       // Where this row sits on the ramp, 0 (top) .. tones-1 (bottom).
-      final base = t * reach * (tones - 1);
+      final r0 = style == PixelTextureStyle.scatter
+          ? PixelTexture.scatterReach
+          : reach;
+      final base = t * r0 * (tones - 1);
       for (var c = 0; c < cols; c++) {
         var v = base;
         if (style == PixelTextureStyle.clouds) {
