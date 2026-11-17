@@ -250,5 +250,86 @@ class _FramePainter extends CustomPainter {
       old.images != images || old.unit != unit || old.skin != skin;
 }
 
+/// One edge of a frame as a strip across the full width: the art border on
+/// the static bars (owner 2026-11-17: "for the static panels, like the bottom
+/// nav bar, add the borders we were planning … we can add art border in top
+/// bar too"). [piece] is `edge-top` (a border along a bar's top, as on the
+/// bottom nav) or `edge-bottom` (under the top bar). Its height is reserved
+/// before the art loads, so nothing jumps.
+class PixelFrameStrip extends StatefulWidget {
+  const PixelFrameStrip({
+    super.key,
+    this.skin = PixelFrameSkin.bamboo,
+    this.piece = 'edge-top',
+  });
+
+  final PixelFrameSkin skin;
+  final String piece;
+
+  @override
+  State<PixelFrameStrip> createState() => _PixelFrameStripState();
+}
+
+class _PixelFrameStripState extends State<PixelFrameStrip> {
+  ui.Image? _image;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final skin = widget.skin;
+    final piece = widget.piece;
+    _load(skin, DefaultAssetBundle.of(context)).then((images) {
+      if (mounted && widget.skin.name == skin.name && widget.piece == piece) {
+        setState(() => _image = images[piece]);
+      }
+    }, onError: (Object e) {
+      debugPrint('PixelFrameStrip: ${skin.name}: $e');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return SizedBox(
+      height: grid.px(widget.skin.edge),
+      width: double.infinity,
+      child: CustomPaint(
+        painter: _StripPainter(_image, grid.unit, widget.skin.edge),
+      ),
+    );
+  }
+}
+
+class _StripPainter extends CustomPainter {
+  _StripPainter(this.image, this.unit, this.edge);
+
+  final ui.Image? image;
+  final double unit;
+  final int edge;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final im = image;
+    if (im == null) return;
+    final paint = Paint()
+      ..isAntiAlias = false
+      ..filterQuality = FilterQuality.none;
+    final cols = (size.width / unit).ceil();
+    for (var x = 0; x < cols; x += im.width) {
+      final n = math.min(im.width, cols - x);
+      canvas.drawImageRect(
+        im,
+        Rect.fromLTWH(0, 0, n.toDouble(), edge.toDouble()),
+        Rect.fromLTWH(x * unit, 0, n * unit, edge * unit),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_StripPainter old) =>
+      old.image != image || old.unit != unit || old.edge != edge;
+}
+
 @visibleForTesting
 void debugClearPixelFrameCache() => _cache.clear();

@@ -39,7 +39,7 @@ import 'package:juanderquest_app/features/vote/screens/vote_screen.dart';
 import 'package:juanderquest_app/features/map/screens/map_view_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/nearby_quizzes_screen.dart';
-import 'package:juanderquest_app/features/cultural_quizzes/widgets/nearby_quiz_radar_banner.dart';
+import 'package:juanderquest_app/core/widgets/in_app_banner.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_explore_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_search_screen.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
@@ -2920,31 +2920,29 @@ void main() {
         expect(tester.takeException(), isNull);
       });
 
-      testWidgets('NearbyQuizRadarBanner 2.0x textScale ${entry.key}', (
+      testWidgets('InAppBanner 2.0x textScale ${entry.key}', (
         tester,
       ) async {
         await tester.binding.setSurfaceSize(entry.value);
         addTearDown(() => tester.binding.setSurfaceSize(null));
 
         await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              quizRadarProvider.overrideWith(
-                (ref) => _FixedQuizRadarNotifier(ref, sampleRadarState),
-              ),
-            ],
-            child: MaterialApp(
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: const TextScaler.linear(2.0)),
-                child: child!,
-              ),
-              home: const Scaffold(
-                body: Padding(
-                  padding: EdgeInsets.all(8),
-                  child: NearbyQuizRadarBanner(),
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2.0)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: InAppBanner(
+                item: const InAppBannerItem(
+                  id: 'local:quiz:q1:today',
+                  title: 'Quiz unlocked: Bolinao Heritage of the Lighthouse',
+                  message: 'You are at Cape Bolinao Lighthouse. Play it now.',
                 ),
+                onTap: () {},
+                onDismiss: () {},
               ),
             ),
           ),

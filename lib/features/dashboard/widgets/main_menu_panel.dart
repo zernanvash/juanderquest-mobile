@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../../app/open_route.dart';
 import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_grid.dart';
@@ -62,7 +62,7 @@ class MainMenuPanel extends ConsumerWidget {
 
     void go(String route) {
       onClose();
-      context.push(route);
+      openRoute(context, route);
     }
 
     return PixelPanel(

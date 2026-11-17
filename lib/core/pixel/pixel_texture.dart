@@ -41,11 +41,14 @@ abstract final class PixelTexture {
   static const scatterReach = 0.5;
 
   /// How far down the four-tone ramp a textured panel gets at its bottom
-  /// (white panels ramp toward gray, coloured ones toward their shade).
-  static const panelReach = 0.85;
+  /// (white panels ramp toward cream, coloured ones toward their shade).
+  /// Owner 2026-11-17: "the cream is too powerful, lessen the grain, lighter
+  /// (primary) color should be more prominent", so the main colour covers
+  /// most of the panel and only the lowest part reaches the second tone.
+  static const panelReach = 0.45;
 
   /// White panels ramp toward this much woodLight (a dirty cream).
-  static const panelCreamTone = 0.4;
+  static const panelCreamTone = 0.25;
 }
 
 /// Paints a noisy two-colour gradient from [top] to [bottom] in pixel cells.

@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../../app/open_route.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -71,7 +71,7 @@ class _HomeAdventureCalendarState extends ConsumerState<HomeAdventureCalendar> {
     if (widget.onNavigate != null) {
       widget.onNavigate!(route);
     } else {
-      context.push(route);
+      openRoute(context, route);
     }
   }
 

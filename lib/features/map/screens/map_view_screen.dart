@@ -24,7 +24,6 @@ import '../../../core/widgets/satellite_toggle.dart';
 import '../../../core/widgets/jdq_scaffold.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
-import '../../cultural_quizzes/widgets/nearby_quiz_radar_banner.dart';
 import '../../juanchoice/models/juanchoice_models.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/models/quest_model.dart';
@@ -712,7 +711,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       child: JdqScaffold(
         padding: EdgeInsets.zero,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
+          preferredSize: Size.fromHeight(PixelAppBar.heightOf(context)),
           child: PixelAppBar(
             title: 'MAP',
             isTab: true,
@@ -770,14 +769,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                 ),
               ),
 
-            // Nearby Quiz Radar unlock banner
-            if (!_pinPlacementActive)
-              const Positioned(
-                top: 12,
-                left: 12,
-                right: 72,
-                child: NearbyQuizRadarBanner(),
-              ),
+            // Owner 2026-11-17: no quiz prompt on the map; nearby quizzes
+            // reach travelers as notifications and the in-app banner.
 
             // Top-Right Floating Map Tool Controls
             Positioned(

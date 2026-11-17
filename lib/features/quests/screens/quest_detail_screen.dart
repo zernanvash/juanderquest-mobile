@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../app/open_route.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -130,12 +131,12 @@ class _NotFound extends StatelessWidget {
                 label: 'Back',
                 icon: Icons.arrow_back_rounded,
                 onPressed: () {
-                if (Navigator.of(context).canPop()) {
-                  Navigator.of(context).pop();
-                } else {
-                  context.go('/dashboard');
-                }
-              },
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.go('/dashboard');
+                  }
+                },
               ),
             ),
           ],
@@ -793,7 +794,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
               ? null
               : SnackBarAction(
                   label: 'Go',
-                  onPressed: () => context.push(route),
+                  onPressed: () => openRoute(context, route),
                 ),
         ),
       );
@@ -820,8 +821,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                 QuestStepModel(
                   order: 1,
                   title: 'Destination check-in',
-                  description:
-                      'Submit location proof for independent review.',
+                  description: 'Submit location proof for independent review.',
                   checkpointType: 'location',
                   required: true,
                   status: 'ready',
@@ -1227,9 +1227,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           overflow: TextOverflow.ellipsis,
           style: PixelType.title(
             context,
-            color: label == 'Reward bounty'
-                ? PixelPalette.gold
-                : PixelPalette.ink,
+            color:
+                label == 'Reward bounty' ? PixelPalette.gold : PixelPalette.ink,
           ),
         );
     return SizedBox(

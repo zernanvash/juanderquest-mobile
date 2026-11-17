@@ -4,8 +4,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/open_route.dart';
 import '../../app/router.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../widgets/in_app_banner.dart';
 import 'push_routing.dart';
 import 'push_service.dart';
 
@@ -14,7 +16,8 @@ import 'push_service.dart';
 ///   are already allowed (no prompt),
 /// - opens the notification's screen when it is tapped (app in background or
 ///   launched from the notification),
-/// - shows notifications that arrive while the app is open as a snack bar.
+/// - shows notifications that arrive while the app is open as the in-app
+///   banner ([InAppBannerHost]).
 class PushListener extends ConsumerStatefulWidget {
   final Widget child;
 
@@ -50,7 +53,8 @@ class _PushListenerState extends ConsumerState<PushListener> {
   void _open(RemoteMessage message) {
     final route = appRouteForPushHref(message.data['href'] as String?);
     try {
-      ref.read(routerProvider).push(route);
+      // A tab page switches tabs; pushing it would stack it on this tab.
+      openRouteWith(ref.read(routerProvider), route);
     } catch (e) {
       debugPrint('[Push] Could not open $route: $e');
     }
@@ -58,17 +62,14 @@ class _PushListenerState extends ConsumerState<PushListener> {
 
   void _showInApp(RemoteMessage message) {
     if (!mounted) return;
-    final title = message.notification?.title ?? 'JuanDerQuest';
-    final body = message.notification?.body;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
-        content: Text(body == null || body.isEmpty ? title : '$title\n$body',
-            maxLines: 3, overflow: TextOverflow.ellipsis),
-        action: SnackBarAction(label: 'View', onPressed: () => _open(message)),
-      ),
-    );
+    // Owner 2026-11-17: updates show as the in-app banner.
+    ref.read(inAppBannerProvider.notifier).show(InAppBannerItem(
+          id: message.messageId ??
+              'push:${DateTime.now().millisecondsSinceEpoch}',
+          title: message.notification?.title ?? 'JuanDerQuest',
+          message: message.notification?.body,
+          href: appRouteForPushHref(message.data['href'] as String?),
+        ));
   }
 
   @override

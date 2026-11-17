@@ -6,7 +6,6 @@ import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/providers/cultural_quiz_provider.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/nearby_quizzes_screen.dart';
-import 'package:juanderquest_app/features/cultural_quizzes/widgets/nearby_quiz_radar_banner.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
 
@@ -124,94 +123,6 @@ void main() {
     });
     expect(inside.inRange, isTrue);
     expect(outside.inRange, isFalse);
-  });
-
-  testWidgets(
-      'banner shows 1 quiz with dynamic xp_reward and N quizzes with VIEW ALL',
-      (tester) async {
-    final oneState = QuizRadarState(
-      items: [
-        _inv(
-            id: 'q1',
-            title: 'Bolinao Heritage',
-            distance: 45,
-            radius: 100,
-            xp: 60),
-      ],
-    );
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          quizRadarProvider
-              .overrideWith((ref) => _FixedRadarNotifier(ref, oneState)),
-        ],
-        child: const MaterialApp(home: Scaffold(body: NearbyQuizRadarBanner())),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('QUIZ UNLOCKED · 45m'), findsOneWidget);
-    expect(find.text('PLAY +60 XP'), findsOneWidget);
-    expect(find.textContaining('+25'), findsNothing);
-
-    final multiState = QuizRadarState(
-      items: [
-        _inv(id: 'q1', title: 'Quiz A', distance: 45, radius: 100, xp: 60),
-        _inv(id: 'q2', title: 'Quiz B', distance: 80, radius: 100, xp: 40),
-      ],
-    );
-
-    await tester.pumpWidget(
-      ProviderScope(
-        key: UniqueKey(),
-        overrides: [
-          quizRadarProvider
-              .overrideWith((ref) => _FixedRadarNotifier(ref, multiState)),
-        ],
-        child: const MaterialApp(home: Scaffold(body: NearbyQuizRadarBanner())),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('2 QUIZZES IN RANGE · CLOSEST 45m'), findsOneWidget);
-    expect(find.text('VIEW ALL (2)'), findsOneWidget);
-  });
-
-  testWidgets('banner does not show for completed or out-of-range quizzes',
-      (tester) async {
-    final hiddenState = QuizRadarState(
-      items: [
-        _inv(
-            id: 'done',
-            title: 'Done',
-            distance: 10,
-            radius: 100,
-            xp: 50,
-            isCompleted: true),
-        _inv(
-            id: 'out',
-            title: 'Out',
-            distance: 150,
-            radius: 100,
-            xp: 50,
-            inRange: false),
-      ],
-    );
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          quizRadarProvider
-              .overrideWith((ref) => _FixedRadarNotifier(ref, hiddenState)),
-        ],
-        child: const MaterialApp(home: Scaffold(body: NearbyQuizRadarBanner())),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-        find.byKey(const ValueKey('nearby_quiz_radar_banner')), findsNothing);
   });
 
   test(

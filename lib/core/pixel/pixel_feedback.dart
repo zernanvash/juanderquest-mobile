@@ -7,6 +7,7 @@ import 'pixel_art.dart';
 import 'pixel_box.dart';
 import 'pixel_controls.dart';
 import 'pixel_grid.dart';
+import 'pixel_idle.dart';
 import 'pixel_text.dart';
 
 class PixelProgressBar extends StatelessWidget {
@@ -17,12 +18,20 @@ class PixelProgressBar extends StatelessWidget {
     this.color = PixelPalette.greenBright,
     this.height = 5,
     this.showTipGlint = false,
+    this.idle = true,
   });
 
   final double value;
   final int segments;
   final Color color;
   final int height;
+
+  /// Owner 2026-11-17: an idle animation inside the bar. A soft light sweeps
+  /// across the filled part and a few sparks rise, then it rests. Stepped and
+  /// whole-pixel; off under Reduce motion (see [PixelLoop]).
+  final bool idle;
+
+  static const _idleSteps = 28;
 
   /// Plan 75k: a 1 art px sun-light cap on the leading filled segment, so XP
   /// bars read like glowing RPG gauges.
@@ -31,28 +40,37 @@ class PixelProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    return SizedBox(
-      height: grid.px(height + 2),
-      child: PixelSnap(
-        child: CustomPaint(
-          painter: _BarPainter(
-            grid,
-            value.clamp(0, 1),
-            segments,
-            color,
-            height,
-            showTipGlint,
+    final v = value.clamp(0.0, 1.0);
+    Widget bar(int step) => SizedBox(
+          height: grid.px(height + 2),
+          child: PixelSnap(
+            child: CustomPaint(
+              painter: _BarPainter(
+                grid,
+                v,
+                segments,
+                color,
+                height,
+                showTipGlint,
+                step,
+              ),
+              size: Size.infinite,
+            ),
           ),
-          size: Size.infinite,
-        ),
-      ),
+        );
+    if (!idle || v <= 0) return bar(0);
+    return PixelLoop(
+      steps: _idleSteps,
+      stepMs: 90,
+      pauseMs: 1400,
+      builder: (context, step, _) => bar(step),
     );
   }
 }
 
 class _BarPainter extends CustomPainter {
-  _BarPainter(
-      this.grid, this.value, this.segments, this.color, this.h, this.glint);
+  _BarPainter(this.grid, this.value, this.segments, this.color, this.h,
+      this.glint, this.step);
 
   final PixelGrid grid;
   final double value;
@@ -60,6 +78,9 @@ class _BarPainter extends CustomPainter {
   final Color color;
   final int h;
   final bool glint;
+
+  /// Idle step; 0 is the rest pose (nothing extra drawn).
+  final int step;
 
   Rect _r(num x, num y, num w, num hh) => Rect.fromLTRB(
         grid.snap(x * grid.unit),
@@ -87,6 +108,7 @@ class _BarPainter extends CustomPainter {
       if (w > 0) {
         paint.color = color;
         canvas.drawRect(_r(1, 1, w, h), paint);
+        if (step > 0) _idle(canvas, paint, 1, w, (_) => true);
       }
       return;
     }
@@ -107,6 +129,39 @@ class _BarPainter extends CustomPainter {
       paint.color = PixelPalette.sunLight;
       canvas.drawRect(_r(x + segW - 1, 1, 1, h - 1), paint);
     }
+    if (step > 0 && filled > 0) {
+      _idle(canvas, paint, 1, filled * (segW + 1) - 1, (x) {
+        // Only on lit segments, never on the 1 px gaps between them.
+        return (x - 1) % (segW + 1) < segW;
+      });
+    }
+  }
+
+  /// The idle loop inside the filled part `[x0, x0 + w)`, rows 2..h-1.
+  void _idle(
+      Canvas canvas, Paint paint, int x0, int w, bool Function(int x) lit) {
+    if (w < 2 || h < 3) return;
+    const steps = PixelProgressBar._idleSteps;
+    final soft = Color.lerp(color, PixelPalette.white, 0.45)!;
+    // A 2 px light band sweeps left to right.
+    final sweep = x0 + ((step - 1) * (w + 2) / (steps - 2)).floor() - 2;
+    paint.color = soft;
+    for (var dx = 0; dx < 2; dx++) {
+      final x = sweep + dx;
+      if (x >= x0 && x < x0 + w && lit(x)) {
+        canvas.drawRect(_r(x, 2, 1, h - 2), paint);
+      }
+    }
+    // Three sparks rise from the bottom row to the top, staggered.
+    paint.color = PixelPalette.white;
+    for (var k = 0; k < 3; k++) {
+      final life = h - 1;
+      final t = step - 1 - k * 6;
+      if (t < 0 || t >= life) continue;
+      final x = x0 + ((k * 37 + 11) % w);
+      final y = h - 1 - t;
+      if (y >= 2 && lit(x)) canvas.drawRect(_r(x, y, 1, 1), paint);
+    }
   }
 
   @override
@@ -115,7 +170,8 @@ class _BarPainter extends CustomPainter {
       old.grid.unit != grid.unit ||
       old.color != color ||
       old.segments != segments ||
-      old.glint != glint;
+      old.glint != glint ||
+      old.step != step;
 }
 
 class PixelDialogue extends StatefulWidget {

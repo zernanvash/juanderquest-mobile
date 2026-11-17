@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/open_route.dart';
 import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
@@ -82,7 +83,7 @@ class HomeNearbyPanel extends ConsumerWidget {
               label: 'OPEN MAP',
               variant: PixelButtonVariant.secondary,
               expand: true,
-              onPressed: () => context.push('/map'),
+              onPressed: () => openRoute(context, '/map'),
             ),
           ],
           for (final n in top) ...[

@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../../app/open_route.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -60,7 +60,7 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
     if (widget.onNavigate != null) {
       widget.onNavigate!(route);
     } else {
-      context.push(route);
+      openRoute(context, route);
     }
   }
 

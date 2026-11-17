@@ -154,7 +154,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         actions: [
                           // The strip takes most of the bar and shrinks to fit.
-                          const Flexible(flex: 3, child: HomePurseStrip()),
+                          // Expanded, not Flexible: a loose Flexible left its
+                          // unused width after the bell, so the bell and the
+                          // currencies sat off the right edge (owner
+                          // 2026-11-17). The strip aligns itself right.
+                          const Expanded(flex: 3, child: HomePurseStrip()),
                           // Owner 2026-11-16: only the bell on Home (Search is on
                           // Explore, the Map in the menu, Settings on Profile).
                           Tooltip(

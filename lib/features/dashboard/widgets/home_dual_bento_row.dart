@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../../app/open_route.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -50,7 +50,7 @@ class HomeDualBentoRow extends StatelessWidget {
     if (onNavigate != null) {
       onNavigate!(route);
     } else {
-      context.push(route);
+      openRoute(context, route);
     }
   }
 

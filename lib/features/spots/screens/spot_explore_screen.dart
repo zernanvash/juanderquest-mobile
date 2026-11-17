@@ -152,7 +152,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
           return Scaffold(
             backgroundColor: PixelPalette.paper,
             appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(56),
+              preferredSize: Size.fromHeight(PixelAppBar.heightOf(context)),
               child: PixelAppBar(
                 title: 'Explore',
                 isTab: true,

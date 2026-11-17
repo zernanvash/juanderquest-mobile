@@ -928,5 +928,18 @@ void main() {
       await _pump(tester);
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
+
+    // Owner 2026-11-17: the bell and the currencies were pushed left.
+    testWidgets('the bell sits at the right edge of the top bar',
+        (tester) async {
+      await _pump(tester);
+      final width =
+          tester.view.physicalSize.width / tester.view.devicePixelRatio;
+      final bell = tester.getRect(find.byTooltip('Notifications'));
+      final purse =
+          tester.getRect(find.byKey(const ValueKey('home_hero_purse_bar')));
+      expect(width - bell.right, lessThan(16));
+      expect(bell.left - purse.right, lessThan(16));
+    });
   });
 }

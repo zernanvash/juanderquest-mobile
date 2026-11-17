@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../core/pixel/generated/pixel_palette.g.dart';
-import '../core/pixel/pixel_background.dart';
-import '../core/pixel/pixel_feedback.dart';
-import '../core/pixel/pixel_text.dart';
 import '../core/theme/app_theme.dart';
+import '../features/app_update/widgets/startup_update_gate.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/wallet/screens/wallet_connect_screen.dart';
@@ -562,39 +559,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 class _RestoringSessionScreen extends StatelessWidget {
   const _RestoringSessionScreen();
 
-  /// Same look as the startup screen: dark dither, the logo, a pixel loader.
+  /// The same splash as the startup screen; only the message changes.
   @override
   Widget build(BuildContext context) => Theme(
         data: AppTheme.pixel,
-        child: Builder(
-          builder: (context) => Scaffold(
-            backgroundColor: PixelPalette.ink,
-            body: DitherBackground(
-              top: PixelPalette.ink,
-              bottom: PixelPalette.slate,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      'assets/images/logo.png',
-                      width: 200,
-                      filterQuality: FilterQuality.medium,
-                      semanticLabel: 'JuanDerQuest',
-                    ),
-                    const SizedBox(height: 36),
-                    const PixelLoader(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Restoring your account…',
-                      style: PixelType.body(context, color: PixelPalette.white),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
+        child: const JdqSplash(message: 'Restoring your account…'),
       );
 }
 

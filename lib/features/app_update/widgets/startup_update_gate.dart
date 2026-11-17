@@ -47,6 +47,52 @@ class _StartupLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return JdqSplash(
+      message: state.statusMessage,
+      indicator: state.phase == GatePhase.downloading
+          ? SizedBox(
+              width: 220,
+              child: PixelProgressBar(
+                value:
+                    (state.progress > 0 ? state.progress : 0.0).clamp(0.0, 1.0),
+                color: PixelPalette.sun,
+              ),
+            )
+          : null,
+      footer: PixelPanel(
+        style: PixelBoxStyle.slot,
+        sunken: true,
+        padding: 1,
+        child: Text(
+          '${versionLabel(state.installedVersionName)} (Build ${state.installedVersionCode})',
+          style: PixelType.small(context, color: PixelPalette.ink),
+        ),
+      ),
+    );
+  }
+}
+
+/// The one loading screen (owner 2026-11-17: the app showed two different
+/// loading screens, the old then the new). The startup gate and the router's
+/// "restoring your account" step both use it, so only the message changes.
+class JdqSplash extends StatelessWidget {
+  const JdqSplash({
+    super.key,
+    required this.message,
+    this.indicator,
+    this.footer,
+  });
+
+  final String message;
+
+  /// Replaces the pixel loader (the download bar while updating).
+  final Widget? indicator;
+
+  /// Pinned to the bottom so the centre never moves when it is absent.
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: PixelPalette.ink,
       body: DitherBackground(
@@ -55,67 +101,57 @@ class _StartupLoadingView extends StatelessWidget {
         // Owner 2026-11-17: the loading screen keeps the classic bands.
         style: PixelTextureStyle.classic,
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // The real logo (owner 2026-11-04: "the logo is not visible").
-                  Image.asset(
-                    'assets/images/logo.png',
-                    width: 200,
-                    filterQuality: FilterQuality.medium,
-                    semanticLabel: 'JuanDerQuest',
-                  ),
-                  const SizedBox(height: 24),
-                  ShadowText(
-                    'JUANDERQUEST',
-                    textAlign: TextAlign.center,
-                    style: PixelType.title(context, color: PixelPalette.sun),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Community-Powered Travel & Discovery',
-                    textAlign: TextAlign.center,
-                    style:
-                        PixelType.body(context, color: PixelPalette.paperDim),
-                  ),
-                  const SizedBox(height: 36),
-                  if (state.phase == GatePhase.downloading) ...[
-                    SizedBox(
-                      width: 220,
-                      child: PixelProgressBar(
-                        value: (state.progress > 0 ? state.progress : 0.0)
-                            .clamp(0.0, 1.0),
-                        color: PixelPalette.sun,
+          child: Stack(
+            children: [
+              Center(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // The real logo (owner 2026-11-04: "the logo is not visible").
+                      Image.asset(
+                        'assets/images/logo.png',
+                        width: 200,
+                        filterQuality: FilterQuality.medium,
+                        semanticLabel: 'JuanDerQuest',
                       ),
-                    ),
-                  ] else ...[
-                    const PixelLoader(),
-                  ],
-                  const SizedBox(height: 16),
-                  Text(
-                    state.statusMessage,
-                    textAlign: TextAlign.center,
-                    style: PixelType.body(
-                      context,
-                      color: PixelPalette.white,
-                    ),
+                      const SizedBox(height: 24),
+                      ShadowText(
+                        'JUANDERQUEST',
+                        textAlign: TextAlign.center,
+                        style:
+                            PixelType.title(context, color: PixelPalette.sun),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Community-Powered Travel & Discovery',
+                        textAlign: TextAlign.center,
+                        style: PixelType.body(context,
+                            color: PixelPalette.paperDim),
+                      ),
+                      const SizedBox(height: 36),
+                      indicator ?? const PixelLoader(),
+                      const SizedBox(height: 16),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style:
+                            PixelType.body(context, color: PixelPalette.white),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 28),
-                  PixelPanel(
-                    style: PixelBoxStyle.slot,
-                    sunken: true,
-                    padding: 1,
-                    child: Text(
-                      '${versionLabel(state.installedVersionName)} (Build ${state.installedVersionCode})',
-                      style: PixelType.small(context, color: PixelPalette.ink),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              if (footer != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 24,
+                  child: Center(child: footer),
+                ),
+            ],
           ),
         ),
       ),

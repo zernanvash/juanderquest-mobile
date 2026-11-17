@@ -5,6 +5,7 @@ import 'generated/pixel_palette.g.dart';
 import 'pixel_art.dart';
 import 'pixel_box.dart';
 import 'pixel_controls.dart';
+import 'pixel_frame.dart';
 import 'pixel_grid.dart';
 import 'pixel_rpg.dart';
 import 'pixel_text_3d.dart';
@@ -57,29 +58,49 @@ class _PixelHotbarState extends State<PixelHotbar> {
     final grid = PixelGrid.of(context);
     final n = widget.items.length;
     final half = widget.center == null ? n : (n + 1) ~/ 2;
-    return Container(
-      color: PixelPalette.parchment,
-      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(height: grid.unit, color: PixelPalette.woodLight),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-                grid.px(1), grid.px(2), grid.px(1), grid.px(2)),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < n; i++) ...[
-                  if (i == half && widget.center != null)
-                    Expanded(child: Center(child: widget.center)),
-                  Expanded(child: _slot(context, grid, i)),
-                ],
-              ],
+    // Owner 2026-11-17: the art border rides on top of the bar, over the
+    // page, so the bar keeps its height and taps reach the page.
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          color: PixelPalette.parchment,
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                    grid.px(1), grid.px(2), grid.px(1), grid.px(2)),
+                child: Row(
+                  // Centre, so the MENU button sits in the middle of the bar's
+                  // height, not on its bottom (owner 2026-11-17).
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < n; i++) ...[
+                      if (i == half && widget.center != null)
+                        Expanded(child: Center(child: widget.center)),
+                      Expanded(child: _slot(context, grid, i)),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          child: FractionalTranslation(
+            translation: Offset(0, -1),
+            child: IgnorePointer(
+              child: PixelFrameStrip(key: ValueKey('pixel_hotbar_border')),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -326,6 +347,11 @@ class PixelAppBar extends StatelessWidget {
     this.titleWidget,
   });
 
+  /// Height for screens that put the bar in a `PreferredSize`: the bar's
+  /// 56 px plus the art border.
+  static double heightOf(BuildContext context) =>
+      56 + PixelGrid.of(context).px(PixelFrameSkin.bamboo.edge);
+
   final String title;
 
   /// Replaces the lettered [title] (Home shows the logo, owner 2026-11-16);
@@ -381,8 +407,11 @@ class PixelAppBar extends StatelessWidget {
                 }
               });
 
-    // Owner 2026-11-17: the top bar is dark green.
-    return Container(
+    // Owner 2026-11-17: the top bar is dark green, with the art border
+    // under it. When a screen gives the bar a fixed height (a
+    // `PreferredSize`, see [PixelAppBar.heightOf]) the row shrinks to fit,
+    // as it did before the border; elsewhere it takes its natural height.
+    final bar = Container(
       color: PixelPalette.greenDark,
       child: SafeArea(
         bottom: false,
@@ -452,6 +481,19 @@ class PixelAppBar extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+    const border = PixelFrameStrip(
+      key: ValueKey('pixel_app_bar_border'),
+      piece: 'edge-bottom',
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (constraints.hasBoundedHeight) Flexible(child: bar) else bar,
+          border,
+        ],
       ),
     );
   }

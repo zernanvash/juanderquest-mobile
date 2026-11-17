@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/open_route.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../pixel/home_pixel_art.dart';
@@ -341,7 +342,7 @@ class HomePurseStrip extends ConsumerWidget {
                 child: GestureDetector(
                   key: const ValueKey('home_purse_mjdq'),
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => context.push('/shop'),
+                  onTap: () => openRoute(context, '/shop'),
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: grid.px(1)),
                     child: MjdqAmount(
