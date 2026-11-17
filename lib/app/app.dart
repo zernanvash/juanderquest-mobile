@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/audio/game_audio.dart';
+import '../core/pixel/pixel_box.dart';
 import '../core/pixel/pixel_grid.dart';
 import '../core/services/push_listener.dart';
 import '../core/theme/app_theme.dart';
@@ -30,9 +31,12 @@ class JuanderQuestApp extends ConsumerWidget {
         routerConfig: router,
         builder: (context, child) => PixelScope(
           settings: pixelSettings,
-          child: DeviceGuard(
-            child: StartupUpdateGate(
-              child: PushListener(child: child ?? const SizedBox()),
+          // Owner 2026-11-17: section panels carry the texture app-wide.
+          child: PixelPanelTexture(
+            child: DeviceGuard(
+              child: StartupUpdateGate(
+                child: PushListener(child: child ?? const SizedBox()),
+              ),
             ),
           ),
         ),

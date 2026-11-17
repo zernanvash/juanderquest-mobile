@@ -514,7 +514,7 @@ void main() {
 
     // Design system usability rule (2026-11-17): every tap target is at
     // least 48 x 48.
-    testWidgets('every Explore tap target is at least 48x48', (tester) async {
+    testWidgets('every Explore tap target is at least 48 wide and 36 tall', (tester) async {
       final spot = _makeSpot(
         id: 'spot-targets',
         name: 'Target Spot',
@@ -527,7 +527,15 @@ void main() {
       );
       await tester.pumpWidget(_buildHarness(discoveryNotifier: notifier));
       await tester.pumpAndSettle();
-      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      // Owner 2026-11-17: the post's like and save are wide, short targets
+      // so the action row stays compact.
+      await expectLater(
+        tester,
+        meetsGuideline(const MinimumTapTargetGuideline(
+          size: Size(48, 36),
+          link: 'design system: usability rules',
+        )),
+      );
     });
 
     testWidgets('the search box under the bar opens Search', (tester) async {

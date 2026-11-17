@@ -37,9 +37,11 @@ class PixelText3DColors {
     bevel: PixelPalette.white,
     side: PixelPalette.woodMid,
   );
+  // Owner 2026-11-17: the bottom band was too dark; the whole ramp moved
+  // one step lighter.
   static const green = PixelText3DColors(
-    face: PixelPalette.greenMid,
-    band: PixelPalette.green,
+    face: PixelPalette.greenSoft,
+    band: PixelPalette.greenMid,
     bevel: PixelPalette.greenLight,
     side: PixelPalette.greenDeep,
   );

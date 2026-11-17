@@ -309,7 +309,7 @@ void main() {
     });
 
     testWidgets(
-        'ExploreSpotCard shows trophy quest row, no PLAY QUEST button, and save on right at 320x568 and 568x320 with 2x text',
+        'ExploreSpotCard shows trophy icon, no PLAY QUEST button, and save on right at 320x568 and 568x320 with 2x text',
         (tester) async {
       for (final size in const [Size(320, 568), Size(568, 320)]) {
         tester.view.physicalSize = size;
@@ -350,10 +350,8 @@ void main() {
           find.byKey(const ValueKey('explore_quest_row_spot-105')),
           findsOneWidget,
         );
-        expect(
-          find.text('Quest · Hidden gem in Alaminos'),
-          findsOneWidget,
-        );
+        // Owner 2026-11-17: the trophy only, no quest line.
+        expect(find.textContaining('Quest ·'), findsNothing);
         final likeBtn = find.byKey(const ValueKey('explore_like_spot-105'));
         final saveBtn = find.byKey(const ValueKey('explore_save_spot-105'));
         expect(

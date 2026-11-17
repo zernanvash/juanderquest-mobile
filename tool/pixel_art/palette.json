@@ -49,6 +49,7 @@
     {"key": "D", "name": "blueLight",   "hex": "DBEAFE", "source": "web status-info-bg"},
     {"key": "E", "name": "sky",         "hex": "E0F2FE", "source": "app infoBg"},
 
-    {"key": "F", "name": "woodDark",    "hex": "582F0E", "art": false, "source": "the earlier brand brown, for spotlight cards (owner 2026-11-17)"}
+    {"key": "F", "name": "woodDark",    "hex": "582F0E", "art": false, "source": "the earlier brand brown, for spotlight cards (owner 2026-11-17)"},
+    {"key": "G", "name": "greenSoft",   "mix": ["greenMid", "greenLight", 0.5], "art": false, "source": "mix for the green lettering face (owner 2026-11-17: green 3D text too dark at the bottom)"}
   ]
 }

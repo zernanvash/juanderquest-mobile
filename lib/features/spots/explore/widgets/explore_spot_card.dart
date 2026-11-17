@@ -54,13 +54,6 @@ class ExploreSpotCard extends StatelessWidget {
         (cardWidth * MediaQuery.devicePixelRatioOf(context)).round();
     final recommendationReason = getTopRecommendationReason(spot);
     final hasQuest = spot.questId != null && spot.questId!.trim().isNotEmpty;
-    final isHiddenGem = badges.any((b) => b.id == 'gem') ||
-        spot.reasons.any((r) => r.toLowerCase().contains('hidden gem'));
-    final townLabel =
-        spot.municipality.isNotEmpty ? spot.municipality : 'Pangasinan';
-    final questSummaryLine = isHiddenGem
-        ? 'Quest · Hidden gem in $townLabel'
-        : 'Quest in $townLabel';
 
     return Semantics(
       container: true,
@@ -142,27 +135,14 @@ class ExploreSpotCard extends StatelessWidget {
                     ),
                     if (hasQuest) ...[
                       SizedBox(height: grid.px(1)),
-                      Row(
+                      // Owner 2026-11-17: just the trophy, no words.
+                      Semantics(
                         key: ValueKey('explore_quest_row_${spot.id}'),
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const PixelIconFit(
-                            DesignerArt.plazaTrophy,
-                            box: 16,
-                          ),
-                          SizedBox(width: grid.px(1)),
-                          Expanded(
-                            child: Text(
-                              questSummaryLine,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: PixelType.small(
-                                context,
-                                color: PixelPalette.ink,
-                              ),
-                            ),
-                          ),
-                        ],
+                        label: 'Has a quest',
+                        child: const PixelIconFit(
+                          DesignerArt.plazaTrophy,
+                          box: 20,
+                        ),
                       ),
                     ],
                     // Owner 2026-11-17: no caption/traveler note on the card;
@@ -187,7 +167,7 @@ class ExploreSpotCard extends StatelessWidget {
                   child: CollapsibleSpotPhoto(
                     url: spot.imageUrl,
                     aspectRatio: 16 / 10,
-                    gapBelow: grid.px(2),
+                    gapBelow: grid.px(1),
                     cacheWidth: cacheWidth > 0 ? cacheWidth : null,
                   ),
                 ),
@@ -212,9 +192,11 @@ class ExploreSpotCard extends StatelessWidget {
                           pixelTick(context);
                           onToggleLike();
                         },
+                        // Owner 2026-11-17: a wide, short hit area so the
+                        // row stays compact.
                         child: ConstrainedBox(
                           constraints:
-                              const BoxConstraints(minHeight: 48, minWidth: 48),
+                              const BoxConstraints(minHeight: 36, minWidth: 72),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -242,16 +224,35 @@ class ExploreSpotCard extends StatelessWidget {
                   const Spacer(),
 
                   // Save: bookmark, no box.
-                  PixelIconButton(
-                    key: ValueKey('explore_save_${spot.id}'),
-                    icon: isSaved
-                        ? ExploreArt.bookmarkSaved
-                        : ExploreArt.bookmarkUnsaved,
-                    semanticLabel:
-                        isSaved ? 'Remove bookmark' : 'Save bookmark',
-                    iconHeight: 24,
-                    boxed: false,
-                    onPressed: onToggleSave,
+                  // Save: a smaller bookmark in a wide, short hit area.
+                  Semantics(
+                    button: true,
+                    label: isSaved ? 'Remove bookmark' : 'Save bookmark',
+                    child: ExcludeSemantics(
+                      child: GestureDetector(
+                        key: ValueKey('explore_save_${spot.id}'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          pixelTick(context);
+                          onToggleSave();
+                        },
+                        child: ConstrainedBox(
+                          constraints:
+                              const BoxConstraints(minHeight: 36, minWidth: 72),
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            widthFactor: 1,
+                            heightFactor: 1,
+                            child: PixelIconFit(
+                              isSaved
+                                  ? ExploreArt.bookmarkSaved
+                                  : ExploreArt.bookmarkUnsaved,
+                              box: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

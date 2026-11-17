@@ -125,7 +125,8 @@ class ExploreBadgeRow extends StatelessWidget {
                   key: ValueKey('explore_badge_${badges[i].id}'),
                   style: badges[i].style.copyWith(corner: 2, shadowPx: 0),
                   padding: 1,
-                  child: PixelIconFit(badges[i].icon, box: 16),
+                  // Owner 2026-11-17: badges were too small to read.
+                  child: PixelIconFit(badges[i].icon, box: 24),
                 ),
               ],
             ],
@@ -164,10 +165,10 @@ Future<void> showExploreBadges(
             children: [
               PixelPanel(
                 style: b.style.copyWith(corner: 2, shadowPx: 0),
-                padding: 1,
-                child: PixelIconFit(b.icon, box: 16),
+                padding: 2,
+                child: PixelIconFit(b.icon, box: 32),
               ),
-              SizedBox(width: grid.px(2)),
+              SizedBox(width: grid.px(3)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

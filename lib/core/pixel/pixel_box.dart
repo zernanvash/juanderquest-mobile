@@ -250,7 +250,11 @@ class PixelBoxPainter extends CustomPainter {
           grid.snap(r.right * u), grid.snap(r.bottom * u)));
     }
     final light = style.fill.computeLuminance() > 0.6;
-    final target = light ? PixelPalette.mist : style.shade;
+    // Owner 2026-11-17: white panels fade to a dirty cream, not gray.
+    final target = light
+        ? Color.lerp(
+            style.fill, PixelPalette.woodLight, PixelTexture.panelCreamTone)!
+        : style.shade;
     const tones = PixelNoisePainter.tones;
     const reach = PixelTexture.panelReach;
     final buckets = List.generate(tones, (_) => <double>[]);
