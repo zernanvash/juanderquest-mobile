@@ -30,6 +30,8 @@ class TheaterFirstViewport extends StatelessWidget {
     required this.scrollOffset,
     required this.onDirections,
     required this.onPlayQuest,
+    this.onAddPhoto,
+    this.hasQuests = false,
     this.hasPhoto = true,
   });
 
@@ -37,6 +39,8 @@ class TheaterFirstViewport extends StatelessWidget {
   final double scrollOffset;
   final VoidCallback onDirections;
   final VoidCallback onPlayQuest;
+  final VoidCallback? onAddPhoto;
+  final bool hasQuests;
 
   /// Plan 98 Option A: with no working photo there is nothing to look at, so
   /// the header shrinks to the badge and the title and Overview shows sooner.
@@ -67,6 +71,8 @@ class TheaterFirstViewport extends StatelessWidget {
               scrollOffset: scrollOffset,
               onDirections: onDirections,
               onPlayQuest: onPlayQuest,
+              onAddPhoto: onAddPhoto,
+              hasQuests: hasQuests,
             ),
           ],
         ),
@@ -98,6 +104,8 @@ class TheaterFirstViewport extends StatelessWidget {
               scrollOffset: scrollOffset,
               onDirections: onDirections,
               onPlayQuest: onPlayQuest,
+              onAddPhoto: onAddPhoto,
+              hasQuests: hasQuests,
             ),
           ),
         ],
@@ -112,12 +120,16 @@ class _HeroTitleBlock extends StatelessWidget {
     required this.scrollOffset,
     required this.onDirections,
     required this.onPlayQuest,
+    this.onAddPhoto,
+    this.hasQuests = false,
   });
 
   final SpotModel spot;
   final double scrollOffset;
   final VoidCallback onDirections;
   final VoidCallback onPlayQuest;
+  final VoidCallback? onAddPhoto;
+  final bool hasQuests;
 
   @override
   Widget build(BuildContext context) {
@@ -200,6 +212,36 @@ class _HeroTitleBlock extends StatelessWidget {
             ),
           ],
         ),
+
+        // Scrolled-only secondary actions: ADD PHOTO + PLAY QUEST
+        if (scrollOffset > 0 && (onAddPhoto != null || hasQuests)) ...[
+          SizedBox(height: grid.px(1.5)),
+          Row(
+            children: [
+              if (onAddPhoto != null)
+                Expanded(
+                  child: PixelButton(
+                    key: const ValueKey('spot_add_photo'),
+                    label: 'ADD PHOTO',
+                    variant: PixelButtonVariant.secondary,
+                    expand: true,
+                    onPressed: onAddPhoto,
+                  ),
+                ),
+              if (onAddPhoto != null && hasQuests) SizedBox(width: grid.px(2)),
+              if (hasQuests)
+                Expanded(
+                  child: PixelButton(
+                    key: const ValueKey('spot_play_quest_btn'),
+                    label: 'PLAY QUEST',
+                    variant: PixelButtonVariant.primary,
+                    expand: true,
+                    onPressed: onPlayQuest,
+                  ),
+                ),
+            ],
+          ),
+        ],
 
         // Stepped SCROLL ▼ hint (bobs 2 art px at 4 fps)
         if (scrollOffset < 10) ...[

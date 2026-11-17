@@ -9,6 +9,7 @@ import '../../../../core/pixel/pixel_text_3d.dart';
 import '../../../../core/pixel/pixel_text.dart';
 import '../../models/spot_model.dart';
 import '../../theater/theater_backdrop.dart';
+import '../../widgets/spot_like_heart.dart';
 import '../explore_art.dart';
 import '../recommendation_reason.dart';
 import '../spot_filter_state.dart';
@@ -53,6 +54,13 @@ class ExploreSpotCard extends StatelessWidget {
         (cardWidth * MediaQuery.devicePixelRatioOf(context)).round();
     final recommendationReason = getTopRecommendationReason(spot);
     final hasQuest = spot.questId != null && spot.questId!.trim().isNotEmpty;
+    final isHiddenGem = badges.any((b) => b.id == 'gem') ||
+        spot.reasons.any((r) => r.toLowerCase().contains('hidden gem'));
+    final townLabel =
+        spot.municipality.isNotEmpty ? spot.municipality : 'Pangasinan';
+    final questSummaryLine = isHiddenGem
+        ? 'Quest · Hidden gem in $townLabel'
+        : 'Quest in $townLabel';
 
     return Semantics(
       container: true,
@@ -132,6 +140,31 @@ class ExploreSpotCard extends StatelessWidget {
                           ),
                       ],
                     ),
+                    if (hasQuest) ...[
+                      SizedBox(height: grid.px(1)),
+                      Row(
+                        key: ValueKey('explore_quest_row_${spot.id}'),
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const PixelIconFit(
+                            DesignerArt.plazaTrophy,
+                            box: 16,
+                          ),
+                          SizedBox(width: grid.px(1)),
+                          Expanded(
+                            child: Text(
+                              questSummaryLine,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: PixelType.small(
+                                context,
+                                color: PixelPalette.ink,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     // Owner 2026-11-17: no caption/traveler note on the card;
                     // the place page shows it.
                   ],
@@ -160,12 +193,10 @@ class ExploreSpotCard extends StatelessWidget {
                 ),
               ),
 
-              // Action Row: LIKE (count, pixel heart), SAVE (bookmark), and
-              // PLAY QUEST or VIEW SPOT.
-              Wrap(
-                spacing: grid.px(1),
-                runSpacing: grid.px(1),
-                crossAxisAlignment: WrapCrossAlignment.center,
+              // Action Row: LIKE (count, pixel heart) on the left, SAVE (bookmark)
+              // on the right.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Like: heart + count, no box (owner 2026-11-16).
                   Semantics(
@@ -187,10 +218,8 @@ class ExploreSpotCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              PixelIconFit(
-                                isLiked
-                                    ? DesignerArt.heartLiked
-                                    : DesignerArt.heartUnliked,
+                              SpotLikeHeartIcon(
+                                liked: isLiked,
                                 box: 24,
                               ),
                               SizedBox(width: grid.px(1)),
@@ -210,6 +239,8 @@ class ExploreSpotCard extends StatelessWidget {
                     ),
                   ),
 
+                  const Spacer(),
+
                   // Save: bookmark, no box.
                   PixelIconButton(
                     key: ValueKey('explore_save_${spot.id}'),
@@ -222,22 +253,6 @@ class ExploreSpotCard extends StatelessWidget {
                     boxed: false,
                     onPressed: onToggleSave,
                   ),
-
-                  // PLAY QUEST Button (when questId exists)
-                  if (hasQuest && onPlayQuest != null)
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: Center(
-                        widthFactor: 1,
-                        child: PixelButton(
-                          label: 'PLAY QUEST',
-                          variant: PixelButtonVariant.primary,
-                          style: PixelBoxStyle.gold,
-                          textColor: PixelPalette.ink,
-                          onPressed: onPlayQuest,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ],

@@ -72,7 +72,8 @@ class _TestDiscoveryNotifier extends SpotDiscoveryNotifier {
     state = state.copyWith(
       spots: state.spots
           .map((s) => s.id == spot.id
-              ? s.copyWith(liked: liked, likeCount: s.likeCount + (liked ? 1 : -1))
+              ? s.copyWith(
+                  liked: liked, likeCount: s.likeCount + (liked ? 1 : -1))
               : s)
           .toList(),
     );
@@ -215,7 +216,8 @@ Widget _buildHarness({
   );
 }
 
-Future<void> _scrollTo(WidgetTester tester, Finder finder, {int maxDrags = 30, double dy = -250}) async {
+Future<void> _scrollTo(WidgetTester tester, Finder finder,
+    {int maxDrags = 30, double dy = -250}) async {
   for (var i = 0; i < maxDrags; i++) {
     if (finder.evaluate().isNotEmpty) {
       final center = tester.getCenter(finder.first);
@@ -230,7 +232,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Explore Feed Screen Widget Tests', () {
-    testWidgets('featured card shows when a spot with photo exists', (tester) async {
+    testWidgets('featured card shows when a spot with photo exists',
+        (tester) async {
       final spotWithPhoto = _makeSpot(
         id: 's1',
         name: 'Lingayen Beach',
@@ -251,7 +254,8 @@ void main() {
       expect(find.text('Lingayen Beach'), findsWidgets);
     });
 
-    testWidgets('double-tapping a card photo likes the spot and stays on Explore',
+    testWidgets(
+        'double-tapping a card photo likes the spot and stays on Explore',
         (tester) async {
       // Plan 98: a photo that fails collapses, so serve one that keeps loading
       // (its frame stays, like a real photo's).
@@ -297,7 +301,8 @@ void main() {
       debugNetworkImageHttpClientProvider = null;
     });
 
-    testWidgets('featured card does not show when no spot has a photo', (tester) async {
+    testWidgets('featured card does not show when no spot has a photo',
+        (tester) async {
       final spotNoPhoto = _makeSpot(
         id: 's2',
         name: 'Hidden Cave',
@@ -316,7 +321,8 @@ void main() {
       expect(find.text('Hidden Cave'), findsWidgets);
     });
 
-    testWidgets('JuanChoice card sits at the computed index and buttons work', (tester) async {
+    testWidgets('JuanChoice card sits at the computed index and buttons work',
+        (tester) async {
       final pushedRoutes = <String>[];
       final spots = List.generate(
         5,
@@ -373,7 +379,8 @@ void main() {
       expect(pushedRoutes, contains('/explore/spot-4'));
     });
 
-    testWidgets('action buttons work: like, save, PLAY QUEST, and card tap', (tester) async {
+    testWidgets('action buttons work: like, save, PLAY QUEST, and card tap',
+        (tester) async {
       final pushedRoutes = <String>[];
       final spot = _makeSpot(
         id: 'spot-interactive',
@@ -399,7 +406,8 @@ void main() {
 
       // 1. Plan 93b WP-13: the like count is the server's (0 here), and the
       //    tap goes through the shared provider.
-      final likeBtn = find.byKey(const ValueKey('explore_like_spot-interactive'));
+      final likeBtn =
+          find.byKey(const ValueKey('explore_like_spot-interactive'));
       await _scrollTo(tester, likeBtn);
       expect(likeBtn, findsOneWidget);
       expect(find.descendant(of: likeBtn, matching: find.text('0')),
@@ -422,18 +430,19 @@ void main() {
       //    the spot page (theater_end_report_btn).
       expect(find.bySemanticsLabel('Report problem'), findsNothing);
 
-      // 4. PLAY QUEST button tap
-      final playQuestBtn = find.text('PLAY QUEST');
-      await _scrollTo(tester, playQuestBtn);
-      expect(playQuestBtn, findsOneWidget);
-      await tester.tap(playQuestBtn);
-      await tester.pumpAndSettle();
-      expect(pushedRoutes, contains('/quests/quest-999'));
-
-      // Pop back from /quests/:id
-      final nav = tester.state<NavigatorState>(find.byType(Navigator).last);
-      nav.pop();
-      await tester.pumpAndSettle();
+      // 4. Plan 105: PLAY QUEST button removed; trophy quest row shown and
+      //    save sits on the right end of the action row.
+      expect(find.text('PLAY QUEST'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('explore_quest_row_spot-interactive')),
+        findsOneWidget,
+      );
+      final saveKeyFinder =
+          find.byKey(const ValueKey('explore_save_spot-interactive'));
+      expect(
+        tester.getTopLeft(saveKeyFinder).dx,
+        greaterThan(tester.getTopRight(likeBtn).dx),
+      );
 
       // 5. Card tap navigates to /explore/:slug
       final cardTapTarget = find.text('Interactive Spot');
@@ -524,12 +533,14 @@ void main() {
         ProviderContainer().read(Provider((ref) => ref)),
         const SpotDiscoveryState(spots: [], isInitialLoading: true),
       );
-      await tester.pumpWidget(_buildHarness(discoveryNotifier: loadingNotifier));
+      await tester
+          .pumpWidget(_buildHarness(discoveryNotifier: loadingNotifier));
       await tester.pump();
       expect(find.byType(PixelLoader), findsWidgets);
     });
 
-    testWidgets('error state displays web wording and allows retry', (tester) async {
+    testWidgets('error state displays web wording and allows retry',
+        (tester) async {
       final errorNotifier = _TestDiscoveryNotifier(
         ProviderContainer().read(Provider((ref) => ref)),
         const SpotDiscoveryState(
@@ -563,12 +574,15 @@ void main() {
       await _scrollTo(tester, find.text('No destinations found in feed'));
       expect(find.text('No destinations found in feed'), findsOneWidget);
       expect(
-        find.text('The community feed could not find active destinations matching your filter.'),
+        find.text(
+            'The community feed could not find active destinations matching your filter.'),
         findsOneWidget,
       );
     });
 
-    testWidgets('infinite scroll auto-pages items and caught-up message displays', (tester) async {
+    testWidgets(
+        'infinite scroll auto-pages items and caught-up message displays',
+        (tester) async {
       // Create 15 spots
       final spots = List.generate(
         15,
@@ -605,7 +619,8 @@ void main() {
       expect(find.text('Paged Spot 14'), findsWidgets);
 
       // Caught up message
-      final caughtUpText = find.text("You're caught up. Checking for new posts…");
+      final caughtUpText =
+          find.text("You're caught up. Checking for new posts…");
       await _scrollTo(tester, caughtUpText);
       expect(caughtUpText, findsOneWidget);
     });

@@ -368,8 +368,7 @@ void main() {
     expect(find.text('REPLAY · 0 XP'), findsOneWidget);
   });
 
-  testWidgets(
-      'SpotDetailScreen hides CULTURAL QUIZZES HERE when empty and shows when present',
+  testWidgets('SpotDetailScreen never shows a cultural quiz section',
       (tester) async {
     const spot = SpotModel(
       id: 'spot-91a',
@@ -387,21 +386,6 @@ void main() {
       tags: ['heritage'],
       reasons: ['landmark'],
     );
-
-    await tester.pumpWidget(
-      ProviderScope(
-        key: UniqueKey(),
-        overrides: [
-          spotQuizzesProvider('spot-91a').overrideWith((ref) async => const []),
-        ],
-        child: const MaterialApp(home: SpotDetailScreen(spot: spot)),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('spot_cultural_quizzes_section')),
-        findsNothing);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -426,9 +410,8 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('spot_cultural_quizzes_section')),
-        findsOneWidget);
-    expect(find.text('CULTURAL QUIZZES HERE'), findsOneWidget);
-    expect(find.text('Capitol Trivia'), findsOneWidget);
-    expect(find.text('+55 XP'), findsOneWidget);
+        findsNothing);
+    expect(find.text('CULTURAL QUIZZES HERE'), findsNothing);
+    expect(find.text('Capitol Trivia'), findsNothing);
   });
 }
