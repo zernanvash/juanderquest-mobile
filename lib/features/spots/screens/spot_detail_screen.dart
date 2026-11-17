@@ -223,9 +223,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
   Future<void> _addPhoto() async {
     if (ref.read(authProvider).user == null) {
-      try {
-        context.push('/login');
-      } catch (_) {}
+      // Review 2026-11-17: /login does not exist; sign in, then come back.
+      context.go(
+          '/?redirect=${Uri.encodeComponent(GoRouterState.of(context).uri.toString())}');
       return;
     }
     final sent = await SpotAddPhotoSheet.show(

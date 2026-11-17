@@ -123,7 +123,8 @@ final _png1x1 = Uint8List.fromList(const [
 
 void main() {
   group('Plan 102 Add photo sheet', () {
-    testWidgets('signed-out ADD PHOTO routes to /login', (tester) async {
+    testWidgets('signed-out ADD PHOTO opens sign-in and comes back',
+        (tester) async {
       final client = ApiClient(enableRetries: false);
       client.dio.interceptors.insert(
         0,
@@ -137,7 +138,7 @@ void main() {
           ),
         ),
       );
-      var pushedLogin = false;
+      String? redirect;
       final router = GoRouter(
         initialLocation: '/spot',
         routes: [
@@ -146,9 +147,9 @@ void main() {
             builder: (_, __) => const SpotDetailScreen(spot: _spot),
           ),
           GoRoute(
-            path: '/login',
-            builder: (_, __) {
-              pushedLogin = true;
+            path: '/',
+            builder: (_, state) {
+              redirect = state.uri.queryParameters['redirect'];
               return const Scaffold(body: Text('Login Screen'));
             },
           ),
@@ -181,7 +182,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('spot_add_photo')));
       await tester.pumpAndSettle();
 
-      expect(pushedLogin, isTrue);
+      expect(redirect, '/spot');
       expect(find.text('Login Screen'), findsOneWidget);
     });
 
