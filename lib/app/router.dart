@@ -315,7 +315,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/profile',
-                builder: (context, state) => const ProfileScreen(),
+                builder: (context, state) => ProfileScreen(
+                  initialTab: state.uri.queryParameters['tab'],
+                ),
                 routes: [
                   GoRoute(
                     path: 'badges',
@@ -329,6 +331,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: ':username',
                     builder: (context, state) => ProfileScreen(
                       username: state.pathParameters['username'],
+                      initialTab: state.uri.queryParameters['tab'],
                     ),
                   ),
                 ],
