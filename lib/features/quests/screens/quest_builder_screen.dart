@@ -12,8 +12,8 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../spots/models/spot_model.dart';
 import '../builder/builder_models.dart';
@@ -270,13 +270,9 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(targetStatus == 'published'
-                  ? 'Quest published!'
-                  : 'Draft saved!'),
-              backgroundColor: AppColors.primary,
-            ),
+          showPixelToast(
+            context,
+            targetStatus == 'published' ? 'Quest published!' : 'Draft saved!',
           );
           if (targetStatus == 'published') {
             context.go('/quests/${widget.questId}');
@@ -291,13 +287,11 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
         );
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(targetStatus == 'published'
-                  ? 'Quest created & published!'
-                  : 'Draft quest created!'),
-              backgroundColor: AppColors.primary,
-            ),
+          showPixelToast(
+            context,
+            targetStatus == 'published'
+                ? 'Quest created & published!'
+                : 'Draft quest created!',
           );
           if (targetStatus == 'published') {
             context.go('/quests/$newQuestId');
@@ -521,10 +515,7 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Quest basics',
-            style: PixelType.title(context),
-          ),
+          const PixelSectionTitle('Quest basics'),
           SizedBox(height: grid.px(2)),
           PixelTextField(
             key: const Key('quest_title_input'),
@@ -626,9 +617,9 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
           spacing: grid.px(2),
           runSpacing: grid.px(1),
           children: [
-            Text(
-              'Tasks (${_state.tasks.length}/10)',
-              style: PixelType.title(context),
+            PixelSectionTitle(
+              'Tasks',
+              value: '${_state.tasks.length}/10',
             ),
             if (_state.tasks.length < 10)
               PixelButton(

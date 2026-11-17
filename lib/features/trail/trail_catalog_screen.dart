@@ -184,9 +184,7 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.maybeOf(
-      context,
-    )?.showSnackBar(SnackBar(content: Text(message)));
+    showPixelToast(context, message);
   }
 
   @override
@@ -250,7 +248,7 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
       return const [
         Center(
           key: ValueKey('trail_loading'),
-          child: CircularProgressIndicator(),
+          child: PixelLoader(label: 'Loading trails'),
         ),
       ];
     }
@@ -498,7 +496,7 @@ class _TrailCard extends StatelessWidget {
               busy
                   ? const SizedBox.square(
                       dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: PixelLoader(),
                     )
                   : PixelChip(
                       status,

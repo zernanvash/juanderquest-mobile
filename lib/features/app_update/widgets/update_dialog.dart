@@ -236,17 +236,12 @@ class UpdateDialog extends ConsumerWidget {
                       !isInstalling) ...[
                     const SizedBox(height: 8),
                     Center(
-                      child: TextButton(
+                      child: PixelButton(
+                        label: 'Re-download update package',
+                        variant: PixelButtonVariant.ghost,
                         onPressed: () => ref
                             .read(appUpdateProvider.notifier)
                             .startDownloadAndInstall(forceRedownload: true),
-                        child: Text(
-                          'Re-download update package',
-                          style: PixelType.small(
-                            context,
-                            color: PixelPalette.slate,
-                          ),
-                        ),
                       ),
                     ),
                   ],

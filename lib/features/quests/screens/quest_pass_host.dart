@@ -6,6 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -156,25 +161,24 @@ class _QuestPassSheetState extends ConsumerState<QuestPassSheet> {
             if (_loading)
               const Padding(
                 padding: EdgeInsets.all(AppSpacing.xl),
-                child: CircularProgressIndicator(color: AppColors.primary),
+                child: PixelLoader(label: 'Creating your pass'),
               )
             else if (_error != null) ...[
               Text(_error!,
-                  style: const TextStyle(color: AppColors.danger),
+                  style: PixelType.body(context, color: PixelPalette.redDeep),
                   textAlign: TextAlign.center),
-              TextButton(onPressed: _issue, child: const Text('Retry')),
+              const SizedBox(height: AppSpacing.sm),
+              PixelButton(
+                label: 'Retry',
+                variant: PixelButtonVariant.secondary,
+                onPressed: _issue,
+              ),
             ] else if (_payload != null) ...[
               Opacity(
                 opacity: expired ? 0.25 : 1,
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.25),
-                        width: 2),
-                  ),
+                child: PixelPanel(
+                  style: PixelBoxStyle.slot,
+                  padding: 2,
                   child: QrImageView(
                     data: _payload!,
                     size: 220,
@@ -186,34 +190,41 @@ class _QuestPassSheetState extends ConsumerState<QuestPassSheet> {
               const SizedBox(height: AppSpacing.sm),
               if (_travelerName != null)
                 Text(_travelerName!,
-                    style: AppTypography.labelLarge,
+                    style: PixelType.title(context),
                     textAlign: TextAlign.center),
               const SizedBox(height: 4),
               Text(
                 expired
                     ? 'This pass expired. Make a new one.'
                     : 'Show this to the host. Valid for $mm:${ss.toString().padLeft(2, '0')}, one scan.',
-                style: AppTypography.bodySmall
-                    .copyWith(color: AppColors.textSecondary),
+                style: PixelType.small(context, color: PixelPalette.slate),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.sm),
               if (expired)
-                FilledButton.icon(
+                PixelButton(
+                  label: 'New pass',
                   onPressed: _issue,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('New pass'),
                 )
               else
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                    SizedBox(width: 8),
-                    Flexible(child: Text('Waiting for the host to scan…')),
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: PixelLoader(),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Waiting for the host to scan…',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
             ],
@@ -281,44 +292,65 @@ Future<void> hostScanTravelerPass({
 
 Future<void> _showHostResult(BuildContext context,
     {required bool ok, required String title, required String message}) {
-  return showDialog<void>(
+  return showPixelDialog<void>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      icon: Icon(ok ? Icons.verified_rounded : Icons.error_outline_rounded,
-          color: ok ? AppColors.primary : AppColors.danger, size: 40),
-      title: Text(title),
-      content: Text(message),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))
+    title: title,
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          ok ? Icons.verified_rounded : Icons.error_outline_rounded,
+          color: ok ? PixelPalette.greenDark : PixelPalette.redDeep,
+          size: 40,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: PixelType.body(context),
+        ),
       ],
     ),
+    actions: [
+      PixelButton(
+        label: 'OK',
+        onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    ],
   );
 }
 
 /// Shown after finishing a quest: the reward when it was paid at once, or that it awaits review.
 Future<void> showQuestFinishedDialog(BuildContext context,
     {required bool rewardAwarded, int awardedPoints = 0}) {
-  return showDialog<void>(
+  return showPixelDialog<void>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      icon: Icon(
+    title: rewardAwarded ? 'Quest complete!' : 'Quest submitted',
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
           rewardAwarded
               ? Icons.emoji_events_rounded
               : Icons.hourglass_top_rounded,
-          color: rewardAwarded ? AppColors.sunGold : AppColors.primary,
-          size: 48),
-      title: Text(rewardAwarded ? 'Quest complete!' : 'Quest submitted'),
-      content: Text(
-        rewardAwarded
-            ? 'You earned +$awardedPoints points. They are already in your account.'
-            : 'Nice work! Your quest is waiting for review. Your reward is granted once it is approved.',
-        textAlign: TextAlign.center,
-      ),
-      actions: [
-        FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(), child: const Text('Done'))
+          color: rewardAwarded ? PixelPalette.gold : PixelPalette.greenDark,
+          size: 48,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          rewardAwarded
+              ? 'You earned +$awardedPoints points. They are already in your account.'
+              : 'Nice work! Your quest is waiting for review. Your reward is granted once it is approved.',
+          textAlign: TextAlign.center,
+          style: PixelType.body(context),
+        ),
       ],
     ),
+    actions: [
+      PixelButton(
+        label: 'Done',
+        onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+      ),
+    ],
   );
 }

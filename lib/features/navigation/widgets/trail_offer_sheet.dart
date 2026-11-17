@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -330,8 +331,7 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                     Padding(
                       padding: EdgeInsets.all(grid.px(4)),
                       child: const Center(
-                        child: CircularProgressIndicator(
-                            color: PixelPalette.woodDeep),
+                        child: PixelLoader(label: 'Loading trail details'),
                       ),
                     )
                   else if (_error != null)
@@ -388,9 +388,7 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                             color: PixelPalette.woodDeep),
                       ),
                       SizedBox(height: grid.px(1)),
-                      for (var idx = 0;
-                          idx < _detail!.stops.length;
-                          idx++) ...[
+                      for (var idx = 0; idx < _detail!.stops.length; idx++) ...[
                         Builder(builder: (context) {
                           final stop = _detail!.stops[idx];
                           return PixelPanel(
@@ -466,8 +464,7 @@ class _TrailOfferSheetState extends ConsumerState<TrailOfferSheet> {
                           style: PixelBoxStyle.parchment,
                           child: Row(
                             children: [
-                              const PixelChip('?',
-                                  style: PixelBoxStyle.wood),
+                              const PixelChip('?', style: PixelBoxStyle.wood),
                               SizedBox(width: grid.px(2)),
                               Expanded(
                                 child: Column(

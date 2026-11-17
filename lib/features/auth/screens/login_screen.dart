@@ -8,6 +8,7 @@ import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
@@ -370,8 +371,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       : address;
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    showPixelToast(context, message);
   }
 
   void _setStep(_AuthStep next) {
@@ -394,7 +394,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
                   child: PixelPanel(
@@ -424,8 +425,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _AuthStep.completeWallet => 'COMPLETE YOUR ACCOUNT'
                           },
                           textAlign: TextAlign.center,
-                          style: PixelType.title(context,
-                              color: PixelPalette.ink),
+                          style:
+                              PixelType.title(context, color: PixelPalette.ink),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -603,32 +604,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 4),
                           Align(
                             alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: () => setState(
+                            child: PixelButton(
+                              label: _passwordVisible
+                                  ? 'HIDE PASSWORD'
+                                  : 'SHOW PASSWORD',
+                              variant: PixelButtonVariant.ghost,
+                              onPressed: () => setState(
                                   () => _passwordVisible = !_passwordVisible),
-                              child: Text(
-                                _passwordVisible
-                                    ? 'HIDE PASSWORD'
-                                    : 'SHOW PASSWORD',
-                                style: PixelType.small(context,
-                                    color: PixelPalette.slate),
-                              ),
                             ),
                           ),
                           if (_step == _AuthStep.signIn)
                             Align(
                               alignment: Alignment.centerRight,
-                              child: TextButton(
+                              child: PixelButton(
                                 key: const ValueKey('auth_forgot_password'),
+                                label: 'Forgot password?',
+                                variant: PixelButtonVariant.ghost,
                                 onPressed: _busy
                                     ? null
                                     : () => context.push(
                                         '/forgot-password?email=${Uri.encodeQueryComponent(_email.text.trim())}'),
-                                child: Text(
-                                  'Forgot password?',
-                                  style: PixelType.small(context,
-                                      color: PixelPalette.slate),
-                                ),
                               ),
                             ),
                           if (_step == _AuthStep.signUp) ...[
@@ -676,8 +671,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       color: PixelPalette.stone,
                                       child: SizedBox(height: 2))),
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
                                 child: Text(
                                   'or',
                                   style: PixelType.small(context,
@@ -727,9 +722,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           PixelButton(
                             expand: true,
                             variant: PixelButtonVariant.secondary,
-                            onPressed: _busy
-                                ? null
-                                : () => _setStep(_AuthStep.signUp),
+                            onPressed:
+                                _busy ? null : () => _setStep(_AuthStep.signUp),
                             label: 'Back to account details',
                           ),
                         ],

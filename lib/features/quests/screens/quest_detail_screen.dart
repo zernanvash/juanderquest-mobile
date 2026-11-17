@@ -15,13 +15,10 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_text.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/jdq_scaffold.dart';
-import '../../../core/widgets/primary_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../celebrations/celebration.dart';
 import '../models/quest_model.dart';
@@ -84,9 +81,17 @@ class _QuestDetailByIdState extends ConsumerState<_QuestDetailById> {
       future: _fetchFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const JdqScaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
+          return Theme(
+            data: AppTheme.pixel,
+            child: const Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: DitherBackground(
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                child: Center(
+                  child: PixelLoader(label: 'Loading quest'),
+                ),
+              ),
             ),
           );
         }
@@ -102,45 +107,67 @@ class _NotFound extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return JdqScaffold(
-      appBar: AppBar(
-        title: const Text('Quest Not Found'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.explore_off_rounded,
-                size: 64, color: AppColors.textMuted),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Quest Not Found',
-              style: AppTypography.headlineSmall
-                  .copyWith(color: AppColors.woodBrown),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'This quest details could not be retrieved.',
-              style: AppTypography.bodyMedium
-                  .copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              width: 160,
-              child: SecondaryButton(
-                label: 'Back',
-                icon: Icons.arrow_back_rounded,
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  } else {
-                    context.go('/dashboard');
-                  }
-                },
+    return Theme(
+      data: AppTheme.pixel,
+      child: Builder(
+        builder: (context) {
+          final grid = PixelGrid.of(context);
+          return Scaffold(
+            backgroundColor: PixelPalette.paper,
+            body: DitherBackground(
+              top: PixelPalette.paper,
+              bottom: PixelPalette.parchment,
+              child: SafeArea(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(grid.px(4)),
+                    child: PixelPanel(
+                      style: PixelBoxStyle.parchment,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.explore_off_rounded,
+                            size: 56,
+                            color: PixelPalette.slate,
+                          ),
+                          SizedBox(height: grid.px(2)),
+                          Text(
+                            'Quest Not Found',
+                            style: PixelType.title(context),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: grid.px(1)),
+                          Text(
+                            'This quest details could not be retrieved.',
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.slate,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: grid.px(3)),
+                          PixelButton(
+                            label: 'Back',
+                            variant: PixelButtonVariant.secondary,
+                            expand: true,
+                            onPressed: () {
+                              if (Navigator.of(context).canPop()) {
+                                Navigator.of(context).pop();
+                              } else {
+                                context.go('/dashboard');
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -276,9 +303,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       final pos = await _safeGetPosition();
       if (pos == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(_noGpsMessage)),
-          );
+          showPixelToast(context, _noGpsMessage);
         }
         return;
       }
@@ -295,24 +320,21 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       if (res.data['success'] == true) {
         await _loadProgress();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location verified successfully!')),
-          );
+          showPixelToast(context, 'Location verified successfully!');
         }
       }
     } on DioException catch (dioErr) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  _messageFromDio(dioErr, 'Location verification failed.'))),
+        showPixelToast(
+          context,
+          _messageFromDio(dioErr, 'Location verification failed.'),
         );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Could not verify location. Please retry.')),
+        showPixelToast(
+          context,
+          'Could not verify location. Please retry.',
         );
       }
     } finally {
@@ -363,10 +385,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                   if (ctx.mounted) Navigator.pop(ctx);
                   await _loadProgress();
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('QR code verified successfully!')),
-                    );
+                    showPixelToast(context, 'QR code verified successfully!');
                   }
                 } else {
                   setModalState(() => modalError = 'QR verification failed.');
@@ -382,80 +401,88 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
               }
             }
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: AppSpacing.gutter,
-                right: AppSpacing.gutter,
-                top: AppSpacing.lg,
-                bottom: MediaQuery.viewInsetsOf(ctx).bottom + AppSpacing.lg,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.qr_code_scanner_rounded,
-                            color: AppColors.primary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Scan Checkpoint QR',
-                            style: AppTypography.headlineSmall
-                                .copyWith(fontWeight: FontWeight.bold),
+            return Theme(
+              data: AppTheme.pixel,
+              child: Container(
+                color: PixelPalette.paper,
+                padding: EdgeInsets.only(
+                  left: AppSpacing.gutter,
+                  right: AppSpacing.gutter,
+                  top: AppSpacing.lg,
+                  bottom: MediaQuery.viewInsetsOf(ctx).bottom + AppSpacing.lg,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.qr_code_scanner_rounded,
+                              color: PixelPalette.greenDark),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Scan Checkpoint QR',
+                              style: PixelType.title(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Scan the physical destination QR code or enter the code below.',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      PixelButton(
+                        key: const ValueKey('qr_scan_camera'),
+                        label: 'Scan with camera',
+                        expand: true,
+                        onPressed: modalLoading
+                            ? null
+                            : () async {
+                                final code =
+                                    await Navigator.of(ctx).push<String>(
+                                  MaterialPageRoute(
+                                    builder: (_) => const QrScanScreen(),
+                                  ),
+                                );
+                                if (code == null) return;
+                                textController.text = code;
+                                await verify(setModalState);
+                              },
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      PixelTextField(
+                        controller: textController,
+                        label: 'Marker Code',
+                        hint: 'e.g. BOLINAO_LIGHTHOUSE_QR_2026',
+                        plainFont: true,
+                      ),
+                      if (modalError != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          modalError!,
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.redDeep,
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Scan the physical destination QR code or enter the code below.',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    PrimaryButton(
-                      key: const ValueKey('qr_scan_camera'),
-                      label: 'Scan with camera',
-                      icon: Icons.qr_code_scanner_rounded,
-                      onPressed: modalLoading
-                          ? null
-                          : () async {
-                              final code = await Navigator.of(ctx).push<String>(
-                                MaterialPageRoute(
-                                  builder: (_) => const QrScanScreen(),
-                                ),
-                              );
-                              if (code == null) return;
-                              textController.text = code;
-                              await verify(setModalState);
-                            },
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    TextField(
-                      controller: textController,
-                      decoration: const InputDecoration(
-                        labelText: 'Marker Code',
-                        hintText: 'e.g. BOLINAO_LIGHTHOUSE_QR_2026',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.qr_code_rounded),
+                      const SizedBox(height: AppSpacing.md),
+                      PixelButton(
+                        label: modalLoading ? 'Verifying...' : 'Verify QR',
+                        expand: true,
+                        loading: modalLoading,
+                        onPressed:
+                            modalLoading ? null : () => verify(setModalState),
                       ),
-                    ),
-                    if (modalError != null) ...[
-                      const SizedBox(height: 8),
-                      Text(modalError!,
-                          style: const TextStyle(
-                              color: AppColors.danger, fontSize: 12)),
                     ],
-                    const SizedBox(height: AppSpacing.md),
-                    PrimaryButton(
-                      label: modalLoading ? 'Verifying...' : 'Verify QR',
-                      icon: Icons.check_circle_outline_rounded,
-                      onPressed:
-                          modalLoading ? null : () => verify(setModalState),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             );
@@ -478,190 +505,198 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: AppSpacing.gutter,
-                right: AppSpacing.gutter,
-                top: AppSpacing.lg,
-                bottom: MediaQuery.viewInsetsOf(ctx).bottom + AppSpacing.lg,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.camera_alt_rounded,
-                            color: AppColors.primary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Submit Photo Proof',
-                            style: AppTypography.headlineSmall
-                                .copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Capture or upload a photo fulfilling the objective.',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              try {
-                                final picker = ImagePicker();
-                                final file = await picker.pickImage(
-                                    source: ImageSource.camera,
-                                    maxWidth: 1920,
-                                    maxHeight: 1080);
-                                if (file != null) {
-                                  setModalState(() => pickedFile = file);
-                                }
-                              } catch (_) {}
-                            },
-                            icon: const Icon(Icons.camera_rounded),
-                            label: const Text('Camera'),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              try {
-                                final picker = ImagePicker();
-                                final file = await picker.pickImage(
-                                    source: ImageSource.gallery,
-                                    maxWidth: 1920,
-                                    maxHeight: 1080);
-                                if (file != null) {
-                                  setModalState(() => pickedFile = file);
-                                }
-                              } catch (_) {}
-                            },
-                            icon: const Icon(Icons.photo_library_rounded),
-                            label: const Text('Gallery'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (pickedFile != null) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.image_rounded,
-                                size: 20, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                pickedFile!.name,
-                                style: const TextStyle(fontSize: 12),
-                                overflow: TextOverflow.ellipsis,
-                              ),
+            return Theme(
+              data: AppTheme.pixel,
+              child: Container(
+                color: PixelPalette.paper,
+                padding: EdgeInsets.only(
+                  left: AppSpacing.gutter,
+                  right: AppSpacing.gutter,
+                  top: AppSpacing.lg,
+                  bottom: MediaQuery.viewInsetsOf(ctx).bottom + AppSpacing.lg,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.camera_alt_rounded,
+                              color: PixelPalette.greenDark),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Submit Photo Proof',
+                              style: PixelType.title(context),
                             ),
-                            const Icon(Icons.check_circle_rounded,
-                                size: 18, color: AppColors.success),
-                          ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Capture or upload a photo fulfilling the objective.',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
                         ),
                       ),
-                    ],
-                    const SizedBox(height: AppSpacing.sm),
-                    CheckboxListTile(
-                      value: galleryOptIn,
-                      onChanged: (val) =>
-                          setModalState(() => galleryOptIn = val ?? false),
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      title: const Text(
-                        'Feature photo in destination gallery upon review approval',
-                        style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: const Text(
-                        'Photos remain private evidence for moderation unless checked.',
-                        style: TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary),
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                    if (modalError != null) ...[
-                      const SizedBox(height: 6),
-                      Text(modalError!,
-                          style: const TextStyle(
-                              color: AppColors.danger, fontSize: 12)),
-                    ],
-                    const SizedBox(height: AppSpacing.md),
-                    PrimaryButton(
-                      label: modalLoading
-                          ? 'Uploading Proof...'
-                          : 'Submit Photo Proof',
-                      icon: Icons.upload_rounded,
-                      onPressed: (pickedFile == null || modalLoading)
-                          ? null
-                          : () async {
-                              setModalState(() {
-                                modalLoading = true;
-                                modalError = null;
-                              });
-                              try {
-                                final bytes = await pickedFile!.readAsBytes();
-                                final pos = await _safeGetPosition();
-                                final formData = FormData.fromMap({
-                                  'idempotency_key': const Uuid().v4(),
-                                  'checkpoint_type': 'photo',
-                                  'gallery_opt_in': galleryOptIn.toString(),
-                                  if (pos != null) ...{
-                                    'captured_lat': pos.latitude,
-                                    'captured_lng': pos.longitude,
-                                    'captured_accuracy': pos.accuracy,
-                                  },
-                                  'photo': MultipartFile.fromBytes(bytes,
-                                      filename: pickedFile!.name),
-                                });
-                                final res =
-                                    await ref.read(apiClientProvider).dio.post(
-                                          '/quests/${widget.quest.id}/steps/${step.order}/evidence',
-                                          data: formData,
-                                        );
-                                if (res.data['success'] == true) {
-                                  if (ctx.mounted) Navigator.pop(ctx);
-                                  await _loadProgress();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'Photo proof submitted for independent review!')),
-                                    );
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: PixelButton(
+                              label: 'Camera',
+                              variant: PixelButtonVariant.secondary,
+                              expand: true,
+                              onPressed: () async {
+                                try {
+                                  final picker = ImagePicker();
+                                  final file = await picker.pickImage(
+                                      source: ImageSource.camera,
+                                      maxWidth: 1920,
+                                      maxHeight: 1080);
+                                  if (file != null) {
+                                    setModalState(() => pickedFile = file);
                                   }
-                                } else {
-                                  setModalState(() =>
-                                      modalError = 'Photo submission failed.');
+                                } catch (_) {}
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: PixelButton(
+                              label: 'Gallery',
+                              variant: PixelButtonVariant.secondary,
+                              expand: true,
+                              onPressed: () async {
+                                try {
+                                  final picker = ImagePicker();
+                                  final file = await picker.pickImage(
+                                      source: ImageSource.gallery,
+                                      maxWidth: 1920,
+                                      maxHeight: 1080);
+                                  if (file != null) {
+                                    setModalState(() => pickedFile = file);
+                                  }
+                                } catch (_) {}
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (pickedFile != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        PixelPanel(
+                          style: PixelBoxStyle.slot,
+                          padding: 2,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.image_rounded,
+                                  size: 20, color: PixelPalette.greenDark),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  pickedFile!.name,
+                                  style: PixelType.small(context),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(Icons.check_circle_rounded,
+                                  size: 18, color: PixelPalette.green),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.sm),
+                      PixelCheckbox(
+                        value: galleryOptIn,
+                        onChanged: (val) =>
+                            setModalState(() => galleryOptIn = val),
+                        label:
+                            'Feature photo in destination gallery upon review approval',
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Photos remain private evidence for moderation unless checked.',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ),
+                      ),
+                      if (modalError != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          modalError!,
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.redDeep,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.md),
+                      PixelButton(
+                        label: modalLoading
+                            ? 'Uploading Proof...'
+                            : 'Submit Photo Proof',
+                        expand: true,
+                        loading: modalLoading,
+                        onPressed: (pickedFile == null || modalLoading)
+                            ? null
+                            : () async {
+                                setModalState(() {
+                                  modalLoading = true;
+                                  modalError = null;
+                                });
+                                try {
+                                  final bytes = await pickedFile!.readAsBytes();
+                                  final pos = await _safeGetPosition();
+                                  final formData = FormData.fromMap({
+                                    'idempotency_key': const Uuid().v4(),
+                                    'checkpoint_type': 'photo',
+                                    'gallery_opt_in': galleryOptIn.toString(),
+                                    if (pos != null) ...{
+                                      'captured_lat': pos.latitude,
+                                      'captured_lng': pos.longitude,
+                                      'captured_accuracy': pos.accuracy,
+                                    },
+                                    'photo': MultipartFile.fromBytes(bytes,
+                                        filename: pickedFile!.name),
+                                  });
+                                  final res = await ref
+                                      .read(apiClientProvider)
+                                      .dio
+                                      .post(
+                                        '/quests/${widget.quest.id}/steps/${step.order}/evidence',
+                                        data: formData,
+                                      );
+                                  if (res.data['success'] == true) {
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                    await _loadProgress();
+                                    if (mounted) {
+                                      showPixelToast(
+                                        context,
+                                        'Photo proof submitted for independent review!',
+                                      );
+                                    }
+                                  } else {
+                                    setModalState(() => modalError =
+                                        'Photo submission failed.');
+                                  }
+                                } on DioException catch (dioErr) {
+                                  setModalState(() => modalError =
+                                      _messageFromDio(
+                                          dioErr, 'Photo upload failed.'));
+                                } catch (_) {
+                                  setModalState(() => modalError =
+                                      'Photo upload failed. Try again.');
+                                } finally {
+                                  setModalState(() => modalLoading = false);
                                 }
-                              } on DioException catch (dioErr) {
-                                setModalState(() => modalError =
-                                    _messageFromDio(
-                                        dioErr, 'Photo upload failed.'));
-                              } catch (_) {
-                                setModalState(() => modalError =
-                                    'Photo upload failed. Try again.');
-                              } finally {
-                                setModalState(() => modalLoading = false);
-                              }
-                            },
-                    ),
-                  ],
+                              },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -702,17 +737,16 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       }
     } on DioException catch (dioErr) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  _messageFromDio(dioErr, 'Could not finish this quest.'))),
+        showPixelToast(
+          context,
+          _messageFromDio(dioErr, 'Could not finish this quest.'),
         );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Could not finish this quest. Please retry.')),
+        showPixelToast(
+          context,
+          'Could not finish this quest. Please retry.',
         );
       }
     } finally {
@@ -731,9 +765,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     if (!mounted) return;
     await _loadProgress();
     if (verified == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('The host verified your pass!')),
-      );
+      showPixelToast(context, 'The host verified your pass!');
     }
   }
 
@@ -756,9 +788,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     if (!mounted) return;
     await _loadProgress();
     if (completed == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AR task verified!')),
-      );
+      showPixelToast(context, 'AR task verified!');
     }
   }
 
@@ -779,31 +809,39 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       if (res.data['success'] == true) {
         await _loadProgress();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Task complete!')),
-          );
+          showPixelToast(context, 'Task complete!');
         }
       }
     } on DioException catch (dioErr) {
       if (!mounted) return;
       final route = inAppTaskRoute(step);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_messageFromDio(dioErr, 'This task is not done yet.')),
-          action: route == null
-              ? null
-              : SnackBarAction(
-                  label: 'Go',
-                  onPressed: () => openRoute(context, route),
-                ),
-        ),
-      );
+      final msg = _messageFromDio(dioErr, 'This task is not done yet.');
+      if (route == null) {
+        showPixelToast(context, msg);
+      } else {
+        await showPixelDialog<void>(
+          context: context,
+          title: 'Task not done yet',
+          content: Text(msg, style: PixelType.body(context)),
+          actions: [
+            PixelButton(
+              label: 'Later',
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+            ),
+            PixelButton(
+              label: 'Go',
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).pop();
+                openRoute(context, route);
+              },
+            ),
+          ],
+        );
+      }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Could not check this task. Please retry.')),
-        );
+        showPixelToast(context, 'Could not check this task. Please retry.');
       }
     } finally {
       if (mounted) setState(() => _stepSubmitting = false);

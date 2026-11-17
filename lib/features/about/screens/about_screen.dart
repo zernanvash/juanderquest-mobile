@@ -4,6 +4,7 @@ import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -81,62 +82,75 @@ class AboutScreen extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: grid.px(3)),
-                          Text('Tri-party tourism flywheel',
-                              style: PixelType.title(context)),
-                          SizedBox(height: grid.px(2)),
-                          _flywheel(
-                            context,
-                            grid,
-                            'Travelers & Explorers',
-                            'Complete GPS quest trails and earn demo mJDQ rewards. Soulbound badges are under development.',
-                          ),
-                          SizedBox(height: grid.px(2)),
-                          _flywheel(
-                            context,
-                            grid,
-                            'Local MSME Merchants',
-                            'Fund discount vouchers with zero upfront costs; enjoy foot traffic diverted away from crowded hotspots.',
-                          ),
-                          SizedBox(height: grid.px(2)),
-                          _flywheel(
-                            context,
-                            grid,
-                            'Municipal LGUs & Tourism Boards',
-                            'Balance tourism distribution, prevent overcrowding, and sponsor event campaigns with locked escrow pools.',
+                          PixelPanel(
+                            style: PixelBoxStyle.parchment,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const PixelSectionTitle(
+                                  'Tri-party tourism flywheel',
+                                ),
+                                SizedBox(height: grid.px(1)),
+                                _flywheelRow(
+                                  context,
+                                  grid,
+                                  'Travelers & Explorers',
+                                  'Complete GPS quest trails and earn demo mJDQ rewards. Soulbound badges are under development.',
+                                ),
+                                Container(
+                                  height: grid.unit,
+                                  color: PixelPalette.paperDim,
+                                ),
+                                _flywheelRow(
+                                  context,
+                                  grid,
+                                  'Local MSME Merchants',
+                                  'Fund discount vouchers with zero upfront costs; enjoy foot traffic diverted away from crowded hotspots.',
+                                ),
+                                Container(
+                                  height: grid.unit,
+                                  color: PixelPalette.paperDim,
+                                ),
+                                _flywheelRow(
+                                  context,
+                                  grid,
+                                  'Municipal LGUs & Tourism Boards',
+                                  'Balance tourism distribution, prevent overcrowding, and sponsor event campaigns with locked escrow pools.',
+                                ),
+                              ],
+                            ),
                           ),
                           SizedBox(height: grid.px(3)),
-                          Text('Research authors & development team',
-                              style: PixelType.title(context)),
-                          SizedBox(height: grid.px(2)),
-                          for (final author in _authors) ...[
-                            PixelPanel(
-                              style: PixelBoxStyle.parchment,
-                              child: Row(
-                                children: [
-                                  PixelPanel(
-                                    style: PixelBoxStyle.gold,
-                                    padding: 1,
-                                    child: SizedBox(
-                                      width: grid.px(9),
-                                      child: Text(
-                                        author.substring(0, 1),
-                                        textAlign: TextAlign.center,
-                                        style: PixelType.title(context),
-                                      ),
+                          PixelPanel(
+                            style: PixelBoxStyle.parchment,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                PixelSectionTitle(
+                                  'Research authors & development team',
+                                  value: '${_authors.length}',
+                                  valueColor: PixelPalette.greenDark,
+                                ),
+                                SizedBox(height: grid.px(1)),
+                                for (var i = 0; i < _authors.length; i++) ...[
+                                  if (i > 0)
+                                    Container(
+                                      height: grid.unit,
+                                      color: PixelPalette.paperDim,
                                     ),
-                                  ),
-                                  SizedBox(width: grid.px(2)),
-                                  Expanded(
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: grid.px(2),
+                                    ),
                                     child: Text(
-                                      author,
+                                      _authors[i],
                                       style: PixelType.title(context),
                                     ),
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
-                            SizedBox(height: grid.px(1)),
-                          ],
+                          ),
                         ],
                       ),
                     ),
@@ -150,10 +164,10 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _flywheel(
+  Widget _flywheelRow(
       BuildContext context, PixelGrid grid, String title, String body) {
-    return PixelPanel(
-      style: PixelBoxStyle.parchment,
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

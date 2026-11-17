@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/quests/models/quest_model.dart';
@@ -354,9 +355,9 @@ void main() {
         find.text('Feature photo in destination gallery upon review approval'),
         findsOneWidget);
     // Verify privacy opt-in checkbox is unchecked by default
-    final checkboxFinder = find.byType(Checkbox);
+    final checkboxFinder = find.byType(PixelCheckbox);
     expect(checkboxFinder, findsOneWidget);
-    final checkbox = tester.widget<Checkbox>(checkboxFinder);
+    final checkbox = tester.widget<PixelCheckbox>(checkboxFinder);
     expect(checkbox.value, false);
   });
 }

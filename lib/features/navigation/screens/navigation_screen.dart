@@ -61,11 +61,12 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
 
   void _syncPulseTimer(BuildContext context, NavigationState navState) {
     final reduce = MediaQuery.disableAnimationsOf(context);
-    final isMoving = navState.isAdventureActive && navState.currentSpeedMs > 0.3;
+    final isMoving =
+        navState.isAdventureActive && navState.currentSpeedMs > 0.3;
     final needsRecenterBlink =
         navState.isAdventureActive && !navState.isCameraFollowing;
-    final shouldPulse =
-        !reduce && (!navState.isAdventureActive || isMoving || needsRecenterBlink);
+    final shouldPulse = !reduce &&
+        (!navState.isAdventureActive || isMoving || needsRecenterBlink);
     if (shouldPulse) {
       _pulseTimer ??= Timer.periodic(const Duration(milliseconds: 500), (_) {
         if (!mounted) return;
@@ -170,36 +171,31 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
       if (req == LocationPermission.denied ||
           req == LocationPermission.deniedForever) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('Location permission is required for live navigation.'),
-            ),
+          showPixelToast(
+            context,
+            'Location permission is required for live navigation.',
           );
         }
         return;
       }
     } else if (hasPermission == LocationPermission.deniedForever) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content:
-                Text('Location permission is required for live navigation.'),
-          ),
+        showPixelToast(
+          context,
+          'Location permission is required for live navigation.',
         );
       }
       return;
     }
 
     // Bug A1 (§4 rule 1): wait for a GPS fix, set origin, re-fetch route from there
-    final acquired = await notifier.acquireStartFixAndFetchRoute(locationService);
+    final acquired =
+        await notifier.acquireStartFixAndFetchRoute(locationService);
     if (!acquired || !mounted) {
       if (mounted) {
         final err = ref.read(navigationProvider(widget.destination)).error;
         if (err != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(err)),
-          );
+          showPixelToast(context, err);
         }
       }
       return;
@@ -633,7 +629,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                                 children: [
                                   _squareMapButton(
                                     key: const ValueKey('nav_mute_button'),
-                                    label: navState.isVoiceMuted ? 'MUTE' : 'VOX',
+                                    label:
+                                        navState.isVoiceMuted ? 'MUTE' : 'VOX',
                                     semanticLabel: navState.isVoiceMuted
                                         ? 'Unmute voice'
                                         : 'Mute voice',
@@ -657,12 +654,12 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                                             navState.currentPosition!.longitude,
                                           ),
                                           16.5,
-                                          bearing: navState.currentPosition!
-                                                      .speed >
-                                                  1.0
-                                              ? navState
-                                                  .currentPosition!.heading
-                                              : null,
+                                          bearing:
+                                              navState.currentPosition!.speed >
+                                                      1.0
+                                                  ? navState
+                                                      .currentPosition!.heading
+                                                  : null,
                                           tilt: 45.0,
                                         ));
                                       }
@@ -690,7 +687,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                               navState.remainingDistanceMeters,
                           remainingDurationSeconds:
                               navState.remainingDurationSeconds,
-                          distanceToStopMeters: navState.nextUncheckedStop != null
+                          distanceToStopMeters: navState.nextUncheckedStop !=
+                                  null
                               ? Geolocator.distanceBetween(
                                   navState.effectiveOriginPoint.latitude,
                                   navState.effectiveOriginPoint.longitude,

@@ -54,23 +54,10 @@ class SettingsUpdatesScreen extends ConsumerWidget {
           current.latestVersion != null) {
         UpdateDialog.show(context, current.latestVersion!);
       } else if (current.status == UpdateStatus.error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              current.errorMessage ??
-                  'Unable to check for updates. Please try again.',
-            ),
-            backgroundColor: PixelPalette.redDeep,
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: PixelPalette.white,
-              onPressed: () {
-                ref
-                    .read(appUpdateProvider.notifier)
-                    .checkForUpdates(silent: false);
-              },
-            ),
-          ),
+        showPixelToast(
+          context,
+          current.errorMessage ??
+              'Unable to check for updates. Please try again.',
         );
       }
     }

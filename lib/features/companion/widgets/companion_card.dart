@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../providers/companion_provider.dart';
@@ -22,7 +26,9 @@ class CompanionCard extends ConsumerWidget {
             key: ValueKey('companion-${message.id}'),
             direction: DismissDirection.horizontal,
             onDismissed: (_) {
-              ref.read(companionControllerProvider.notifier).dismiss(message.id);
+              ref
+                  .read(companionControllerProvider.notifier)
+                  .dismiss(message.id);
             },
             background: Container(
               margin: const EdgeInsets.fromLTRB(
@@ -33,7 +39,8 @@ class CompanionCard extends ConsumerWidget {
               ),
               alignment: Alignment.centerLeft,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+              child:
+                  const Icon(Icons.close_rounded, color: AppColors.textMuted),
             ),
             secondaryBackground: Container(
               margin: const EdgeInsets.fromLTRB(
@@ -44,7 +51,8 @@ class CompanionCard extends ConsumerWidget {
               ),
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+              child:
+                  const Icon(Icons.close_rounded, color: AppColors.textMuted),
             ),
             child: Semantics(
               container: true,
@@ -54,63 +62,65 @@ class CompanionCard extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-                child: Material(
-                  elevation: 2,
-                  color: AppColors.surfaceContainerLowest,
-                  borderRadius: AppSpacing.roundedLg,
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const _JuanAvatar(),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                message.title,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w800),
+                child: PixelPanel(
+                  style: PixelBoxStyle.parchment,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _JuanAvatar(),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              message.title,
+                              style: PixelType.title(
+                                context,
+                                color: PixelPalette.ink,
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                message.body,
-                                style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              message.body,
+                              style: PixelType.body(
+                                context,
+                                color: PixelPalette.slate,
                               ),
-                              if (message.actionLabel != null)
-                                Align(
+                            ),
+                            if (message.actionLabel != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Align(
                                   alignment: Alignment.centerLeft,
-                                  child: TextButton(
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: const Size(50, 30),
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
+                                  child: PixelButton(
+                                    label: message.actionLabel!,
+                                    variant: PixelButtonVariant.secondary,
                                     onPressed: () {
                                       if (message.id == 'discovery-offline') {
                                         ref
-                                            .read(spotDiscoveryProvider.notifier)
+                                            .read(
+                                                spotDiscoveryProvider.notifier)
                                             .load(refresh: true);
                                       } else if (message.route != null) {
                                         context.push(message.route!);
                                       }
                                     },
-                                    child: Text(message.actionLabel!),
                                   ),
                                 ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
-                        // Clean 'X' Close Button
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      ),
+                      const SizedBox(width: 4),
+                      // Clean 'X' Close Button (>=48dp tap target)
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: IconButton(
+                          icon: const Icon(Icons.close_rounded,
+                              size: 18, color: PixelPalette.slate),
                           tooltip: 'Dismiss hint',
                           onPressed: () {
                             ref
@@ -118,8 +128,8 @@ class CompanionCard extends ConsumerWidget {
                                 .dismiss(message.id);
                           },
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -153,7 +163,8 @@ class _JuanAvatar extends StatelessWidget {
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) => Container(
             color: AppColors.sunGold,
-            child: const Icon(Icons.explore_rounded, color: AppColors.woodBrown, size: 24),
+            child: const Icon(Icons.explore_rounded,
+                color: AppColors.woodBrown, size: 24),
           ),
         ),
       );

@@ -8,6 +8,7 @@ import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
@@ -120,9 +121,7 @@ class _SettingsNotificationsScreenState
     } catch (e) {
       if (!mounted) return;
       setState(() => _values = {..._values!, key: before});
-      ScaffoldMessenger.maybeOf(
-        context,
-      )?.showSnackBar(SnackBar(content: Text("Couldn't save. ${_message(e)}")));
+      showPixelToast(context, "Couldn't save. ${_message(e)}");
     } finally {
       if (mounted) setState(() => _saving.remove(key));
     }
@@ -159,9 +158,15 @@ class _SettingsNotificationsScreenState
                       ),
                       children: [
                         if (values == null && _error == null)
-                          const Center(
-                            key: ValueKey('notif_loading'),
-                            child: CircularProgressIndicator(),
+                          Center(
+                            key: const ValueKey('notif_loading'),
+                            child: PixelLoader(
+                              label: tr(
+                                context,
+                                en: 'Loading notification settings',
+                                tl: 'Kinakarga ang mga abiso',
+                              ),
+                            ),
                           ),
                         if (_error != null) ...[
                           Text(_error!, style: PixelType.body(context)),

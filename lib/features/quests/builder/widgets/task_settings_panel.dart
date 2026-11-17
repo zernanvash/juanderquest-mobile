@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/pixel/generated/designer_art.g.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../../core/pixel/pixel_art.dart';
+import '../../../../core/pixel/pixel_controls.dart';
 import '../../../../core/pixel/pixel_input.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../map/pixel/map_marker_art.dart';
@@ -79,19 +80,16 @@ class TaskSettingsPanel extends StatelessWidget {
                 ],
               ),
             ),
-            TextButton.icon(
-              style: TextButton.styleFrom(
-                minimumSize: const Size(0, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
+            PixelButton(
+              label: 'Reset',
+              variant: PixelButtonVariant.ghost,
+              icon: MapMarkerArt.iconRefresh,
               onPressed: () {
                 onChanged(task.copyWith(
                   verification:
                       LocationVerification(fence: destinationDefaultFence),
                 ));
               },
-              icon: const PixelSprite(MapMarkerArt.iconRefresh, scale: 1),
-              label: const Text('Reset', style: TextStyle(fontSize: 11)),
             ),
           ],
         ),
@@ -871,10 +869,11 @@ class ArGamePicker extends StatelessWidget {
               const SizedBox(height: 4),
               Align(
                 alignment: Alignment.centerRight,
-                child: TextButton(
+                child: PixelButton(
                   key: const ValueKey('ar_game_try'),
+                  label: 'TRY IT',
+                  variant: PixelButtonVariant.secondary,
                   onPressed: () => _tryIt(context, id),
-                  child: const Text('TRY IT'),
                 ),
               ),
             ],
