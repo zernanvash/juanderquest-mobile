@@ -589,24 +589,26 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Purse slots and stats strip navigate to their pages',
+    testWidgets('Purse slots open currency details modals without redirecting',
         (tester) async {
       await _pump(tester);
-      await _tapRoute(
-          tester, find.byKey(const ValueKey('home_purse_mjdq')), '/shop');
 
-      await _pump(tester);
-      await _tapRoute(
-        tester,
-        find.byKey(const ValueKey('home_purse_stamps')),
-        '/profile/badges',
-      );
+      for (final check in const [
+        ('home_purse_mjdq', 'currency_modal_mjdq', 'WHERE TO GET mJDQ'),
+        ('home_purse_stamps', 'currency_modal_stamps', 'WHERE TO GET STAMPS'),
+        ('home_purse_rep', 'currency_modal_rep', 'WHERE TO GET REPUTATION'),
+      ]) {
+        await tester.tap(find.byKey(ValueKey(check.$1)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(find.byKey(ValueKey(check.$2)), findsOneWidget);
+        expect(find.text(check.$3), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('currency_modal_close')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(find.byKey(ValueKey(check.$2)), findsNothing);
+      }
 
-      await _pump(tester);
-      await _tapRoute(
-          tester, find.byKey(const ValueKey('home_purse_rep')), '/plaza');
-
-      await _pump(tester);
       await _tapRoute(
         tester,
         find.byKey(const ValueKey('home_hero_stats_strip')),

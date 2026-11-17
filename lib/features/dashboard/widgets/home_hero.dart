@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/open_route.dart';
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../pixel/home_pixel_art.dart';
@@ -342,7 +342,33 @@ class HomePurseStrip extends ConsumerWidget {
                 child: GestureDetector(
                   key: const ValueKey('home_purse_mjdq'),
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => openRoute(context, '/shop'),
+                  onTap: () => _showCurrencyModal(
+                    context,
+                    grid,
+                    dialogKey: const ValueKey('currency_modal_mjdq'),
+                    title: 'mJDQ',
+                    amount: '$points mJDQ',
+                    icon: const PixelAnimation(
+                      DesignerArt.coinAnim,
+                      scale: 2,
+                      loop: true,
+                    ),
+                    summary: tr(
+                      context,
+                      en: 'Your travel reward balance used for vouchers, cosmetics, and JuanChoice voting.',
+                      tl: 'Ang iyong puntos para sa mga voucher, kosmetiko, at pagboto sa JuanChoice.',
+                    ),
+                    hintTitle: tr(
+                      context,
+                      en: 'WHERE TO GET mJDQ',
+                      tl: 'SAAN MAKAKAKUHA NG mJDQ',
+                    ),
+                    hint: tr(
+                      context,
+                      en: 'Finish quests, complete cultural quizzes, and claim daily rewards.',
+                      tl: 'Tapusin ang mga quest, sagutin ang mga quiz, at kunin ang araw-araw na gantimpala.',
+                    ),
+                  ),
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: grid.px(1)),
                     child: MjdqAmount(
@@ -363,10 +389,33 @@ class HomePurseStrip extends ConsumerWidget {
               context,
               grid,
               key: const ValueKey('home_purse_stamps'),
-              icon: HomePixelArt.stampCheck,
+              icon: HomePixelArt.purseStamp,
               value: homeNumber(stampsCount),
               semantics: '$stampsCount stamps',
-              onTap: () => context.push('/profile/badges'),
+              onTap: () => _showCurrencyModal(
+                context,
+                grid,
+                dialogKey: const ValueKey('currency_modal_stamps'),
+                title: tr(context, en: 'Stamps', tl: 'Mga Selyo'),
+                amount:
+                    '$stampsCount ${tr(context, en: stampsCount == 1 ? 'stamp' : 'stamps', tl: 'selyo')}',
+                icon: const PixelSprite(HomePixelArt.purseStamp, scale: 3),
+                summary: tr(
+                  context,
+                  en: 'Passport stamps track your weekly streak and explorer milestones.',
+                  tl: 'Sinusubaybayan ng mga selyo ang iyong lingguhang streak at mga milestone.',
+                ),
+                hintTitle: tr(
+                  context,
+                  en: 'WHERE TO GET STAMPS',
+                  tl: 'SAAN MAKAKAKUHA NG SELYO',
+                ),
+                hint: tr(
+                  context,
+                  en: 'Complete today\'s daily tasks on Home and open the weekly chest.',
+                  tl: 'Tapusin ang mga gawain ngayong araw sa Home at buksan ang lingguhang baul.',
+                ),
+              ),
             ),
             // Owner 2026-11-17: more room between the currencies.
             SizedBox(width: grid.px(6)),
@@ -374,13 +423,108 @@ class HomePurseStrip extends ConsumerWidget {
               context,
               grid,
               key: const ValueKey('home_purse_rep'),
-              icon: DesignerArt.handshake,
+              icon: HomePixelArt.purseSmiley,
               value: homeNumber(repCount),
               semantics: '$repCount reputation',
-              onTap: () => context.push('/plaza'),
+              onTap: () => _showCurrencyModal(
+                context,
+                grid,
+                dialogKey: const ValueKey('currency_modal_rep'),
+                title: tr(context, en: 'Reputation', tl: 'Reputasyon'),
+                amount: '$repCount ${tr(context, en: 'rep', tl: 'rep')}',
+                icon: const PixelSprite(HomePixelArt.purseSmiley, scale: 3),
+                summary: tr(
+                  context,
+                  en: 'Scout reputation reflects how much fellow travelers trust your field tips and posts.',
+                  tl: 'Ipinapakita nito ang tiwala ng ibang manlalakbay sa iyong mga tip at post.',
+                ),
+                hintTitle: tr(
+                  context,
+                  en: 'WHERE TO GET REPUTATION',
+                  tl: 'SAAN MAKAKAKUHA NG REPUTASYON',
+                ),
+                hint: tr(
+                  context,
+                  en: 'Share verified visits, post helpful destination notes, and get approved spot photos.',
+                  tl: 'Mag-verify ng pagbisita, mag-iwan ng makakatulong na tala, at mag-ambag ng larawan.',
+                ),
+              ),
             ),
           ],
         ));
+  }
+
+  void _showCurrencyModal(
+    BuildContext context,
+    PixelGrid grid, {
+    required Key dialogKey,
+    required String title,
+    required String amount,
+    required Widget icon,
+    required String summary,
+    required String hintTitle,
+    required String hint,
+  }) {
+    showPixelDialog<void>(
+      context: context,
+      title: title,
+      content: KeyedSubtree(
+        key: dialogKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                icon,
+                SizedBox(width: grid.px(2)),
+                Expanded(
+                  child: Text(
+                    amount,
+                    style: PixelType.title(context, color: PixelPalette.ink),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: grid.px(2)),
+            Text(
+              summary,
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(2)),
+            PixelPanel(
+              style: PixelBoxStyle.gold,
+              padding: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hintTitle,
+                    style: PixelType.labelSmall(
+                      context,
+                      color: PixelPalette.ink,
+                    ).copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  SizedBox(height: grid.px(1)),
+                  Text(
+                    hint,
+                    style: PixelType.small(context, color: PixelPalette.ink),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        PixelButton(
+          key: const ValueKey('currency_modal_close'),
+          label: tr(context, en: 'GOT IT', tl: 'NAKUHA KO'),
+          variant: PixelButtonVariant.primary,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
   }
 
   Widget _purseSlot(

@@ -52,6 +52,7 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
   bool _playLike = false;
   bool _chestOpen = false;
   bool _playChest = false;
+  double _labProgress = 0.6;
 
   @override
   void dispose() {
@@ -672,18 +673,75 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
                 style: PixelType.small(context, color: PixelPalette.slate),
               ),
               SizedBox(height: grid.px(3)),
-              const PixelProgressBar(value: 0.8),
+              Text(
+                'PROGRESS BAR · IDLE & COLOR VARIATIONS (DARK → LIGHT)',
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+              SizedBox(height: grid.px(1.5)),
+              ValueListenableBuilder<PixelProgressRamp>(
+                valueListenable: pixelProgressRampNotifier,
+                builder: (context, selectedRamp, _) => Wrap(
+                  spacing: grid.px(1.5),
+                  runSpacing: grid.px(1.5),
+                  children: [
+                    for (final ramp in PixelProgressRamp.values)
+                      GestureDetector(
+                        key: ValueKey('lab_progress_ramp_${ramp.name}'),
+                        onTap: () => pixelProgressRampNotifier.value = ramp,
+                        child: PixelChip(
+                          ramp.label,
+                          style: selectedRamp == ramp
+                              ? PixelBoxStyle.gold
+                              : PixelBoxStyle.parchment,
+                          textColor: PixelPalette.ink,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(height: grid.px(2)),
+              Wrap(
+                spacing: grid.px(1.5),
+                runSpacing: grid.px(1.5),
+                children: [
+                  for (final pct in const [0.25, 0.6, 0.85, 1.0])
+                    GestureDetector(
+                      key: ValueKey('lab_progress_pct_${(pct * 100).round()}'),
+                      onTap: () => setState(() => _labProgress = pct),
+                      child: PixelChip(
+                        pct >= 1.0 ? '100% FULL' : '${(pct * 100).round()}%',
+                        style: (_labProgress - pct).abs() < 0.01
+                            ? PixelBoxStyle.green
+                            : PixelBoxStyle.parchment,
+                        textColor: (_labProgress - pct).abs() < 0.01
+                            ? PixelPalette.white
+                            : PixelPalette.ink,
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(height: grid.px(2)),
+              PixelProgressBar(
+                key: const ValueKey('lab_progress_dynamic'),
+                value: _labProgress,
+                showTipGlint: _labProgress < 1.0,
+              ),
+              SizedBox(height: grid.px(2)),
+              const PixelProgressBar(
+                key: ValueKey('lab_progress_full_scan'),
+                value: 1.0,
+              ),
               SizedBox(height: grid.px(2)),
               const PixelProgressBar(
                 value: 0.45,
                 segments: 5,
-                color: PixelPalette.sun,
+                ramp: PixelProgressRamp.gold,
               ),
               SizedBox(height: grid.px(2)),
               const PixelProgressBar(
-                value: 0.2,
+                value: 0.3,
                 segments: 8,
-                color: PixelPalette.red,
+                ramp: PixelProgressRamp.ember,
               ),
             ],
           ),

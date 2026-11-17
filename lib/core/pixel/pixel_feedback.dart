@@ -10,6 +10,54 @@ import 'pixel_grid.dart';
 import 'pixel_idle.dart';
 import 'pixel_text.dart';
 
+/// Dark-to-light fill variation options for [PixelProgressBar].
+enum PixelProgressRamp {
+  emerald(
+    label: 'EMERALD',
+    startColor: PixelPalette.greenDeep,
+    endColor: PixelPalette.greenLight,
+  ),
+  bamboo(
+    label: 'BAMBOO',
+    startColor: PixelPalette.greenDark,
+    endColor: PixelPalette.sunLight,
+  ),
+  gold(
+    label: 'GOLD SUN',
+    startColor: PixelPalette.goldDeep,
+    endColor: PixelPalette.sunLight,
+  ),
+  ember(
+    label: 'EMBER',
+    startColor: PixelPalette.redDeep,
+    endColor: PixelPalette.orangeLight,
+  ),
+  sky(
+    label: 'SKY',
+    startColor: PixelPalette.blueDeep,
+    endColor: PixelPalette.sky,
+  ),
+  flat(
+    label: 'FLAT',
+    startColor: PixelPalette.greenBright,
+    endColor: PixelPalette.greenBright,
+  );
+
+  const PixelProgressRamp({
+    required this.label,
+    required this.startColor,
+    required this.endColor,
+  });
+
+  final String label;
+  final Color startColor;
+  final Color endColor;
+}
+
+/// Active color variation chosen in Pixel Lab (defaults to dark-to-light emerald).
+final ValueNotifier<PixelProgressRamp> pixelProgressRampNotifier =
+    ValueNotifier<PixelProgressRamp>(PixelProgressRamp.emerald);
+
 class PixelProgressBar extends StatelessWidget {
   const PixelProgressBar({
     super.key,
@@ -19,16 +67,19 @@ class PixelProgressBar extends StatelessWidget {
     this.height = 5,
     this.showTipGlint = false,
     this.idle = true,
+    this.ramp,
   });
 
   final double value;
   final int segments;
   final Color color;
   final int height;
+  final PixelProgressRamp? ramp;
 
-  /// Owner 2026-11-17: an idle animation inside the bar. A soft light sweeps
-  /// across the filled part and a few sparks rise, then it rests. Stepped and
-  /// whole-pixel; off under Reduce motion (see [PixelLoop]).
+  /// Owner 2026-11-17: an idle animation inside the bar.
+  /// - When `< 100%` (`0 < value < 1.0`), stepped particles emit from the end of the filled bar.
+  /// - When `100%` (`value >= 1.0`), an alive multi-band scanning sweep travels across the bar.
+  /// Stepped and whole-pixel; off under Reduce motion (see [PixelLoop]).
   final bool idle;
 
   static const _idleSteps = 28;
@@ -37,45 +88,78 @@ class PixelProgressBar extends StatelessWidget {
   /// bars read like glowing RPG gauges.
   final bool showTipGlint;
 
+  Color _segmentColor(int index, PixelProgressRamp activeRamp) {
+    if (activeRamp == PixelProgressRamp.flat) return color;
+    final t = segments <= 1 ? 1.0 : index / (segments - 1);
+    if (color != PixelPalette.greenBright && ramp == null) {
+      final dark = Color.lerp(color, PixelPalette.ink, 0.35)!;
+      final light = Color.lerp(color, PixelPalette.white, 0.45)!;
+      return Color.lerp(dark, light, t)!;
+    }
+    return Color.lerp(activeRamp.startColor, activeRamp.endColor, t)!;
+  }
+
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     final v = value.clamp(0.0, 1.0);
-    Widget bar(int step) => SizedBox(
-          height: grid.px(height + 2),
-          child: PixelSnap(
-            child: CustomPaint(
-              painter: _BarPainter(
-                grid,
-                v,
-                segments,
-                color,
-                height,
-                showTipGlint,
-                step,
+
+    Widget buildWithRamp(PixelProgressRamp activeRamp) {
+      Widget bar(int step) => SizedBox(
+            height: grid.px(height + 2),
+            child: PixelSnap(
+              child: CustomPaint(
+                painter: _BarPainter(
+                  grid,
+                  v,
+                  segments,
+                  color,
+                  activeRamp,
+                  _segmentColor,
+                  height,
+                  showTipGlint,
+                  step,
+                ),
+                size: Size.infinite,
               ),
-              size: Size.infinite,
             ),
-          ),
-        );
-    if (!idle || v <= 0) return bar(0);
-    return PixelLoop(
-      steps: _idleSteps,
-      stepMs: 90,
-      pauseMs: 1400,
-      builder: (context, step, _) => bar(step),
+          );
+      if (!idle || v <= 0) return bar(0);
+      return PixelLoop(
+        steps: _idleSteps,
+        stepMs: 85,
+        pauseMs: v >= 1.0 ? 900 : 1100,
+        builder: (context, step, _) => bar(step),
+      );
+    }
+
+    if (ramp != null) return buildWithRamp(ramp!);
+    return ValueListenableBuilder<PixelProgressRamp>(
+      valueListenable: pixelProgressRampNotifier,
+      builder: (context, selectedRamp, _) => buildWithRamp(selectedRamp),
     );
   }
 }
 
 class _BarPainter extends CustomPainter {
-  _BarPainter(this.grid, this.value, this.segments, this.color, this.h,
-      this.glint, this.step);
+  _BarPainter(
+    this.grid,
+    this.value,
+    this.segments,
+    this.color,
+    this.ramp,
+    this.segmentColorAt,
+    this.h,
+    this.glint,
+    this.step,
+  );
 
   final PixelGrid grid;
   final double value;
   final int segments;
   final Color color;
+  final PixelProgressRamp ramp;
+  final Color Function(int index, PixelProgressRamp ramp) segmentColorAt;
   final int h;
   final bool glint;
 
@@ -103,22 +187,31 @@ class _BarPainter extends CustomPainter {
     final inner = cols - 2;
     final segW = ((inner - (segments - 1)) / segments).floor();
     final filled = (value * segments).round();
+    final isFull = value >= 1.0 || filled >= segments;
     if (segW < 1) {
       final w = (inner * value).round();
       if (w > 0) {
-        paint.color = color;
+        paint.color =
+            ramp == PixelProgressRamp.flat ? color : segmentColorAt(0, ramp);
         canvas.drawRect(_r(1, 1, w, h), paint);
-        if (step > 0) _idle(canvas, paint, 1, w, (_) => true);
+        if (step > 0) {
+          if (isFull) {
+            _fullScan(canvas, paint, 1, w, (_) => true);
+          } else {
+            _tipParticles(canvas, paint, 1 + w, inner);
+          }
+        }
       }
       return;
     }
     for (var i = 0; i < segments; i++) {
       final x = 1 + i * (segW + 1);
       final on = i < filled;
-      paint.color = on ? color : PixelPalette.stone;
+      final segColor = on ? segmentColorAt(i, ramp) : PixelPalette.stone;
+      paint.color = segColor;
       canvas.drawRect(_r(x, 1, segW, h), paint);
       if (on) {
-        paint.color = PixelPalette.white;
+        paint.color = Color.lerp(segColor, PixelPalette.white, 0.55)!;
         canvas.drawRect(_r(x, 1, segW, 1), paint);
         paint.color = PixelPalette.ink;
         canvas.drawRect(_r(x, h, segW, 1), paint);
@@ -130,37 +223,83 @@ class _BarPainter extends CustomPainter {
       canvas.drawRect(_r(x + segW - 1, 1, 1, h - 1), paint);
     }
     if (step > 0 && filled > 0) {
-      _idle(canvas, paint, 1, filled * (segW + 1) - 1, (x) {
-        // Only on lit segments, never on the 1 px gaps between them.
-        return (x - 1) % (segW + 1) < segW;
-      });
+      bool lit(int x) => (x - 1) % (segW + 1) < segW;
+      final filledW = filled * (segW + 1) - 1;
+      if (isFull) {
+        _fullScan(canvas, paint, 1, filledW, lit);
+      } else {
+        _tipParticles(canvas, paint, 1 + filledW, inner);
+      }
     }
   }
 
-  /// The idle loop inside the filled part `[x0, x0 + w)`, rows 2..h-1.
-  void _idle(
-      Canvas canvas, Paint paint, int x0, int w, bool Function(int x) lit) {
-    if (w < 2 || h < 3) return;
-    const steps = PixelProgressBar._idleSteps;
-    final soft = Color.lerp(color, PixelPalette.white, 0.45)!;
-    // A 2 px light band sweeps left to right.
-    final sweep = x0 + ((step - 1) * (w + 2) / (steps - 2)).floor() - 2;
-    paint.color = soft;
-    for (var dx = 0; dx < 2; dx++) {
-      final x = sweep + dx;
-      if (x >= x0 && x < x0 + w && lit(x)) {
-        canvas.drawRect(_r(x, 2, 1, h - 2), paint);
-      }
+  /// Stepped particles emitting from the leading filled tip when `< 100%`.
+  void _tipParticles(Canvas canvas, Paint paint, int tipX, int inner) {
+    if (h < 2) return;
+    final tipLight = ramp == PixelProgressRamp.flat
+        ? Color.lerp(color, PixelPalette.white, 0.65)!
+        : Color.lerp(ramp.endColor, PixelPalette.white, 0.45)!;
+
+    // Subtle breathing pulse right on the tip column.
+    if (step % 4 < 2 && tipX - 1 >= 1) {
+      paint.color = PixelPalette.white;
+      canvas.drawRect(_r(tipX - 1, 2, 1, h - 2), paint);
     }
-    // Three sparks rise from the bottom row to the top, staggered.
+
+    // 5 staggered whole-pixel sparks drifting forward & upward from the end.
+    const life = 9;
+    for (var k = 0; k < 5; k++) {
+      final age = (step - 1 - k * 5);
+      if (age < 0 || age >= life) continue;
+      final progress = age ~/ 2; // stepped integer travel
+      final dx = (k.isEven ? 1 : 0) + progress;
+      final dy = -((age + k) ~/ 3);
+      final px = tipX + dx - 1;
+      final py = (1 + ((k * 2 + 1) % (h - 1))) + dy;
+      if (px < 1 || px >= 1 + inner) continue;
+      paint.color = age < 3
+          ? PixelPalette.white
+          : age < 6
+              ? PixelPalette.sunLight
+              : tipLight;
+      canvas.drawRect(_r(px, py, 1, 1), paint);
+    }
+  }
+
+  /// Alive multi-band scanning sweep across a full (`100%`) bar.
+  void _fullScan(
+      Canvas canvas, Paint paint, int x0, int w, bool Function(int x) lit) {
+    if (w < 3 || h < 3) return;
+    const steps = PixelProgressBar._idleSteps;
+    const headColor = PixelPalette.white;
+    final trailColor = ramp == PixelProgressRamp.flat
+        ? Color.lerp(color, PixelPalette.white, 0.55)!
+        : Color.lerp(ramp.endColor, PixelPalette.white, 0.55)!;
+    const echoColor = PixelPalette.sunLight;
+
+    // Primary 5 px stepped scanner with bright leading core and fading trail.
+    final sweep = x0 + ((step - 1) * (w + 6) / (steps - 2)).floor() - 5;
+    for (var dx = 0; dx < 5; dx++) {
+      final x = sweep + dx;
+      if (x < x0 || x >= x0 + w || !lit(x)) continue;
+      paint.color = dx >= 3
+          ? headColor
+          : dx >= 1
+              ? trailColor
+              : echoColor;
+      final topY = dx == 4 ? 1 : 2;
+      final spanH = dx == 4 ? h - 1 : h - 2;
+      canvas.drawRect(_r(x, topY, 1, spanH), paint);
+    }
+
+    // Secondary shimmer glints dancing along upper edges so 100% feels alive.
     paint.color = PixelPalette.white;
-    for (var k = 0; k < 3; k++) {
-      final life = h - 1;
-      final t = step - 1 - k * 6;
-      if (t < 0 || t >= life) continue;
-      final x = x0 + ((k * 37 + 11) % w);
-      final y = h - 1 - t;
-      if (y >= 2 && lit(x)) canvas.drawRect(_r(x, y, 1, 1), paint);
+    for (var k = 0; k < 4; k++) {
+      final offset = (step * 2 + k * (w ~/ 4)) % w;
+      final sx = x0 + offset;
+      if (!lit(sx)) continue;
+      final sy = 2 + ((step + k) % (h - 2).clamp(1, h));
+      canvas.drawRect(_r(sx, sy, 1, 1), paint);
     }
   }
 
@@ -169,6 +308,7 @@ class _BarPainter extends CustomPainter {
       old.value != value ||
       old.grid.unit != grid.unit ||
       old.color != color ||
+      old.ramp != ramp ||
       old.segments != segments ||
       old.glint != glint ||
       old.step != step;

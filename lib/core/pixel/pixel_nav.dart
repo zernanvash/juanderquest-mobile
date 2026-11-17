@@ -64,7 +64,19 @@ class _PixelHotbarState extends State<PixelHotbar> {
       clipBehavior: Clip.none,
       children: [
         Container(
-          color: PixelPalette.parchment,
+          key: const ValueKey('pixel_hotbar_bg'),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                PixelPalette.greenMid,
+                PixelPalette.greenLight,
+                PixelPalette.white,
+              ],
+              stops: [0.0, 0.28, 1.0],
+            ),
+          ),
           padding:
               EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
           child: Column(
@@ -184,7 +196,7 @@ class _PixelHotbarState extends State<PixelHotbar> {
                   margin: EdgeInsets.only(top: grid.unit),
                   width: grid.px(6),
                   height: grid.unit,
-                  color: selected ? PixelPalette.sun : PixelPalette.parchment,
+                  color: selected ? PixelPalette.sun : Colors.transparent,
                 ),
               ],
             ),

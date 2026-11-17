@@ -34,4 +34,44 @@ abstract final class HomePixelArt {
     '.0gggg0.',
     '..0000..',
   ]);
+
+  /// 16x16 pixel rubber stamp icon for Passport Stamps purse slot.
+  static const purseStamp = PixelArt('homePurseStamp', [
+    '....00000000....',
+    '...0xxeeeeen0...',
+    '...0xeeeeeen0...',
+    '...0eeeeeee0....',
+    '....0eeeen0.....',
+    '....0eeeen0.....',
+    '..000hiiih000...',
+    '.0xxeeeeeeenn0..',
+    '.0xAAAAAAAAAn0..',
+    '.0zzzzzzzzzzz0..',
+    '..00000000000...',
+    '0000000000000000',
+    '0pppwwwwwwwwppp0',
+    '0pppsssrrrssppp0',
+    '0000000000000000',
+    '................',
+  ]);
+
+  /// 16x16 pixel happy smiley badge for Scout Reputation purse slot.
+  static const purseSmiley = PixelArt('homePurseSmiley', [
+    '.....ffffff.....',
+    '...ffhhhhhhff...',
+    '..fhhiiihhhhhf..',
+    '.fhhiihhhhhhhhf.',
+    '.fhhhhhhhhhhhhf.',
+    'fhhhhllhhllhhhhf',
+    'fhhhlhhllhhlhhhf',
+    'fhhuuhhhhhhuuhhf',
+    'fhhhhhhhhhhhhhhf',
+    'fhhhhlhhhhhlhhhf',
+    '.fhhhllllllhhhf.',
+    '.fhhhhhhhhhhhhf.',
+    '..fhhhhhhhhhhf..',
+    '...ffhhhhhhff...',
+    '.....ffffff.....',
+    '................',
+  ]);
 }
