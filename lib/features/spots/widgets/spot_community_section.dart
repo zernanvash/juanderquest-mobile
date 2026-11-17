@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/pixel/pixel_feedback.dart';
-import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -127,8 +126,6 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
   bool _loading = true;
   String? _loadError;
   bool _posting = false;
-  bool _liked = false;
-  bool _liking = false;
   String _tag = 'general';
 
   @override
@@ -168,29 +165,6 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
         _loading = false;
         _loadError = 'Notes could not load.';
       });
-    }
-  }
-
-  Future<void> _toggleLike() async {
-    if (_liking) return;
-    final next = !_liked;
-    setState(() {
-      _liked = next;
-      _liking = true;
-    });
-    try {
-      if (next) {
-        await _dio.put('/spots/${widget.spotId}/like');
-      } else {
-        await _dio.delete('/spots/${widget.spotId}/like');
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _liked = !next);
-        _snack(_errorText(e, 'Could not update your like. Try again.'));
-      }
-    } finally {
-      if (mounted) setState(() => _liking = false);
     }
   }
 
@@ -281,69 +255,6 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
             style: PixelType.body(context, color: PixelPalette.mist),
           ),
           SizedBox(height: grid.px(2)),
-
-          // Top action: Like (the report action lives in the page footer)
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Semantics(
-                button: true,
-                label: _liked ? 'Liked spot' : 'Like spot',
-                child: InkWell(
-                  key: const ValueKey('spot_like'),
-                  onTap: _toggleLike,
-                  child: Container(
-                    constraints:
-                        const BoxConstraints(minWidth: 48, minHeight: 48),
-                    alignment: Alignment.center,
-                    child: PixelPanel(
-                      style: _liked
-                          ? PixelBoxStyle.red.copyWith(corner: 2, shadowPx: 0)
-                          : PixelBoxStyle.inkDialogue.copyWith(
-                              fill: PixelPalette.ink,
-                              outline: PixelPalette.paper,
-                              corner: 2,
-                              shadowPx: 0,
-                            ),
-                      padding: 1,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: grid.px(3),
-                          vertical: grid.px(1),
-                        ),
-                        // Plan 101: our pixel heart, not a text heart.
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            PixelIconFit(
-                              _liked
-                                  ? DesignerArt.heartLiked
-                                  : DesignerArt.heartUnliked,
-                              box: 16,
-                            ),
-                            SizedBox(width: grid.px(1)),
-                            Text(
-                              _liked ? 'LIKED' : 'LIKE',
-                              style: PixelType.small(
-                                context,
-                                color: _liked
-                                    ? PixelPalette.white
-                                    : PixelPalette.paper,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: grid.px(3)),
 
           // Note Composer
           _buildComposer(grid),
@@ -487,15 +398,18 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: grid.px(1),
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                c.authorName.toUpperCase(),
-                style: PixelType.small(context, color: PixelPalette.paper),
+              Expanded(
+                child: Text(
+                  c.authorName.toUpperCase(),
+                  style: PixelType.label(context, color: PixelPalette.paper)
+                      .copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
-              if (c.verifiedVisit)
+              if (c.verifiedVisit) ...[
+                SizedBox(width: grid.px(1)),
                 const FittedBox(
                   fit: BoxFit.scaleDown,
                   child: PixelChip(
@@ -504,11 +418,13 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                     textColor: PixelPalette.white,
                   ),
                 ),
-              Text(
-                '${spotCommentTags[c.tag]?.toUpperCase() ?? 'GENERAL'} · ${_relative(c.createdAt).toUpperCase()}',
-                style: PixelType.small(context, color: PixelPalette.mist),
-              ),
+              ],
             ],
+          ),
+          SizedBox(height: grid.px(0.5)),
+          Text(
+            '${spotCommentTags[c.tag]?.toUpperCase() ?? 'GENERAL'} · ${_relative(c.createdAt).toUpperCase()}',
+            style: PixelType.labelSmall(context, color: PixelPalette.mist),
           ),
           SizedBox(height: grid.px(1)),
           Text(

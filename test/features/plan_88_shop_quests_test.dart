@@ -22,7 +22,7 @@ import 'package:juanderquest_app/features/quests/providers/quest_provider.dart';
 import 'package:juanderquest_app/features/quests/screens/quest_list_screen.dart';
 import 'package:juanderquest_app/features/settings/home_town.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
-import 'package:juanderquest_app/features/spots/theater/theater_quests_section.dart';
+import 'package:juanderquest_app/features/spots/theater/theater_quest_picker_sheet.dart';
 import 'package:juanderquest_app/features/submissions/models/submission_model.dart';
 import 'package:juanderquest_app/features/submissions/providers/submission_provider.dart';
 
@@ -200,7 +200,8 @@ void main() {
         overrides: [
           apiClientProvider.overrideWithValue(api),
           authProvider.overrideWith(
-            (ref) => _AuthFixture(api, ref.watch(authRefreshProvider.notifier), _user),
+            (ref) => _AuthFixture(
+                api, ref.watch(authRefreshProvider.notifier), _user),
           ),
           questProvider.overrideWith(
             (ref) => _QuestFixture(
@@ -265,7 +266,8 @@ void main() {
         overrides: [
           apiClientProvider.overrideWithValue(api),
           authProvider.overrideWith(
-            (ref) => _AuthFixture(api, ref.watch(authRefreshProvider.notifier), _user),
+            (ref) => _AuthFixture(
+                api, ref.watch(authRefreshProvider.notifier), _user),
           ),
           questProvider.overrideWith(
             (ref) => _QuestFixture(api, QuestState(isLoading: false)),
@@ -335,7 +337,8 @@ void main() {
           overrides: [
             apiClientProvider.overrideWithValue(api),
             authProvider.overrideWith(
-              (ref) => _AuthFixture(api, ref.watch(authRefreshProvider.notifier), _user),
+              (ref) => _AuthFixture(
+                  api, ref.watch(authRefreshProvider.notifier), _user),
             ),
             questProvider.overrideWith(
               (ref) => _QuestFixture(
@@ -352,7 +355,17 @@ void main() {
             theme: AppTheme.pixel,
             home: Scaffold(
               body: SingleChildScrollView(
-                child: TheaterQuestsSection(spot: spot),
+                child: TheaterQuestPickerSheet(
+                  spot: spot,
+                  matches: matchSpotQuests(
+                    spot,
+                    [qOwn, qStep, qFar, qTest],
+                    showTest: false,
+                  ),
+                  canCreateQuest: false,
+                  onPlayQuest: (_) {},
+                  onCreateQuest: () {},
+                ),
               ),
             ),
           ),
@@ -374,7 +387,8 @@ void main() {
     },
   );
 
-  testWidgets('Spot with no quests shows Create a quest here -> builder route', (
+  testWidgets('Spot with no quests shows Create a quest here -> builder route',
+      (
     tester,
   ) async {
     final api = _stubApi();
@@ -384,8 +398,17 @@ void main() {
       routes: [
         GoRoute(
           path: '/spot',
-          builder: (_, __) => Scaffold(
-            body: SingleChildScrollView(child: TheaterQuestsSection(spot: spot)),
+          builder: (ctx, __) => Scaffold(
+            body: SingleChildScrollView(
+              child: TheaterQuestPickerSheet(
+                spot: spot,
+                matches: const [],
+                canCreateQuest: true,
+                onPlayQuest: (_) {},
+                onCreateQuest: () =>
+                    ctx.push('/explore/${spot.slug}/quests/new'),
+              ),
+            ),
           ),
         ),
         GoRoute(
@@ -402,7 +425,8 @@ void main() {
         overrides: [
           apiClientProvider.overrideWithValue(api),
           authProvider.overrideWith(
-            (ref) => _AuthFixture(api, ref.watch(authRefreshProvider.notifier), _user),
+            (ref) => _AuthFixture(
+                api, ref.watch(authRefreshProvider.notifier), _user),
           ),
           questProvider.overrideWith(
             (ref) => _QuestFixture(api, QuestState(isLoading: false)),
@@ -416,13 +440,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No quests here yet'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('spot_create_quest_button')));
     await tester.pumpAndSettle();
     expect(find.text('BUILDER:bolinao-falls'), findsOneWidget);
   });
 
-  test('Home recommendation ranks daily mission, town, excludes completed/0-slot', () {
+  test(
+      'Home recommendation ranks daily mission, town, excludes completed/0-slot',
+      () {
     final api = _stubApi();
     final qCompleted = _q(id: 'q-comp', title: 'Completed', rewardPoints: 999);
     final qZeroSlots = _q(
@@ -627,17 +652,22 @@ void main() {
               title: 'Pangasinan Heritage Trail Number $i',
               gpsLat: 16.0433,
               gpsLng: 120.3333,
-              steps: [_step(1, status: i == 1 ? 'verified' : 'not_started'), _step(2)],
+              steps: [
+                _step(1, status: i == 1 ? 'verified' : 'not_started'),
+                _step(2)
+              ],
             ),
         ];
 
         final overrides = [
           apiClientProvider.overrideWithValue(api),
           authProvider.overrideWith(
-            (ref) => _AuthFixture(api, ref.watch(authRefreshProvider.notifier), _user),
+            (ref) => _AuthFixture(
+                api, ref.watch(authRefreshProvider.notifier), _user),
           ),
           questProvider.overrideWith(
-            (ref) => _QuestFixture(api, QuestState(quests: quests, isLoading: false)),
+            (ref) => _QuestFixture(
+                api, QuestState(quests: quests, isLoading: false)),
           ),
           campaignProvider.overrideWith(
             (ref) => _CampaignFixture(
@@ -678,7 +708,8 @@ void main() {
               SubmissionState(submissions: const [], isLoading: false),
             ),
           ),
-          savedQuestsStorageProvider.overrideWithValue(_MemorySavedStorage(['q2'])),
+          savedQuestsStorageProvider
+              .overrideWithValue(_MemorySavedStorage(['q2'])),
           homeDailyProvider.overrideWith(
             (ref) async => const HomeDailyState(
               stamps: 10,
@@ -700,7 +731,8 @@ void main() {
           ),
           homeLastKnownLocationProvider.overrideWith((ref) async => null),
           homeTownProvider.overrideWith(
-            (ref) async => const HomeTownInfo(town: 'Dagupan City', options: []),
+            (ref) async =>
+                const HomeTownInfo(town: 'Dagupan City', options: []),
           ),
         ];
 
@@ -708,33 +740,53 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: overrides,
-            child: MaterialApp(theme: AppTheme.pixel, home: const DashboardScreen()),
+            child: MaterialApp(
+                theme: AppTheme.pixel, home: const DashboardScreen()),
           ),
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
 
-        // 2. Spot QUESTS HERE with 3 + "+1 more"
+        // 2. Spot quest picker sheet with 4 matched quests
         await tester.pumpWidget(
           ProviderScope(
             overrides: overrides,
             child: MaterialApp(
               theme: AppTheme.pixel,
               home: Scaffold(
-                body: SingleChildScrollView(child: TheaterQuestsSection(spot: spot)),
+                body: SingleChildScrollView(
+                  child: TheaterQuestPickerSheet(
+                    spot: spot,
+                    matches: matchSpotQuests(
+                      spot,
+                      [
+                        _q(id: 'q1', title: 'Quest 1', rewardPoints: 100),
+                        _q(id: 'q2', title: 'Quest 2', rewardPoints: 120),
+                        _q(id: 'q3', title: 'Quest 3', rewardPoints: 140),
+                        _q(id: 'q4', title: 'Quest 4', rewardPoints: 160),
+                      ],
+                      showTest: false,
+                    ),
+                    canCreateQuest: true,
+                    onPlayQuest: (_) {},
+                    onCreateQuest: () {},
+                  ),
+                ),
               ),
             ),
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('spot_quests_more_button')), findsOneWidget);
+        expect(find.byKey(const ValueKey('spot_quest_picker_sheet')),
+            findsOneWidget);
         expect(tester.takeException(), isNull);
 
         // 3. My quests
         await tester.pumpWidget(
           ProviderScope(
             overrides: overrides,
-            child: MaterialApp(theme: AppTheme.pixel, home: const QuestListScreen()),
+            child: MaterialApp(
+                theme: AppTheme.pixel, home: const QuestListScreen()),
           ),
         );
         await tester.pumpAndSettle();

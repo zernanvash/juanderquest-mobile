@@ -430,18 +430,19 @@ void main() {
       //    the spot page (theater_end_report_btn).
       expect(find.bySemanticsLabel('Report problem'), findsNothing);
 
-      // 4. PLAY QUEST button tap
-      final playQuestBtn = find.text('PLAY QUEST');
-      await _scrollTo(tester, playQuestBtn);
-      expect(playQuestBtn, findsOneWidget);
-      await tester.tap(playQuestBtn);
-      await tester.pumpAndSettle();
-      expect(pushedRoutes, contains('/quests/quest-999'));
-
-      // Pop back from /quests/:id
-      final nav = tester.state<NavigatorState>(find.byType(Navigator).last);
-      nav.pop();
-      await tester.pumpAndSettle();
+      // 4. Plan 105: PLAY QUEST button removed; trophy quest row shown and
+      //    save sits on the right end of the action row.
+      expect(find.text('PLAY QUEST'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('explore_quest_row_spot-interactive')),
+        findsOneWidget,
+      );
+      final saveKeyFinder =
+          find.byKey(const ValueKey('explore_save_spot-interactive'));
+      expect(
+        tester.getTopLeft(saveKeyFinder).dx,
+        greaterThan(tester.getTopRight(likeBtn).dx),
+      );
 
       // 5. Card tap navigates to /explore/:slug
       final cardTapTarget = find.text('Interactive Spot');

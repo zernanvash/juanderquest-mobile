@@ -150,11 +150,7 @@ void main() {
       await tester.tap(find.text('HELPFUL (3)'));
       await tester.pumpAndSettle();
       expect(find.text('HELPFUL (4)'), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('spot_like')));
-      await tester.pumpAndSettle();
-      expect(fake.calls, contains('PUT /spots/s1/like'));
-      expect(find.textContaining('LIKED'), findsOneWidget);
+      expect(find.byKey(const ValueKey('spot_like')), findsNothing);
     });
 
     testWidgets('reports a problem with a reason', (tester) async {
@@ -227,7 +223,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('recovery_reset')));
       await tester.pump();
       expect(
-          find.text('Choose a stronger password: tick every item in the list below it.'),
+          find.text(
+              'Choose a stronger password: tick every item in the list below it.'),
           findsOneWidget);
 
       await tester.enterText(

@@ -3,33 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../cultural_quizzes/models/cultural_quiz_model.dart';
-import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
+import '../../quests/providers/quest_provider.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
 import '../theater/theater_coming_soon_section.dart';
 import '../theater/theater_about_section.dart';
 import '../explore/explore_art.dart';
 import '../theater/theater_backdrop.dart';
+import '../theater/theater_badges_status_section.dart';
 import '../theater/theater_gallery_dialog.dart';
 import '../theater/theater_nearby_section.dart';
-import '../theater/theater_overview_section.dart';
-import '../theater/theater_quests_section.dart';
 import '../theater/theater_panel.dart';
+import '../theater/theater_quest_picker_sheet.dart';
 import '../theater/theater_still_photo.dart';
 import '../studio/pixel/studio_icons.dart';
 import '../theater/theater_title_block.dart';
 import '../theater/theater_venue_section.dart';
 import '../widgets/spot_community_section.dart';
+import '../widgets/spot_like_heart.dart';
 
 class SpotDetailScreen extends ConsumerStatefulWidget {
   final SpotModel spot;
@@ -70,6 +71,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     Future.microtask(() {
       _loadAlternatives();
       _logInteraction('view');
+      if (!mounted) return;
+      final qState = ref.read(questProvider);
+      if (qState.quests.isEmpty && !qState.isLoading) {
+        ref.read(questProvider.notifier).fetchQuests();
+      }
     });
   }
 
@@ -214,18 +220,35 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     } catch (_) {}
   }
 
-  void _playQuest() {
-    if (widget.spot.questId != null) {
-      try {
-        context.push('/quests/${widget.spot.questId}');
-      } catch (_) {}
-    }
+  void _addPhoto() {
+    showPixelToast(
+      context,
+      'Adding photos to a place is coming soon.',
+    );
   }
 
-  bool _isSpotAuthor(WidgetRef ref, SpotModel spot) {
-    final user = ref.watch(authProvider).user;
-    if (user == null) return false;
-    return spot.createdBy != null && spot.createdBy == user.id;
+  void _playQuest(String questId) {
+    try {
+      context.push('/quests/$questId');
+    } catch (_) {}
+  }
+
+  void _openQuestPicker(List<SpotQuestMatch> matches) {
+    final spot = widget.spot;
+    final signedIn = ref.read(authProvider).user != null;
+    final canCreateQuest = signedIn && spot.slug.isNotEmpty;
+    TheaterQuestPickerSheet.show(
+      context,
+      spot: spot,
+      matches: matches,
+      canCreateQuest: canCreateQuest,
+      onPlayQuest: _playQuest,
+      onCreateQuest: () {
+        try {
+          context.push('/explore/${spot.slug}/quests/new', extra: spot);
+        } catch (_) {}
+      },
+    );
   }
 
   Future<void> _openReportSheet() async {
@@ -262,8 +285,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final spot = widget.spot;
-    final isAuthor = _isSpotAuthor(ref, spot);
     final hasAlternatives = _alternatives.isNotEmpty;
+    final quests = ref.watch(questProvider).quests;
+    final showTest = ref.watch(showTestContentProvider);
+    final questMatches = matchSpotQuests(spot, quests, showTest: showTest);
 
     // The app-wide PixelScope applies (it carries the traveler's text size);
     // this page used to override it with defaults.
@@ -316,7 +341,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           // Only whether the page has left the top matters here.
                           scrollOffset: scrolled ? 10 : 0,
                           onDirections: _openDirections,
-                          onPlayQuest: _playQuest,
+                          onPlayQuest: () => _openQuestPicker(questMatches),
+                          onAddPhoto: _addPhoto,
+                          hasQuests: questMatches.isNotEmpty,
                           hasPhoto: photoUrl != null,
                         ),
                       ),
@@ -331,20 +358,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                     ),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        // Chapter 1: OVERVIEW
-                        TheaterOverviewSection(
-                          spot: spot,
-                          isAuthor: isAuthor,
-                          onPlayQuest: _playQuest,
-                        ),
+                        // Chapter 1: BADGES & CROWD STATUS
+                        TheaterBadgesStatusSection(spot: spot),
                         const SizedBox(height: 28),
-
-                        // Chapter 1b: QUESTS HERE
-                        TheaterQuestsSection(spot: spot),
-                        const SizedBox(height: 28),
-
-                        // Chapter 1c: CULTURAL QUIZZES HERE
-                        _SpotCulturalQuizzesSection(spotId: spot.id),
 
                         // Chapter 2: ABOUT
                         TheaterAboutSection(spot: spot),
@@ -409,18 +425,13 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           media: spot.media,
                         ),
                       ),
-                    PixelIconButton(
+                    SpotLikeBarButton(
                       key: const Key('theater_like_btn'),
-                      icon: _isLiked
-                          ? DesignerArt.heartLiked
-                          : DesignerArt.heartUnliked,
+                      liked: _isLiked,
                       semanticLabel: _isLiked
                           ? 'Unlike spot ($_likeCount likes)'
                           : 'Like spot ($_likeCount likes)',
                       iconHeight: 20,
-                      style: _isLiked
-                          ? PixelBoxStyle.red
-                          : PixelBoxStyle.parchment,
                       onPressed: () => _setLiked(!_isLiked),
                     ),
                     PixelIconButton(
@@ -505,95 +516,6 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                 ),
               ),
             ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SpotCulturalQuizzesSection extends ConsumerWidget {
-  const _SpotCulturalQuizzesSection({required this.spotId});
-
-  final String spotId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final quizzes = ref.watch(spotQuizzesProvider(spotId)).valueOrNull;
-    if (quizzes == null || quizzes.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final grid = PixelGrid.of(context);
-    return TheaterPanel(
-      padding: EdgeInsets.all(grid.px(2)),
-      child: Column(
-        key: const ValueKey('spot_cultural_quizzes_section'),
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'CULTURAL QUIZZES HERE',
-            style: PixelType.title(context, color: PixelPalette.paper),
-          ),
-          SizedBox(height: grid.px(2)),
-          for (final SpotQuizSummaryModel quiz in quizzes) ...[
-            GestureDetector(
-              onTap: () => context.push('/cultural-quizzes/${quiz.quizId}'),
-              child: PixelPanel(
-                style: PixelBoxStyle.parchment,
-                padding: 2,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            quiz.title,
-                            style: PixelType.body(
-                              context,
-                              color: PixelPalette.ink,
-                            ),
-                          ),
-                          SizedBox(height: grid.px(1)),
-                          Wrap(
-                            spacing: grid.px(1),
-                            runSpacing: grid.px(1),
-                            children: [
-                              PixelChip(
-                                quiz.language.toUpperCase(),
-                                style: PixelBoxStyle.stone,
-                                textColor: PixelPalette.white,
-                              ),
-                              PixelChip(
-                                quiz.isCompleted
-                                    ? 'DONE'
-                                    : '+${quiz.xpReward} XP',
-                                style: quiz.isCompleted
-                                    ? PixelBoxStyle.stone
-                                    : PixelBoxStyle.gold,
-                                textColor: quiz.isCompleted
-                                    ? PixelPalette.white
-                                    : PixelPalette.ink,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: grid.px(1)),
-                    Text(
-                      '›',
-                      style: PixelType.title(
-                        context,
-                        color: PixelPalette.woodMid,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: grid.px(1)),
           ],
         ],
       ),

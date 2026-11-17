@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
-import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
@@ -208,55 +207,16 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: _fullSpot, user: authorUser));
       await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('theater_overview_play_quest_btn')),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.byKey(const Key('theater_overview_play_quest_btn')), findsOneWidget);
+      // Before scrolling, ADD PHOTO and PLAY QUEST are hidden.
+      expect(find.byKey(const ValueKey('spot_add_photo')), findsNothing);
+      expect(find.byKey(const ValueKey('spot_play_quest_btn')), findsNothing);
 
-      await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('spot_create_quest_btn')),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
+      // Scroll slightly so scrolled-only actions appear under GET DIRECTIONS.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
       await tester.pumpAndSettle();
-      expect(
-          find.byKey(const ValueKey('spot_create_quest_btn')), findsOneWidget);
-
-      // 2. Spot without questId, viewed by non-author
-      const nonAuthorSpot = SpotModel(
-        id: 'spot-theater-non-author',
-        slug: 'hundred-islands-national-park',
-        name: 'Hundred Islands National Park',
-        description: 'A protected archipelago of 124 islands in Alaminos.',
-        category: 'nature',
-        subcategory: 'islands',
-        municipality: 'Alaminos',
-        address: 'Lucap Wharf, Alaminos City',
-        sourceName: 'LGU Alaminos',
-        trustLevel: 'lgu_verified',
-        gpsLat: 16.20,
-        gpsLng: 120.04,
-        tags: [],
-        reasons: [],
-        questId: null,
-      );
-      final nonAuthorUser = UserModel(
-        id: 'different-user',
-        seedId: 'different-user',
-        email: 'other@juanderquest.app',
-        displayName: 'Other User',
-        avatarUrl: '',
-        role: 'explorer',
-        demoPoints: 20,
-      );
-
-      await tester
-          .pumpWidget(_wrapScreen(spot: nonAuthorSpot, user: nonAuthorUser));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('theater_overview_play_quest_btn')), findsNothing);
+      expect(find.byKey(const ValueKey('spot_add_photo')), findsOneWidget);
+      // No quests loaded in _InertAuthNotifier scope -> PLAY QUEST stays hidden.
+      expect(find.byKey(const ValueKey('spot_play_quest_btn')), findsNothing);
       expect(find.byKey(const ValueKey('spot_create_quest_btn')), findsNothing);
     });
 
@@ -431,23 +391,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('Share link copied:'), findsOneWidget);
 
-      // Scroll to notes and tap Like
+      // Scroll to notes (spot_like removed in Plan 105)
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('spot_like')),
+        find.byKey(const ValueKey('spot_community')),
         300,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      // The pinned bar covers the top strip once the hero is gone; nudge the
-      // note back into the tappable area under it.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, 120));
-      await tester.pumpAndSettle();
-
-      final likeBtn = find.byKey(const ValueKey('spot_like'));
-      expect(likeBtn, findsOneWidget);
-      await tester.tap(likeBtn);
-      await tester.pumpAndSettle();
-      expect(find.textContaining('LIKED'), findsOneWidget);
+      expect(find.byKey(const ValueKey('spot_like')), findsNothing);
     });
 
     // Plan 93b WP-11 / WP-13: the bar never scrolls away, and its heart is Like.
@@ -474,12 +425,12 @@ void main() {
         expect(find.byKey(Key(key)), findsOneWidget, reason: key);
       }
 
-      PixelIconButton likeBtn() =>
-          tester.widget<PixelIconButton>(find.byKey(const Key('theater_like_btn')));
-      expect(likeBtn().semanticLabel, startsWith('Like spot'));
+      String likeLabel() =>
+          tester.getSemantics(find.byKey(const Key('theater_like_btn'))).label;
+      expect(likeLabel(), startsWith('Like spot'));
       await tester.tap(find.byKey(const Key('theater_like_btn')));
       await tester.pumpAndSettle();
-      expect(likeBtn().semanticLabel, startsWith('Unlike spot'));
+      expect(likeLabel(), startsWith('Unlike spot'));
       // Liking is not saving.
       expect(find.textContaining('saved places'), findsNothing);
 
@@ -509,16 +460,16 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: _fullSpot));
       await tester.pumpAndSettle();
 
-      PixelIconButton likeBtn() =>
-          tester.widget<PixelIconButton>(find.byKey(const Key('theater_like_btn')));
-      expect(likeBtn().semanticLabel, startsWith('Like spot (0 likes)'));
+      String likeLabel() =>
+          tester.getSemantics(find.byKey(const Key('theater_like_btn'))).label;
+      expect(likeLabel(), startsWith('Like spot (0 likes)'));
       for (var i = 0; i < 2; i++) {
         await tester.tapAt(const Offset(200, 400));
         await tester.pump(const Duration(milliseconds: 80));
         await tester.tapAt(const Offset(200, 400));
         await tester.pumpAndSettle();
       }
-      expect(likeBtn().semanticLabel, 'Unlike spot (1 likes)');
+      expect(likeLabel(), 'Unlike spot (1 likes)');
     });
 
     testWidgets('one photo is singular and credits strip the PHOTO: prefix',
@@ -541,14 +492,7 @@ void main() {
       // Plan 93b WP-11: the gallery is an icon button in the sticky bar.
       expect(find.byKey(const Key('theater_gallery_btn')), findsOneWidget);
       expect(find.textContaining('PHOTO: BIANCABRAZAL'), findsNothing);
-
-      await tester.scrollUntilVisible(
-        find.text('Shared by BIANCABRAZAL'),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.text('Shared by BIANCABRAZAL'), findsOneWidget);
-      expect(find.textContaining('PHOTO:'), findsNothing);
+      expect(find.text('BIANCABRAZAL'), findsOneWidget);
 
       await tester.scrollUntilVisible(
         find.text('Photography & curation: BIANCABRAZAL'),
@@ -583,7 +527,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('spot_like')),
+        find.byKey(const ValueKey('spot_community')),
         300,
         scrollable: find.byType(Scrollable).first,
       );
