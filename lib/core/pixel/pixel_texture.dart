@@ -4,9 +4,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-/// Noisy pixel gradients (owner 2026-11-17): instead of straight bands, the
-/// two colours mix as scattered pixel cells, thin at the top and thicker
-/// toward the bottom, like a dissolve. Chosen in Pixel Lab → Gradient
+/// Noisy pixel gradients (owner 2026-11-17): a gentle four-tone ramp from
+/// the top colour to the bottom colour; neighbouring tones mix as scattered
+/// pixel cells, so the fade is smooth but still pixel-textured. Chosen in Pixel Lab → Gradient
 /// textures; [DitherBackground] follows the pick.
 enum PixelTextureStyle {
   /// The original ordered dither in bands.
@@ -32,9 +32,9 @@ abstract final class PixelTexture {
   static final style =
       ValueNotifier<PixelTextureStyle>(PixelTextureStyle.classic);
 
-  /// How much of the bottom colour the noisy styles reach at the very
-  /// bottom (owner: the green was too dark at the bottom).
-  static const reach = 0.72;
+  /// How far down the ramp the noisy styles get at the very bottom (owner:
+  /// the green was too dark at the bottom, keep it gentle).
+  static const reach = 0.8;
 }
 
 /// Paints a noisy two-colour gradient from [top] to [bottom] in pixel cells.
@@ -74,6 +74,10 @@ class PixelNoisePainter extends CustomPainter {
     return top + (bot - top) * s(fy);
   }
 
+  /// Number of tones in the ramp: [top], two shades mixed between, and
+  /// [bottom]. Noise only blends neighbouring tones, so steps are gentle.
+  static const tones = 4;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
@@ -81,33 +85,37 @@ class PixelNoisePainter extends CustomPainter {
     final cols = (size.width / cell).ceil();
     final rows = (size.height / cell).ceil();
     canvas.drawRect(Offset.zero & size, Paint()..color = top);
-    final pts = <double>[];
+    final buckets = List.generate(tones, (_) => <double>[]);
     for (var r = 0; r < rows; r++) {
       final t = rows <= 1 ? 1.0 : r / (rows - 1);
-      // Ease in: the top stays clean longer, the mix builds near the bottom.
-      final base = math.pow(t, 1.35) * reach;
+      // Where this row sits on the ramp, 0 (top) .. tones-1 (bottom).
+      final base = t * reach * (tones - 1);
       for (var c = 0; c < cols; c++) {
-        var p = base;
+        var v = base;
         if (style == PixelTextureStyle.clouds) {
-          p += (_value(c / 9, r / 7, seed + 1) - 0.5) * 0.45;
+          v += (_value(c / 9, r / 7, seed + 1) - 0.5) * 0.9;
         }
-        if (_hash(c, r, seed) < p) {
-          pts
-            ..add((c + 0.5) * cell)
-            ..add((r + 0.5) * cell);
-        }
+        v = v.clamp(0.0, tones - 1.0);
+        final lo = v.floor();
+        final tone = _hash(c, r, seed) < v - lo ? lo + 1 : lo;
+        if (tone == 0) continue;
+        buckets[math.min(tone, tones - 1)]
+          ..add((c + 0.5) * cell)
+          ..add((r + 0.5) * cell);
       }
     }
-    if (pts.isEmpty) return;
-    canvas.drawRawPoints(
-      ui.PointMode.points,
-      Float32List.fromList(pts),
-      Paint()
-        ..color = bottom
-        ..strokeWidth = cell
-        ..strokeCap = StrokeCap.square
-        ..isAntiAlias = false,
-    );
+    for (var k = 1; k < tones; k++) {
+      if (buckets[k].isEmpty) continue;
+      canvas.drawRawPoints(
+        ui.PointMode.points,
+        Float32List.fromList(buckets[k]),
+        Paint()
+          ..color = Color.lerp(top, bottom, k / (tones - 1))!
+          ..strokeWidth = cell
+          ..strokeCap = StrokeCap.square
+          ..isAntiAlias = false,
+      );
+    }
   }
 
   @override
