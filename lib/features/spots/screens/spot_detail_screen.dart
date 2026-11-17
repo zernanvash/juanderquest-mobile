@@ -29,6 +29,7 @@ import '../theater/theater_still_photo.dart';
 import '../studio/pixel/studio_icons.dart';
 import '../theater/theater_title_block.dart';
 import '../theater/theater_venue_section.dart';
+import '../widgets/spot_add_photo_sheet.dart';
 import '../widgets/spot_community_section.dart';
 import '../widgets/spot_like_heart.dart';
 
@@ -220,11 +221,20 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     } catch (_) {}
   }
 
-  void _addPhoto() {
-    showPixelToast(
+  Future<void> _addPhoto() async {
+    if (ref.read(authProvider).user == null) {
+      try {
+        context.push('/login');
+      } catch (_) {}
+      return;
+    }
+    final sent = await SpotAddPhotoSheet.show(
       context,
-      'Adding photos to a place is coming soon.',
+      spot: widget.spot,
     );
+    if (sent == true && mounted) {
+      showPixelToast(context, 'Sent for review');
+    }
   }
 
   void _playQuest(String questId) {
