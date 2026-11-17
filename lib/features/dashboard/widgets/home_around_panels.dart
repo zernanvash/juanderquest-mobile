@@ -95,7 +95,8 @@ class HomeNearbyPanel extends ConsumerWidget {
                 context.push('/explore/${n.spot.slug}', extra: n.spot);
               },
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 40),
+                // Design system: tap targets are at least 48 tall.
+                constraints: const BoxConstraints(minHeight: 48),
                 child: Row(
                   children: [
                     Expanded(

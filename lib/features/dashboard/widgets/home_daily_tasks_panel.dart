@@ -123,44 +123,49 @@ class _TaskRow extends StatelessWidget {
               pixelTick(context);
               onTap();
             },
-      child: Row(
-        children: [
-          Text(
-            m.completed ? '✓' : '•',
-            style: PixelType.title(
-              context,
-              color: m.completed ? PixelPalette.greenDark : PixelPalette.stone,
-            ),
-          ),
-          SizedBox(width: grid.px(2)),
-          Expanded(
-            child: Text(
-              m.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: PixelType.body(
+      child: ConstrainedBox(
+        // Design system: tap targets are at least 48 tall.
+        constraints: const BoxConstraints(minHeight: 48),
+        child: Row(
+          children: [
+            Text(
+              m.completed ? '✓' : '•',
+              style: PixelType.title(
                 context,
-                color: m.completed ? PixelPalette.stone : PixelPalette.ink,
-              ).copyWith(
-                decoration: m.completed ? TextDecoration.lineThrough : null,
+                color:
+                    m.completed ? PixelPalette.greenDark : PixelPalette.stone,
               ),
             ),
-          ),
-          SizedBox(width: grid.px(2)),
-          Text(
-            '$progress/${m.target}',
-            style: PixelType.small(context, color: PixelPalette.slate),
-          ),
-          SizedBox(width: grid.px(2)),
-          PixelPulse(
-            enabled: pulse,
-            child: PixelChip(
-              '+${m.stamps}',
-              style: PixelBoxStyle.gold,
-              textColor: PixelPalette.ink,
+            SizedBox(width: grid.px(2)),
+            Expanded(
+              child: Text(
+                m.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.body(
+                  context,
+                  color: m.completed ? PixelPalette.stone : PixelPalette.ink,
+                ).copyWith(
+                  decoration: m.completed ? TextDecoration.lineThrough : null,
+                ),
+              ),
             ),
-          ),
-        ],
+            SizedBox(width: grid.px(2)),
+            Text(
+              '$progress/${m.target}',
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(width: grid.px(2)),
+            PixelPulse(
+              enabled: pulse,
+              child: PixelChip(
+                '+${m.stamps}',
+                style: PixelBoxStyle.gold,
+                textColor: PixelPalette.ink,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

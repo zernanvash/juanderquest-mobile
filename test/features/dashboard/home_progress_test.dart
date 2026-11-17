@@ -921,5 +921,12 @@ void main() {
       );
       expect(find.text('SOON'), findsOneWidget);
     });
+
+    // Design system usability rule (2026-11-17): every tap target is at
+    // least 48 x 48.
+    testWidgets('every Home tap target is at least 48x48', (tester) async {
+      await _pump(tester);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    });
   });
 }

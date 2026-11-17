@@ -111,22 +111,31 @@ class HomeHero extends ConsumerWidget {
                     key: const ValueKey('home_hero_profile'),
                     behavior: HitTestBehavior.opaque,
                     onTap: () => context.go('/profile'),
-                    child: PixelPanel(
-                      style: PixelBoxStyle.gold,
-                      padding: 1,
-                      child: SizedBox(
-                        width: grid.px(14),
-                        height: grid.px(14),
-                        child: ClipRect(
-                          child: validAvatar
-                              ? Image.network(
-                                  avatarUrl,
-                                  fit: BoxFit.cover,
-                                  filterQuality: FilterQuality.medium,
-                                  errorBuilder: (_, __, ___) =>
-                                      _avatarFallback(context, initial),
-                                )
-                              : _avatarFallback(context, initial),
+                    child: ConstrainedBox(
+                      // Design system: tap targets are at least 48x48.
+                      constraints:
+                          const BoxConstraints(minWidth: 48, minHeight: 48),
+                      child: Center(
+                        widthFactor: 1,
+                        heightFactor: 1,
+                        child: PixelPanel(
+                          style: PixelBoxStyle.gold,
+                          padding: 1,
+                          child: SizedBox(
+                            width: grid.px(14),
+                            height: grid.px(14),
+                            child: ClipRect(
+                              child: validAvatar
+                                  ? Image.network(
+                                      avatarUrl,
+                                      fit: BoxFit.cover,
+                                      filterQuality: FilterQuality.medium,
+                                      errorBuilder: (_, __, ___) =>
+                                          _avatarFallback(context, initial),
+                                    )
+                                  : _avatarFallback(context, initial),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -210,17 +219,31 @@ class HomeHero extends ConsumerWidget {
                 key: const ValueKey('home_hero_stats_strip'),
                 behavior: HitTestBehavior.opaque,
                 onTap: () => context.go('/profile'),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: grid.px(1),
-                  runSpacing: grid.px(1),
-                  children: [
-                    _statItem(context, 'QUESTS', '$questsCount', textSoft),
-                    _statItem(context, 'VISITS', '$visitsCount', textSoft),
-                    _statItem(context, 'TOWNS', '$townsCount', textSoft),
-                    _statItem(context, 'STREAK', '${streakDays}D', textSoft),
-                  ],
+                child: ConstrainedBox(
+                  // Design system: tap targets are at least 48 tall.
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: grid.px(1),
+                        runSpacing: grid.px(1),
+                        children: [
+                          _statItem(
+                              context, 'QUESTS', '$questsCount', textSoft),
+                          _statItem(
+                              context, 'VISITS', '$visitsCount', textSoft),
+                          _statItem(context, 'TOWNS', '$townsCount', textSoft),
+                          _statItem(
+                              context, 'STREAK', '${streakDays}D', textSoft),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

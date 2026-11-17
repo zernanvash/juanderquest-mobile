@@ -59,13 +59,22 @@ class HomeQotdPanel extends ConsumerWidget {
                   ? () => showPixelToast(context,
                       'Already answered. A new question comes tomorrow!')
                   : () => ref.read(homeQotdProvider.notifier).answer(option.id),
-              child: Text(
-                option.text,
-                style: PixelType.body(
-                  context,
-                  color: q.selectedOptionId == option.id
-                      ? PixelPalette.white
-                      : PixelPalette.ink,
+              // Design system: tap targets are at least 48 tall (the slot
+              // adds its outline and padding around this).
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: 48 - grid.px(6)),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: 1,
+                  child: Text(
+                    option.text,
+                    style: PixelType.body(
+                      context,
+                      color: q.selectedOptionId == option.id
+                          ? PixelPalette.white
+                          : PixelPalette.ink,
+                    ),
+                  ),
                 ),
               ),
             ),
