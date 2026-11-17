@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/open_route.dart';
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/pixel_art.dart';
 import '../pixel/home_pixel_art.dart';
@@ -19,6 +20,7 @@ import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../profile/providers/profile_stats_provider.dart';
+import '../../settings/home_town.dart';
 import '../providers/home_daily_provider.dart';
 
 String homeNumber(int value) {
@@ -62,6 +64,10 @@ class HomeHero extends ConsumerWidget {
     final stats = ref.watch(profileStatsProvider);
     final engagement = ref.watch(choiceEngagementProvider).valueOrNull;
     final daily = ref.watch(homeDailyProvider).valueOrNull;
+    // Plan 100 WP-7: the home town line; watching the sighting provider
+    // records today's town from GPS.
+    final homeTown = ref.watch(homeTownProvider).valueOrNull;
+    ref.watch(homeTownSightingProvider);
 
     final displayName = currentUser?.displayName.trim().isNotEmpty == true
         ? currentUser!.displayName.trim()
@@ -176,6 +182,10 @@ class HomeHero extends ConsumerWidget {
                             style: PixelBoxStyle.green,
                             textColor: PixelPalette.white,
                           ),
+                        ],
+                        if (homeTown != null) ...[
+                          SizedBox(height: grid.px(1)),
+                          _homeTownLine(context, grid, homeTown, textSoft),
                         ],
                       ],
                     ),
@@ -295,6 +305,56 @@ class HomeHero extends ConsumerWidget {
           child: PixelChip(label, style: style, textColor: textColor),
         ),
       ),
+    );
+  }
+
+  Widget _homeTownLine(
+    BuildContext context,
+    PixelGrid grid,
+    HomeTownInfo info,
+    Color color,
+  ) {
+    final String label;
+    if (info.town != null) {
+      label = info.source == 'gps'
+          ? tr(
+              context,
+              en: '${info.town} · from GPS',
+              tl: '${info.town} · mula sa GPS',
+            )
+          : info.town!;
+    } else if (info.gpsEnabled) {
+      label = tr(
+        context,
+        en: 'Home town: finding… (${info.currentDays}/${info.requiredDays} days)',
+        tl: 'Sariling bayan: hinahanap… (${info.currentDays}/${info.requiredDays} araw)',
+      );
+    } else {
+      label = tr(
+        context,
+        en: 'Home town: not set',
+        tl: 'Sariling bayan: hindi nakatakda',
+      );
+    }
+    return Row(
+      key: const ValueKey('home_hero_home_town'),
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const SizedBox(
+          width: 12,
+          height: 12,
+          child: FittedBox(child: PixelSprite(DesignerArt.navHome)),
+        ),
+        SizedBox(width: grid.px(1)),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: PixelType.small(context, color: color),
+          ),
+        ),
+      ],
     );
   }
 
