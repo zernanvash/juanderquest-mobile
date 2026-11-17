@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../core/pixel/generated/pixel_palette.g.dart';
 import '../../core/pixel/pixel_box.dart';
 import '../../core/pixel/pixel_grid.dart';
+import '../../core/pixel/pixel_poppers.dart';
 import '../../core/pixel/pixel_text.dart';
 import 'celebration_button.dart';
 import 'celebration_models.dart';
@@ -19,6 +20,8 @@ export 'celebration_models.dart';
 /// Displays a full-screen celebration scene (Quest complete, Level up, Stamp earned).
 /// Completes when the traveler taps the action button or presses Back.
 Future<void> showCelebration(BuildContext context, Celebration c) {
+  // Party poppers over the scene (quest complete, level up, stamp earned).
+  PixelPoppers.fire(context);
   return Navigator.of(context).push<void>(
     PageRouteBuilder<void>(
       opaque: true,

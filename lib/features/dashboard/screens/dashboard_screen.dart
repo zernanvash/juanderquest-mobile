@@ -7,6 +7,7 @@ import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
+import '../../../core/pixel/pixel_poppers.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
@@ -97,6 +98,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         activeQuest == null ? ref.watch(homeRecommendedQuestProvider) : null;
 
     final daily = claimState.latest ?? dailyAsync.valueOrNull;
+
+    // Party poppers (owner 2026-11-16): the stamp was just claimed, a daily
+    // task was just finished, or the last one was.
+    ref.listen(homeDailyClaimProvider, (prev, next) {
+      if (next.latest?.claimToday == true && prev?.latest?.claimToday != true) {
+        PixelPoppers.fire(context);
+      }
+    });
+    ref.listen(homeDailyProvider, (prev, next) {
+      final before = prev?.valueOrNull;
+      final after = next.valueOrNull;
+      if (before == null || after == null || before.date != after.date) return;
+      int done(HomeDailyState s) => s.missions.where((m) => m.completed).length;
+      if (done(after) <= done(before)) return;
+      PixelPoppers.fire(
+        context,
+        size: after.allComplete ? PixelPopperSize.big : PixelPopperSize.small,
+      );
+    });
     final unread = ref.watch(unreadNotificationCountProvider);
 
     if (!_tipsRequested && user != null) {

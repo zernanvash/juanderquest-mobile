@@ -19,6 +19,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../../core/pixel/pixel_poppers.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/satellite_toggle.dart';
@@ -224,7 +225,9 @@ class _SpotDiscoveryStudioScreenState
   Future<void> _onPublished(SpotModel spot) async {
     _saveTimer?.cancel();
     await ref.read(spotDraftStoreProvider).clear();
-    if (mounted) setState(() => _published = spot);
+    if (!mounted) return;
+    setState(() => _published = spot);
+    PixelPoppers.fire(context);
   }
 
   void _addAnother() {

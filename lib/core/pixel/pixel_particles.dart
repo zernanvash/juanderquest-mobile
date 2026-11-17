@@ -146,6 +146,42 @@ class PixelParticleSystem extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Emits square confetti in a cone around [angle] (radians; -pi/2 is up),
+  /// [spread] either side. Used by the party poppers.
+  void emitCone({
+    required Offset origin,
+    required double angle,
+    required double spread,
+    int count = 40,
+    List<Color> palette = menuModalPalette,
+    double minSpeed = 200,
+    double maxSpeed = 520,
+    double gravity = 700,
+    double minLife = 0.9,
+    double maxLife = 1.6,
+  }) {
+    for (var i = 0; i < count; i++) {
+      final a = angle + _range(-spread, spread);
+      final speed = _range(minSpeed, maxSpeed);
+      final p = _alloc();
+      if (!p.active) _activeCount++;
+      p.spawn(
+        x: origin.dx,
+        y: origin.dy,
+        vx: math.cos(a) * speed,
+        vy: math.sin(a) * speed,
+        ax: 0,
+        ay: gravity,
+        sizeArtPx: (_nextDouble() < 0.3) ? 3 : 2,
+        color: palette[(_nextDouble() * palette.length)
+            .floor()
+            .clamp(0, palette.length - 1)],
+        maxLife: _range(minLife, maxLife),
+      );
+    }
+    notifyListeners();
+  }
+
   /// Emits disintegration / materialization particles along the active dissolve
   /// frontier of [modalRect] relative to the nav button [anchor].
   void emitDisintegrateFrontier({
