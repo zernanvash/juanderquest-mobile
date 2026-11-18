@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -791,6 +792,33 @@ void main() {
     await tester.tap(action);
     await tester.pumpAndSettle();
     expect(find.text('Scan Checkpoint QR'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  // v0.3.1 (owner 2026-11-18): destination-style top bar and a title fade.
+  testWidgets('quest detail has the destination top bar and a title fade',
+      (tester) async {
+    final quest = _quest('q1', 'Top bar quest', steps: _setupSteps);
+    await _pumpDetail(tester, quest, steps: _setupSteps, hasAttempt: false);
+    expect(find.byKey(const Key('quest_pinned_bar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('pixel_app_bar_back')), findsOneWidget);
+    expect(find.byKey(const Key('quest_save_btn')), findsOneWidget);
+    expect(find.byKey(const Key('quest_share_btn')), findsOneWidget);
+    expect(find.byKey(const Key('quest_title_fade')), findsOneWidget);
+    String? copied;
+    tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copied = (call.arguments as Map)['text'] as String?;
+      }
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+    await tester.tap(find.byKey(const Key('quest_share_btn')));
+    await tester.pumpAndSettle();
+    expect(copied, 'https://juanderquest.app/quests/q1');
+    expect(find.textContaining('Quest link copied'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
