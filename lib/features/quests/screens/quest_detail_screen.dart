@@ -14,6 +14,7 @@ import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_input.dart';
@@ -36,6 +37,28 @@ import '../../ar_experience/games/ar_game_factory.dart';
 import '../../ar_experience/games/laro_board.dart';
 import 'qr_scan_screen.dart';
 import 'quest_pass_host.dart';
+
+/// Reads the phone's position for the Accept radius check (owner
+/// 2026-11-18). Overridden in tests.
+final questAcceptPositionProvider =
+    Provider<Future<Position?> Function()>((ref) => () async {
+          try {
+            var permission = await Geolocator.checkPermission();
+            if (permission == LocationPermission.denied) {
+              permission = await Geolocator.requestPermission();
+            }
+            if (permission == LocationPermission.denied ||
+                permission == LocationPermission.deniedForever) {
+              return null;
+            }
+            return await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high,
+              timeLimit: const Duration(seconds: 12),
+            );
+          } catch (_) {
+            return null;
+          }
+        });
 
 class QuestDetailScreen extends ConsumerWidget {
   final QuestModel? quest;
@@ -257,6 +280,21 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       _error = null;
     });
     try {
+      // Owner 2026-11-18: "Prevent users from accepting quests if they are
+      // outside the required radius, and display a prompt".
+      final pos = await ref.read(questAcceptPositionProvider)();
+      if (!mounted) return;
+      if (pos == null) {
+        showPixelToast(context, _noGpsMessage);
+        return;
+      }
+      final distance = Geolocator.distanceBetween(pos.latitude, pos.longitude,
+          widget.quest.gpsLat, widget.quest.gpsLng);
+      final slack = pos.accuracy.clamp(0, 50).toDouble();
+      if (distance > widget.quest.radiusMeters + slack) {
+        await _showTooFar(distance);
+        return;
+      }
       final response = await ref
           .read(apiClientProvider)
           .dio
@@ -280,6 +318,41 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _showTooFar(double distanceMeters) {
+    final away = distanceMeters >= 1000
+        ? '${(distanceMeters / 1000).toStringAsFixed(1)} km'
+        : '${distanceMeters.round()} m';
+    return showPixelDialog<void>(
+      context: context,
+      title: tr(context,
+          en: "You're too far from this quest",
+          tl: 'Masyado kang malayo sa quest na ito'),
+      message: tr(context,
+          en: "You're $away away. Go within ${widget.quest.radiusMeters} m of the quest pin to accept it.",
+          tl: '$away ang layo mo. Lumapit nang ${widget.quest.radiusMeters} m sa pin ng quest para tanggapin ito.'),
+      actions: [
+        Builder(
+          builder: (dialogContext) => PixelButton(
+            key: const ValueKey('quest_too_far_directions'),
+            label: tr(context, en: 'Directions', tl: 'Direksyon'),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _openDirections();
+            },
+          ),
+        ),
+        Builder(
+          builder: (dialogContext) => PixelButton(
+            key: const ValueKey('quest_too_far_ok'),
+            label: 'OK',
+            variant: PixelButtonVariant.secondary,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<Position?> _safeGetPosition() async {
