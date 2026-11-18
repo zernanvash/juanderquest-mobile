@@ -53,14 +53,14 @@ void main() {
     ),
   ]);
 
-  test('Plan 100 WP-9: done quests are hidden from the map by default', () {
+  test('DONE off: done quests are hidden from the map', () {
     expect(
       mapVisibleQuests(quests, done, showDone: false).map((q) => q.id),
       ['q3', 'q4'],
     );
   });
 
-  test('Plan 100 WP-9: "Show done quests" brings them back', () {
+  test('Done quests show (greyed) by default; owner 2026-11-18', () {
     expect(mapVisibleQuests(quests, done, showDone: true), quests);
     expect(quests.where(done).map((q) => q.id), ['q1', 'q2']);
   });

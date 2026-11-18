@@ -808,11 +808,11 @@ class MapLibreJdqMap extends JdqMap {
     if (!_disposed) _location.value = enabled;
   }
 
-  /// Plan 100 WP-9: finished quests show as faded shadows.
+  /// Finished quests show greyed out (owner 2026-11-18), slightly faded.
   static const _doneOpacity = [
     'case',
     ['==', ['get', 'done'], true],
-    0.4,
+    0.75,
     1.0,
   ];
 
@@ -825,7 +825,8 @@ class MapLibreJdqMap extends JdqMap {
   static double _wholeScale(double s) =>
       s >= 1 ? s.roundToDouble() : 1 / (1 / s).round();
 
-  Future<Uint8List?> _rasterizeToPng(PixelArt art, {double scale = 2}) async {
+  Future<Uint8List?> _rasterizeToPng(PixelArt art,
+      {double scale = 2, ColorFilter? filter}) async {
     try {
       final img = art.image();
       final recorder = ui.PictureRecorder();
@@ -838,7 +839,8 @@ class MapLibreJdqMap extends JdqMap {
         Rect.fromLTWH(0, 0, targetW.toDouble(), targetH.toDouble()),
         Paint()
           ..filterQuality = FilterQuality.none
-          ..isAntiAlias = false,
+          ..isAntiAlias = false
+          ..colorFilter = filter,
       );
       final scaled = await recorder.endRecording().toImage(targetW, targetH);
       final byteData = await scaled.toByteData(format: ui.ImageByteFormat.png);
@@ -999,8 +1001,20 @@ class MapLibreJdqMap extends JdqMap {
           DesignerArt.spotMarker,
           scale: _wholeScale(spotPinDp * dpr / DesignerArt.spotMarker.height),
         );
+        // Owner 2026-11-18: "Once a Quest is done, it should be grey out".
+        final questDoneBytes = await _rasterizeToPng(
+          DesignerArt.questMarker,
+          scale: _wholeScale(questPinDp * dpr / DesignerArt.questMarker.height),
+          filter: const ColorFilter.matrix(<double>[
+            0.2126, 0.7152, 0.0722, 0, 0, //
+            0.2126, 0.7152, 0.0722, 0, 0, //
+            0.2126, 0.7152, 0.0722, 0, 0, //
+            0, 0, 0, 1, 0,
+          ]),
+        );
         if (questBytes != null && spotBytes != null) {
           await c.addImage('jdq-pin-quest', questBytes);
+          await c.addImage('jdq-pin-quest-done', questDoneBytes ?? questBytes);
           await c.addImage('jdq-pin-spot', spotBytes);
           final allowOverlap = _focus != null || camera.zoom >= 13.0;
           _lastOverlap = allowOverlap;
@@ -1010,6 +1024,12 @@ class MapLibreJdqMap extends JdqMap {
             gl.SymbolLayerProperties(
               iconImage: const [
                 'case',
+                [
+                  'all',
+                  ['get', 'quest'],
+                  ['==', ['get', 'done'], true],
+                ],
+                'jdq-pin-quest-done',
                 ['get', 'quest'],
                 'jdq-pin-quest',
                 'jdq-pin-spot',

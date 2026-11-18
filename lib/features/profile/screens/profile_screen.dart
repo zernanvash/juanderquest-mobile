@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../cosmetics/widgets/profile_banner.dart';
 import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/search/fuzzy_search.dart';
@@ -343,10 +344,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (isMine)
             SizedBox(
               height: grid.px(36),
-              child: const DitherBackground(
-                top: PixelPalette.greenMid,
-                bottom: PixelPalette.green,
-              ),
+              child: _cosmeticAsset(cosmetics, 'banner') == null
+                  ? const DitherBackground(
+                      top: PixelPalette.greenMid,
+                      bottom: PixelPalette.green,
+                    )
+                  // Owner 2026-11-18: the equipped banner shows on the Passport.
+                  : ClipRect(
+                      child: ProfileBanner(
+                        key: const ValueKey('profile_banner'),
+                        asset: _cosmeticAsset(cosmetics, 'banner'),
+                        seed: (cosmetics?['banner'] as Map?)?['seed'] as int?,
+                        animate: true,
+                        height: grid.px(36),
+                      ),
+                    ),
             ),
           if (isMine) SizedBox(height: grid.px(2)),
           Row(
