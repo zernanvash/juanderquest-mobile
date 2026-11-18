@@ -192,6 +192,9 @@ class QuestModel {
   final double difficultyFactor;
   final bool isTest;
 
+  /// When the quest was created (owner 2026-11-18: new quests first).
+  final DateTime? createdAt;
+
   QuestModel({
     required this.id,
     required this.title,
@@ -214,6 +217,7 @@ class QuestModel {
     this.baseRewardPhp = 0,
     this.difficultyFactor = 1,
     this.isTest = false,
+    this.createdAt,
   });
 
   int get allowedRadiusMeters => radiusMeters;
@@ -249,6 +253,7 @@ class QuestModel {
       baseRewardPhp: (json['base_reward_php'] as num?)?.toDouble() ?? 0,
       difficultyFactor: (json['difficulty_factor'] as num?)?.toDouble() ?? 1,
       isTest: json['is_test'] == true,
+      createdAt: DateTime.tryParse('${json['created_at'] ?? ''}'),
     );
   }
 

@@ -20,6 +20,7 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../../quests/widgets/new_quests_strip.dart';
 import '../../../core/dev/test_content.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
@@ -274,6 +275,9 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                           ),
                           SizedBox(height: grid.px(2)),
                         ],
+
+                        // Owner 2026-11-18: new quests at the very top.
+                        const NewQuestsStrip(),
 
                         // Hidden gem + featured destination, one row, two columns
                         // (owner 2026-11-16).
