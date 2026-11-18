@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/connection_monitor.dart';
+import '../core/realtime/realtime_provider.dart';
 import '../features/auth/providers/auth_provider.dart' show apiClientProvider, authProvider;
 import '../features/submissions/providers/submission_provider.dart';
 import '../features/app_update/providers/app_update_provider.dart' hide apiClientProvider;
@@ -32,6 +33,7 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkUpdatesOnStartup();
       final container = ProviderScope.containerOf(context, listen: false);
+      container.read(realtimeProvider); // connects while signed in
       _sessionSubscription = container.read(apiClientProvider).onSessionExpired.listen((_) {
         _showSessionExpiredSheet();
       });
@@ -134,6 +136,7 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
     if (state == AppLifecycleState.resumed) {
       GameAudio.instance.setAppVisible(true);
       monitor.setBackgrounded(false);
+      container.read(realtimeProvider).resume();
       final auth = container.read(authProvider);
       final now = DateTime.now();
 
@@ -161,6 +164,7 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       GameAudio.instance.setAppVisible(false);
       monitor.setBackgrounded(true);
+      container.read(realtimeProvider).pause();
     }
   }
 

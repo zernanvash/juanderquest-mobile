@@ -17,6 +17,7 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/realtime/realtime_provider.dart';
 import '../pixel/pixel_tag.dart';
 import '../widgets/sponsorship_conditions_widgets.dart';
 import 'sponsor_request_screen.dart';
@@ -356,6 +357,7 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(fundingChangedProvider, (_, __) => _load());
     final status = _plan?['status']?.toString() ?? '';
     final canContribute =
         ['draft', 'pending_sponsors', 'active'].contains(status);
