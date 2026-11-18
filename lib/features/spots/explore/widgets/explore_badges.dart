@@ -21,6 +21,7 @@ class ExploreBadge {
     required this.meaning,
     required this.icon,
     required this.style,
+    this.medallion = false,
   });
 
   final String id;
@@ -29,12 +30,17 @@ class ExploreBadge {
   final PixelArt icon;
   final PixelBoxStyle style;
 
+  /// Plan 103 (owner 2026-11-18): the new medallion art has its own rim, so
+  /// it is drawn without the coloured box.
+  final bool medallion;
+
   static const verified = ExploreBadge(
     id: 'verified',
     label: 'LGU verified',
     meaning: 'The local government confirmed this place.',
-    icon: HomePixelArt.stampCheck,
+    icon: DesignerArt.badgeVerified,
     style: PixelBoxStyle.coin,
+    medallion: true,
   );
   static const quest = ExploreBadge(
     id: 'quest',
@@ -47,8 +53,9 @@ class ExploreBadge {
     id: 'gem',
     label: 'Hidden gem',
     meaning: 'A lesser-known place picked for you.',
-    icon: DesignerArt.gem,
+    icon: DesignerArt.badgeGem,
     style: PixelBoxStyle.darkWood,
+    medallion: true,
   );
   static const quiet = ExploreBadge(
     id: 'quiet',
@@ -121,13 +128,19 @@ class ExploreBadgeRow extends StatelessWidget {
             children: [
               for (var i = 0; i < badges.length; i++) ...[
                 if (i > 0) SizedBox(width: grid.px(1)),
-                PixelPanel(
-                  key: ValueKey('explore_badge_${badges[i].id}'),
-                  style: badges[i].style.copyWith(corner: 2, shadowPx: 0),
-                  padding: 1,
-                  // Owner 2026-11-17: badges were too small to read.
-                  child: PixelIconFit(badges[i].icon, box: 24),
-                ),
+                if (badges[i].medallion)
+                  KeyedSubtree(
+                    key: ValueKey('explore_badge_${badges[i].id}'),
+                    child: PixelIconFit(badges[i].icon, box: 30),
+                  )
+                else
+                  PixelPanel(
+                    key: ValueKey('explore_badge_${badges[i].id}'),
+                    style: badges[i].style.copyWith(corner: 2, shadowPx: 0),
+                    padding: 1,
+                    // Owner 2026-11-17: badges were too small to read.
+                    child: PixelIconFit(badges[i].icon, box: 24),
+                  ),
               ],
             ],
           ),
@@ -163,11 +176,14 @@ Future<void> showExploreBadges(
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PixelPanel(
-                style: b.style.copyWith(corner: 2, shadowPx: 0),
-                padding: 2,
-                child: PixelIconFit(b.icon, box: 32),
-              ),
+              if (b.medallion)
+                PixelIconFit(b.icon, box: 40)
+              else
+                PixelPanel(
+                  style: b.style.copyWith(corner: 2, shadowPx: 0),
+                  padding: 2,
+                  child: PixelIconFit(b.icon, box: 32),
+                ),
               SizedBox(width: grid.px(3)),
               Expanded(
                 child: Column(

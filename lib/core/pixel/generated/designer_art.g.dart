@@ -2591,6 +2591,60 @@ abstract final class DesignerArt {
     'kkkkkkkkkkkkkkkkkk',
   ]);
 
+  static const badgeVerified = PixelArt('badgeVerified', [
+    '........dddddddd........',
+    '......ddiiiiiiiidd......',
+    '....ddijjjiiiiihhhdd....',
+    '...dijiiiiiiiiihhfffd...',
+    '..dijiiddddddddddhhffd..',
+    '..diiiddeeeeeeeeddfffd..',
+    '.diiideeeeeeeeeeeehfffd.',
+    '.diihdeeeeeeeeejjehfeed.',
+    'diihdeeeeeeeeejjieeheeed',
+    'dihhdeeeeeeeejjiideheeed',
+    'dihhdeeeeeeejjiideeheeed',
+    'dhhhdejjeeejjiideeeheeed',
+    'dhhfdejjiejjiideeeeheeed',
+    'dhhfdeejjijiideeeeeheeed',
+    'dhffdeeejjiideeeeeeheeed',
+    'dfffdeeeejiideeeeeeheeed',
+    '.dfffdeeeeideeeeeeheeed.',
+    '.dfffdeeeeeeeeeeeeheeed.',
+    '..dfffhheeeeeeeehheeed..',
+    '..dffffhhhhhhhhhheeeed..',
+    '...dffffeeeeeeeeeeeed...',
+    '....ddffeeeeeeeeeedd....',
+    '......ddeeeeeeeedd......',
+    '........dddddddd........',
+  ]);
+
+  static const badgeGem = PixelArt('badgeGem', [
+    '........zzzzzzzz........',
+    '......zzDDDDDDDDzz......',
+    '....zzDEEEDDDDDCCCzz....',
+    '...zDEDDDDDDDDDCCBBBz...',
+    '..zDEDDzzzzzzzzzzCCBBz..',
+    '..zDDDzzAAAAAAAAzzBBBz..',
+    '.zDDDzAAAAAAAAAAAACBBBz.',
+    '.zDDCzAAAzzzzzzAAACBAAz.',
+    'zDDCzAAAzEEDDCCzAAACAAAz',
+    'zDCCzAAzEEDDCCCBzAACAAAz',
+    'zDCCzAzEEDDCCCCBBBzCAAAz',
+    'zCCCzAzCDDCCBBBBBzzCAAAz',
+    'zCCBzAAzDCCBBBBBzzACAAAz',
+    'zCCBzAAAzCBBBBBzzAACAAAz',
+    'zCBBzAAAAzCBBzzzAAACAAAz',
+    'zBBBzAAAAAzBzzAAAAACAAAz',
+    '.zBBBzAAAAAzzAAAAACAAAz.',
+    '.zBBBzAAAAAAAAAAAACAAAz.',
+    '..zBBBCCAAAAAAAACCAAAz..',
+    '..zBBBBCCCCCCCCCCAAAAz..',
+    '...zBBBBAAAAAAAAAAAAz...',
+    '....zzBBAAAAAAAAAAzz....',
+    '......zzAAAAAAAAzz......',
+    '........zzzzzzzz........',
+  ]);
+
   static const juanIdle = PixelFrames('juanIdle', fps: 8, frames: [
     PixelArt('juanIdle#0', [
       '...........ll..........',
@@ -2943,6 +2997,8 @@ abstract final class DesignerArt {
     'spotMarker': spotMarker,
     'repSmiley': repSmiley,
     'stampIcon': stampIcon,
+    'badgeVerified': badgeVerified,
+    'badgeGem': badgeGem,
     'juanIdle': juanIdle,
   };
 }
