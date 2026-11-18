@@ -794,7 +794,11 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
   Future<bool?> _confirmOverride(List<SponsorshipConditionData> unmet) {
     return showPixelDialog<bool>(
       context: context,
-      title: 'Deal requirements not met yet',
+      title: tr(
+        context,
+        en: 'Deal requirements not met yet',
+        tl: 'Hindi pa natutupad ang mga kondisyon',
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,7 +806,11 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
           if (unmet.isNotEmpty) SponsorshipConditionsList(conditions: unmet),
           const SizedBox(height: 8),
           Text(
-            'You can still accept. The quest will show your shop as a sponsor now.',
+            tr(
+              context,
+              en: 'You can still accept. The quest will show your shop as a sponsor now.',
+              tl: 'Puwede mo pa ring tanggapin. Ipapakita na ng quest ang shop mo bilang sponsor.',
+            ),
             style: PixelType.body(context, color: PixelPalette.slate),
           ),
         ],
@@ -810,13 +818,13 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
       actions: [
         PixelButton(
           key: const ValueKey('merchant_override_cancel'),
-          label: 'CANCEL',
+          label: tr(context, en: 'CANCEL', tl: 'KANSELAHIN'),
           variant: PixelButtonVariant.secondary,
           onPressed: () => Navigator.of(context).pop(false),
         ),
         PixelButton(
           key: const ValueKey('merchant_override_confirm'),
-          label: 'ACCEPT ANYWAY',
+          label: tr(context, en: 'ACCEPT ANYWAY', tl: 'TANGGAPIN PA RIN'),
           onPressed: () => Navigator.of(context).pop(true),
         ),
       ],
@@ -1058,7 +1066,11 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
                         item.status == 'countered') ...[
                       SizedBox(height: grid.px(1.5)),
                       Text(
-                        'DEAL CONDITIONS',
+                        tr(
+                          context,
+                          en: 'DEAL CONDITIONS',
+                          tl: 'MGA KONDISYON',
+                        ),
                         style: PixelType.small(
                           context,
                           color: PixelPalette.slate,
@@ -1069,7 +1081,11 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
                         SponsorshipConditionsList(conditions: item.conditions)
                       else
                         Text(
-                          'No deal conditions set.',
+                          tr(
+                            context,
+                            en: 'No deal conditions set.',
+                            tl: 'Walang kondisyon.',
+                          ),
                           style: PixelType.small(
                             context,
                             color: PixelPalette.slate,
@@ -1085,7 +1101,9 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
                         children: [
                           PixelButton(
                             key: ValueKey('merchant_set_conditions_${item.id}'),
-                            label: 'SET CONDITIONS',
+                            label: tr(context,
+                                en: 'SET CONDITIONS',
+                                tl: 'ITAKDA ANG KONDISYON'),
                             variant: PixelButtonVariant.secondary,
                             onPressed:
                                 _busy ? null : () => _setConditions(item),
