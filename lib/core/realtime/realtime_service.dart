@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Minimal socket surface so tests can use a fake channel.
@@ -130,6 +131,7 @@ class RealtimeService {
       return;
     }
     _channel = channel;
+    if (kDebugMode) debugPrint('[realtime] connecting ${uriBuilder()}');
     _subscription = channel.stream.listen(
       (data) => _handle(channel, data),
       onError: (_) => _onClosed(channel),
@@ -154,6 +156,7 @@ class RealtimeService {
     }
     if (decoded is! Map) return;
     final event = Map<String, dynamic>.from(decoded);
+    if (kDebugMode) debugPrint('[realtime] <- ${event['type']}');
     if (event['type'] == 'ready') {
       _attempt = 0;
       return;
@@ -165,6 +168,7 @@ class RealtimeService {
   void _onClosed(RealtimeChannel channel) {
     if (!identical(channel, _channel)) return;
     final code = channel.closeCode;
+    if (kDebugMode) debugPrint('[realtime] closed $code');
     _subscription?.cancel();
     _subscription = null;
     _channel = null;
