@@ -196,7 +196,7 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
   Future<void> _acceptCounter(Map sponsorship) async {
     final id = sponsorship['id']?.toString();
     if (id == null) return;
-    final version = (sponsorship['terms_version'] as num?)?.toInt() ??
+    final version = _asIntOrNull(sponsorship['terms_version']) ??
         int.tryParse('${sponsorship['terms_version']}') ??
         1;
     setState(() {
@@ -498,19 +498,9 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
         .whereType<Map>()
         .toList();
     final committed = contributions.fold<int>(
-        0,
-        (sum, row) =>
-            sum +
-            ((row['committed_points'] as num?)?.toInt() ??
-                int.tryParse('${row['committed_points']}') ??
-                0));
+        0, (sum, row) => sum + _asInt(row['committed_points']));
     final held = contributions.fold<int>(
-        0,
-        (sum, row) =>
-            sum +
-            ((row['held_points'] as num?)?.toInt() ??
-                int.tryParse('${row['held_points']}') ??
-                0));
+        0, (sum, row) => sum + _asInt(row['held_points']));
     return PixelPanel(
       style: PixelBoxStyle.parchment,
       child: Column(
@@ -672,8 +662,8 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
         'Merchant';
     final status =
         (sponsorship['status']?.toString() ?? 'requested').toUpperCase();
-    final pts = (sponsorship['points'] as num?)?.toInt() ?? 0;
-    final vQty = (sponsorship['voucher_qty'] as num?)?.toInt() ?? 0;
+    final pts = _asInt(sponsorship['points']);
+    final vQty = _asInt(sponsorship['voucher_qty']);
     final rawConds = sponsorship['conditions'];
     final conditions = [
       if (rawConds is List)
@@ -683,9 +673,9 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
     ];
     final isCountered = status == 'COUNTERED';
     final isRequested = status == 'REQUESTED';
-    final counterPts = (sponsorship['counter_points'] as num?)?.toInt() ?? pts;
+    final counterPts = _asIntOrNull(sponsorship['counter_points']) ?? pts;
     final counterVQty =
-        (sponsorship['counter_voucher_qty'] as num?)?.toInt() ?? vQty;
+        _asIntOrNull(sponsorship['counter_voucher_qty']) ?? vQty;
     final counterMessage = sponsorship['counter_message']?.toString() ?? '';
 
     return Column(
@@ -784,3 +774,10 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${TimeOfDay.fromDateTime(date.toLocal()).format(context)}';
   }
 }
+
+/// Postgres BIGINT columns arrive as JSON strings ("100"); never cast them
+/// with `as num` (owner 2026-11-18: contributing points crashed the screen).
+int? _asIntOrNull(Object? value) =>
+    value is num ? value.toInt() : int.tryParse('${value ?? ''}');
+
+int _asInt(Object? value) => _asIntOrNull(value) ?? 0;
