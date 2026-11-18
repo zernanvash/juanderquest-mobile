@@ -58,10 +58,10 @@ void main() {
     expect(find.text('NEARBY'), findsOneWidget);
     expect(find.byKey(const ValueKey('notifications_empty')), findsNothing);
 
-    await tester.tap(find.byTooltip('Mark as read'));
+    await tester.tap(find.text('MARK READ'));
     await tester.pumpAndSettle();
     expect(serverPatched, isFalse, reason: 'phone-made items never hit the API');
-    expect(find.byTooltip('Mark as read'), findsNothing);
+    expect(find.text('MARK READ'), findsNothing);
     expect(container.read(localNotificationReadsProvider),
         contains('local:quiz:q1:2026-11-16'));
   });

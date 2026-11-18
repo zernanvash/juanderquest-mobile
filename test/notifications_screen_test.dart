@@ -34,13 +34,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Quest funding ready'), findsOneWidget);
     expect(find.text('UPDATE'), findsOneWidget);
-    expect(find.text('OPEN >'), findsOneWidget);
+    // Owner 2026-11-18 (v0.3.3): no OPEN button (the note opens itself);
+    // unread notes say NEW; MARK READ sits bottom right.
+    expect(find.text('OPEN >'), findsNothing);
+    expect(find.byKey(const ValueKey('notification_new_badge')), findsOneWidget);
     expect(find.text('MARK READ'), findsOneWidget);
+    final note = tester.getRect(find.byKey(const ValueKey('notification_00000000-0000-4000-8000-000000000001')));
+    final mark = tester.getRect(find.text('MARK READ'));
+    expect(mark.right, greaterThan(note.center.dx));
+    expect(mark.bottom, greaterThan(note.center.dy));
     expect(find.byKey(const ValueKey('notifications_read_all')), findsOneWidget);
-    await tester.tap(find.byTooltip('Mark as read'));
+    await tester.tap(find.text('MARK READ'));
     await tester.pumpAndSettle();
     expect(read, isTrue);
-    expect(find.byTooltip('Mark as read'), findsNothing);
+    expect(find.text('MARK READ'), findsNothing);
+    expect(find.byKey(const ValueKey('notification_new_badge')), findsNothing);
+    expect(find.text('READ'), findsOneWidget);
     expect(find.byKey(const ValueKey('notifications_read_all')), findsNothing);
   });
 

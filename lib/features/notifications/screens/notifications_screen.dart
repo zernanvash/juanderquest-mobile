@@ -317,85 +317,90 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final id = item['id'].toString();
     final href = item['href']?.toString() ?? '';
     final timeLabel = _formatRelativeTime(item['created_at']);
-    return PinnedNote(
-      read: read,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: grid.px(1),
-            runSpacing: grid.px(1),
-            crossAxisAlignment: WrapCrossAlignment.center,
-            alignment: WrapAlignment.spaceBetween,
+    void open() {
+      if (!read) _markRead(id);
+      if (href.isNotEmpty) openRoute(context, appRouteForPushHref(href));
+    }
+
+    // Owner 2026-11-18 (v0.3.3): the whole note opens it (no OPEN button);
+    // MARK READ sits bottom right; unread notes are marked NEW.
+    return Semantics(
+      button: true,
+      label: '${read ? '' : 'New. '}${item['title'] ?? 'Update'}',
+      child: GestureDetector(
+        key: ValueKey('notification_$id'),
+        behavior: HitTestBehavior.opaque,
+        onTap: open,
+        child: PinnedNote(
+          read: read,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PixelChip(
-                _kindLabel(item['kind']?.toString()),
-                style: read ? PixelBoxStyle.slot : PixelBoxStyle.gold,
+              Row(
+                children: [
+                  if (!read) ...[
+                    const PixelChip(
+                      'NEW',
+                      key: ValueKey('notification_new_badge'),
+                      style: PixelBoxStyle.red,
+                      textColor: PixelPalette.white,
+                    ),
+                    SizedBox(width: grid.px(1)),
+                  ],
+                  Flexible(
+                    child: PixelChip(
+                      _kindLabel(item['kind']?.toString()),
+                      style: read ? PixelBoxStyle.slot : PixelBoxStyle.gold,
+                    ),
+                  ),
+                ],
               ),
-              if (timeLabel.isNotEmpty)
-                Text(
-                  timeLabel,
-                  style: PixelType.small(context, color: PixelPalette.slate),
+              SizedBox(height: grid.px(1)),
+              Text(
+                item['title']?.toString() ?? 'Update',
+                style: PixelType.title(
+                  context,
+                  color: read ? PixelPalette.slate : PixelPalette.ink,
                 ),
+              ),
+              SizedBox(height: grid.px(1)),
+              Text(
+                item['message']?.toString() ?? '',
+                style: PixelType.body(
+                  context,
+                  color: read ? PixelPalette.slate : PixelPalette.woodDeep,
+                ),
+              ),
+              SizedBox(height: grid.px(2)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      timeLabel,
+                      style:
+                          PixelType.small(context, color: PixelPalette.slate),
+                    ),
+                  ),
+                  if (read)
+                    Text(
+                      'READ',
+                      key: ValueKey('notification_is_read_$id'),
+                      style: PixelType.labelSmall(context,
+                          color: PixelPalette.slate),
+                    )
+                  else
+                    PixelButton(
+                      key: ValueKey('notification_read_$id'),
+                      label: 'MARK READ',
+                      variant: PixelButtonVariant.secondary,
+                      onPressed: () => _markRead(id),
+                    ),
+                ],
+              ),
             ],
           ),
-          SizedBox(height: grid.px(1)),
-          GestureDetector(
-            key: ValueKey('notification_$id'),
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              if (!read) _markRead(id);
-              openRoute(context, appRouteForPushHref(href));
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['title']?.toString() ?? 'Update',
-                  style: PixelType.title(context, color: PixelPalette.ink),
-                ),
-                SizedBox(height: grid.px(1)),
-                Text(
-                  item['message']?.toString() ?? '',
-                  style: PixelType.body(
-                    context,
-                    color: read ? PixelPalette.slate : PixelPalette.woodDeep,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: grid.px(2)),
-          Wrap(
-            spacing: grid.px(1),
-            runSpacing: grid.px(1),
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (href.isNotEmpty)
-                PixelButton(
-                  key: ValueKey('notification_open_$id'),
-                  label: 'OPEN >',
-                  variant: PixelButtonVariant.secondary,
-                  onPressed: () {
-                    if (!read) _markRead(id);
-                    openRoute(context, appRouteForPushHref(href));
-                  },
-                ),
-              if (read)
-                const PixelChip('READ', style: PixelBoxStyle.slot)
-              else
-                Tooltip(
-                  message: 'Mark as read',
-                  child: PixelButton(
-                    key: ValueKey('notification_read_$id'),
-                    label: 'MARK READ',
-                    variant: PixelButtonVariant.secondary,
-                    onPressed: () => _markRead(id),
-                  ),
-                ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
