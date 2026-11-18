@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'generated/pixel_palette.g.dart';
 import 'pixel_box.dart';
 import 'pixel_grid.dart';
+import 'pixel_surface.dart';
 import 'pixel_texture.dart';
 
 abstract final class PixelShaders {
@@ -46,6 +47,18 @@ class DitherBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
+    // v0.3.1 dark mode: a light page becomes plain dark brown.
+    if (PixelSurface.darkMode(context) &&
+        (top.computeLuminance() + bottom.computeLuminance()) / 2 > 0.5) {
+      return ColoredBox(
+        key: const ValueKey('pixel_dark_page'),
+        color: PixelSurface.darkPage,
+        child: PixelSurface(
+          dark: true,
+          child: child ?? const SizedBox.expand(),
+        ),
+      );
+    }
     // Owner 2026-11-17: Pixel Lab can swap the bands for a noisy texture.
     return ValueListenableBuilder<PixelTextureStyle>(
       valueListenable: PixelTexture.style,

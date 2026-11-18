@@ -51,6 +51,7 @@ class PixelSettings {
     this.music = true,
     this.sounds = true,
     this.reduceMotion = false,
+    this.darkMode = false,
   }) : _artPx = artPx;
 
   static const double defaultArtPx = 2;
@@ -89,6 +90,9 @@ class PixelSettings {
   /// in-app switch turns them off.
   final bool reduceMotion;
 
+  /// v0.3.1: dark mode (plain dark-brown pages, cream lettering).
+  final bool darkMode;
+
   double resolveArtPx([double shortestSide = 400]) {
     final art = _artPx;
     if (art != null && artSizes.contains(art)) return art;
@@ -120,6 +124,7 @@ class PixelSettings {
     bool? music,
     bool? sounds,
     bool? reduceMotion,
+    bool? darkMode,
   }) =>
       PixelSettings(
         artPx: artPx ?? _artPx,
@@ -130,6 +135,7 @@ class PixelSettings {
         music: music ?? this.music,
         sounds: sounds ?? this.sounds,
         reduceMotion: reduceMotion ?? this.reduceMotion,
+        darkMode: darkMode ?? this.darkMode,
       );
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -142,6 +148,7 @@ class PixelSettings {
         'music': music,
         'sounds': sounds,
         'reduceMotion': reduceMotion,
+        'darkMode': darkMode,
       };
 
   static PixelSettings? fromJson(String raw) {
@@ -179,6 +186,7 @@ class PixelSettings {
         music: decoded['music'] is bool ? decoded['music'] as bool : true,
         sounds: decoded['sounds'] is bool ? decoded['sounds'] as bool : true,
         reduceMotion: decoded['reduceMotion'] == true,
+        darkMode: decoded['darkMode'] == true,
       );
     } catch (_) {
       return null;
@@ -195,11 +203,12 @@ class PixelSettings {
       other.language == language &&
       other.music == music &&
       other.sounds == sounds &&
-      other.reduceMotion == reduceMotion;
+      other.reduceMotion == reduceMotion &&
+      other.darkMode == darkMode;
 
   @override
-  int get hashCode => Object.hash(
-      _artPx, font, haptics, textSize, language, music, sounds, reduceMotion);
+  int get hashCode => Object.hash(_artPx, font, haptics, textSize, language,
+      music, sounds, reduceMotion, darkMode);
 }
 
 class PixelScope extends StatelessWidget {
@@ -392,6 +401,11 @@ class PixelSettingsNotifier extends Notifier<PixelSettings> {
 
   void setReduceMotion(bool value) {
     state = state.copyWith(reduceMotion: value);
+    unawaited(_persist());
+  }
+
+  void setDarkMode(bool value) {
+    state = state.copyWith(darkMode: value);
     unawaited(_persist());
   }
 

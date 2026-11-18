@@ -198,6 +198,23 @@ class SettingsScreen extends ConsumerWidget {
                                           .read(pixelSettingsProvider)
                                           .reduceMotion),
                                 ),
+                                // v0.3.1: dark mode (plain dark-brown pages).
+                                _SettingsTile(
+                                  key: const ValueKey('settings_dark_mode'),
+                                  pixelIcon: DesignerArt.navProfile,
+                                  title: tr(context,
+                                      en: 'Dark mode', tl: 'Madilim na tema'),
+                                  value: ref
+                                          .watch(pixelSettingsProvider)
+                                          .darkMode
+                                      ? tr(context, en: 'On', tl: 'Bukas')
+                                      : tr(context, en: 'Off', tl: 'Sarado'),
+                                  onTap: () => ref
+                                      .read(pixelSettingsProvider.notifier)
+                                      .setDarkMode(!ref
+                                          .read(pixelSettingsProvider)
+                                          .darkMode),
+                                ),
                                 _SettingsTile(
                                   key: const ValueKey('settings_text_size'),
                                   pixelIcon: DesignerArt.search,

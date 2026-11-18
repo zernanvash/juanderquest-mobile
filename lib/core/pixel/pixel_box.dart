@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 
 import 'generated/pixel_palette.g.dart';
 import 'pixel_grid.dart';
+import 'pixel_surface.dart';
 import 'pixel_texture.dart';
 
 class PixelBoxStyle {
@@ -371,7 +372,11 @@ class PixelPanel extends StatelessWidget {
             grid.px(frame + sh - shift),
             grid.px(frame + sh - shift),
           ),
-          child: child,
+          // A panel is its own surface: dark-mode page colours stop here.
+          child: PixelSurface(
+            dark: style.fill.computeLuminance() < 0.2,
+            child: child,
+          ),
         ),
       ),
     );

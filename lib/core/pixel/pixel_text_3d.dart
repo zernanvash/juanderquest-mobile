@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'generated/pixel_palette.g.dart';
 import 'pixel_art.dart';
 import 'pixel_grid.dart';
+import 'pixel_surface.dart';
 import 'pixel_text.dart';
 
 /// Colours for [PixelText3D]: face, 1-pixel bevel on top edges, the side
@@ -115,6 +116,13 @@ class PixelText3D extends StatelessWidget {
     // Lettering is always capitals (lower-case pixel lettering reads badly).
     final text = this.text.toUpperCase();
     final u = PixelGrid.of(context).unit;
+    // v0.3.1 dark mode (Pixel Lab 0.3): gold lettering turns cream on the
+    // dark-brown page.
+    final colors = identical(this.colors, PixelText3DColors.gold) &&
+            PixelSurface.isDark(context) &&
+            PixelSurface.darkMode(context)
+        ? PixelText3DColors.cream
+        : this.colors;
     var base = PixelType.display(context).copyWith(
       fontSize: size * PixelType.headerScale,
       fontWeight: FontWeight.w700,
