@@ -119,6 +119,13 @@ import 'package:juanderquest_app/features/merchant/models/merchant_models.dart';
 import 'package:juanderquest_app/features/merchant/providers/merchant_hub_provider.dart';
 import 'package:juanderquest_app/features/merchant/screens/affiliate_pending_screen.dart';
 import 'package:juanderquest_app/features/merchant/screens/merchant_dashboard_screen.dart';
+import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
+import 'package:juanderquest_app/core/theme/app_theme.dart';
+import 'package:juanderquest_app/features/suki/screens/suki_card_screen.dart';
+import 'package:juanderquest_app/features/suki/screens/suki_cards_screen.dart';
+import 'package:juanderquest_app/features/suki/widgets/shop_suki_section.dart';
+import 'package:juanderquest_app/features/suki/widgets/spot_suki_row.dart';
+import 'package:juanderquest_app/features/suki/widgets/suki_pass_sheet.dart';
 
 // Inert Subclasses to prevent Dio/network calls and pending timers
 class _MockQuestBuilderRepo extends QuestBuilderRepository {
@@ -3067,6 +3074,188 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
+      });
+    }
+  });
+
+  group('Plan 107 Suki Cards zero-overflow (2.0x text)', () {
+    const longShop = 'Bonuan Waterfront Bangus Grill and Pasalubong Center';
+    Map<String, dynamic> program(String id, {String mode = 'standee'}) => {
+          'id': id,
+          'title': 'Bangus Lovers Suki Card for Regulars',
+          'reward_kind': 'amount_off',
+          'reward_value': '5000',
+          'reward_text':
+              'Five thousand pesos off a family bilao of grilled bangus and pancit',
+          'reward_tag': '₱5000 OFF',
+          'visits_required': 20,
+          'mode': mode,
+          'status': 'active',
+          'distance_m': 120,
+          'merchant': {
+            'id': 'm1',
+            'name': longShop,
+            'municipality': 'San Carlos City',
+          },
+        };
+    final reward = {
+      'id': 'r1',
+      'code': 'SUKI-ABC123-DEF456',
+      'reward_text':
+          'Five thousand pesos off a family bilao of grilled bangus and pancit',
+      'reward_tag': '₱5000 OFF',
+      'status': 'issued',
+      'expires_at': '2027-01-17T00:00:00Z',
+      'expired': false,
+    };
+    final card = {
+      'card_id': 'c1',
+      'cycle': 2,
+      'visits': 19,
+      'required': 20,
+      'total_visits': 39,
+      'visited_today': true,
+    };
+
+    ApiClient sukiClient() {
+      final client = ApiClient(enableRetries: false);
+      client.dio.interceptors.insert(0, InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final path = options.path;
+          Object? data;
+          if (path == '/me/suki-cards') {
+            data = {
+              'cards': [
+                {
+                  ...card,
+                  'program': program('suki_long'),
+                  'rewards': [reward]
+                },
+                {
+                  ...card,
+                  'card_id': 'c2',
+                  'program': program('suki_two', mode: 'staff_scan'),
+                },
+              ],
+            };
+          } else if (path == '/suki/programs') {
+            data = {
+              'programs': [program('suki_near'), program('suki_long')]
+            };
+          } else if (path.startsWith('/suki/programs/')) {
+            data = {
+              'program': program('suki_long'),
+              'my_card': card,
+              'rewards': [reward],
+            };
+          } else if (path == '/suki/pass') {
+            data = {
+              'pass': 'JDQSUKIPASS:${'a' * 300}',
+              'expires_at': DateTime.now()
+                  .add(const Duration(seconds: 120))
+                  .toIso8601String(),
+            };
+          } else if (path == '/suki/pass/status') {
+            data = {'visited_today': false, 'card': card};
+          }
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'data': data},
+          ));
+        },
+      ));
+      return client;
+    }
+
+    Future<void> pumpSuki(WidgetTester tester, Widget child, Size size) async {
+      tester.view.physicalSize = Size(size.width * 2, size.height * 2);
+      tester.view.devicePixelRatio = 2.0;
+      tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+      final overflowErrors = <FlutterErrorDetails>[];
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = (details) {
+        if (details.toString().contains('overflowed')) {
+          overflowErrors.add(details);
+        }
+        originalOnError?.call(details);
+      };
+      addTearDown(() {
+        FlutterError.onError = originalOnError;
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+      });
+      final client = sukiClient();
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          apiClientProvider.overrideWithValue(client),
+          authProvider.overrideWith((ref) => InertAuthNotifier(
+              ref.watch(apiClientProvider),
+              ref.watch(authRefreshProvider.notifier),
+              dummyUser)),
+          sukiQuickFixProvider
+              .overrideWithValue(() async => (lat: null, lng: null)),
+        ],
+        child: MaterialApp(theme: AppTheme.pixel, home: child),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(seconds: 1));
+      tester.takeException();
+      expect(overflowErrors, isEmpty,
+          reason: overflowErrors.map((e) => e.toString()).join('\n'));
+    }
+
+    for (final size in const [Size(320, 568), Size(568, 320)]) {
+      final label = '${size.width.toInt()}x${size.height.toInt()}';
+      testWidgets('SukiCardsScreen $label', (tester) async {
+        await pumpSuki(tester, const SukiCardsScreen(), size);
+        expect(find.byKey(const ValueKey('suki_my_cards')), findsOneWidget);
+      });
+      testWidgets('SukiCardScreen with a reward $label', (tester) async {
+        await pumpSuki(
+            tester, const SukiCardScreen(programId: 'suki_long'), size);
+        expect(find.byKey(const ValueKey('suki_reward_r1')), findsOneWidget);
+        // The rest of the page (grid, buttons) lays out without overflow too.
+        await tester.drag(find.byType(ListView).first, const Offset(0, -2000));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+      });
+      testWidgets('SukiPassSheet $label', (tester) async {
+        await pumpSuki(
+            tester,
+            const Scaffold(
+                body:
+                    SukiPassSheet(programId: 'suki_long', shopName: longShop)),
+            size);
+        expect(
+            find.byKey(const ValueKey('suki_pass_countdown')), findsOneWidget);
+      });
+      testWidgets('Shop Suki section $label', (tester) async {
+        await pumpSuki(
+            tester,
+            Scaffold(
+              body: ListView(
+                padding: const EdgeInsets.all(16),
+                children: const [ShopSukiSection()],
+              ),
+            ),
+            size);
+        expect(find.byKey(const ValueKey('shop_suki_section')), findsOneWidget);
+      });
+      testWidgets('Spot "Suki cards here" row $label', (tester) async {
+        await pumpSuki(
+            tester,
+            Scaffold(
+              backgroundColor: PixelPalette.ink,
+              body: ListView(
+                padding: const EdgeInsets.all(16),
+                children: const [SpotSukiRow(lat: 15.93, lng: 120.35)],
+              ),
+            ),
+            size);
+        expect(find.byKey(const ValueKey('spot_suki_row')), findsOneWidget);
       });
     }
   });

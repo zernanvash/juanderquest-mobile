@@ -41,6 +41,8 @@ import '../features/spots/screens/spot_discovery_studio_screen.dart';
 import '../features/spots/utils/spot_location_handoff.dart';
 import '../features/spots/utils/spot_posting.dart';
 import '../features/spots/screens/saved_spots_screen.dart';
+import '../features/suki/screens/suki_card_screen.dart';
+import '../features/suki/screens/suki_cards_screen.dart';
 import '../features/quests/screens/quest_list_screen.dart';
 import '../features/quests/screens/campaign_detail_screen.dart';
 import '../features/quests/models/campaign_model.dart';
@@ -183,6 +185,19 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                   path: '/saved',
                   builder: (context, state) => const SavedSpotsScreen()),
+              // Plan 107: Suki Cards (merchant loyalty), customer side.
+              GoRoute(
+                path: '/suki',
+                builder: (context, state) => SukiCardsScreen(
+                    autoScan: state.uri.queryParameters['scan'] == '1'),
+                routes: [
+                  GoRoute(
+                    path: ':programId',
+                    builder: (context, state) => SukiCardScreen(
+                        programId: state.pathParameters['programId']!),
+                  ),
+                ],
+              ),
               // Owner 2026-11-16: the Almanac opens from the main menu.
               GoRoute(
                   path: '/almanac',

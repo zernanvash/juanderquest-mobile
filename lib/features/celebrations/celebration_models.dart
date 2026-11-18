@@ -19,8 +19,17 @@ class LevelUp extends Celebration {
 }
 
 class StampEarned extends Celebration {
-  const StampEarned({required this.stampName, required this.stamp});
+  const StampEarned({
+    required this.stampName,
+    required this.stamp,
+    this.title = 'NEW STAMP!',
+    this.actionLabel = 'Add to passport',
+  });
 
   final String stampName;
   final PixelArt stamp;
+
+  /// Plan 107: a Suki visit reuses this scene with its own title and button.
+  final String title;
+  final String actionLabel;
 }

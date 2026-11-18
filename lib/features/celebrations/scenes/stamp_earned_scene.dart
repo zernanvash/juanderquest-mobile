@@ -20,6 +20,7 @@ class StampEarnedGame extends FlameGame {
     required this.stampName,
     required this.stamp,
     required this.fontScale,
+    this.title = 'NEW STAMP!',
     this.reducedMotion = false,
     this.onHaptic,
   });
@@ -27,6 +28,7 @@ class StampEarnedGame extends FlameGame {
   final double unit;
   final String font;
   final String stampName;
+  final String title;
   final PixelArt stamp;
   final double fontScale;
   final bool reducedMotion;
@@ -39,7 +41,7 @@ class StampEarnedGame extends FlameGame {
 
   late final TypewriterStepper _titleStepper;
 
-  static const _fullTitle = 'NEW STAMP!';
+  String get _fullTitle => title;
   double _t = 0;
   double _typewriterAccumulator = 0;
 

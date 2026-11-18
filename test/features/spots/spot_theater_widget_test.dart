@@ -603,6 +603,8 @@ void main() {
         expect(tf.decoration?.fillColor, PixelPalette.ink);
         expect(find.byType(DropdownButton<String>), findsNothing);
         expect(find.byKey(const ValueKey('spot_comment_tag')), findsOneWidget);
+        // Plan 107: let the "Suki cards here" lookup (built on scroll) finish.
+        await tester.pumpAndSettle();
       },
     );
   });

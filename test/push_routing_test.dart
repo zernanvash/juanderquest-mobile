@@ -36,4 +36,8 @@ void main() {
     }
     expect(appRouteForPushHref('/'), '/dashboard');
   });
+
+  test('Plan 107: a Suki reward notification opens its card', () {
+    expect(appRouteForPushHref('/suki/suki_abc123'), '/suki/suki_abc123');
+  });
 }
