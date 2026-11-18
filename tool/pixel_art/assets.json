@@ -28,7 +28,7 @@
     {"name": "search",                "file": "assets/icons/search.png"},
     {"name": "spotMarker",            "file": "assets/icons/jdq-marker.png"},
     {"name": "repSmiley",             "file": "assets/icons/jdq-smiley.png"},
-    {"name": "stampIcon",             "file": "assets/icons/jdq-stamp.png"},
+    {"name": "stampIcon",             "file": "assets/icons/jdq-stamp-18.png"},
     {"name": "juanIdle",              "file": "assets/mascot/__juan-idle.png",                "frameWidth": 64, "frameCount": 8, "fps": 8, "trim": true}
   ]
 }
