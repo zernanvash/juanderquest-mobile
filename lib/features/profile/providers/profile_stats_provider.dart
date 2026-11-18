@@ -29,9 +29,10 @@ final profileStatsProvider = Provider<ProfileStatsModel>((ref) {
   final subState = ref.watch(submissionProvider);
 
   if (subState.submissions.isEmpty && !subState.isLoading) {
-    Future.microtask(() {
-      ref.read(submissionProvider.notifier).fetchSubmissions();
-    });
+    // Read the notifier now: using ref inside the microtask asserts once a
+    // dependency changed (live updates refresh submissions; 2026-11-18).
+    final notifier = ref.read(submissionProvider.notifier);
+    Future.microtask(() => notifier.fetchSubmissions());
   }
 
   final approvedSubs = subState.submissions.where((s) => s.status == 'approved').toList();
