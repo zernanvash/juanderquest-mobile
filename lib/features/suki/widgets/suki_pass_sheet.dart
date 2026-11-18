@@ -112,8 +112,7 @@ class _SukiPassSheetState extends ConsumerState<SukiPassSheet> {
                 padding: const EdgeInsets.all(24),
                 child: PixelLoader(
                     label: tr(context,
-                        en: 'Creating your pass',
-                        tl: 'Ginagawa ang pass mo')),
+                        en: 'Creating your pass', tl: 'Ginagawa ang pass mo')),
               )
             else if (_error != null) ...[
               Text(_error!,

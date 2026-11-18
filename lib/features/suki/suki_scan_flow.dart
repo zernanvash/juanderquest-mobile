@@ -51,8 +51,7 @@ Future<SukiVisitResult?> scanSukiStandee(
             MaterialPageRoute(
               builder: (c) => QrScanScreen(
                 title: tr(c,
-                    en: 'Scan the Suki Card QR',
-                    tl: 'I-scan ang Suki Card QR'),
+                    en: 'Scan the Suki Card QR', tl: 'I-scan ang Suki Card QR'),
                 extract: extractSukiStandee,
                 rejectedMessage: tr(c,
                     en: 'That is not a Suki Card QR.',
@@ -119,8 +118,11 @@ Future<void> celebrateSukiVisit(
   );
   if (!context.mounted) return;
   for (final badge in result.badges) {
-    showPixelToast(context,
-        tr(context, en: 'New badge: ${_badgeName(badge)}', tl: 'Bagong badge: ${_badgeName(badge)}'));
+    showPixelToast(
+        context,
+        tr(context,
+            en: 'New badge: ${_badgeName(badge)}',
+            tl: 'Bagong badge: ${_badgeName(badge)}'));
   }
   if (reward == null) return;
   PixelPoppers.fire(context, size: PixelPopperSize.big);

@@ -104,8 +104,8 @@ final mySukiCardsProvider =
 
 /// Active Suki programs, nearest first when a point is given.
 final nearbySukiProgramsProvider = FutureProvider.autoDispose
-    .family<List<SukiProgram>, ({double? lat, double? lng})>(
-        (ref, at) => ref.read(sukiApiProvider).nearby(lat: at.lat, lng: at.lng));
+    .family<List<SukiProgram>, ({double? lat, double? lng})>((ref, at) =>
+        ref.read(sukiApiProvider).nearby(lat: at.lat, lng: at.lng));
 
 /// One program page (`/suki/:programId`).
 final sukiProgramProvider = FutureProvider.autoDispose
@@ -150,8 +150,7 @@ String sukiErrorText(BuildContext context, Object error) {
           tl: 'Napalitan na ang QR na ito.');
     case 'STANDEE_INVALID':
       return tr(context,
-          en: 'That is not a Suki Card QR.',
-          tl: 'Hindi ito Suki Card QR.');
+          en: 'That is not a Suki Card QR.', tl: 'Hindi ito Suki Card QR.');
     case 'SUKI_STAFF_SCAN_ONLY':
       return tr(context,
           en: 'This shop scans your pass. Tap Show my Suki pass.',

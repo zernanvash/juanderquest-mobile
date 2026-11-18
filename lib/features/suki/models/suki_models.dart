@@ -237,7 +237,8 @@ class SukiVisitResult {
         replayed: j['replayed'] == true,
         xpAwarded: _int(j['xp_awarded']),
         badges: [
-          for (final b in (j['badges'] is List ? j['badges'] as List : const []))
+          for (final b
+              in (j['badges'] is List ? j['badges'] as List : const []))
             '$b'
         ],
         missionCompleted: j['mission_completed'] == true,

@@ -87,7 +87,9 @@ class SukiCardScreen extends ConsumerWidget {
     final completed = card != null &&
         card.visits == 0 &&
         card.cycle > (before?.card?.cycle ?? card.cycle);
-    final n = completed ? (before?.card?.required ?? card.required) : (card?.visits ?? 0);
+    final n = completed
+        ? (before?.card?.required ?? card.required)
+        : (card?.visits ?? 0);
     final m = completed ? n : (card?.required ?? p.visitsRequired);
     await showCelebration(
       context,
@@ -113,8 +115,9 @@ class SukiCardScreen extends ConsumerWidget {
     final passButton = PixelButton(
       key: const ValueKey('suki_show_pass'),
       label: tr(context, en: 'Show my Suki pass', tl: 'Ipakita ang Suki pass'),
-      variant:
-          p.staffScan ? PixelButtonVariant.primary : PixelButtonVariant.secondary,
+      variant: p.staffScan
+          ? PixelButtonVariant.primary
+          : PixelButtonVariant.secondary,
       expand: true,
       onPressed: () => _showPass(context, ref, p),
     );

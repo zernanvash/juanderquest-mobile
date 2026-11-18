@@ -129,8 +129,7 @@ class _SukiCardsScreenState extends ConsumerState<SukiCardsScreen> {
                                         en: 'Loading cards',
                                         tl: 'Kinukuha ang cards')))
                           ],
-                          error: (error, _) =>
-                              [SukiErrorPanel(error: error)],
+                          error: (error, _) => [SukiErrorPanel(error: error)],
                           data: (list) => list.isEmpty
                               ? [
                                   PixelEmptyState(

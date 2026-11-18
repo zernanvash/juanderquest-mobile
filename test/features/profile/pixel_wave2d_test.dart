@@ -655,6 +655,7 @@ void main() {
 
     testWidgets('hub opens cosmetics, vouchers, coming soon and inventory',
         (tester) async {
+      _useTallView(tester); // Plan 107: Suki section above the hub
       await _pump(tester, const ShopScreen(),
           cosmetics: cosmetics, vouchers: VoucherState(vouchers: [_voucher]));
       // Hub: four category cards plus the merchant hub, no duplicate banner.
@@ -689,6 +690,7 @@ void main() {
     });
 
     testWidgets('empty shop shows every empty state', (tester) async {
+      _useTallView(tester); // Plan 107: Suki section above the hub
       await _pump(tester, const ShopScreen());
       await openCategory(tester, 0);
       expect(

@@ -3226,10 +3226,11 @@ void main() {
         await pumpSuki(
             tester,
             const Scaffold(
-                body: SukiPassSheet(programId: 'suki_long', shopName: longShop)),
+                body:
+                    SukiPassSheet(programId: 'suki_long', shopName: longShop)),
             size);
-        expect(find.byKey(const ValueKey('suki_pass_countdown')),
-            findsOneWidget);
+        expect(
+            find.byKey(const ValueKey('suki_pass_countdown')), findsOneWidget);
       });
       testWidgets('Shop Suki section $label', (tester) async {
         await pumpSuki(

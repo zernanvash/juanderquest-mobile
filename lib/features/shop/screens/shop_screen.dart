@@ -254,8 +254,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                         Text(
                           redeemed.usedAt == null
                               ? tr(modalCtx,
-                                  en: 'Show this QR at the shop counter. Staff scan it once.',
-                                  tl: 'Ipakita ang QR sa counter. Isang beses lang i-scan.')
+                                  en:
+                                      'Show this QR at the shop counter. Staff scan it once.',
+                                  tl:
+                                      'Ipakita ang QR sa counter. Isang beses lang i-scan.')
                               : tr(modalCtx,
                                   en: 'The shop already confirmed this voucher.',
                                   tl: 'Nakumpirma na ng tindahan ang voucher.'),
@@ -1347,7 +1349,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 redeemed.usedAt == null
-                    ? PixelChip(tr(context, en: 'Ready to use', tl: 'Magagamit'),
+                    ? PixelChip(
+                        tr(context, en: 'Ready to use', tl: 'Magagamit'),
                         style: PixelBoxStyle.green,
                         textColor: PixelPalette.white)
                     : PixelChip(tr(context, en: 'Used', tl: 'Nagamit na'),

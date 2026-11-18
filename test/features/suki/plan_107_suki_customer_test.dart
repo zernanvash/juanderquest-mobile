@@ -79,14 +79,12 @@ Override _signedIn() => authProvider.overrideWith((ref) => _InertAuthNotifier(
 class _FakeSukiApi extends SukiApi {
   _FakeSukiApi({
     this.error,
-    this.cards = const [],
     this.visit,
     this.detail,
     this.visitedAfter = 1,
   }) : super(ApiClient(enableRetries: false));
 
   final Object? error;
-  final List<SukiCard> cards;
   final Map<String, dynamic>? visit;
   final SukiProgramDetail? detail;
   final int visitedAfter;
@@ -110,7 +108,7 @@ class _FakeSukiApi extends SukiApi {
   }
 
   @override
-  Future<List<SukiCard>> myCards() async => cards;
+  Future<List<SukiCard>> myCards() async => const [];
 
   @override
   Future<List<SukiProgram>> nearby({double? lat, double? lng}) async {
@@ -125,8 +123,7 @@ class _FakeSukiApi extends SukiApi {
   }
 
   @override
-  Future<({String pass, DateTime? expiresAt})> pass(String programId) async =>
-      (
+  Future<({String pass, DateTime? expiresAt})> pass(String programId) async => (
         pass: 'JDQSUKIPASS:abc.def.ghi',
         expiresAt: DateTime.now().add(const Duration(seconds: 120)),
       );
@@ -325,11 +322,11 @@ void main() {
 
     testWidgets('an issued reward shows its QR and code', (tester) async {
       _tall(tester);
-      await tester.pumpWidget(_host(const SukiCardScreen(programId: 'suki_abc123'),
-          overrides: [
-            _signedIn(),
-            sukiApiProvider.overrideWithValue(_FakeSukiApi(detail: detail())),
-          ]));
+      await tester.pumpWidget(
+          _host(const SukiCardScreen(programId: 'suki_abc123'), overrides: [
+        _signedIn(),
+        sukiApiProvider.overrideWithValue(_FakeSukiApi(detail: detail())),
+      ]));
       await tester.pumpAndSettle();
       expect(find.text('SUKI-ABC123-DEF456'), findsOneWidget);
       expect(find.text('Show this at the counter. Staff scan it once.'),
@@ -341,12 +338,12 @@ void main() {
 
     testWidgets('an expired reward hides the code', (tester) async {
       _tall(tester);
-      await tester.pumpWidget(_host(const SukiCardScreen(programId: 'suki_abc123'),
-          overrides: [
-            _signedIn(),
-            sukiApiProvider
-                .overrideWithValue(_FakeSukiApi(detail: detail(expired: true))),
-          ]));
+      await tester.pumpWidget(
+          _host(const SukiCardScreen(programId: 'suki_abc123'), overrides: [
+        _signedIn(),
+        sukiApiProvider
+            .overrideWithValue(_FakeSukiApi(detail: detail(expired: true))),
+      ]));
       await tester.pumpAndSettle();
       expect(find.text('This reward has expired.'), findsOneWidget);
       expect(find.text('SUKI-ABC123-DEF456'), findsNothing);
@@ -354,24 +351,24 @@ void main() {
 
     testWidgets('a staff-scan shop offers only the pass', (tester) async {
       _tall(tester);
-      await tester.pumpWidget(_host(const SukiCardScreen(programId: 'suki_abc123'),
-          overrides: [
-            _signedIn(),
-            sukiApiProvider.overrideWithValue(
-                _FakeSukiApi(detail: detail(mode: 'staff_scan'))),
-          ]));
+      await tester.pumpWidget(
+          _host(const SukiCardScreen(programId: 'suki_abc123'), overrides: [
+        _signedIn(),
+        sukiApiProvider.overrideWithValue(
+            _FakeSukiApi(detail: detail(mode: 'staff_scan'))),
+      ]));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('suki_card_scan')), findsNothing);
       expect(find.byKey(const ValueKey('suki_show_pass')), findsOneWidget);
     });
 
     testWidgets('Suki switched off says coming soon', (tester) async {
-      await tester.pumpWidget(_host(const SukiCardScreen(programId: 'suki_abc123'),
-          overrides: [
-            _signedIn(),
-            sukiApiProvider.overrideWithValue(_FakeSukiApi(
-                error: _serverError('SUKI_DISABLED', status: 503))),
-          ]));
+      await tester.pumpWidget(
+          _host(const SukiCardScreen(programId: 'suki_abc123'), overrides: [
+        _signedIn(),
+        sukiApiProvider.overrideWithValue(
+            _FakeSukiApi(error: _serverError('SUKI_DISABLED', status: 503))),
+      ]));
       await tester.pumpAndSettle();
       expect(find.text('Suki Cards are coming soon.'), findsOneWidget);
     });
@@ -426,8 +423,7 @@ void main() {
       final api = _FakeSukiApi();
       await run(tester, api, pos: _fix(), settle: false);
       expect(api.visits, 1);
-      final page =
-          tester.widget<CelebrationPage>(find.byType(CelebrationPage));
+      final page = tester.widget<CelebrationPage>(find.byType(CelebrationPage));
       final scene = page.celebration as StampEarned;
       expect(scene.title, 'SUKI VISIT!');
       expect(scene.stampName, 'Visit 4 of 10 at Aling Nena Cafe');

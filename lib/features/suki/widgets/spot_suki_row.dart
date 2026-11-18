@@ -53,8 +53,7 @@ class SpotSukiRow extends ConsumerWidget {
               GestureDetector(
                 key: ValueKey('spot_suki_${p.id}'),
                 behavior: HitTestBehavior.opaque,
-                onTap: () =>
-                    context.push('/suki/${Uri.encodeComponent(p.id)}'),
+                onTap: () => context.push('/suki/${Uri.encodeComponent(p.id)}'),
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: grid.px(2)),
                   child: Row(
