@@ -17,6 +17,7 @@ import '../../../core/services/push_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/local_notifications_provider.dart';
+import '../../../core/realtime/realtime_provider.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -196,6 +197,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(notificationsChangedProvider, (_, __) => _load());
     return Theme(
       data: AppTheme.pixel,
       child: Builder(

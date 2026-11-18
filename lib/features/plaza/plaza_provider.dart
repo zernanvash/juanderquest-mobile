@@ -53,10 +53,11 @@ class PlazaFeedNotifier extends StateNotifier<AsyncValue<List<ActivityItemModel>
     }
   }
 
-  Future<void> loadFeed({bool reset = false}) async {
+  /// [quiet] reloads the first page without the loading state (realtime refresh).
+  Future<void> loadFeed({bool reset = false, bool quiet = false}) async {
     try {
       if (reset) {
-        state = const AsyncValue.loading();
+        if (!quiet || !state.hasValue) state = const AsyncValue.loading();
         _nextCursor = null;
         _hasMore = true;
       }
@@ -85,7 +86,7 @@ class PlazaFeedNotifier extends StateNotifier<AsyncValue<List<ActivityItemModel>
         if (reset) state = const AsyncValue.data([]);
       }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (!quiet || !state.hasValue) state = AsyncValue.error(e, st);
     }
   }
 
