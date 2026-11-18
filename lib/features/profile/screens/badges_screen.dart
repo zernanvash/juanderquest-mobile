@@ -14,6 +14,7 @@ import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../dashboard/providers/home_daily_provider.dart';
+import '../../merchant/suki/suki_badge_art.dart';
 import '../providers/profile_stats_provider.dart';
 import '../showcase.dart';
 
@@ -69,6 +70,7 @@ class BadgesScreen extends ConsumerWidget {
     final badges = [
       for (final b in achievements.catalog)
         (
+          id: b.id,
           title: b.title,
           desc: b.description,
           state: achievements.has(b.id) ? BadgeState.earned : BadgeState.locked,
@@ -256,7 +258,7 @@ class BadgesScreen extends ConsumerWidget {
   Widget _badgeCard(
     BuildContext context,
     PixelGrid grid,
-    ({String title, String desc, BadgeState state}) badge,
+    ({String id, String title, String desc, BadgeState state}) badge,
   ) {
     final isEarned = badge.state == BadgeState.earned;
     final isInProgress = badge.state == BadgeState.inProgress;
@@ -293,7 +295,9 @@ class BadgesScreen extends ConsumerWidget {
               height: grid.px(12),
               child: Center(
                 child: PixelSprite(
-                  isEarned ? _medalEarned : _medalLocked,
+                  isEarned
+                      ? SukiBadgeArt.byKey[badge.id] ?? _medalEarned
+                      : _medalLocked,
                   scale: 2,
                 ),
               ),

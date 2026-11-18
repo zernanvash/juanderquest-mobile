@@ -29,6 +29,7 @@ import '../features/cosmetics/screens/appearance_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/merchant/screens/affiliate_pending_screen.dart';
 import '../features/merchant/screens/merchant_dashboard_screen.dart';
+import '../features/merchant/suki/suki_standee_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
 import '../features/juanchoice/screens/juanchoice_screen.dart';
@@ -366,6 +367,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/merchant',
           builder: (context, state) => MerchantDashboardScreen(
               initialTab: state.uri.queryParameters['tab'] ?? 'overview')),
+      // Plan 107: the Suki Card counter standee to print.
+      GoRoute(
+          path: '/merchant/suki/standee',
+          builder: (context, state) => const SukiStandeeScreen()),
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) => buildDirectionalSlidePage(
