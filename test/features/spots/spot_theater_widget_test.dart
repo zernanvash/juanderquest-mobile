@@ -239,9 +239,16 @@ void main() {
         matching: find.byType(Opacity),
       );
       expect(hearts, findsNothing);
-      await tester.tapAt(const Offset(200, 400));
+      // Double-tap on plain text (photo tiles open the gallery instead).
+      final soon = find.byKey(const ValueKey('spot_coming_soon'));
+      await tester.scrollUntilVisible(soon, 200,
+          scrollable: find.byType(Scrollable).first);
+      await Scrollable.ensureVisible(tester.element(soon), alignment: 0.5);
+      await tester.pumpAndSettle();
+      final at = tester.getCenter(soon);
+      await tester.tapAt(at);
       await tester.pump(const Duration(milliseconds: 100));
-      await tester.tapAt(const Offset(200, 400));
+      await tester.tapAt(at);
       await tester.pump(const Duration(milliseconds: 80));
       expect(hearts, findsOneWidget);
 
@@ -343,7 +350,13 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: _fullSpot));
       await tester.pumpAndSettle();
 
-      final galleryBtn = find.byKey(const Key('theater_gallery_btn'));
+      final galleryBtn = find.byKey(const ValueKey('spot_photo_tile_0'));
+      // Owner 2026-11-18: photos open from the PHOTOS panel.
+      await tester.scrollUntilVisible(galleryBtn, 200,
+          scrollable: find.byType(Scrollable).first);
+      await Scrollable.ensureVisible(tester.element(galleryBtn),
+          alignment: 0.5);
+      await tester.pumpAndSettle();
       expect(galleryBtn, findsOneWidget);
 
       await tester.tap(galleryBtn);
@@ -416,7 +429,6 @@ void main() {
       expect(bar, findsOneWidget);
       expect(tester.getTopLeft(bar).dy, 0);
       for (final key in const [
-        'theater_gallery_btn',
         'theater_like_btn',
         'theater_save_btn',
         'theater_share_btn',
@@ -489,10 +501,18 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: spot));
       await tester.pumpAndSettle();
 
-      // Plan 93b WP-11: the gallery is an icon button in the sticky bar.
-      expect(find.byKey(const Key('theater_gallery_btn')), findsOneWidget);
+      // Owner 2026-11-18: photos live in the PHOTOS panel, not the top bar.
+      expect(find.byKey(const Key('theater_gallery_btn')), findsNothing);
       expect(find.textContaining('PHOTO: BIANCABRAZAL'), findsNothing);
       expect(find.text('BIANCABRAZAL'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('spot_photos_section')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.byKey(const ValueKey('spot_photo_tile_0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('spot_photo_tile_1')), findsNothing);
 
       await tester.scrollUntilVisible(
         find.text('Photography & curation: BIANCABRAZAL'),

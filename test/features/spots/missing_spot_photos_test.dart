@@ -173,7 +173,8 @@ void main() {
         ),
       )));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('theater_gallery_btn')), findsOneWidget);
+      expect(find.byKey(const Key('theater_gallery_btn')), findsNothing);
+      expect(find.byKey(const ValueKey('spot_photos_section')), findsOneWidget);
     });
 
     testWidgets('no photos at all: one placeholder and a shorter header',

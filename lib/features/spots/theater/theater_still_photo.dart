@@ -59,7 +59,11 @@ class _SpotStillPhotoState extends State<SpotStillPhoto> {
     if (urls.join('\n') != _urls.join('\n')) {
       _urls = urls;
       _index = 0;
-      widget.onPhotoChanged?.call(_url);
+      // didUpdateWidget runs during the parent's build; report after it.
+      final url = _url;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _url == url) widget.onPhotoChanged?.call(url);
+      });
     }
   }
 

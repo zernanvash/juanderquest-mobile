@@ -25,7 +25,8 @@ const _testSpot = SpotModel(
   id: 'spot-overflow-test',
   slug: 'patar-white-beach',
   name: 'Patar White Beach',
-  description: 'Golden white sands of Bolinao with breathtaking sunsets. Popular for beach camping and coastal photography.',
+  description:
+      'Golden white sands of Bolinao with breathtaking sunsets. Popular for beach camping and coastal photography.',
   category: 'nature',
   subcategory: 'beach',
   municipality: 'Bolinao',
@@ -134,8 +135,11 @@ void _checkNoException(WidgetTester tester) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Spot Theater Responsive & Zero-Overflow Tests (2.0x Text Scaling)', () {
-    testWidgets('320x568 portrait at 2.0x text scaling passes with 0 overflows and taps buttons', (tester) async {
+  group('Spot Theater Responsive & Zero-Overflow Tests (2.0x Text Scaling)',
+      () {
+    testWidgets(
+        '320x568 portrait at 2.0x text scaling passes with 0 overflows and taps buttons',
+        (tester) async {
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1.0;
       tester.platformDispatcher.textScaleFactorTestValue = 2.0;
@@ -148,7 +152,13 @@ void main() {
       _checkNoException(tester);
 
       // 1. Open gallery at top, navigate, close
-      final galleryBtn = find.byKey(const Key('theater_gallery_btn'));
+      final galleryBtn = find.byKey(const ValueKey('spot_photo_tile_0'));
+      // Owner 2026-11-18: photos open from the PHOTOS panel.
+      await tester.scrollUntilVisible(galleryBtn, 200,
+          scrollable: find.byType(Scrollable).first);
+      await Scrollable.ensureVisible(tester.element(galleryBtn),
+          alignment: 0.5);
+      await tester.pumpAndSettle();
       expect(galleryBtn, findsOneWidget);
       await tester.tap(galleryBtn);
       await tester.pumpAndSettle();
@@ -199,7 +209,9 @@ void main() {
       _checkNoException(tester);
     });
 
-    testWidgets('568x320 landscape at 2.0x text scaling passes with 0 overflows and taps buttons', (tester) async {
+    testWidgets(
+        '568x320 landscape at 2.0x text scaling passes with 0 overflows and taps buttons',
+        (tester) async {
       tester.view.physicalSize = const Size(568, 320);
       tester.view.devicePixelRatio = 1.0;
       tester.platformDispatcher.textScaleFactorTestValue = 2.0;
@@ -212,7 +224,13 @@ void main() {
       _checkNoException(tester);
 
       // 1. Top of screen: Tap gallery button, navigate, close
-      final galleryBtn = find.byKey(const Key('theater_gallery_btn'));
+      final galleryBtn = find.byKey(const ValueKey('spot_photo_tile_0'));
+      // Owner 2026-11-18: photos open from the PHOTOS panel.
+      await tester.scrollUntilVisible(galleryBtn, 200,
+          scrollable: find.byType(Scrollable).first);
+      await Scrollable.ensureVisible(tester.element(galleryBtn),
+          alignment: 0.5);
+      await tester.pumpAndSettle();
       expect(galleryBtn, findsOneWidget);
       await tester.tap(galleryBtn);
       await tester.pumpAndSettle();
@@ -279,7 +297,6 @@ void main() {
         _checkNoException(tester);
         expect(find.byKey(const Key('theater_pinned_bar')), findsOneWidget);
         for (final key in const [
-          'theater_gallery_btn',
           'theater_like_btn',
           'theater_save_btn',
           'theater_share_btn',

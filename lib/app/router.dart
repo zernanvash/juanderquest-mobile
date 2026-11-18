@@ -613,7 +613,29 @@ class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
   }
 
   Future<SpotModel> _fetchSpot() async {
-    if (widget.initialSpot != null) return widget.initialSpot!;
+    final initial = widget.initialSpot;
+    if (initial != null) {
+      // Owner 2026-11-18: list cards carry no attached photos, so the page
+      // shows the card at once and swaps in the full record when it loads.
+      _loadFull();
+      return initial;
+    }
+    return _loadFullRecord();
+  }
+
+  Future<void> _loadFull() async {
+    try {
+      final full = await _loadFullRecord();
+      if (!mounted) return;
+      setState(() {
+        _spotFuture = Future.value(full);
+      });
+    } catch (_) {
+      // Keep the card's copy; the page still works without the extra photos.
+    }
+  }
+
+  Future<SpotModel> _loadFullRecord() async {
     final response = await ref
         .read(apiClientProvider)
         .dio

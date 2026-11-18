@@ -21,7 +21,7 @@ import '../theater/theater_about_section.dart';
 import '../explore/explore_art.dart';
 import '../theater/theater_backdrop.dart';
 import '../theater/theater_badges_status_section.dart';
-import '../theater/theater_gallery_dialog.dart';
+import '../theater/theater_photos_section.dart';
 import '../theater/theater_nearby_section.dart';
 import '../theater/theater_panel.dart';
 import '../theater/theater_quest_picker_sheet.dart';
@@ -376,6 +376,14 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         TheaterAboutSection(spot: spot),
                         const SizedBox(height: 28),
 
+                        // Chapter 2b: PHOTOS (owner 2026-11-18): the place to
+                        // see this destination's photos; tap for full screen.
+                        TheaterPhotosSection(
+                          media: spot.media,
+                          onAddPhoto: _addPhoto,
+                        ),
+                        const SizedBox(height: 28),
+
                         // Chapter 3: NOTES
                         SpotCommunitySection(
                           spotId: spot.id,
@@ -424,17 +432,6 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final actions = <Widget>[
-                    if (spot.media.isNotEmpty)
-                      PixelIconButton(
-                        key: const Key('theater_gallery_btn'),
-                        icon: StudioIcons.gallery,
-                        semanticLabel: 'Open photo gallery',
-                        iconHeight: 20,
-                        onPressed: () => TheaterGalleryDialog.show(
-                          context,
-                          media: spot.media,
-                        ),
-                      ),
                     SpotLikeBarButton(
                       key: const Key('theater_like_btn'),
                       liked: _isLiked,
