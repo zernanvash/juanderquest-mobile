@@ -322,7 +322,7 @@ class InertPlazaFeedNotifier extends PlazaFeedNotifier {
   }
 
   @override
-  Future<void> loadFeed({bool reset = false}) async {}
+  Future<void> loadFeed({bool reset = false, bool quiet = false}) async {}
 }
 
 class _PixelWave1ShellPreview extends StatelessWidget {

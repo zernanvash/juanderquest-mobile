@@ -28,7 +28,7 @@ class _FakePlazaFeedNotifier extends PlazaFeedNotifier {
   String get scope => _currentScope;
 
   @override
-  Future<void> loadFeed({bool reset = false}) async {}
+  Future<void> loadFeed({bool reset = false, bool quiet = false}) async {}
 
   @override
   void setScope(String newScope) {

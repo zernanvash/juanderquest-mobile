@@ -95,7 +95,7 @@ class _PlazaFeedFixture extends PlazaFeedNotifier {
   String? setScopeValue;
 
   @override
-  Future<void> loadFeed({bool reset = false}) async {
+  Future<void> loadFeed({bool reset = false, bool quiet = false}) async {
     loads++;
   }
 
