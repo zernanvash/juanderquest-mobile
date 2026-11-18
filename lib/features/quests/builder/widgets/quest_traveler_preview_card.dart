@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/l10n/app_language.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_box.dart';
@@ -8,15 +9,20 @@ import '../../../../core/pixel/pixel_grid.dart';
 import '../../../../core/pixel/pixel_text.dart';
 import '../../pixel/task_icons.dart';
 import '../builder_models.dart';
+import 'nearby_merchants_section.dart';
 
 class QuestTravelerPreviewCard extends StatelessWidget {
   final QuestBuilderState state;
   final String locationName;
 
+  /// Shops already asked to sponsor (from "Merchants nearby").
+  final List<NearbySponsorInvite> sponsorInvites;
+
   const QuestTravelerPreviewCard({
     super.key,
     required this.state,
     required this.locationName,
+    this.sponsorInvites = const [],
   });
 
   @override
@@ -132,6 +138,31 @@ class QuestTravelerPreviewCard extends StatelessWidget {
                   ],
                 ),
               ),
+          if (sponsorInvites.isNotEmpty) ...[
+            SizedBox(height: grid.px(2)),
+            Text(
+              tr(context, en: 'Sponsors invited', tl: 'Mga inimbitang sponsor'),
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+            SizedBox(height: grid.px(1)),
+            Wrap(
+              key: const ValueKey('preview_sponsor_invites'),
+              spacing: grid.px(1),
+              runSpacing: grid.px(1),
+              children: [
+                for (final invite in sponsorInvites)
+                  PixelChip(
+                    '${invite.name} · ${invite.status.toUpperCase()}',
+                    style: invite.status == 'accepted'
+                        ? PixelBoxStyle.green
+                        : PixelBoxStyle.slot,
+                    textColor: invite.status == 'accepted'
+                        ? PixelPalette.cream
+                        : PixelPalette.slate,
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
