@@ -891,9 +891,9 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('plaza_cheer_a1')));
       await tester.pump();
       expect(feed.cheers, 1);
-      await tester.tap(find.text('Following'));
+      await tester.tap(find.text('Everyone'));
       await tester.pump();
-      expect(feed.setScopeValue, 'following');
+      expect(feed.setScopeValue, 'mixed');
       await tester.tap(find.text('All Time'));
       await tester.pump();
     });
@@ -917,7 +917,7 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await tester.pump();
 
-      final following = find.text('Following');
+      final following = find.text('Friends');
       expect(following, findsOneWidget);
       expect(find.byKey(const ValueKey('plaza_feed_scope')), findsNothing);
       final paragraph =
@@ -936,7 +936,8 @@ void main() {
         ),
         standings: _standings,
       );
-      expect(find.byKey(const ValueKey('plaza_feed_empty')), findsOneWidget);
+      // Friends is the default board (owner 2026-11-18).
+      expect(find.byKey(const ValueKey('plaza_friends_empty')), findsOneWidget);
 
       final errorFeed = _PlazaFeedFixture(
         ApiClient(),
