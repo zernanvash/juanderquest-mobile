@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/merchant_models.dart';
+import '../suki/merchant_suki_models.dart';
 
 /// Plan 95: one read decides where every merchant entry point goes
 /// (Shop card, Settings row, Home MERCHANTS tile via `/affiliate`).
@@ -152,4 +153,57 @@ class MerchantApi {
         '/funding-plans/$planId/merchant-top-up',
         data: {'points': points, 'idempotency_key': _uuid.v4()},
       );
+
+  // Plan 107 §6.5: Suki Card (merchant side).
+  Future<MerchantSukiView> suki() async => MerchantSukiView.fromJson(
+        _data((await _api.dio.get('/merchant/suki')).data),
+      );
+
+  Future<MerchantSukiView> saveSuki(Map<String, dynamic> fields) async =>
+      MerchantSukiView.fromJson(
+        _data((await _api.dio.put('/merchant/suki', data: fields)).data),
+      );
+
+  Future<MerchantSukiView> pinSukiLocation({
+    required double lat,
+    required double lng,
+    required double accuracyM,
+  }) async =>
+      MerchantSukiView.fromJson(_data((await _api.dio.put(
+        '/merchant/suki/location',
+        data: {'lat': lat, 'lng': lng, 'accuracy_m': accuracyM},
+      ))
+          .data));
+
+  Future<MerchantSukiView> activateSuki() async => MerchantSukiView.fromJson(
+        _data((await _api.dio.post('/merchant/suki/activate')).data),
+      );
+
+  Future<MerchantSukiView> pauseSuki() async => MerchantSukiView.fromJson(
+        _data((await _api.dio.post('/merchant/suki/pause')).data),
+      );
+
+  Future<MerchantSukiStandee> sukiStandee() async =>
+      MerchantSukiStandee.fromJson(
+        _data((await _api.dio.get('/merchant/suki/standee')).data),
+      );
+
+  Future<MerchantSukiStandee> rotateSukiStandee() async =>
+      MerchantSukiStandee.fromJson(
+        _data((await _api.dio.post('/merchant/suki/standee/rotate')).data),
+      );
+
+  Future<MerchantSukiScanResult> sukiScan(String code) async =>
+      MerchantSukiScanResult.fromJson(_data((await _api.dio.post(
+        '/merchant/suki/scan',
+        data: {'code': code},
+      ))
+          .data));
+
+  Future<MerchantSukiStats> sukiStats({int days = 30}) async =>
+      MerchantSukiStats.fromJson(_data((await _api.dio.get(
+        '/merchant/suki/stats',
+        queryParameters: {'days': days},
+      ))
+          .data));
 }

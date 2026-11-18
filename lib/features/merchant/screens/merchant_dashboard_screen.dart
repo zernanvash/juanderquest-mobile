@@ -18,9 +18,17 @@ import '../../../core/theme/app_theme.dart';
 import '../../quests/widgets/sponsorship_conditions_widgets.dart';
 import '../models/merchant_models.dart';
 import '../providers/merchant_hub_provider.dart';
+import '../suki/merchant_loyalty_tab.dart';
+import '../suki/suki_badge_art.dart';
 import '../widgets/merchant_pixel_art.dart';
 
-const merchantTabNames = ['overview', 'profile', 'catalog', 'sponsorships'];
+const merchantTabNames = [
+  'overview',
+  'profile',
+  'catalog',
+  'sponsorships',
+  'loyalty',
+];
 
 String _errorText(Object error, String fallback) {
   if (error is DioException) {
@@ -56,7 +64,7 @@ class MerchantDashboardScreen extends ConsumerStatefulWidget {
 
 class _MerchantDashboardScreenState
     extends ConsumerState<MerchantDashboardScreen> {
-  late int _tab = merchantTabNames.indexOf(widget.initialTab).clamp(0, 3);
+  late int _tab = merchantTabNames.indexOf(widget.initialTab).clamp(0, 4);
   MerchantDashboardData? _data;
   Object? _error;
   bool _loading = true;
@@ -194,11 +202,18 @@ class _MerchantDashboardScreenState
                                         icon: DesignerArt.handshake,
                                         label: 'Sponsorships & Points',
                                       ),
+                                      // Plan 107: Suki Card setup + counter.
+                                      const MerchantTab(
+                                        key: ValueKey('merchant_tab_loyalty'),
+                                        icon: SukiBadgeArt.sukiCard,
+                                        label: 'Loyalty',
+                                      ),
                                     ],
                                     child: switch (_tab) {
                                       1 => _ProfileTab(onSaved: _load),
                                       2 => _CatalogTab(onChanged: _load),
                                       3 => const _SponsorshipsTab(),
+                                      4 => const MerchantLoyaltyTab(),
                                       _ => _overview(context, grid, data),
                                     },
                                   ),
