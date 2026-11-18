@@ -49,6 +49,7 @@ import '../features/quests/screens/quest_builder_screen.dart';
 import '../features/quests/screens/qr_sheet_screen.dart';
 import '../features/recap/recap_screen.dart';
 import '../features/quests/screens/my_quests_screen.dart';
+import '../features/plaza/people_screen.dart';
 import '../features/plaza/plaza_screen.dart';
 import '../features/about/screens/about_screen.dart';
 import '../features/trail/trail_catalog_screen.dart';
@@ -438,6 +439,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             initialOpenComments: state.uri.queryParameters['comments'] == '1',
           ),
         ),
+        routes: [
+          GoRoute(
+            path: 'people',
+            builder: (context, state) => PeopleScreen(
+              initialTab:
+                  int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/leaderboard',

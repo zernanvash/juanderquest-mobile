@@ -104,8 +104,20 @@ void main() {
 
       // Verify toolbar chips are all present and duplicate feed scope switch is removed
       expect(find.text('Everyone'), findsOneWidget);
-      expect(find.text('Following'), findsOneWidget);
+      expect(find.text('Friends'), findsOneWidget);
       expect(find.text('My Town'), findsOneWidget);
+      // Owner 2026-11-18: Friends is first and selected by default.
+      expect(
+        tester.getTopLeft(find.text('Friends')).dx,
+        lessThan(tester.getTopLeft(find.text('Everyone')).dx),
+      );
+      expect(
+        tester
+            .widget<PixelChip>(find.ancestor(
+                of: find.text('Friends'), matching: find.byType(PixelChip)))
+            .style,
+        PixelBoxStyle.gold,
+      );
       expect(find.text('This Week'), findsOneWidget);
       expect(find.text('All Time'), findsOneWidget);
       expect(find.byKey(const ValueKey('plaza_feed_scope')), findsNothing);
@@ -119,8 +131,10 @@ void main() {
         tester.widget<PixelChip>(myTownFinder).style,
         PixelBoxStyle.parchment,
       );
-      // Verify tapping 'Following' toolbar chip updates feed scope to 'following'
-      await tester.tap(find.text('Following'));
+      await tester.tap(find.text('Everyone'));
+      await tester.pump();
+      expect(feedNotifier.lastScope, 'mixed');
+      await tester.tap(find.text('Friends'));
       await tester.pump();
       expect(feedNotifier.lastScope, 'following');
 
@@ -159,8 +173,8 @@ void main() {
       expect(find.text('Rival · #3 This Week'), findsOneWidget);
     });
 
-    // v0.3.1 (owner 2026-11-18): a small Explore-style heart; no comments.
-    testWidgets('Cheer is a small heart like Explore and comments are gone', (
+    // v0.3.1: a small Explore-style heart. v0.3.8: comments are back.
+    testWidgets('Cheer is a small heart like Explore, with a comments chip', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(800, 3000);
@@ -187,7 +201,9 @@ void main() {
       expect(find.descendant(of: cheer, matching: find.byType(PixelButton)),
           findsNothing);
       expect(tester.getSize(cheer).height, lessThanOrEqualTo(40));
-      expect(find.textContaining('comments'), findsNothing);
+      expect(find.byKey(const ValueKey('plaza_comments_act-test-1')),
+          findsOneWidget);
+      expect(find.text('2 comments'), findsOneWidget);
     });
   });
 

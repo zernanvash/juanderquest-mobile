@@ -34,7 +34,8 @@ final plazaTownsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>
 
 class PlazaFeedNotifier extends StateNotifier<AsyncValue<List<ActivityItemModel>>> {
   final ApiClient _api;
-  String _scope = 'mixed';
+  // Owner 2026-11-18: Friends (following) first.
+  String _scope = 'following';
   String? _nextCursor;
   bool _hasMore = true;
 
@@ -86,6 +87,14 @@ class PlazaFeedNotifier extends StateNotifier<AsyncValue<List<ActivityItemModel>
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  void setCommentCount(String activityId, int count) {
+    final list = state.value;
+    if (list == null) return;
+    state = AsyncValue.data([
+      for (final a in list) a.id == activityId ? a.copyWith(commentCount: count) : a,
+    ]);
   }
 
   Future<void> toggleCheer(String activityId) async {

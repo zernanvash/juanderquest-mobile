@@ -21,6 +21,7 @@ import '../settings/home_town.dart';
 import '../vote/pixel/wave3_art.dart';
 import 'activity_text.dart';
 import 'plaza_models.dart';
+import 'plaza_comments_sheet.dart';
 import 'plaza_provider.dart';
 
 class PlazaScreen extends ConsumerStatefulWidget {
@@ -39,7 +40,8 @@ class PlazaScreen extends ConsumerStatefulWidget {
 
 class _PlazaScreenState extends ConsumerState<PlazaScreen>
     with SingleTickerProviderStateMixin {
-  String _board = 'everyone';
+  // Owner 2026-11-18: "Friends tab first".
+  String _board = 'following';
   String _period = 'weekly';
   bool _askedPush = true;
 
@@ -54,6 +56,28 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
   void initState() {
     super.initState();
     _checkPushPrompt();
+    final activityId = widget.initialActivityId;
+    if (widget.initialOpenComments && activityId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openComments(activityId);
+      });
+    }
+  }
+
+  void _openComments(String activityId) {
+    showPlazaComments(
+      context,
+      activityId: activityId,
+      onCountChanged: (count) => ref
+          .read(plazaFeedProvider.notifier)
+          .setCommentCount(activityId, count),
+    );
+  }
+
+  void _openProfile(String? handle, String? userId) {
+    final key = (handle != null && handle.isNotEmpty) ? handle : userId;
+    if (key == null || key.isEmpty) return;
+    context.push('/profile/${Uri.encodeComponent(key)}');
   }
 
   Future<void> _checkPushPrompt() async {
@@ -148,6 +172,14 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                             expand: true,
                             onPressed: () => context.push('/laro'),
                           ),
+                          SizedBox(height: grid.px(2)),
+                          PixelButton(
+                            key: const ValueKey('plaza_find_people'),
+                            label: 'Find people',
+                            variant: PixelButtonVariant.secondary,
+                            expand: true,
+                            onPressed: () => context.push('/plaza/people'),
+                          ),
                           SizedBox(height: grid.px(4)),
                           feedAsync.when(
                             loading: () => PixelPanel(
@@ -189,12 +221,20 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                                         valueColor: PixelPalette.greenDark,
                                       ),
                                       SizedBox(height: grid.px(2)),
-                                      const PixelEmptyState(
-                                        key: ValueKey('plaza_feed_empty'),
-                                        title: 'No activities yet',
-                                        message:
-                                            'No activities found. Explore quests to appear on the Plaza!',
-                                      ),
+                                      _board == 'following'
+                                          ? const PixelEmptyState(
+                                              key: ValueKey(
+                                                  'plaza_friends_empty'),
+                                              title: 'No friends yet',
+                                              message:
+                                                  'Follow travelers to see their quests here. Tap Find people.',
+                                            )
+                                          : const PixelEmptyState(
+                                              key: ValueKey('plaza_feed_empty'),
+                                              title: 'No activities yet',
+                                              message:
+                                                  'No activities found. Explore quests to appear on the Plaza!',
+                                            ),
                                     ],
                                   ),
                                 );
@@ -305,21 +345,21 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
             _toolbarChip(
               context,
               grid,
-              label: 'Everyone',
-              selected: _board == 'everyone',
+              label: 'Friends',
+              selected: _board == 'following',
               onTap: () {
-                setState(() => _board = 'everyone');
-                ref.read(plazaFeedProvider.notifier).setScope('mixed');
+                setState(() => _board = 'following');
+                ref.read(plazaFeedProvider.notifier).setScope('following');
               },
             ),
             _toolbarChip(
               context,
               grid,
-              label: 'Following',
-              selected: _board == 'following',
+              label: 'Everyone',
+              selected: _board == 'everyone',
               onTap: () {
-                setState(() => _board = 'following');
-                ref.read(plazaFeedProvider.notifier).setScope('following');
+                setState(() => _board = 'everyone');
+                ref.read(plazaFeedProvider.notifier).setScope('mixed');
               },
             ),
             _toolbarChip(
@@ -509,57 +549,64 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
           for (var i = 0; i < entries.length; i++) ...[
             if (i > 0)
               Container(height: grid.unit, color: PixelPalette.paperDim),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: grid.px(2)),
-              child: Row(
-                children: [
-                  PixelChip(
-                    '#${entries[i].rank}',
-                    style: entries[i].rank <= 3
-                        ? PixelBoxStyle.gold
-                        : PixelBoxStyle.slot,
-                  ),
-                  SizedBox(width: grid.px(2)),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entries[i].displayName,
-                          maxLines: 2,
-                          style: PixelType.title(
-                            context,
-                            color: entries[i].isSelf
-                                ? PixelPalette.greenDark
-                                : PixelPalette.ink,
-                          ),
-                        ),
-                        Text(
-                          '${entries[i].homeTown ?? 'Pangasinan'} · ${entries[i].quests} ${entries[i].quests == 1 ? 'quest' : 'quests'}',
-                          style: PixelType.body(
-                            context,
-                            color: PixelPalette.slate,
-                          ),
-                        ),
-                      ],
+            GestureDetector(
+              key: ValueKey('plaza_standing_${entries[i].rank}'),
+              behavior: HitTestBehavior.opaque,
+              onTap: entries[i].isSelf
+                  ? null
+                  : () => _openProfile(entries[i].handle, entries[i].userId),
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                child: Row(
+                  children: [
+                    PixelChip(
+                      '#${entries[i].rank}',
+                      style: entries[i].rank <= 3
+                          ? PixelBoxStyle.gold
+                          : PixelBoxStyle.slot,
                     ),
-                  ),
-                  SizedBox(width: grid.px(2)),
-                  Flexible(
-                    flex: 2,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        '${entries[i].score} pts',
-                        style: PixelType.numbers(
-                          context,
-                          color: PixelPalette.greenDark,
+                    SizedBox(width: grid.px(2)),
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entries[i].displayName,
+                            maxLines: 2,
+                            style: PixelType.title(
+                              context,
+                              color: entries[i].isSelf
+                                  ? PixelPalette.greenDark
+                                  : PixelPalette.ink,
+                            ),
+                          ),
+                          Text(
+                            '${entries[i].homeTown ?? 'Pangasinan'} · ${entries[i].quests} ${entries[i].quests == 1 ? 'quest' : 'quests'}',
+                            style: PixelType.body(
+                              context,
+                              color: PixelPalette.slate,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: grid.px(2)),
+                    Flexible(
+                      flex: 2,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '${entries[i].score} pts',
+                          style: PixelType.numbers(
+                            context,
+                            color: PixelPalette.greenDark,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -581,27 +628,34 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CosmeticAvatar(
-                  name: activity.actorName,
-                  imageUrl: activity.actorAvatar,
-                  frame: activity.actorCosmetics?['frame']?['asset']
-                      as Map<String, dynamic>?,
-                  size: grid.px(14),
+                GestureDetector(
+                  key: ValueKey('plaza_actor_${activity.id}'),
+                  onTap: () => _openProfile(activity.actorHandle, null),
+                  child: CosmeticAvatar(
+                    name: activity.actorName,
+                    imageUrl: activity.actorAvatar,
+                    frame: activity.actorCosmetics?['frame']?['asset']
+                        as Map<String, dynamic>?,
+                    size: grid.px(14),
+                  ),
                 ),
                 SizedBox(width: grid.px(2)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        activity.actorName,
-                        maxLines: 2,
-                        style: PixelType.title(
-                          context,
-                          color: _cosmeticColor(
-                                  activity.actorCosmetics?['nameColor']
-                                      ?['asset']?['color']) ??
-                              PixelPalette.ink,
+                      GestureDetector(
+                        onTap: () => _openProfile(activity.actorHandle, null),
+                        child: Text(
+                          activity.actorName,
+                          maxLines: 2,
+                          style: PixelType.title(
+                            context,
+                            color: _cosmeticColor(
+                                    activity.actorCosmetics?['nameColor']
+                                        ?['asset']?['color']) ??
+                                PixelPalette.ink,
+                          ),
                         ),
                       ),
                       if ((activity.actorCosmetics?['title']?['asset']?['text']
@@ -645,46 +699,61 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                   style: PixelBoxStyle.green, textColor: PixelPalette.white),
             ],
             SizedBox(height: grid.px(2)),
-            // v0.3.1 (owner 2026-11-18): a small cheer heart like Explore's
-            // like row; no comments on explorer activity.
-            Semantics(
-              button: true,
-              label: activity.cheeredByMe
-                  ? 'Remove cheer, ${activity.cheerCount} cheers'
-                  : 'Cheer, ${activity.cheerCount} cheers',
-              child: ExcludeSemantics(
-                child: GestureDetector(
-                  key: ValueKey('plaza_cheer_${activity.id}'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    pixelTick(context);
-                    ref
-                        .read(plazaFeedProvider.notifier)
-                        .toggleCheer(activity.id);
-                  },
-                  child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(minHeight: 36, minWidth: 72),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SpotLikeHeartIcon(liked: activity.cheeredByMe, box: 24),
-                        SizedBox(width: grid.px(1)),
-                        Text(
-                          '${activity.cheerCount}',
-                          style: PixelType.numbers(
-                            context,
-                            color: activity.cheeredByMe
-                                ? PixelPalette.red
-                                : PixelPalette.ink,
+            // v0.3.1: a small cheer heart like Explore's like row.
+            // v0.3.8 (owner 2026-11-18, "Comments back"): comments return.
+            Row(children: [
+              Semantics(
+                button: true,
+                label: activity.cheeredByMe
+                    ? 'Remove cheer, ${activity.cheerCount} cheers'
+                    : 'Cheer, ${activity.cheerCount} cheers',
+                child: ExcludeSemantics(
+                  child: GestureDetector(
+                    key: ValueKey('plaza_cheer_${activity.id}'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      pixelTick(context);
+                      ref
+                          .read(plazaFeedProvider.notifier)
+                          .toggleCheer(activity.id);
+                    },
+                    child: ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(minHeight: 36, minWidth: 72),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SpotLikeHeartIcon(
+                              liked: activity.cheeredByMe, box: 24),
+                          SizedBox(width: grid.px(1)),
+                          Text(
+                            '${activity.cheerCount}',
+                            style: PixelType.numbers(
+                              context,
+                              color: activity.cheeredByMe
+                                  ? PixelPalette.red
+                                  : PixelPalette.ink,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+              SizedBox(width: grid.px(3)),
+              Flexible(
+                child: PixelChip(
+                  activity.commentCount == 1
+                      ? '1 comment'
+                      : '${activity.commentCount} comments',
+                  key: ValueKey('plaza_comments_${activity.id}'),
+                  style: PixelBoxStyle.parchment,
+                  textColor: PixelPalette.ink,
+                  onTap: () => _openComments(activity.id),
+                ),
+              ),
+            ]),
           ],
         ),
       ),
