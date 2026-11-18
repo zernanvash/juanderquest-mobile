@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juanderquest_app/core/search/recent_searches.dart';
 import 'package:go_router/go_router.dart';
 import 'package:juanderquest_app/features/spots/theater/theater_backdrop.dart';
 import 'package:juanderquest_app/features/spots/explore/widgets/explore_spot_card.dart';
@@ -208,6 +209,8 @@ Widget _buildHarness({
       hiddenGemProvider.overrideWith((ref) async => const []),
       festivalCalendarProvider.overrideWith((ref, year) async => const []),
       showTestContentProvider.overrideWith((ref) => showTest),
+      recentSearchesProvider
+          .overrideWith((ref) => RecentSearchesNotifier(load: false)),
     ],
     child: MaterialApp.router(
       theme: AppTheme.pixel,
@@ -514,7 +517,8 @@ void main() {
 
     // Design system usability rule (2026-11-17): every tap target is at
     // least 48 x 48.
-    testWidgets('every Explore tap target is at least 48 wide and 36 tall', (tester) async {
+    testWidgets('every Explore tap target is at least 48 wide and 36 tall',
+        (tester) async {
       final spot = _makeSpot(
         id: 'spot-targets',
         name: 'Target Spot',
@@ -538,7 +542,73 @@ void main() {
       );
     });
 
-    testWidgets('the search box under the bar opens Search', (tester) async {
+    // Owner 2026-11-18 (v0.3.3): search lives inside Explore. Tap the box:
+    // recent searches; type: live matches that tolerate typos.
+    testWidgets('search happens inside Explore with recents and typo matches',
+        (tester) async {
+      final pushedRoutes = <String>[];
+      final notifier = _TestDiscoveryNotifier(
+        ProviderContainer().read(Provider((ref) => ref)),
+        SpotDiscoveryState(
+          spots: [
+            _makeSpot(
+                id: 's1',
+                name: 'Hundred Islands',
+                slug: 'hundred',
+                municipality: 'Alaminos'),
+            _makeSpot(
+                id: 's2',
+                name: 'Patar White Beach',
+                slug: 'patar',
+                municipality: 'Bolinao'),
+          ],
+          isInitialLoading: false,
+        ),
+      );
+      await tester.pumpWidget(_buildHarness(
+        discoveryNotifier: notifier,
+        pushedRoutes: pushedRoutes,
+      ));
+      await tester.pumpAndSettle();
+      expect(
+          find.byKey(const ValueKey('explore_search_results')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('explore_search_field')));
+      await tester.pumpAndSettle();
+      expect(pushedRoutes, isNot(contains('/search')));
+      expect(find.byKey(const ValueKey('explore_search_hint')), findsOneWidget);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('explore_search_field')), 'hundered');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('explore_search_result_0')),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('explore_search_result_1')), findsNothing);
+      expect(find.text('1 PLACE'), findsOneWidget);
+
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('explore_search_close')));
+      await tester.pumpAndSettle();
+      expect(
+          find.byKey(const ValueKey('explore_search_results')), findsNothing);
+
+      // The submitted search is now a recent one; tapping it searches again.
+      await tester.tap(find.byKey(const ValueKey('explore_search_field')));
+      await tester.pumpAndSettle();
+      expect(find.text('RECENT SEARCHES'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('explore_recent_0')));
+      await tester.pumpAndSettle();
+      expect(find.text('1 PLACE'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('explore_search_result_0')));
+      await tester.pumpAndSettle();
+      expect(pushedRoutes, contains('/explore/hundred'));
+    });
+
+    testWidgets('Filters from a search opens the filter page with the words',
+        (tester) async {
       final pushedRoutes = <String>[];
       final notifier = _TestDiscoveryNotifier(
         ProviderContainer().read(Provider((ref) => ref)),
@@ -549,7 +619,12 @@ void main() {
         pushedRoutes: pushedRoutes,
       ));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('explore_search_bar')));
+      await tester.enterText(
+          find.byKey(const ValueKey('explore_search_field')), 'beach');
+      await tester.pumpAndSettle();
+      expect(
+          find.byKey(const ValueKey('explore_search_empty')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('explore_more_filters')));
       await tester.pumpAndSettle();
       expect(pushedRoutes, contains('/search'));
     });

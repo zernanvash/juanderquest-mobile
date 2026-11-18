@@ -3,6 +3,8 @@ import '../../dashboard/providers/festival_calendar_provider.dart';
 import '../../dashboard/providers/home_calendar_provider.dart';
 import '../explore/widgets/explore_badges.dart';
 import '../explore/widgets/explore_search_bar.dart';
+import '../explore/widgets/explore_search_results.dart';
+import '../../../core/search/recent_searches.dart';
 import '../explore/widgets/explore_spotlight_row.dart';
 import '../providers/hidden_gem_provider.dart';
 import 'dart:async';
@@ -42,9 +44,36 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   int _visibleCount = 10;
   int _totalOrdinaryCount = 0;
 
+  // Owner 2026-11-18 (v0.3.3): search lives inside Explore.
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  String _query = '';
+
+  bool get _searching => _searchFocus.hasFocus || _query.trim().isNotEmpty;
+
+  void _closeSearch() {
+    _searchController.clear();
+    _searchFocus.unfocus();
+    setState(() => _query = '');
+  }
+
+  void _setQuery(String q) {
+    _searchController.value = TextEditingValue(
+      text: q,
+      selection: TextSelection.collapsed(offset: q.length),
+    );
+    setState(() => _query = q);
+  }
+
+  void _rememberQuery() =>
+      ref.read(recentSearchesProvider.notifier).add(_query);
+
   @override
   void initState() {
     super.initState();
+    _searchFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
     _scrollController.addListener(_onScroll);
     Future.microtask(() {
       ref.read(spotDiscoveryProvider.notifier).initialize();
@@ -53,6 +82,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
+    _searchFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -149,149 +180,190 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 normalizeTown(e.municipality),
           };
 
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            appBar: PreferredSize(
-              preferredSize: Size.fromHeight(PixelAppBar.heightOf(context)),
-              child: PixelAppBar(
-                title: 'Explore',
-                isTab: true,
-                actions: [
-                  // Search is the open box under the bar (owner 2026-11-16).
-                  // Owner 2026-11-16: Saved sits right of Search (the Map
-                  // moved to the main menu).
-                  PixelIconButton(
-                    key: const ValueKey('explore_appbar_saved'),
-                    icon: ExploreArt.bookmarkSaved,
-                    semanticLabel: 'Saved places',
-                    style: PixelBoxStyle.parchment,
-                    iconHeight: 24,
-                    onPressed: () => context.push('/saved'),
-                  ),
-                ],
+          // Back closes the search first.
+          return PopScope(
+            canPop: !_searching,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) _closeSearch();
+            },
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              appBar: PreferredSize(
+                preferredSize: Size.fromHeight(PixelAppBar.heightOf(context)),
+                child: PixelAppBar(
+                  title: 'Explore',
+                  isTab: true,
+                  actions: [
+                    // Search is the open box under the bar (owner 2026-11-16).
+                    // Owner 2026-11-16: Saved sits right of Search (the Map
+                    // moved to the main menu).
+                    PixelIconButton(
+                      key: const ValueKey('explore_appbar_saved'),
+                      icon: ExploreArt.bookmarkSaved,
+                      semanticLabel: 'Saved places',
+                      style: PixelBoxStyle.parchment,
+                      iconHeight: 24,
+                      onPressed: () => context.push('/saved'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            body: // Owner 2026-11-17: a faint fade on Explore ("too distracting").
-                PixelPanelTexture(
-              strength: 0.35,
-              child: RefreshIndicator(
-                onRefresh: () => _load(refresh: true),
-                color: PixelPalette.green,
-                backgroundColor: PixelPalette.paper,
-                child: ListView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  // Owner 2026-11-16: more side margin on Explore posts.
-                  padding: EdgeInsets.symmetric(
-                    horizontal: grid.gutter,
-                    vertical: grid.px(2),
-                  ),
-                  children: [
-                    ExploreSearchBar(onOpen: () => context.push('/search')),
-                    SizedBox(height: grid.px(3)),
-                    // App-only blocks preserved in order
-                    // Offline Fallback Banner
-                    if (state.isOfflineFallback) ...[
-                      PixelPanel(
-                        style:
-                            PixelBoxStyle.gold.copyWith(corner: 2, shadowPx: 0),
-                        padding: 2,
-                        child: Text(
-                          'OFFLINE MODE • VIEWING CACHED DESTINATIONS FROM DEVICE STORAGE. CONNECT TO REFRESH.',
-                          style:
-                              PixelType.small(context, color: PixelPalette.ink),
-                        ),
+              body: // Owner 2026-11-17: a faint fade on Explore ("too distracting").
+                  PixelPanelTexture(
+                strength: 0.35,
+                child: RefreshIndicator(
+                  onRefresh: () => _load(refresh: true),
+                  color: PixelPalette.green,
+                  backgroundColor: PixelPalette.paper,
+                  child: ListView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    // Owner 2026-11-16: more side margin on Explore posts.
+                    padding: EdgeInsets.symmetric(
+                      horizontal: grid.gutter,
+                      vertical: grid.px(2),
+                    ),
+                    children: [
+                      ExploreSearchBar(
+                        controller: _searchController,
+                        focusNode: _searchFocus,
+                        active: _searching,
+                        onChanged: (v) => setState(() => _query = v),
+                        onSubmitted: (_) {
+                          _rememberQuery();
+                          _searchFocus.unfocus();
+                        },
+                        onClose: _closeSearch,
                       ),
-                      SizedBox(height: grid.px(2)),
-                    ],
-
-                    // Hidden gem + featured destination, one row, two columns
-                    // (owner 2026-11-16).
-                    ExploreSpotlightRow(featured: topHeroSpot),
-
-                    // Loading State
-                    if (state.isInitialLoading && state.spots.isEmpty)
-                      _buildLoadingSkeleton(context, grid)
-
-                    // Error State
-                    else if (state.failure != null && state.spots.isEmpty)
-                      _buildErrorCard(context, grid, state.failure!.message)
-
-                    // Empty State
-                    else if (visibleSpots.isEmpty &&
-                        !spotlightPlacement.hasSpotlight)
-                      _buildEmptyCard(context, grid)
-
-                    // Feed Stream List
-                    else ...[
-                      // Feed Cards + JuanChoice Insertion
-                      for (var i = 0; i < pagedSpots.length; i++) ...[
-                        if (spotlightPlacement.hasSpotlight &&
-                            spotlightPlacement.insertionIndex == i) ...[
-                          ExploreJuanChoiceCard(
-                            spotlight: spotlightPlacement.spotlight!,
-                            winnerSpots: winnerSpots,
-                            onTapWinner: (winner) => context.push(
-                              '/explore/${winner.slug}',
-                              extra: winner,
+                      SizedBox(height: grid.px(3)),
+                      if (_searching)
+                        ExploreSearchResults(
+                          query: _query,
+                          spots: state.spots,
+                          recent: ref.watch(recentSearchesProvider),
+                          onPickRecent: _setQuery,
+                          onRemoveRecent: (q) => ref
+                              .read(recentSearchesProvider.notifier)
+                              .remove(q),
+                          onClearRecent: () =>
+                              ref.read(recentSearchesProvider.notifier).clear(),
+                          onOpenSpot: (spot) {
+                            _rememberQuery();
+                            _searchFocus.unfocus();
+                            context.push('/explore/${spot.slug}', extra: spot);
+                          },
+                          onMoreFilters: () {
+                            _rememberQuery();
+                            context.push(
+                                '/search?q=${Uri.encodeQueryComponent(_query.trim())}');
+                          },
+                        )
+                      else ...[
+                        // App-only blocks preserved in order
+                        // Offline Fallback Banner
+                        if (state.isOfflineFallback) ...[
+                          PixelPanel(
+                            style: PixelBoxStyle.gold
+                                .copyWith(corner: 2, shadowPx: 0),
+                            padding: 2,
+                            child: Text(
+                              'OFFLINE MODE • VIEWING CACHED DESTINATIONS FROM DEVICE STORAGE. CONNECT TO REFRESH.',
+                              style: PixelType.small(context,
+                                  color: PixelPalette.ink),
                             ),
-                            onSeeResults: () => context.push('/choice'),
                           ),
                           SizedBox(height: grid.px(2)),
                         ],
-                        ExploreSpotCard(
-                          badges: exploreBadgesFor(
-                            pagedSpots[i],
-                            gemIds: gemIds,
-                            fiestaTowns: fiestaTowns,
-                          ),
-                          spot: pagedSpots[i],
-                          likeCount: pagedSpots[i].likeCount,
-                          isLiked: pagedSpots[i].liked,
-                          isSaved: pagedSpots[i].saved,
-                          onTapCard: () => context.push(
-                            '/explore/${pagedSpots[i].slug}',
-                            extra: pagedSpots[i],
-                          ),
-                          onToggleLike: () => ref
-                              .read(spotDiscoveryProvider.notifier)
-                              .toggleLiked(pagedSpots[i]),
-                          onDoubleTapLike: () => ref
-                              .read(spotDiscoveryProvider.notifier)
-                              .setLiked(pagedSpots[i], liked: true),
-                          onToggleSave: () => ref
-                              .read(spotDiscoveryProvider.notifier)
-                              .toggleSaved(pagedSpots[i]),
-                          onPlayQuest: pagedSpots[i].questId != null &&
-                                  pagedSpots[i].questId!.trim().isNotEmpty
-                              ? () => context
-                                  .push('/quests/${pagedSpots[i].questId}')
-                              : null,
-                        ),
-                        SizedBox(height: grid.px(4)),
-                      ],
 
-                      // End-of-feed JuanChoice insertion if insertion index is at or beyond pagedSpots length
-                      if (spotlightPlacement.hasSpotlight &&
-                          spotlightPlacement.insertionIndex >=
-                              pagedSpots.length) ...[
-                        ExploreJuanChoiceCard(
-                          spotlight: spotlightPlacement.spotlight!,
-                          winnerSpots: winnerSpots,
-                          onTapWinner: (winner) => context.push(
-                            '/explore/${winner.slug}',
-                            extra: winner,
-                          ),
-                          onSeeResults: () => context.push('/choice'),
-                        ),
-                        SizedBox(height: grid.px(2)),
-                      ],
+                        // Hidden gem + featured destination, one row, two columns
+                        // (owner 2026-11-16).
+                        ExploreSpotlightRow(featured: topHeroSpot),
 
-                      // Paging Controls
-                      _buildPagingFooter(
-                          context, grid, hasMore, state.failure != null),
+                        // Loading State
+                        if (state.isInitialLoading && state.spots.isEmpty)
+                          _buildLoadingSkeleton(context, grid)
+
+                        // Error State
+                        else if (state.failure != null && state.spots.isEmpty)
+                          _buildErrorCard(context, grid, state.failure!.message)
+
+                        // Empty State
+                        else if (visibleSpots.isEmpty &&
+                            !spotlightPlacement.hasSpotlight)
+                          _buildEmptyCard(context, grid)
+
+                        // Feed Stream List
+                        else ...[
+                          // Feed Cards + JuanChoice Insertion
+                          for (var i = 0; i < pagedSpots.length; i++) ...[
+                            if (spotlightPlacement.hasSpotlight &&
+                                spotlightPlacement.insertionIndex == i) ...[
+                              ExploreJuanChoiceCard(
+                                spotlight: spotlightPlacement.spotlight!,
+                                winnerSpots: winnerSpots,
+                                onTapWinner: (winner) => context.push(
+                                  '/explore/${winner.slug}',
+                                  extra: winner,
+                                ),
+                                onSeeResults: () => context.push('/choice'),
+                              ),
+                              SizedBox(height: grid.px(2)),
+                            ],
+                            ExploreSpotCard(
+                              badges: exploreBadgesFor(
+                                pagedSpots[i],
+                                gemIds: gemIds,
+                                fiestaTowns: fiestaTowns,
+                              ),
+                              spot: pagedSpots[i],
+                              likeCount: pagedSpots[i].likeCount,
+                              isLiked: pagedSpots[i].liked,
+                              isSaved: pagedSpots[i].saved,
+                              onTapCard: () => context.push(
+                                '/explore/${pagedSpots[i].slug}',
+                                extra: pagedSpots[i],
+                              ),
+                              onToggleLike: () => ref
+                                  .read(spotDiscoveryProvider.notifier)
+                                  .toggleLiked(pagedSpots[i]),
+                              onDoubleTapLike: () => ref
+                                  .read(spotDiscoveryProvider.notifier)
+                                  .setLiked(pagedSpots[i], liked: true),
+                              onToggleSave: () => ref
+                                  .read(spotDiscoveryProvider.notifier)
+                                  .toggleSaved(pagedSpots[i]),
+                              onPlayQuest: pagedSpots[i].questId != null &&
+                                      pagedSpots[i].questId!.trim().isNotEmpty
+                                  ? () => context
+                                      .push('/quests/${pagedSpots[i].questId}')
+                                  : null,
+                            ),
+                            SizedBox(height: grid.px(4)),
+                          ],
+
+                          // End-of-feed JuanChoice insertion if insertion index is at or beyond pagedSpots length
+                          if (spotlightPlacement.hasSpotlight &&
+                              spotlightPlacement.insertionIndex >=
+                                  pagedSpots.length) ...[
+                            ExploreJuanChoiceCard(
+                              spotlight: spotlightPlacement.spotlight!,
+                              winnerSpots: winnerSpots,
+                              onTapWinner: (winner) => context.push(
+                                '/explore/${winner.slug}',
+                                extra: winner,
+                              ),
+                              onSeeResults: () => context.push('/choice'),
+                            ),
+                            SizedBox(height: grid.px(2)),
+                          ],
+
+                          // Paging Controls
+                          _buildPagingFooter(
+                              context, grid, hasMore, state.failure != null),
+                        ],
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
