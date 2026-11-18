@@ -417,11 +417,15 @@ class _SetConditionsSheetState extends State<_SetConditionsSheet> {
   }
 }
 
-String formatSponsoredByNames(List<String> names) {
+String formatSponsoredByNames(
+  List<String> names, {
+  String by = 'Sponsored by',
+  String and = 'and',
+}) {
   if (names.isEmpty) return '';
-  if (names.length == 1) return 'Sponsored by ${names[0]}';
-  if (names.length == 2) return 'Sponsored by ${names[0]} and ${names[1]}';
-  return 'Sponsored by ${names[0]}, ${names[1]} +${names.length - 2}';
+  if (names.length == 1) return '$by ${names[0]}';
+  if (names.length == 2) return '$by ${names[0]} $and ${names[1]}';
+  return '$by ${names[0]}, ${names[1]} +${names.length - 2}';
 }
 
 class SponsoredByLine extends StatelessWidget {
@@ -442,7 +446,11 @@ class SponsoredByLine extends StatelessWidget {
   Widget build(BuildContext context) {
     if (names.isEmpty) return const SizedBox.shrink();
     final grid = PixelGrid.of(context);
-    final label = formatSponsoredByNames(names);
+    final label = formatSponsoredByNames(
+      names,
+      by: tr(context, en: 'Sponsored by', tl: 'Itinataguyod ng'),
+      and: tr(context, en: 'and', tl: 'at'),
+    );
     final hasLogo = logoUrl != null && logoUrl!.trim().isNotEmpty;
     final row = Row(
       mainAxisSize: MainAxisSize.min,
