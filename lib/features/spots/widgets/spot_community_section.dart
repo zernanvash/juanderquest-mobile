@@ -24,6 +24,10 @@ class SpotComment {
   final DateTime? createdAt;
   final bool verifiedVisit;
 
+  /// v0.3.1: the author's id (to offer Edit/Delete) and whether it was edited.
+  final String? userId;
+  final bool edited;
+
   const SpotComment({
     required this.id,
     required this.authorName,
@@ -33,6 +37,8 @@ class SpotComment {
     required this.helpfulCount,
     this.createdAt,
     this.verifiedVisit = false,
+    this.userId,
+    this.edited = false,
   });
 
   factory SpotComment.fromJson(Map<String, dynamic> j) => SpotComment(
@@ -46,17 +52,22 @@ class SpotComment {
         helpfulCount: (j['helpful_count'] as num?)?.toInt() ?? 0,
         createdAt: DateTime.tryParse('${j['created_at']}'),
         verifiedVisit: j['is_verified_visit'] == true,
+        userId: j['user_id'] as String?,
+        edited: j['edited_at'] != null,
       );
 
-  SpotComment copyWith({int? helpfulCount}) => SpotComment(
+  SpotComment copyWith({int? helpfulCount, String? content, bool? edited}) =>
+      SpotComment(
         id: id,
         authorName: authorName,
         authorBadge: authorBadge,
         tag: tag,
-        content: content,
+        content: content ?? this.content,
         helpfulCount: helpfulCount ?? this.helpfulCount,
         createdAt: createdAt,
         verifiedVisit: verifiedVisit,
+        userId: userId,
+        edited: edited ?? this.edited,
       );
 }
 
@@ -69,6 +80,14 @@ const spotCommentTags = <String, String>{
   'tide_condition': 'Tide / sea',
   'gear_alert': 'What to bring',
   'eco_watch': 'Eco watch',
+};
+
+/// v0.3.1: note report reasons (`reportNoteSchema`).
+const noteReportReasons = <String, String>{
+  'spam': 'Spam',
+  'offensive': 'Offensive',
+  'false_info': 'False information',
+  'other': 'Something else',
 };
 
 /// Report reasons offered by the API (`createReportSchema`).
@@ -220,6 +239,139 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
         setState(() => _helpfulVoted.remove(c.id));
         _snack(_errorText(e, 'Could not mark as helpful.'));
       }
+    }
+  }
+
+  /// v0.3.1: the "..." menu on a note. Authors edit or delete; others report.
+  Future<void> _noteMenu(SpotComment c) async {
+    final me = ref.read(authProvider).user?.id;
+    if (me == null) {
+      _snack('Sign in to edit or report notes.');
+      return;
+    }
+    final mine = c.userId == me;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: PixelPalette.parchment,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (mine) ...[
+                PixelButton(
+                  key: const ValueKey('note_edit'),
+                  label: 'Edit note',
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: () => Navigator.of(sheet).pop('edit'),
+                ),
+                const SizedBox(height: 8),
+                PixelButton(
+                  key: const ValueKey('note_delete'),
+                  label: 'Delete note',
+                  variant: PixelButtonVariant.danger,
+                  onPressed: () => Navigator.of(sheet).pop('delete'),
+                ),
+              ] else
+                for (final r in noteReportReasons.entries) ...[
+                  PixelButton(
+                    key: ValueKey('note_report_${r.key}'),
+                    label: 'Report: ${r.value}',
+                    variant: PixelButtonVariant.secondary,
+                    onPressed: () => Navigator.of(sheet).pop('report:${r.key}'),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    if (choice == 'edit') return _editNote(c);
+    if (choice == 'delete') return _deleteNote(c);
+    if (choice.startsWith('report:')) {
+      return _reportNote(c, choice.substring(7));
+    }
+  }
+
+  Future<void> _editNote(SpotComment c) async {
+    final controller = TextEditingController(text: c.content);
+    final text = await showPixelDialog<String>(
+      context: context,
+      title: 'Edit note',
+      content: TextField(
+        key: const ValueKey('note_edit_field'),
+        controller: controller,
+        maxLines: 4,
+        maxLength: 1000,
+        autofocus: true,
+      ),
+      actions: [
+        PixelButton(
+          key: const ValueKey('note_edit_save'),
+          label: 'Save',
+          onPressed: () => Navigator.of(context, rootNavigator: true)
+              .pop(controller.text.trim()),
+        ),
+      ],
+    );
+    controller.dispose();
+    if (text == null || text.isEmpty || text == c.content || !mounted) return;
+    try {
+      await _dio.patch('/spots/${widget.spotId}/comments/${c.id}',
+          data: {'content': text});
+      if (!mounted) return;
+      setState(() => _comments = [
+            for (final x in _comments)
+              x.id == c.id ? x.copyWith(content: text, edited: true) : x,
+          ]);
+    } catch (e) {
+      if (mounted) _snack(_errorText(e, 'Your note was not saved.'));
+    }
+  }
+
+  Future<void> _deleteNote(SpotComment c) async {
+    final ok = await showPixelDialog<bool>(
+      context: context,
+      title: 'Delete this note?',
+      message: 'It is removed for everyone.',
+      actions: [
+        PixelButton(
+          key: const ValueKey('note_delete_confirm'),
+          label: 'Delete',
+          variant: PixelButtonVariant.danger,
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(true),
+        ),
+      ],
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await _dio.delete('/spots/${widget.spotId}/comments/${c.id}');
+      if (!mounted) return;
+      setState(() => _comments = _comments.where((x) => x.id != c.id).toList());
+    } catch (e) {
+      if (mounted) _snack(_errorText(e, 'The note was not deleted.'));
+    }
+  }
+
+  Future<void> _reportNote(SpotComment c, String reason) async {
+    try {
+      final res = await _dio.post(
+          '/spots/${widget.spotId}/comments/${c.id}/report',
+          data: {'reason': reason});
+      final data = res.data is Map ? res.data['data'] : null;
+      if (!mounted) return;
+      if (data is Map && data['hidden'] == true) {
+        setState(
+            () => _comments = _comments.where((x) => x.id != c.id).toList());
+      }
+      _snack('Thanks. The note was reported.');
+    } catch (e) {
+      if (mounted) _snack(_errorText(e, 'The report was not sent.'));
     }
   }
 
@@ -419,11 +571,25 @@ class _SpotCommunitySectionState extends ConsumerState<SpotCommunitySection> {
                   ),
                 ),
               ],
+              // v0.3.1: edit / delete (author) or report (everyone else).
+              Semantics(
+                button: true,
+                label: 'Note options',
+                child: InkWell(
+                  key: ValueKey('note_more_${c.id}'),
+                  onTap: () => _noteMenu(c),
+                  child: const SizedBox(
+                    width: 40,
+                    height: 36,
+                    child: Icon(Icons.more_horiz, color: PixelPalette.paper),
+                  ),
+                ),
+              ),
             ],
           ),
           SizedBox(height: grid.px(0.5)),
           Text(
-            '${spotCommentTags[c.tag]?.toUpperCase() ?? 'GENERAL'} · ${_relative(c.createdAt).toUpperCase()}',
+            '${spotCommentTags[c.tag]?.toUpperCase() ?? 'GENERAL'} · ${_relative(c.createdAt).toUpperCase()}${c.edited ? ' · EDITED' : ''}',
             style: PixelType.labelSmall(context, color: PixelPalette.mist),
           ),
           SizedBox(height: grid.px(1)),
