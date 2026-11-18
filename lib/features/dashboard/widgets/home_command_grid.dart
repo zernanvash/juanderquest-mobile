@@ -123,6 +123,13 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         icon: HomePixelArt.calendar,
         route: '/almanac',
       ),
+      // Plan 107: collect a Suki Card visit at a partner shop's counter.
+      const _CommandTileSpec(
+        key: ValueKey('home_tile_suki'),
+        label: 'SCAN SUKI',
+        icon: HomePixelArt.stampCheck,
+        route: '/suki?scan=1',
+      ),
     ];
   }
 
@@ -138,8 +145,10 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
         children: [
           LayoutBuilder(
             builder: (context, constraints) {
-              final cols =
-                  (constraints.maxWidth < 280 || textScale >= 1.4) ? 2 : 4;
+              // Plan 107: nine tiles sit as 3x3 rather than 4+4+1.
+              final cols = (constraints.maxWidth < 280 || textScale >= 1.4)
+                  ? 2
+                  : (tiles.length % 4 == 0 ? 4 : 3);
               final rows = <Widget>[];
               for (var i = 0; i < tiles.length; i += cols) {
                 final slice = tiles.sublist(

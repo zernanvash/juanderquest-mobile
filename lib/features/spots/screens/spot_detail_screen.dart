@@ -14,6 +14,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../quests/providers/quest_provider.dart';
+import '../../suki/widgets/spot_suki_row.dart';
 import '../models/spot_model.dart';
 import '../providers/spot_discovery_provider.dart';
 import '../theater/theater_coming_soon_section.dart';
@@ -396,6 +397,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           spot: spot,
                           onDirections: _openDirections,
                         ),
+
+                        // Plan 107: Suki shops at this destination.
+                        SpotSukiRow(lat: spot.gpsLat, lng: spot.gpsLng),
 
                         // Chapter 4b: COMING SOON (owner, Plan 101)
                         const SizedBox(height: 28),

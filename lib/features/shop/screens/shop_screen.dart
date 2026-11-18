@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -15,13 +17,13 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cosmetics/widgets/passport_preview.dart';
 import '../../cosmetics/widgets/profile_banner.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../merchant/models/merchant_models.dart';
 import '../../merchant/providers/merchant_hub_provider.dart';
+import '../../suki/widgets/shop_suki_section.dart';
 import '../../wallet/screens/wallet_connect_screen.dart';
 import '../models/cosmetic_item.dart';
 import '../models/shop_teaser.dart';
@@ -233,50 +235,37 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     ),
                   ),
                   SizedBox(height: PixelGrid.of(modalCtx).px(3)),
-                  UiSpecContainer(
-                    spec: const UiSpec(
-                      title: 'In-Person Store Cashier Barcode & QR Box',
-                      figmaLayer: '#Voucher_QR_Redemption_Box',
-                      dimensions: 'Width: 100%, Height: ~80dp, Padding: 12dp',
-                      dataBinding: 'redeemedVoucher.code / expirationTimestamp',
-                      stateNotes:
-                          'Displays 1D barcode stripes & QR scan box for retail cashier terminal',
-                      uxNotes:
-                          'Ensure screen backlight brightness is sufficient for optical scanners.',
-                      deferred: true,
+                  // Plan 107: a real QR the shop's counter scanner confirms.
+                  PixelPanel(
+                    style: PixelBoxStyle.slot.copyWith(
+                      fill: PixelPalette.white,
                     ),
-                    child: PixelPanel(
-                      style: PixelBoxStyle.slot.copyWith(
-                        fill: PixelPalette.white,
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(
-                              24,
-                              (index) => Container(
-                                width: index % 3 == 0
-                                    ? 3
-                                    : (index % 2 == 0 ? 2 : 1),
-                                height: 38,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 1.5),
-                                color: PixelPalette.ink,
-                              ),
-                            ),
+                    child: Column(
+                      children: [
+                        if (redeemed.usedAt == null)
+                          QrImageView(
+                            key: const ValueKey('shop_voucher_qr'),
+                            data: redeemed.code,
+                            size: 180,
+                            backgroundColor: Colors.white,
+                            semanticsLabel: 'Voucher QR code',
                           ),
-                          SizedBox(height: PixelGrid.of(modalCtx).px(1)),
-                          Text(
-                            'Present this barcode/code to the store cashier',
-                            textAlign: TextAlign.center,
-                            style: PixelType.small(
-                              modalCtx,
-                              color: PixelPalette.slate,
-                            ),
+                        SizedBox(height: PixelGrid.of(modalCtx).px(1)),
+                        Text(
+                          redeemed.usedAt == null
+                              ? tr(modalCtx,
+                                  en: 'Show this QR at the shop counter. Staff scan it once.',
+                                  tl: 'Ipakita ang QR sa counter. Isang beses lang i-scan.')
+                              : tr(modalCtx,
+                                  en: 'The shop already confirmed this voucher.',
+                                  tl: 'Nakumpirma na ng tindahan ang voucher.'),
+                          textAlign: TextAlign.center,
+                          style: PixelType.small(
+                            modalCtx,
+                            color: PixelPalette.slate,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                   SizedBox(height: PixelGrid.of(modalCtx).px(3)),
@@ -404,6 +393,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Plan 107: Suki Cards first (my cards + Scan Suki).
+        const ShopSukiSection(),
+        SizedBox(height: grid.px(2)),
         _merchantHubCard(context, grid),
         for (final category in _categories) ...[
           SizedBox(height: grid.px(2)),
@@ -1354,10 +1346,20 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               runSpacing: grid.px(1),
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const PixelChip('Active voucher',
-                    style: PixelBoxStyle.green, textColor: PixelPalette.white),
+                redeemed.usedAt == null
+                    ? PixelChip(tr(context, en: 'Ready to use', tl: 'Magagamit'),
+                        style: PixelBoxStyle.green,
+                        textColor: PixelPalette.white)
+                    : PixelChip(tr(context, en: 'Used', tl: 'Nagamit na'),
+                        style: PixelBoxStyle.stone),
                 Text(
-                  'Expires in 30 days',
+                  redeemed.usedAt == null
+                      ? tr(context,
+                          en: 'Show it at the shop counter',
+                          tl: 'Ipakita sa counter ng tindahan')
+                      : tr(context,
+                          en: 'Confirmed by the shop',
+                          tl: 'Kumpirmado ng tindahan'),
                   style: PixelType.small(context, color: PixelPalette.slate),
                 ),
               ],
@@ -1379,8 +1381,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   style: PixelBoxStyle.slot,
                 ),
                 PixelButton(
-                  key: ValueKey('shop_show_barcode_${redeemed.code}'),
-                  label: 'Show Barcode',
+                  key: ValueKey('shop_show_qr_${redeemed.code}'),
+                  label: tr(context, en: 'Show QR', tl: 'Ipakita ang QR'),
                   variant: PixelButtonVariant.secondary,
                   onPressed: () => _showRedeemedVoucherModal(context, redeemed),
                 ),

@@ -123,6 +123,7 @@ class _CelebrationPageState extends State<CelebrationPage>
           font: PixelType.headerFont,
           stampName: c.stampName,
           stamp: c.stamp,
+          title: c.title,
           fontScale: settings.fontScale(),
           reducedMotion: reducedMotion,
           onHaptic: () => _triggerHaptic(context),
@@ -153,8 +154,8 @@ class _CelebrationPageState extends State<CelebrationPage>
           PixelBoxStyle.green,
           PixelPalette.white,
         ),
-      StampEarned() => (
-          'Add to passport',
+      StampEarned se => (
+          se.actionLabel,
           PixelBoxStyle.wood,
           PixelPalette.white,
         ),

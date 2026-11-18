@@ -50,6 +50,7 @@ String appRouteForPushHref(String? href) {
     'vote',
     'trail',
     'settings',
+    'suki', // Plan 107: a Suki reward notification opens the card.
   };
   if (!appSections.contains(segments.first)) return fallback;
   return uri.replace(query: uri.query.isEmpty ? null : uri.query).toString();

@@ -51,7 +51,10 @@ class RedeemedVoucherModel {
   final String offerTitle;
   final String code;
   final DateTime redeemedAt;
-  final DateTime expiresAt;
+  final DateTime? expiresAt;
+
+  /// Plan 107: set once the shop's counter scanner confirmed the code.
+  final DateTime? usedAt;
   final int costPoints;
 
   RedeemedVoucherModel({
@@ -60,7 +63,8 @@ class RedeemedVoucherModel {
     required this.offerTitle,
     required this.code,
     required this.redeemedAt,
-    required this.expiresAt,
+    this.expiresAt,
+    this.usedAt,
     required this.costPoints,
   });
 
@@ -70,7 +74,8 @@ class RedeemedVoucherModel {
     'offerTitle': offerTitle,
     'code': code,
     'redeemedAt': redeemedAt.toIso8601String(),
-    'expiresAt': expiresAt.toIso8601String(),
+    'expiresAt': expiresAt?.toIso8601String(),
+    'usedAt': usedAt?.toIso8601String(),
     'costPoints': costPoints,
   };
 
@@ -78,9 +83,10 @@ class RedeemedVoucherModel {
     voucherId: json['voucherId'] ?? '',
     merchantName: json['merchantName'] ?? 'Partner Merchant',
     offerTitle: json['offerTitle'] ?? 'Voucher Offer',
-    code: json['code'] ?? 'JDQ-REDEEMED',
+    code: json['code'] ?? '',
     redeemedAt: DateTime.tryParse(json['redeemedAt'] ?? '') ?? DateTime.now(),
-    expiresAt: DateTime.tryParse(json['expiresAt'] ?? '') ?? DateTime.now().add(const Duration(days: 30)),
+    expiresAt: DateTime.tryParse(json['expiresAt'] ?? ''),
+    usedAt: DateTime.tryParse(json['usedAt'] ?? ''),
     costPoints: (json['costPoints'] ?? 0) as int,
   );
 }
