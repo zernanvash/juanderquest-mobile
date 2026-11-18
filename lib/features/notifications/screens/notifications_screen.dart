@@ -203,10 +203,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           final grid = PixelGrid.of(context);
           final canPop = Navigator.of(context).canPop();
           return Scaffold(
-            backgroundColor: PixelPalette.paper,
+            // Owner 2026-11-18 (v0.3.1): a wooden notice board.
+            backgroundColor: PixelPalette.woodNight,
             body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
+              top: PixelPalette.woodDeep,
+              bottom: PixelPalette.woodNight,
               child: Column(
                 children: [
                   PixelAppBar(
@@ -295,15 +296,18 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         ),
       );
     }
-    return Column(
-      // Full-width cards (owner phone check 2026-11-16: short cards shrank).
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final item in items) ...[
-          _notificationCard(context, grid, item),
-          SizedBox(height: grid.px(2)),
+    return NoticeBoard(
+      key: const ValueKey('notifications_board'),
+      child: Column(
+        // Full-width cards (owner phone check 2026-11-16: short cards shrank).
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) SizedBox(height: grid.px(4)),
+            _notificationCard(context, grid, items[i]),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -313,8 +317,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final id = item['id'].toString();
     final href = item['href']?.toString() ?? '';
     final timeLabel = _formatRelativeTime(item['created_at']);
-    return PixelPanel(
-      style: read ? PixelBoxStyle.parchment : PixelBoxStyle.green,
+    return PinnedNote(
+      read: read,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -331,10 +335,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               if (timeLabel.isNotEmpty)
                 Text(
                   timeLabel,
-                  style: PixelType.small(
-                    context,
-                    color: read ? PixelPalette.slate : PixelPalette.mist,
-                  ),
+                  style: PixelType.small(context, color: PixelPalette.slate),
                 ),
             ],
           ),
@@ -351,17 +352,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               children: [
                 Text(
                   item['title']?.toString() ?? 'Update',
-                  style: PixelType.title(
-                    context,
-                    color: read ? PixelPalette.ink : PixelPalette.white,
-                  ),
+                  style: PixelType.title(context, color: PixelPalette.ink),
                 ),
                 SizedBox(height: grid.px(1)),
                 Text(
                   item['message']?.toString() ?? '',
                   style: PixelType.body(
                     context,
-                    color: read ? PixelPalette.slate : PixelPalette.cream,
+                    color: read ? PixelPalette.slate : PixelPalette.woodDeep,
                   ),
                 ),
               ],
@@ -399,6 +397,103 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Owner 2026-11-18 (v0.3.1): the notifications sit on a wooden notice board:
+/// horizontal planks with a dark frame.
+class NoticeBoard extends StatelessWidget {
+  const NoticeBoard({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    return PixelPanel(
+      style: PixelBoxStyle.darkWood.copyWith(corner: 3, shadowPx: 2),
+      padding: 2,
+      child: CustomPaint(
+        painter: _PlankPainter(grid.px(1)),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+              grid.px(3), grid.px(5), grid.px(3), grid.px(3)),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _PlankPainter extends CustomPainter {
+  _PlankPainter(this.unit);
+
+  final double unit;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = PixelPalette.wood);
+    final seam = Paint()..color = PixelPalette.woodDeep;
+    final light = Paint()..color = PixelPalette.woodMid;
+    final plank = unit * 14;
+    var row = 0;
+    for (var y = plank; y < size.height; y += plank, row++) {
+      canvas.drawRect(Rect.fromLTWH(0, y, size.width, unit), seam);
+      canvas.drawRect(Rect.fromLTWH(0, y + unit, size.width, unit), light);
+      // Staggered vertical joints, like real boards.
+      final x = (row.isEven ? 0.3 : 0.7) * size.width;
+      canvas.drawRect(
+          Rect.fromLTWH(x, y - plank + unit, unit, plank - unit), seam);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PlankPainter old) => old.unit != unit;
+}
+
+/// A paper note pinned to the [NoticeBoard]. Unread notes are bright with a
+/// red pin; read ones are dimmer with a brass pin.
+class PinnedNote extends StatelessWidget {
+  const PinnedNote({super.key, required this.read, required this.child});
+
+  final bool read;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final pin = grid.px(4);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        PixelPanel(
+          style: read
+              ? PixelBoxStyle.parchment.copyWith(fill: PixelPalette.paperDim)
+              : PixelBoxStyle.parchment.copyWith(fill: PixelPalette.cream),
+          child: Padding(
+            padding: EdgeInsets.only(top: grid.px(1)),
+            child: child,
+          ),
+        ),
+        Positioned(
+          top: -pin / 2,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Container(
+              key: ValueKey(read ? 'notice_pin_read' : 'notice_pin_unread'),
+              width: pin,
+              height: pin,
+              decoration: BoxDecoration(
+                color: read ? PixelPalette.goldDeep : PixelPalette.red,
+                border: Border.all(
+                    color: PixelPalette.woodNight, width: grid.px(1)),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
