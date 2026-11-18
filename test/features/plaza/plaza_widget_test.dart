@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juanderquest_app/features/spots/widgets/spot_like_heart.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
-import 'package:juanderquest_app/core/pixel/generated/designer_art.g.dart';
-import 'package:juanderquest_app/core/pixel/pixel_art.dart';
 import 'package:juanderquest_app/core/pixel/pixel_box.dart';
 import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/services/push_service.dart';
@@ -12,7 +11,6 @@ import 'package:juanderquest_app/features/plaza/plaza_models.dart';
 import 'package:juanderquest_app/features/plaza/plaza_provider.dart';
 import 'package:juanderquest_app/features/plaza/plaza_screen.dart';
 import 'package:juanderquest_app/features/settings/home_town.dart';
-import 'package:juanderquest_app/features/spots/studio/pixel/studio_icons.dart';
 
 class _FakePlazaFeedNotifier extends PlazaFeedNotifier {
   _FakePlazaFeedNotifier(
@@ -92,7 +90,8 @@ void main() {
   }
 
   group('PlazaScreen (Plan 79a)', () {
-    testWidgets('Renders wrapping 2-row toolbar without duplicate feed switch', (
+    testWidgets('Renders wrapping 2-row toolbar without duplicate feed switch',
+        (
       tester,
     ) async {
       final feedNotifier = _FakePlazaFeedNotifier(
@@ -160,7 +159,8 @@ void main() {
       expect(find.text('Rival · #3 This Week'), findsOneWidget);
     });
 
-    testWidgets('Cheer button and Comments chip use existing pixel icons', (
+    // v0.3.1 (owner 2026-11-18): a small Explore-style heart; no comments.
+    testWidgets('Cheer is a small heart like Explore and comments are gone', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(800, 3000);
@@ -178,28 +178,16 @@ void main() {
       await tester.pumpWidget(createPlazaApp(feedNotifier));
       await tester.pumpAndSettle();
 
-      // Verify CHEER button uses DesignerArt.heartLiked
-      final cheerButton = find.byKey(const ValueKey('plaza_cheer_act-test-1'));
-      expect(cheerButton, findsOneWidget);
-      final pixelSpriteFinder = find.descendant(
-        of: cheerButton,
-        matching: find.byType(PixelSprite),
+      final cheer = find.byKey(const ValueKey('plaza_cheer_act-test-1'));
+      expect(cheer, findsOneWidget);
+      expect(
+        find.descendant(of: cheer, matching: find.byType(SpotLikeHeartIcon)),
+        findsOneWidget,
       );
-      expect(pixelSpriteFinder, findsOneWidget);
-      final spriteWidget = tester.widget<PixelSprite>(pixelSpriteFinder);
-      // PixelIconFit draws a margin-trimmed copy named '<name>#trim'.
-      expect(spriteWidget.art.name.split('#').first, DesignerArt.heartLiked.name);
-
-      // Verify COMMENTS chip uses StudioIcons.edit
-      final commentsChip = find.text('2 comments');
-      expect(commentsChip, findsOneWidget);
-      final commentsPixelChip = find.ancestor(
-        of: commentsChip,
-        matching: find.byType(PixelChip),
-      );
-      expect(commentsPixelChip, findsOneWidget);
-      final chipWidget = tester.widget<PixelChip>(commentsPixelChip);
-      expect(chipWidget.icon, equals(StudioIcons.edit));
+      expect(find.descendant(of: cheer, matching: find.byType(PixelButton)),
+          findsNothing);
+      expect(tester.getSize(cheer).height, lessThanOrEqualTo(40));
+      expect(find.textContaining('comments'), findsNothing);
     });
   });
 

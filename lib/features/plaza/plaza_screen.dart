@@ -16,7 +16,7 @@ import '../../core/services/push_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/providers/auth_provider.dart';
 import '../cosmetics/widgets/cosmetic_avatar.dart';
-import '../spots/studio/pixel/studio_icons.dart';
+import '../spots/widgets/spot_like_heart.dart';
 import '../settings/home_town.dart';
 import '../vote/pixel/wave3_art.dart';
 import 'activity_text.dart';
@@ -645,34 +645,45 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                   style: PixelBoxStyle.green, textColor: PixelPalette.white),
             ],
             SizedBox(height: grid.px(2)),
-            Wrap(
-              spacing: grid.px(2),
-              runSpacing: grid.px(1),
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                PixelButton(
+            // v0.3.1 (owner 2026-11-18): a small cheer heart like Explore's
+            // like row; no comments on explorer activity.
+            Semantics(
+              button: true,
+              label: activity.cheeredByMe
+                  ? 'Remove cheer, ${activity.cheerCount} cheers'
+                  : 'Cheer, ${activity.cheerCount} cheers',
+              child: ExcludeSemantics(
+                child: GestureDetector(
                   key: ValueKey('plaza_cheer_${activity.id}'),
-                  label: activity.cheeredByMe
-                      ? 'Cheered ${activity.cheerCount}'
-                      : 'Cheer ${activity.cheerCount}',
-                  icon: DesignerArt.heartLiked,
-                  iconScale: 1,
-                  variant: activity.cheeredByMe
-                      ? PixelButtonVariant.primary
-                      : PixelButtonVariant.secondary,
-                  onPressed: () {
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    pixelTick(context);
                     ref
                         .read(plazaFeedProvider.notifier)
                         .toggleCheer(activity.id);
                   },
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minHeight: 36, minWidth: 72),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SpotLikeHeartIcon(liked: activity.cheeredByMe, box: 24),
+                        SizedBox(width: grid.px(1)),
+                        Text(
+                          '${activity.cheerCount}',
+                          style: PixelType.numbers(
+                            context,
+                            color: activity.cheeredByMe
+                                ? PixelPalette.red
+                                : PixelPalette.ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                PixelChip(
-                  '${activity.commentCount} comments',
-                  icon: StudioIcons.edit,
-                  iconScale: 2,
-                  style: PixelBoxStyle.slot,
-                ),
-              ],
+              ),
             ),
           ],
         ),
