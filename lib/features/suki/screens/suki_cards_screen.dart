@@ -37,10 +37,15 @@ Future<({double? lat, double? lng})> _quickFix() async {
   return (lat: null, lng: null);
 }
 
+/// Where "near you" is measured from (tests replace it).
+final sukiQuickFixProvider =
+    Provider<Future<({double? lat, double? lng})> Function()>(
+        (ref) => _quickFix);
+
 /// Nearby cards for the `/suki` page.
 final sukiNearbyHereProvider =
     FutureProvider.autoDispose<List<SukiProgram>>((ref) async {
-  final at = await _quickFix();
+  final at = await ref.read(sukiQuickFixProvider)();
   return ref.read(sukiApiProvider).nearby(lat: at.lat, lng: at.lng);
 });
 
