@@ -6,7 +6,6 @@ import '../../../app/open_route.dart';
 import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/pixel_art.dart';
-import '../pixel/home_pixel_art.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -423,7 +422,8 @@ class HomePurseStrip extends ConsumerWidget {
               context,
               grid,
               key: const ValueKey('home_purse_stamps'),
-              icon: HomePixelArt.stampCheck,
+              // Owner 2026-11-18 (v0.3.1): the designer stamp icon.
+              icon: DesignerArt.stampIcon,
               value: homeNumber(stampsCount),
               semantics: '$stampsCount stamps',
               onTap: () => context.push('/profile/badges'),
@@ -434,7 +434,8 @@ class HomePurseStrip extends ConsumerWidget {
               context,
               grid,
               key: const ValueKey('home_purse_rep'),
-              icon: DesignerArt.handshake,
+              // Owner 2026-11-18 (v0.3.1): the smiley is reputation.
+              icon: DesignerArt.repSmiley,
               value: homeNumber(repCount),
               semantics: '$repCount reputation',
               onTap: () => context.push('/plaza'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/l10n/app_language.dart';
+import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -160,6 +161,8 @@ class _TaskRow extends StatelessWidget {
               enabled: pulse,
               child: PixelChip(
                 '+${m.stamps}',
+                icon: _stampIcon,
+                iconScale: 1,
                 style: PixelBoxStyle.gold,
                 textColor: PixelPalette.ink,
               ),
@@ -206,6 +209,8 @@ class _WeeklyChest extends StatelessWidget {
               SizedBox(width: grid.px(2)),
               PixelChip(
                 '+${daily.chestStamps}',
+                icon: _stampIcon,
+                iconScale: 1,
                 style: PixelBoxStyle.gold,
                 textColor: PixelPalette.ink,
               ),
@@ -222,3 +227,7 @@ class _WeeklyChest extends StatelessWidget {
     );
   }
 }
+
+/// Owner 2026-11-18 (v0.3.1): stamp rewards carry the designer stamp icon,
+/// trimmed so it fits the chip.
+final _stampIcon = PixelIconFit.trim(DesignerArt.stampIcon);
