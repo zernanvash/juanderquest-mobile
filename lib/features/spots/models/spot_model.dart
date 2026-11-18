@@ -61,6 +61,30 @@ class SpotPhoto {
   int get hashCode => url.hashCode;
 }
 
+class SpotSponsor {
+  final String name;
+  final String? logo;
+  final String questId;
+
+  const SpotSponsor({
+    required this.name,
+    this.logo,
+    required this.questId,
+  });
+
+  factory SpotSponsor.fromJson(Map<String, dynamic> j) => SpotSponsor(
+        name: j['name']?.toString() ?? '',
+        logo: j['logo']?.toString(),
+        questId: j['quest_id']?.toString() ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        if (logo != null) 'logo': logo,
+        'quest_id': questId,
+      };
+}
+
 class SpotDuplicateHint {
   final String id;
   final String slug;
@@ -127,6 +151,7 @@ class SpotModel {
   final List<String> moderationMessages;
   final SpotDuplicateHint? duplicateSpot;
   final bool appealSubmitted;
+  final List<SpotSponsor> sponsors;
 
   const SpotModel({
     required this.id,
@@ -164,6 +189,7 @@ class SpotModel {
     this.moderationMessages = const [],
     this.duplicateSpot,
     this.appealSubmitted = false,
+    this.sponsors = const [],
   });
 
   List<SpotPhoto> get photos => media.isNotEmpty
@@ -354,6 +380,14 @@ class SpotModel {
     final dupHint = rawDup is Map
         ? SpotDuplicateHint.fromJson(Map<String, dynamic>.from(rawDup))
         : null;
+    final rawSponsors = j['sponsors'];
+    final sponsors = rawSponsors is List
+        ? [
+            for (final s in rawSponsors)
+              if (s is Map && (s['name']?.toString().trim() ?? '').isNotEmpty)
+                SpotSponsor.fromJson(Map<String, dynamic>.from(s)),
+          ]
+        : const <SpotSponsor>[];
 
     return SpotModel(
       id: j['id']?.toString() ?? '',
@@ -391,6 +425,7 @@ class SpotModel {
       moderationMessages: modMessages,
       duplicateSpot: dupHint,
       appealSubmitted: j['appeal_submitted'] == true,
+      sponsors: sponsors,
     );
   }
 
@@ -446,6 +481,7 @@ class SpotModel {
     List<String>? moderationMessages,
     SpotDuplicateHint? duplicateSpot,
     bool? appealSubmitted,
+    List<SpotSponsor>? sponsors,
   }) =>
       SpotModel(
         id: id ?? this.id,
@@ -483,6 +519,7 @@ class SpotModel {
         moderationMessages: moderationMessages ?? this.moderationMessages,
         duplicateSpot: duplicateSpot ?? this.duplicateSpot,
         appealSubmitted: appealSubmitted ?? this.appealSubmitted,
+        sponsors: sponsors ?? this.sponsors,
       );
 
   Map<String, dynamic> toJson() => {
@@ -516,6 +553,7 @@ class SpotModel {
         'amenities': amenities,
         'is_test': isTest,
         'media': media.map((m) => m.toJson()).toList(),
+        'sponsors': sponsors.map((s) => s.toJson()).toList(),
       };
 
   static String? _firstPhoto(Map<String, dynamic> json) {

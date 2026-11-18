@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -14,6 +15,7 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../quests/widgets/sponsorship_conditions_widgets.dart';
 import '../models/merchant_models.dart';
 import '../providers/merchant_hub_provider.dart';
 import '../widgets/merchant_pixel_art.dart';
@@ -722,6 +724,105 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
     }
   }
 
+  Future<void> _setConditions(MerchantSponsorshipItem item) async {
+    final api = ref.read(merchantApiProvider);
+    final selected =
+        await showSetConditionsSheet(context, initial: item.conditions);
+    if (selected == null || !mounted) return;
+    await _run(
+      () => api.setConditions(item, selected),
+      tr(
+        context,
+        en: 'Deal conditions updated.',
+        tl: 'Na-update ang mga kondisyon.',
+      ),
+    );
+  }
+
+  Future<void> _accept(MerchantSponsorshipItem item) async {
+    final api = ref.read(merchantApiProvider);
+    final unmet = item.conditions.where((c) => !c.isMet).toList();
+    if (unmet.isNotEmpty) {
+      final confirmed = await _confirmOverride(unmet);
+      if (confirmed != true || !mounted) return;
+      await _run(
+        () => api.accept(item, acknowledgeUnmet: true),
+        'Sponsorship accepted.',
+      );
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      await api.accept(item);
+      if (mounted) showPixelToast(context, 'Sponsorship accepted.');
+      await _load();
+    } on DioException catch (error) {
+      if (!mounted) return;
+      final body = error.response?.data;
+      if (_errorCode(error) == 'CONDITIONS_NOT_MET') {
+        final rawConds = body is Map && body['data'] is Map
+            ? body['data']['conditions']
+            : null;
+        final serverUnmet = [
+          if (rawConds is List)
+            for (final c in rawConds)
+              if (c is Map)
+                SponsorshipConditionData.fromJson(Map<String, dynamic>.from(c)),
+        ].where((c) => !c.isMet).toList();
+        setState(() => _busy = false);
+        final confirmed = await _confirmOverride(
+          serverUnmet.isNotEmpty ? serverUnmet : item.conditions,
+        );
+        if (confirmed != true || !mounted) return;
+        await _run(
+          () => api.accept(item, acknowledgeUnmet: true),
+          'Sponsorship accepted.',
+        );
+        return;
+      }
+      showPixelToast(context, _errorText(error, 'That did not go through.'));
+    } catch (error) {
+      if (mounted) {
+        showPixelToast(context, _errorText(error, 'That did not go through.'));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<bool?> _confirmOverride(List<SponsorshipConditionData> unmet) {
+    return showPixelDialog<bool>(
+      context: context,
+      title: 'Deal requirements not met yet',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (unmet.isNotEmpty) SponsorshipConditionsList(conditions: unmet),
+          const SizedBox(height: 8),
+          Text(
+            'You can still accept. The quest will show your shop as a sponsor now.',
+            style: PixelType.body(context, color: PixelPalette.slate),
+          ),
+        ],
+      ),
+      actions: [
+        PixelButton(
+          key: const ValueKey('merchant_override_cancel'),
+          label: 'CANCEL',
+          variant: PixelButtonVariant.secondary,
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+        PixelButton(
+          key: const ValueKey('merchant_override_confirm'),
+          label: 'ACCEPT ANYWAY',
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+      ],
+    );
+  }
+
   Future<void> _counter(MerchantSponsorshipItem item) async {
     final api = ref.read(merchantApiProvider);
     List<MerchantVoucherOption> vouchers = const [];
@@ -734,6 +835,8 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
     final message = TextEditingController();
     String? voucherId;
     var promo = item.promo;
+    List<Map<String, dynamic>>? nextConditions;
+    var conditionCount = item.conditions.length;
     final send = await showPixelDialog<bool>(
       context: context,
       title: 'Counter-offer',
@@ -772,6 +875,33 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
                 onChanged: (value) => setLocal(() => promo = value),
               ),
               const SizedBox(height: 8),
+              PixelButton(
+                key: const ValueKey('merchant_counter_conditions'),
+                label: conditionCount > 0
+                    ? 'SET CONDITIONS ($conditionCount)'
+                    : 'SET CONDITIONS',
+                variant: PixelButtonVariant.secondary,
+                expand: true,
+                onPressed: () async {
+                  final initial = nextConditions != null
+                      ? [
+                          for (final c in nextConditions!)
+                            SponsorshipConditionData.fromJson(c),
+                        ]
+                      : item.conditions;
+                  final picked = await showSetConditionsSheet(
+                    dialogContext,
+                    initial: initial,
+                  );
+                  if (picked != null && dialogContext.mounted) {
+                    setLocal(() {
+                      nextConditions = picked;
+                      conditionCount = picked.length;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
               PixelTextField(
                 controller: message,
                 label: 'Message (optional)',
@@ -806,6 +936,7 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
         voucherQty: terms.$2,
         promo: promo,
         message: terms.$3,
+        conditions: nextConditions,
       ),
       'Counter-offer sent.',
     );
@@ -922,39 +1053,67 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
                         if (item.promo) const PixelChip('PROMO'),
                       ],
                     ),
-                    if (item.status == 'requested') ...[
+                    if (item.conditions.isNotEmpty ||
+                        item.status == 'requested' ||
+                        item.status == 'countered') ...[
+                      SizedBox(height: grid.px(1.5)),
+                      Text(
+                        'DEAL CONDITIONS',
+                        style: PixelType.small(
+                          context,
+                          color: PixelPalette.slate,
+                        ).copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: grid.px(0.5)),
+                      if (item.conditions.isNotEmpty)
+                        SponsorshipConditionsList(conditions: item.conditions)
+                      else
+                        Text(
+                          'No deal conditions set.',
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.slate,
+                          ),
+                        ),
+                    ],
+                    if (item.status == 'requested' ||
+                        item.status == 'countered') ...[
                       SizedBox(height: grid.px(1)),
                       Wrap(
                         spacing: grid.px(2),
                         runSpacing: grid.px(1),
                         children: [
                           PixelButton(
-                            key: ValueKey('merchant_accept_${item.id}'),
-                            label: 'Accept',
-                            onPressed: _busy
-                                ? null
-                                : () => _run(
-                                      () => api.accept(item),
-                                      'Sponsorship accepted.',
-                                    ),
-                          ),
-                          PixelButton(
-                            key: ValueKey('merchant_decline_${item.id}'),
-                            label: 'Decline',
-                            variant: PixelButtonVariant.danger,
-                            onPressed: _busy
-                                ? null
-                                : () => _run(
-                                      () => api.decline(item),
-                                      'Sponsorship declined.',
-                                    ),
-                          ),
-                          PixelButton(
-                            key: ValueKey('merchant_counter_${item.id}'),
-                            label: 'Counter',
+                            key: ValueKey('merchant_set_conditions_${item.id}'),
+                            label: 'SET CONDITIONS',
                             variant: PixelButtonVariant.secondary,
-                            onPressed: _busy ? null : () => _counter(item),
+                            onPressed:
+                                _busy ? null : () => _setConditions(item),
                           ),
+                          if (item.status == 'requested') ...[
+                            PixelButton(
+                              key: ValueKey('merchant_accept_${item.id}'),
+                              label: 'Accept',
+                              onPressed: _busy ? null : () => _accept(item),
+                            ),
+                            PixelButton(
+                              key: ValueKey('merchant_decline_${item.id}'),
+                              label: 'Decline',
+                              variant: PixelButtonVariant.danger,
+                              onPressed: _busy
+                                  ? null
+                                  : () => _run(
+                                        () => api.decline(item),
+                                        'Sponsorship declined.',
+                                      ),
+                            ),
+                            PixelButton(
+                              key: ValueKey('merchant_counter_${item.id}'),
+                              label: 'Counter',
+                              variant: PixelButtonVariant.secondary,
+                              onPressed: _busy ? null : () => _counter(item),
+                            ),
+                          ],
                         ],
                       ),
                     ],

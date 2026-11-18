@@ -1,6 +1,8 @@
 /// Plan 95: typed views of the merchant workspace API.
 library;
 
+import '../../quests/widgets/sponsorship_conditions_widgets.dart';
+
 Map<String, dynamic> _map(Object? value) =>
     value is Map ? Map<String, dynamic>.from(value) : const {};
 
@@ -55,28 +57,29 @@ class MerchantHubStatus {
 
   /// The screen this state opens.
   String get route => switch (state) {
-    MerchantHubState.approvedMerchant => '/merchant',
-    MerchantHubState.pendingReview ||
-    MerchantHubState.needsChanges => '/affiliate/pending',
-    _ => '/affiliate',
-  };
+        MerchantHubState.approvedMerchant => '/merchant',
+        MerchantHubState.pendingReview ||
+        MerchantHubState.needsChanges =>
+          '/affiliate/pending',
+        _ => '/affiliate',
+      };
 
   String get label => switch (state) {
-    MerchantHubState.approvedMerchant => 'Merchant dashboard',
-    MerchantHubState.pendingReview => 'Application pending',
-    MerchantHubState.needsChanges => 'Changes requested',
-    _ => 'Merchant affiliate',
-  };
+        MerchantHubState.approvedMerchant => 'Merchant dashboard',
+        MerchantHubState.pendingReview => 'Application pending',
+        MerchantHubState.needsChanges => 'Changes requested',
+        _ => 'Merchant affiliate',
+      };
 
   String get subtitle => switch (state) {
-    MerchantHubState.approvedMerchant =>
-      'Manage your storefront, catalog and sponsorships',
-    MerchantHubState.pendingReview =>
-      'The tourism team is reviewing your application',
-    MerchantHubState.needsChanges =>
-      'The reviewer asked for changes to your application',
-    _ => 'Apply to take part in tourism promotions',
-  };
+        MerchantHubState.approvedMerchant =>
+          'Manage your storefront, catalog and sponsorships',
+        MerchantHubState.pendingReview =>
+          'The tourism team is reviewing your application',
+        MerchantHubState.needsChanges =>
+          'The reviewer asked for changes to your application',
+        _ => 'Apply to take part in tourism promotions',
+      };
 }
 
 class MerchantChecklistItem {
@@ -162,9 +165,8 @@ class MerchantProductItem {
         price: json['price'] is num
             ? (json['price'] as num).toDouble()
             : double.tryParse('${json['price'] ?? ''}'),
-        currency: _str(json['currency']).isEmpty
-            ? 'PHP'
-            : _str(json['currency']),
+        currency:
+            _str(json['currency']).isEmpty ? 'PHP' : _str(json['currency']),
       );
 }
 
@@ -213,6 +215,8 @@ class MerchantSponsorshipItem {
     required this.termsVersion,
     required this.planId,
     required this.planStatus,
+    this.conditions = const [],
+    this.acceptedWithUnmet = const [],
   });
 
   final String id;
@@ -225,6 +229,8 @@ class MerchantSponsorshipItem {
   final int termsVersion;
   final String planId;
   final String planStatus;
+  final List<SponsorshipConditionData> conditions;
+  final List<SponsorshipConditionData> acceptedWithUnmet;
 
   factory MerchantSponsorshipItem.fromJson(Map<String, dynamic> json) =>
       MerchantSponsorshipItem(
@@ -235,12 +241,22 @@ class MerchantSponsorshipItem {
         points: _int(json['points']),
         voucherQty: _int(json['voucher_qty']),
         promo: json['promo'] == true,
-        termsVersion: _int(json['terms_version']) < 1
-            ? 1
-            : _int(json['terms_version']),
+        termsVersion:
+            _int(json['terms_version']) < 1 ? 1 : _int(json['terms_version']),
         planId: _str(json['plan_id']),
         planStatus: _str(json['plan_status']),
+        conditions: _parseConditions(json['conditions']),
+        acceptedWithUnmet: _parseConditions(json['accepted_with_unmet']),
       );
+
+  static List<SponsorshipConditionData> _parseConditions(dynamic raw) {
+    if (raw is! List) return const [];
+    return [
+      for (final row in raw)
+        if (row is Map)
+          SponsorshipConditionData.fromJson(Map<String, dynamic>.from(row)),
+    ];
+  }
 }
 
 class MerchantVoucherOption {

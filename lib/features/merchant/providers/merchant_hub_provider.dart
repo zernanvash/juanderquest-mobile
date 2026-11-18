@@ -41,9 +41,9 @@ class MerchantApi {
   }
 
   List<Map<String, dynamic>> _rows(Object? value) => [
-    for (final row in (value is List ? value : const []))
-      if (row is Map) Map<String, dynamic>.from(row),
-  ];
+        for (final row in (value is List ? value : const []))
+          if (row is Map) Map<String, dynamic>.from(row),
+      ];
 
   Future<MerchantDashboardData> dashboard() async =>
       MerchantDashboardData.fromJson(
@@ -57,8 +57,8 @@ class MerchantApi {
       _api.dio.patch('/merchant/profile', data: fields);
 
   Future<void> setPublished(bool published) => _api.dio.post(
-    published ? '/merchant/profile/publish' : '/merchant/profile/unpublish',
-  );
+        published ? '/merchant/profile/publish' : '/merchant/profile/unpublish',
+      );
 
   Future<List<MerchantProductItem>> products() async {
     final body = (await _api.dio.get('/merchant/products')).data;
@@ -69,44 +69,61 @@ class MerchantApi {
 
   Future<void> saveProduct(String? id, Map<String, dynamic> fields) =>
       id == null
-      ? _api.dio.post('/merchant/products', data: fields)
-      : _api.dio.patch('/merchant/products/$id', data: fields);
+          ? _api.dio.post('/merchant/products', data: fields)
+          : _api.dio.patch('/merchant/products/$id', data: fields);
 
   Future<void> archiveProduct(String id) =>
       _api.dio.delete('/merchant/products/$id');
 
   Future<MerchantPointSummary> points() async => MerchantPointSummary.fromJson(
-    _data((await _api.dio.get('/merchant/points')).data),
-  );
+        _data((await _api.dio.get('/merchant/points')).data),
+      );
 
   Future<void> buyPoints(int package) => _api.dio.post(
-    '/merchant/points/purchase',
-    data: {'package': package, 'idempotency_key': _uuid.v4()},
-  );
+        '/merchant/points/purchase',
+        data: {'package': package, 'idempotency_key': _uuid.v4()},
+      );
 
   Future<List<MerchantSponsorshipItem>> sponsorships() async => _rows(
-    _data((await _api.dio.get('/merchant/sponsorships')).data)['items'],
-  ).map(MerchantSponsorshipItem.fromJson).toList();
+        _data((await _api.dio.get('/merchant/sponsorships')).data)['items'],
+      ).map(MerchantSponsorshipItem.fromJson).toList();
 
   Future<List<MerchantVoucherOption>> vouchers() async => [
-    for (final row in _rows(
-      _data((await _api.dio.get('/merchant/vouchers')).data)['items'],
-    ))
-      MerchantVoucherOption(
-        id: '${row['id']}',
-        title: '${row['title'] ?? 'Voucher'}',
-      ),
-  ];
+        for (final row in _rows(
+          _data((await _api.dio.get('/merchant/vouchers')).data)['items'],
+        ))
+          MerchantVoucherOption(
+            id: '${row['id']}',
+            title: '${row['title'] ?? 'Voucher'}',
+          ),
+      ];
 
-  Future<void> accept(MerchantSponsorshipItem item) => _api.dio.post(
-    '/sponsorships/${item.id}/accept',
-    data: {'terms_version': item.termsVersion, 'idempotency_key': _uuid.v4()},
-  );
+  Future<void> setConditions(
+    MerchantSponsorshipItem item,
+    List<Map<String, dynamic>> conditions,
+  ) =>
+      _api.dio.put(
+        '/sponsorships/${item.id}/conditions',
+        data: {'conditions': conditions},
+      );
+
+  Future<void> accept(
+    MerchantSponsorshipItem item, {
+    bool acknowledgeUnmet = false,
+  }) =>
+      _api.dio.post(
+        '/sponsorships/${item.id}/accept',
+        data: {
+          'terms_version': item.termsVersion,
+          'idempotency_key': _uuid.v4(),
+          if (acknowledgeUnmet) 'acknowledge_unmet': true,
+        },
+      );
 
   Future<void> decline(MerchantSponsorshipItem item) => _api.dio.post(
-    '/sponsorships/${item.id}/decline',
-    data: {'idempotency_key': _uuid.v4()},
-  );
+        '/sponsorships/${item.id}/decline',
+        data: {'idempotency_key': _uuid.v4()},
+      );
 
   Future<void> counter(
     MerchantSponsorshipItem item, {
@@ -115,21 +132,24 @@ class MerchantApi {
     required int voucherQty,
     required bool promo,
     required String message,
-  }) => _api.dio.post(
-    '/sponsorships/${item.id}/counter',
-    data: {
-      'points': points,
-      'voucher_id': voucherId,
-      'voucher_qty': voucherId == null ? 0 : voucherQty,
-      'promo': promo,
-      if (message.isNotEmpty) 'message': message,
-      'terms_version': item.termsVersion,
-      'idempotency_key': _uuid.v4(),
-    },
-  );
+    List<Map<String, dynamic>>? conditions,
+  }) =>
+      _api.dio.post(
+        '/sponsorships/${item.id}/counter',
+        data: {
+          'points': points,
+          'voucher_id': voucherId,
+          'voucher_qty': voucherId == null ? 0 : voucherQty,
+          'promo': promo,
+          if (message.isNotEmpty) 'message': message,
+          if (conditions != null) 'conditions': conditions,
+          'terms_version': item.termsVersion,
+          'idempotency_key': _uuid.v4(),
+        },
+      );
 
   Future<void> topUp(String planId, int points) => _api.dio.post(
-    '/funding-plans/$planId/merchant-top-up',
-    data: {'points': points, 'idempotency_key': _uuid.v4()},
-  );
+        '/funding-plans/$planId/merchant-top-up',
+        data: {'points': points, 'idempotency_key': _uuid.v4()},
+      );
 }

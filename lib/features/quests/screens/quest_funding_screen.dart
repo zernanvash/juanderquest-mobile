@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -16,6 +17,9 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../pixel/pixel_tag.dart';
+import '../widgets/sponsorship_conditions_widgets.dart';
+import 'sponsor_request_screen.dart';
 
 class QuestFundingScreen extends ConsumerStatefulWidget {
   final String questId;
@@ -160,14 +164,128 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
     final id = _plan?['id']?.toString();
     if (id == null) return;
     await _run(
-        'Round submitted. Sponsor matching can now continue on the web workspace.',
-        () async {
+        tr(
+          context,
+          en: 'Round submitted. You can now ask a merchant to sponsor it.',
+          tl: 'Naisumite ang round. Maaari ka nang humiling sa tindahan.',
+        ), () async {
       final response = await ref.read(apiClientProvider).dio.post(
           '/funding-plans/${Uri.encodeComponent(id)}/submit',
           data: {'idempotency_key': const Uuid().v4()});
       if (response.data['success'] != true) {
         throw Exception(response.data['error']?['message'] ??
             'Funding plan could not be submitted.');
+      }
+    });
+  }
+
+  Future<void> _openAskMerchant() async {
+    final planId = _plan?['id']?.toString();
+    if (planId == null || planId.isEmpty) return;
+    final sent = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            SponsorRequestScreen(questId: widget.questId, planId: planId),
+      ),
+    );
+    if (sent == true && mounted) {
+      await _load();
+    }
+  }
+
+  Future<void> _acceptCounter(Map sponsorship) async {
+    final id = sponsorship['id']?.toString();
+    if (id == null) return;
+    final version = (sponsorship['terms_version'] as num?)?.toInt() ??
+        int.tryParse('${sponsorship['terms_version']}') ??
+        1;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      final response = await ref.read(apiClientProvider).dio.post(
+        '/sponsorships/${Uri.encodeComponent(id)}/accept-counter',
+        data: {
+          'terms_version': version,
+          'idempotency_key': const Uuid().v4(),
+        },
+      );
+      if (response.data['success'] != true) {
+        throw Exception(
+          response.data['error']?['message'] ??
+              'Counter could not be accepted.',
+        );
+      }
+      if (!mounted) return;
+      setState(
+        () => _notice = tr(
+          context,
+          en: 'Merchant counter-offer accepted.',
+          tl: 'Tinanggap ang counter-offer ng tindahan.',
+        ),
+      );
+      await _load();
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final body = e.response?.data;
+      final code = body is Map && body['error'] is Map
+          ? body['error']['code']?.toString()
+          : null;
+      if (code == 'CONDITIONS_NOT_MET') {
+        final rawConds = body is Map && body['data'] is Map
+            ? body['data']['conditions']
+            : sponsorship['conditions'];
+        final parsed = [
+          if (rawConds is List)
+            for (final c in rawConds)
+              if (c is Map)
+                SponsorshipConditionData.fromJson(Map<String, dynamic>.from(c)),
+        ];
+        final unmetDetails = parsed
+            .where((c) => !c.isMet)
+            .map((c) => c.detail.isNotEmpty
+                ? c.detail
+                : conditionLabelText(context, c.type, c.value))
+            .join(' · ');
+        setState(() {
+          _error = unmetDetails.isNotEmpty
+              ? "The shop's conditions aren't met yet. $unmetDetails"
+              : "The shop's conditions aren't met yet.";
+        });
+      } else {
+        final serverMsg = body is Map && body['error'] is Map
+            ? body['error']['message']?.toString()
+            : null;
+        setState(
+          () => _error = serverMsg ?? 'Counter could not be accepted.',
+        );
+      }
+    } catch (err) {
+      if (mounted) {
+        setState(() => _error = err.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _withdraw(String sponsorshipId) async {
+    await _run(
+        tr(
+          context,
+          en: 'Sponsorship request withdrawn.',
+          tl: 'Binawi ang hiling na sponsorship.',
+        ), () async {
+      final response = await ref.read(apiClientProvider).dio.post(
+        '/sponsorships/${Uri.encodeComponent(sponsorshipId)}/withdraw',
+        data: {'idempotency_key': const Uuid().v4()},
+      );
+      if (response.data['success'] != true) {
+        throw Exception(
+          response.data['error']?['message'] ?? 'Could not withdraw request.',
+        );
       }
     });
   }
@@ -292,8 +410,10 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
                               ],
                               if (_plan == null)
                                 _createCard(context, grid)
-                              else
+                              else ...[
                                 _planCard(context, grid, status, canContribute),
+                                _sponsorshipsPanel(context, grid),
+                              ],
                               SizedBox(height: grid.px(3)),
                               _message(
                                 context,
@@ -455,9 +575,15 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
           ],
           if (['pending_sponsors', 'scheduled'].contains(status)) ...[
             SizedBox(height: grid.px(2)),
-            Text(
-              'Use the web merchant workspace to invite sponsors. You can cancel this round here.',
-              style: PixelType.body(context, color: PixelPalette.slate),
+            PixelButton(
+              key: const ValueKey('funding_ask_merchant'),
+              label: tr(
+                context,
+                en: 'ASK A MERCHANT',
+                tl: 'HUMILING SA TINDAHAN',
+              ),
+              expand: true,
+              onPressed: _busy ? null : _openAskMerchant,
             ),
             SizedBox(height: grid.px(2)),
             PixelButton(
@@ -495,6 +621,133 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _sponsorshipsPanel(BuildContext context, PixelGrid grid) {
+    final rows =
+        (_plan?['sponsorships'] as List? ?? const []).whereType<Map>().toList();
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(top: grid.px(3)),
+      child: PixelPanel(
+        style: PixelBoxStyle.parchment,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              tr(
+                context,
+                en: 'SPONSORSHIP REQUESTS',
+                tl: 'MGA HILING NA SPONSORSHIP',
+              ),
+              style: PixelType.title(context),
+            ),
+            SizedBox(height: grid.px(2)),
+            for (var i = 0; i < rows.length; i++) ...[
+              if (i > 0)
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                  child: Container(
+                    height: grid.unit,
+                    color: PixelPalette.paperDim,
+                  ),
+                ),
+              _sponsorshipRow(context, grid, rows[i]),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sponsorshipRow(
+    BuildContext context,
+    PixelGrid grid,
+    Map sponsorship,
+  ) {
+    final id = sponsorship['id']?.toString() ?? '';
+    final shopName = sponsorship['merchant_name']?.toString() ??
+        sponsorship['merchant_id']?.toString() ??
+        'Merchant';
+    final status =
+        (sponsorship['status']?.toString() ?? 'requested').toUpperCase();
+    final pts = (sponsorship['points'] as num?)?.toInt() ?? 0;
+    final vQty = (sponsorship['voucher_qty'] as num?)?.toInt() ?? 0;
+    final rawConds = sponsorship['conditions'];
+    final conditions = [
+      if (rawConds is List)
+        for (final c in rawConds)
+          if (c is Map)
+            SponsorshipConditionData.fromJson(Map<String, dynamic>.from(c)),
+    ];
+    final isCountered = status == 'COUNTERED';
+    final isRequested = status == 'REQUESTED';
+    final counterPts = (sponsorship['counter_points'] as num?)?.toInt() ?? pts;
+    final counterVQty =
+        (sponsorship['counter_voucher_qty'] as num?)?.toInt() ?? vQty;
+    final counterMessage = sponsorship['counter_message']?.toString() ?? '';
+
+    return Column(
+      key: ValueKey('funding_sponsorship_$id'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: grid.px(1),
+          runSpacing: grid.px(1),
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              shopName,
+              style:
+                  PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
+            ),
+            PixelTag(status),
+            if (pts > 0) PixelTag('$pts pts'),
+            if (vQty > 0) PixelTag('$vQty vouchers'),
+          ],
+        ),
+        if (isCountered) ...[
+          SizedBox(height: grid.px(1)),
+          Text(
+            tr(
+              context,
+              en: 'Counter terms: $counterPts pts${counterVQty > 0 ? ' · $counterVQty vouchers' : ''}${counterMessage.isNotEmpty ? ' · $counterMessage' : ''}',
+              tl: 'Counter terms: $counterPts pts${counterVQty > 0 ? ' · $counterVQty vouchers' : ''}${counterMessage.isNotEmpty ? ' · $counterMessage' : ''}',
+            ),
+            style: PixelType.small(context, color: PixelPalette.goldDeep),
+          ),
+        ],
+        if (conditions.isNotEmpty) ...[
+          SizedBox(height: grid.px(1.5)),
+          SponsorshipConditionsList(conditions: conditions),
+        ],
+        if (isCountered || isRequested) ...[
+          SizedBox(height: grid.px(1.5)),
+          Wrap(
+            spacing: grid.px(2),
+            runSpacing: grid.px(1),
+            children: [
+              if (isCountered)
+                PixelButton(
+                  key: ValueKey('creator_accept_counter_$id'),
+                  label: tr(
+                    context,
+                    en: 'ACCEPT COUNTER',
+                    tl: 'TANGGAPIN ANG COUNTER',
+                  ),
+                  onPressed: _busy ? null : () => _acceptCounter(sponsorship),
+                ),
+              PixelButton(
+                key: ValueKey('creator_withdraw_$id'),
+                label: tr(context, en: 'WITHDRAW', tl: 'BAWIIN'),
+                variant: PixelButtonVariant.danger,
+                onPressed: _busy ? null : () => _withdraw(id),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 

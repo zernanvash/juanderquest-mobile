@@ -6,6 +6,7 @@ import 'package:juanderquest_app/features/navigation/widgets/trail_offer_sheet.d
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/features/profile/screens/affiliate_application_screen.dart';
 
@@ -48,6 +49,9 @@ import 'package:juanderquest_app/features/spots/models/hidden_gem_model.dart';
 import 'package:juanderquest_app/features/spots/providers/hidden_gem_provider.dart';
 import 'package:juanderquest_app/features/notifications/screens/notifications_screen.dart';
 import 'package:juanderquest_app/features/quests/screens/quest_funding_screen.dart';
+import 'package:juanderquest_app/features/quests/screens/sponsor_request_screen.dart';
+import 'package:juanderquest_app/features/quests/widgets/sponsorship_conditions_widgets.dart';
+import 'package:juanderquest_app/features/spots/theater/theater_title_block.dart';
 import 'package:juanderquest_app/features/trail/trail_catalog_screen.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/providers/cultural_quiz_provider.dart';
@@ -2430,6 +2434,120 @@ void main() {
         1.4,
       );
     });
+
+    for (final entry in const {
+      'small portrait': Size(320, 568),
+      'small landscape': Size(568, 320),
+    }.entries) {
+      testWidgets(
+          'Plan 108 SponsorRequestScreen does not overflow in ${entry.key} at 2.0x text scale',
+          (tester) async {
+        final client = ApiClient(enableRetries: false);
+        client.dio.interceptors.add(InterceptorsWrapper(
+          onRequest: (options, handler) => handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {
+                'items': [
+                  {
+                    'id': 'm-long',
+                    'name':
+                        'Dagupan Seaside Heritage Grill & Local Pasalubong Empanada Store',
+                    'municipality': 'Dagupan City',
+                    'category': 'dining',
+                    'description':
+                        'Supporting coastal cleanups and eco heritage quests across Pangasinan.',
+                    'same_municipality': true,
+                    'vouchers': [
+                      {
+                        'id': 'v1',
+                        'title': 'Free coastal refreshment drink voucher',
+                        'description': ''
+                      },
+                    ],
+                  },
+                ],
+                'page': 1,
+              },
+            },
+          )),
+        ));
+        await testScreenOverflow(
+          tester,
+          ProviderScope(
+            overrides: [apiClientProvider.overrideWithValue(client)],
+            child: const SponsorRequestScreen(
+              questId: 'quest-1',
+              planId: 'plan-1',
+            ),
+          ),
+          entry.value,
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'Plan 108 SetConditionsSheet & SponsoredBy title block do not overflow in ${entry.key} at 2.0x text scale',
+          (tester) async {
+        final longSpot = dummySpot.copyWith(
+          sponsors: const [
+            SpotSponsor(
+              name:
+                  'Dagupan Waterfront Heritage Grill and Pasalubong Artisan Roastery',
+              questId: 'q1',
+            ),
+            SpotSponsor(name: 'Bolinao Eco Tour Co-op', questId: 'q1'),
+            SpotSponsor(name: 'Alaminos Island Guides', questId: 'q1'),
+          ],
+        );
+        await testScreenOverflow(
+          tester,
+          SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Builder(
+                  builder: (ctx) => PixelButton(
+                    label: 'Open Conditions',
+                    onPressed: () => showSetConditionsSheet(ctx),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TheaterFirstViewport(
+                  spot: longSpot,
+                  scrollOffset: 0,
+                  hasPhoto: false,
+                  onDirections: () {},
+                  onPlayQuest: () {},
+                ),
+              ],
+            ),
+          ),
+          entry.value,
+          2.0,
+          clampScale: false,
+        );
+        await tester.tap(find.text('Open Conditions'));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('cond_sheet_save')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets(
+          'Plan 108 QuestDetailScreen long sponsor does not overflow in ${entry.key} at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          QuestDetailScreen(quest: dummyQuest),
+          entry.value,
+          2.0,
+          clampScale: false,
+        );
+      });
+    }
 
     testWidgets('TrailCatalogScreen does not overflow in small portrait',
         (tester) async {

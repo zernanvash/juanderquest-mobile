@@ -28,6 +28,7 @@ import '../../celebrations/celebration.dart';
 import '../models/quest_model.dart';
 import '../pixel/checkpoint_map_preview.dart';
 import '../pixel/pixel_tag.dart';
+import '../widgets/sponsorship_conditions_widgets.dart';
 import '../pixel/saved_quests.dart';
 import '../pixel/task_icons.dart';
 import '../../ar_experience/core/ar_task.dart';
@@ -995,63 +996,82 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
 
   /// v0.3.1: the title block fades from the photo into the brand dark brown.
   Widget _heroTitle(BuildContext context, PixelGrid grid, QuestModel quest,
-          {required bool overPhoto}) =>
-      Container(
-        key: const Key('quest_title_fade'),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: overPhoto
-                ? [
-                    PixelPalette.woodNight.withValues(alpha: 0),
-                    PixelPalette.woodNight.withValues(alpha: 0.72),
-                    PixelPalette.woodNight.withValues(alpha: 0.94),
-                  ]
-                : const [PixelPalette.wood, PixelPalette.woodNight],
-            stops: overPhoto ? const [0, 0.38, 1] : null,
+      {required bool overPhoto}) {
+    final sponsorRows = quest.funding?.sponsors ?? const [];
+    final sponsorNames = [
+      for (final s in sponsorRows)
+        if ((s['name']?.toString().trim() ?? '').isNotEmpty)
+          s['name'].toString().trim(),
+    ];
+    final firstLogo = sponsorRows
+        .map((s) => s['logo']?.toString().trim() ?? '')
+        .firstWhere((url) => url.isNotEmpty, orElse: () => '');
+    return Container(
+      key: const Key('quest_title_fade'),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: overPhoto
+              ? [
+                  PixelPalette.woodNight.withValues(alpha: 0),
+                  PixelPalette.woodNight.withValues(alpha: 0.72),
+                  PixelPalette.woodNight.withValues(alpha: 0.94),
+                ]
+              : const [PixelPalette.wood, PixelPalette.woodNight],
+          stops: overPhoto ? const [0, 0.38, 1] : null,
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        grid.px(3),
+        overPhoto ? grid.px(16) : grid.px(2),
+        grid.px(3),
+        grid.px(2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PixelTag(
+            '${quest.categoryDisplay} · Eco-Quest',
+            style: PixelBoxStyle.gold,
+            textColor: PixelPalette.ink,
+            maxWidth: grid.px(140),
           ),
-        ),
-        padding: EdgeInsets.fromLTRB(
-          grid.px(3),
-          overPhoto ? grid.px(16) : grid.px(2),
-          grid.px(3),
-          grid.px(2),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PixelTag(
-              '${quest.categoryDisplay} · Eco-Quest',
-              style: PixelBoxStyle.gold,
-              textColor: PixelPalette.ink,
-              maxWidth: grid.px(140),
-            ),
+          SizedBox(height: grid.px(1)),
+          ShadowText(
+            quest.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            shadow: PixelPalette.woodNight,
+            style: PixelType.title(context, color: PixelPalette.cream),
+          ),
+          if (sponsorNames.isNotEmpty) ...[
             SizedBox(height: grid.px(1)),
-            ShadowText(
-              quest.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              shadow: PixelPalette.woodNight,
-              style: PixelType.title(context, color: PixelPalette.cream),
-            ),
-            SizedBox(height: grid.px(1)),
-            Text(
-              quest.locationName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: PixelType.small(context, color: PixelPalette.woodLight),
-            ),
-            SizedBox(height: grid.px(2)),
-            PixelButton(
-              label: 'Directions',
-              style: PixelBoxStyle.wood,
-              textColor: PixelPalette.white,
-              onPressed: _openDirections,
+            SponsoredByLine(
+              key: const Key('quest_sponsored_by'),
+              names: sponsorNames,
+              logoUrl: firstLogo,
+              textColor: PixelPalette.sunLight,
             ),
           ],
-        ),
-      );
+          SizedBox(height: grid.px(1)),
+          Text(
+            quest.locationName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: PixelType.small(context, color: PixelPalette.woodLight),
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelButton(
+            label: 'Directions',
+            style: PixelBoxStyle.wood,
+            textColor: PixelPalette.white,
+            onPressed: _openDirections,
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _hero(
     BuildContext context,

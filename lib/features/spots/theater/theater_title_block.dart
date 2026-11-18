@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../../quests/widgets/sponsorship_conditions_widgets.dart';
 import '../explore/spot_filter_state.dart';
 import '../models/spot_model.dart';
 import 'theater_still_photo.dart';
@@ -31,6 +33,7 @@ class TheaterFirstViewport extends StatelessWidget {
     required this.onDirections,
     required this.onPlayQuest,
     this.onAddPhoto,
+    this.onOpenSponsoredQuest,
     this.hasQuests = false,
     this.hasPhoto = true,
   });
@@ -40,6 +43,7 @@ class TheaterFirstViewport extends StatelessWidget {
   final VoidCallback onDirections;
   final VoidCallback onPlayQuest;
   final VoidCallback? onAddPhoto;
+  final ValueChanged<String>? onOpenSponsoredQuest;
   final bool hasQuests;
 
   /// Plan 98 Option A: with no working photo there is nothing to look at, so
@@ -72,6 +76,7 @@ class TheaterFirstViewport extends StatelessWidget {
               onDirections: onDirections,
               onPlayQuest: onPlayQuest,
               onAddPhoto: onAddPhoto,
+              onOpenSponsoredQuest: onOpenSponsoredQuest,
               hasQuests: hasQuests,
             ),
           ],
@@ -105,6 +110,7 @@ class TheaterFirstViewport extends StatelessWidget {
               onDirections: onDirections,
               onPlayQuest: onPlayQuest,
               onAddPhoto: onAddPhoto,
+              onOpenSponsoredQuest: onOpenSponsoredQuest,
               hasQuests: hasQuests,
             ),
           ),
@@ -121,6 +127,7 @@ class _HeroTitleBlock extends StatelessWidget {
     required this.onDirections,
     required this.onPlayQuest,
     this.onAddPhoto,
+    this.onOpenSponsoredQuest,
     this.hasQuests = false,
   });
 
@@ -129,6 +136,7 @@ class _HeroTitleBlock extends StatelessWidget {
   final VoidCallback onDirections;
   final VoidCallback onPlayQuest;
   final VoidCallback? onAddPhoto;
+  final ValueChanged<String>? onOpenSponsoredQuest;
   final bool hasQuests;
 
   @override
@@ -184,6 +192,28 @@ class _HeroTitleBlock extends StatelessWidget {
           '$townText · $categoryText',
           style: PixelType.small(context, color: PixelPalette.mist),
         ),
+
+        if (spot.sponsors.isNotEmpty) ...[
+          SizedBox(height: grid.px(1)),
+          SponsoredByLine(
+            key: const Key('spot_sponsored_by'),
+            names: [for (final s in spot.sponsors) s.name],
+            logoUrl: spot.sponsors
+                .map((s) => s.logo?.trim() ?? '')
+                .firstWhere((l) => l.isNotEmpty, orElse: () => ''),
+            textColor: PixelPalette.sunLight,
+            onTap: () {
+              final questId = spot.sponsors.first.questId;
+              if (questId.isEmpty) return;
+              if (onOpenSponsoredQuest != null) {
+                onOpenSponsoredQuest!(questId);
+              } else {
+                GoRouter.maybeOf(context)
+                    ?.push('/quests/${Uri.encodeComponent(questId)}');
+              }
+            },
+          ),
+        ],
 
         // 1-line teaser (first sentence)
         if (spot.teaser.isNotEmpty) ...[
