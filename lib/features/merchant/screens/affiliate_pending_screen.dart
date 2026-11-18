@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -9,10 +11,12 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/merchant_models.dart';
 import '../providers/merchant_hub_provider.dart';
 
@@ -67,7 +71,7 @@ class AffiliatePendingScreen extends ConsumerWidget {
                             grid.gutter,
                             grid.px(8) + MediaQuery.paddingOf(context).bottom,
                           ),
-                          children: _body(context, grid, hub),
+                          children: _body(context, ref, grid, hub),
                         ),
                       ),
                     ),
@@ -83,6 +87,7 @@ class AffiliatePendingScreen extends ConsumerWidget {
 
   List<Widget> _body(
     BuildContext context,
+    WidgetRef ref,
     PixelGrid grid,
     MerchantHubStatus hub,
   ) {
@@ -116,7 +121,7 @@ class AffiliatePendingScreen extends ConsumerWidget {
         if (hub.state == MerchantHubState.needsChanges ||
             hub.state == MerchantHubState.rejected) ...[
           gap,
-          _feedback(context, grid, hub, app),
+          _feedback(context, ref, grid, hub, app),
         ],
       ],
       gap,
@@ -147,6 +152,15 @@ class AffiliatePendingScreen extends ConsumerWidget {
       MerchantHubState.needsChanges => ('Changes requested', 'ACTION NEEDED'),
       MerchantHubState.rejected => ('Not approved', 'CLOSED'),
       MerchantHubState.approvedMerchant => ('Approved', 'APPROVED'),
+      _ when app['status'] == 'appealed' => (
+          tr(context, en: 'Appeal under review', tl: 'Sinusuri ang apela'),
+          tr(context, en: 'APPEALED', tl: 'INAPELA'),
+        ),
+      _ when hub.reapplicationsUsed > 0 && app['status'] == 'received' => (
+          tr(context,
+              en: 'Resubmitted for review', tl: 'Ipinasa muli para suriin'),
+          tr(context, en: 'RESUBMITTED', tl: 'IPINASA MULI'),
+        ),
       _ => (
           'In review by tourism team',
           app['status'] == 'in_review' ? 'IN REVIEW' : 'RECEIVED',
@@ -249,6 +263,7 @@ class AffiliatePendingScreen extends ConsumerWidget {
 
   Widget _feedback(
     BuildContext context,
+    WidgetRef ref,
     PixelGrid grid,
     MerchantHubStatus hub,
     Map<String, dynamic> app,
@@ -277,15 +292,113 @@ class AffiliatePendingScreen extends ConsumerWidget {
             ),
           ],
           SizedBox(height: grid.px(2)),
-          PixelButton(
-            key: const ValueKey('affiliate_pending_edit'),
-            label: rejected ? 'Start new application' : 'Edit & resubmit',
-            expand: true,
-            onPressed: () => context.push('/affiliate?edit=1'),
-          ),
+          if (rejected && !hub.canReapply)
+            Text(
+              tr(
+                context,
+                en: 'This application was already resubmitted or appealed '
+                    '${MerchantHubStatus.maxReapplications} times.',
+                tl: 'Naipasa muli o naiapela na ang aplikasyong ito nang '
+                    '${MerchantHubStatus.maxReapplications} beses.',
+              ),
+              key: const ValueKey('affiliate_pending_limit'),
+              style: PixelType.body(context, color: PixelPalette.white),
+            )
+          else
+            PixelButton(
+              key: const ValueKey('affiliate_pending_edit'),
+              label: rejected
+                  ? tr(context,
+                      en: 'Edit and resubmit', tl: 'I-edit at ipasa muli')
+                  : 'Edit & resubmit',
+              expand: true,
+              onPressed: () => context.push('/affiliate?edit=1'),
+            ),
+          if (rejected && hub.canReapply) ...[
+            SizedBox(height: grid.px(2)),
+            PixelButton(
+              key: const ValueKey('affiliate_pending_appeal'),
+              label: tr(context, en: 'Appeal', tl: 'Umapela'),
+              variant: PixelButtonVariant.secondary,
+              expand: true,
+              onPressed: () => _appeal(context, ref, '${app['id'] ?? ''}'),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  /// Owner 2026-11-18: appeal a rejection with a message; the same
+  /// application goes back to the review queue as `appealed`.
+  Future<void> _appeal(BuildContext context, WidgetRef ref, String id) async {
+    final controller = TextEditingController();
+    final message = await showPixelDialog<String>(
+      context: context,
+      title: tr(context, en: 'Appeal the decision', tl: 'Umapela sa desisyon'),
+      message: tr(
+        context,
+        en: 'Tell the tourism team why they should look again (at least 10 characters).',
+        tl: 'Sabihin sa tourism team kung bakit dapat nila itong suriin muli (hindi bababa sa 10 titik).',
+      ),
+      content: PixelTextField(
+        key: const ValueKey('affiliate_appeal_message'),
+        controller: controller,
+        label: tr(context, en: 'Your appeal', tl: 'Ang iyong apela'),
+        maxLines: 4,
+      ),
+      actions: [
+        Builder(
+          builder: (dialogContext) => PixelButton(
+            label: tr(context, en: 'Cancel', tl: 'Kanselahin'),
+            variant: PixelButtonVariant.ghost,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+          ),
+        ),
+        Builder(
+          builder: (dialogContext) => PixelButton(
+            key: const ValueKey('affiliate_appeal_send'),
+            label: tr(context, en: 'Send appeal', tl: 'Ipadala ang apela'),
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+          ),
+        ),
+      ],
+    );
+    controller.dispose();
+    if (message == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    if (message.length < 10) {
+      showPixelToastOn(
+        messenger,
+        tr(context,
+            en: 'Write at least 10 characters.',
+            tl: 'Sumulat ng hindi bababa sa 10 titik.'),
+      );
+      return;
+    }
+    final sent = tr(context,
+        en: 'Appeal sent to the tourism team.',
+        tl: 'Naipadala ang apela sa tourism team.');
+    final failed = tr(context,
+        en: 'Could not send the appeal. Try again.',
+        tl: 'Hindi naipadala ang apela. Subukan muli.');
+    try {
+      await ref
+          .read(apiClientProvider)
+          .dio
+          .post('/affiliate/applications/$id/appeal', data: {
+        'message': message,
+      });
+      ref.invalidate(merchantHubStatusProvider);
+      showPixelToastOn(messenger, sent);
+    } on DioException catch (error) {
+      final body = error.response?.data;
+      final serverMessage = body is Map && body['error'] is Map
+          ? body['error']['message']?.toString()
+          : null;
+      showPixelToastOn(messenger, serverMessage ?? failed);
+    }
   }
 
   Widget _approved(BuildContext context, PixelGrid grid) {

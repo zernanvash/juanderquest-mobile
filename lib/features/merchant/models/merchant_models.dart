@@ -47,7 +47,11 @@ class MerchantHubStatus {
       );
     }
     final state = switch (app?['status']) {
-      'received' || 'in_review' || 'approved' => MerchantHubState.pendingReview,
+      'received' ||
+      'in_review' ||
+      'appealed' ||
+      'approved' =>
+        MerchantHubState.pendingReview,
       'needs_changes' => MerchantHubState.needsChanges,
       'rejected' => MerchantHubState.rejected,
       _ => MerchantHubState.none,
@@ -55,11 +59,22 @@ class MerchantHubStatus {
     return MerchantHubStatus(state: state, application: app);
   }
 
+  /// Owner 2026-11-18: a rejected application can be re-opened (edit and
+  /// resubmit, or appeal) this many times in total; the backend enforces it.
+  static const maxReapplications = 3;
+
+  int get reapplicationsUsed => _int(application?['resubmission_count']);
+
+  bool get canReapply =>
+      state == MerchantHubState.rejected &&
+      reapplicationsUsed < maxReapplications;
+
   /// The screen this state opens.
   String get route => switch (state) {
         MerchantHubState.approvedMerchant => '/merchant',
         MerchantHubState.pendingReview ||
-        MerchantHubState.needsChanges =>
+        MerchantHubState.needsChanges ||
+        MerchantHubState.rejected =>
           '/affiliate/pending',
         _ => '/affiliate',
       };
@@ -68,6 +83,7 @@ class MerchantHubStatus {
         MerchantHubState.approvedMerchant => 'Merchant dashboard',
         MerchantHubState.pendingReview => 'Application pending',
         MerchantHubState.needsChanges => 'Changes requested',
+        MerchantHubState.rejected => 'Application not approved',
         _ => 'Merchant affiliate',
       };
 
@@ -78,6 +94,8 @@ class MerchantHubStatus {
           'The tourism team is reviewing your application',
         MerchantHubState.needsChanges =>
           'The reviewer asked for changes to your application',
+        MerchantHubState.rejected =>
+          'Edit and resubmit, or appeal the decision',
         _ => 'Apply to take part in tourism promotions',
       };
 }

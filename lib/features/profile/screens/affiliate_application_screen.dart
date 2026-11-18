@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/config/map_config.dart';
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
@@ -240,7 +241,9 @@ class _AffiliateApplicationScreenState
       _success = null;
     });
     try {
-      final isNeedsChanges = _existing?['status'] == 'needs_changes';
+      // Needs-changes and rejected applications are edited in place.
+      final isNeedsChanges = _existing?['status'] == 'needs_changes' ||
+          _existing?['status'] == 'rejected';
       final appId = _existing?['id']?.toString();
 
       final payload = {
@@ -587,16 +590,22 @@ class _AffiliateApplicationScreenState
                                   label: _submitting
                                       ? 'Submitting'
                                       : status == 'received' ||
-                                              status == 'in_review'
+                                              status == 'in_review' ||
+                                              status == 'appealed'
                                           ? 'Application Under Review'
                                           : status == 'needs_changes'
                                               ? 'Resubmit Revised Application'
-                                              : 'Submit Application',
+                                              : status == 'rejected'
+                                                  ? tr(context,
+                                                      en: 'Resubmit Application',
+                                                      tl: 'Ipasa Muli ang Aplikasyon')
+                                                  : 'Submit Application',
                                   expand: true,
                                   loading: _submitting,
                                   onPressed: _submitting ||
                                           status == 'received' ||
-                                          status == 'in_review'
+                                          status == 'in_review' ||
+                                          status == 'appealed'
                                       ? null
                                       : _submit,
                                 ),

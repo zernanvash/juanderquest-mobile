@@ -162,7 +162,11 @@ void main() {
       expect(
           MerchantHubStatus.fromResponse(
               _me({..._application, 'status': 'rejected'})).route,
-          '/affiliate');
+          '/affiliate/pending');
+      expect(
+          MerchantHubStatus.fromResponse(
+              _me({..._application, 'status': 'appealed'})).state,
+          MerchantHubState.pendingReview);
       final approved = MerchantHubStatus.fromResponse(
           _me(_application, merchant: {'id': 'm1', 'name': 'Bonuan Grill'}));
       expect(approved.route, '/merchant');
@@ -295,6 +299,126 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('affiliate_pending_edit')));
       await _settle(tester);
       expect(find.text('Resubmit Revised Application'), findsOneWidget);
+    });
+
+    Map<String, Object?> rejected({int count = 0}) => _me({
+          ..._application,
+          'status': 'rejected',
+          'applicant_feedback': 'We could not verify the business permit.',
+          'resubmission_count': '$count',
+        });
+
+    testWidgets('rejected shows the reason with resubmit and appeal actions',
+        (tester) async {
+      final calls = <_Call>[];
+      await _pump(
+          tester, _api({'GET /affiliate/applications/me': rejected()}, calls),
+          initial: '/affiliate/pending');
+      await _settle(tester);
+      expect(find.text('We could not verify the business permit.'),
+          findsOneWidget);
+      expect(find.text('Edit and resubmit'), findsOneWidget);
+      expect(find.byKey(const ValueKey('affiliate_pending_appeal')),
+          findsOneWidget);
+    });
+
+    testWidgets('rejected with no attempts left hides both actions',
+        (tester) async {
+      final calls = <_Call>[];
+      await _pump(tester,
+          _api({'GET /affiliate/applications/me': rejected(count: 3)}, calls),
+          initial: '/affiliate/pending');
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('affiliate_pending_limit')),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('affiliate_pending_edit')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('affiliate_pending_appeal')), findsNothing);
+    });
+
+    testWidgets('edit and resubmit opens the prefilled form and posts resubmit',
+        (tester) async {
+      final calls = <_Call>[];
+      await _pump(
+          tester,
+          _api({
+            'GET /affiliate/applications/me': rejected(),
+            'POST /affiliate/applications/app-1/resubmit': {
+              'success': true,
+              'data': {..._application, 'resubmission_count': 1},
+            },
+          }, calls),
+          initial: '/affiliate/pending',
+          extra: [
+            jdqMapFactoryProvider.overrideWithValue(() => FakeJdqMap()),
+            mapStyleProvider.overrideWith((ref) async => '{}'),
+          ]);
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('affiliate_pending_edit')));
+      await _settle(tester);
+      expect(find.text('Resubmit Application'), findsOneWidget);
+      expect(
+          tester
+              .widget<TextField>(find.byType(TextField).first)
+              .controller!
+              .text,
+          'Bonuan Grill');
+      final submit = find.byKey(const ValueKey('affiliate_submit'));
+      await tester.tap(submit);
+      await _settle(tester);
+      await tester
+          .tap(find.byKey(const ValueKey('affiliate_declaration_checkbox')));
+      await tester.pump();
+      await tester.tap(submit);
+      await _settle(tester);
+      final post = calls.where((c) => c.method == 'POST').toList();
+      expect(
+          post.map((c) => c.path), ['/affiliate/applications/app-1/resubmit']);
+      expect((post.single.data as Map)['business_name'], 'Bonuan Grill');
+    });
+
+    testWidgets('appeal sends the message and shows the appealed status',
+        (tester) async {
+      final calls = <_Call>[];
+      var appealed = false;
+      final api = ApiClient(enableRetries: false);
+      api.dio.interceptors.insert(
+        0,
+        InterceptorsWrapper(onRequest: (options, handler) {
+          calls.add(_Call(options.method, options.path, options.data));
+          if (options.method == 'POST') appealed = true;
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: appealed
+                ? _me({
+                    ..._application,
+                    'status': 'appealed',
+                    'resubmission_count': 1,
+                  })
+                : rejected(),
+          ));
+        }),
+      );
+      await _pump(tester, api, initial: '/affiliate/pending');
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('affiliate_pending_appeal')));
+      await _settle(tester);
+      await tester.enterText(
+          find.descendant(
+              of: find.byKey(const ValueKey('affiliate_appeal_message')),
+              matching: find.byType(EditableText)),
+          'Our permit was issued last week, number 2026-123.');
+      await tester.tap(find.byKey(const ValueKey('affiliate_appeal_send')));
+      await _settle(tester);
+      final post = calls.singleWhere((c) => c.method == 'POST');
+      expect(post.path, '/affiliate/applications/app-1/appeal');
+      expect((post.data as Map)['message'],
+          'Our permit was issued last week, number 2026-123.');
+      expect(find.text('APPEALED'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('affiliate_pending_appeal')), findsNothing);
     });
 
     testWidgets('approved shows the workspace button', (tester) async {
