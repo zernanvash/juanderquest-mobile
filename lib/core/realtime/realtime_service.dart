@@ -15,7 +15,11 @@ abstract interface class RealtimeChannel {
 typedef RealtimeConnector = RealtimeChannel Function(Uri uri);
 
 class _WebSocketRealtimeChannel implements RealtimeChannel {
-  _WebSocketRealtimeChannel(Uri uri) : _channel = WebSocketChannel.connect(uri);
+  _WebSocketRealtimeChannel(Uri uri)
+      : _channel = WebSocketChannel.connect(uri) {
+    // A failed handshake also ends [stream]; keep `ready` from being unhandled.
+    unawaited(_channel.ready.catchError((_) {}));
+  }
 
   final WebSocketChannel _channel;
 
