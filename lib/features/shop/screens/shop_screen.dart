@@ -398,26 +398,17 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           2 => '${cosmetics.teasers.length} soon',
           _ => '${cosmetics.owned.length} owned',
         };
-    Widget pair(int a, int b) => IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                  child: _categoryCard(context, grid, _categories[a], count)),
-              SizedBox(width: grid.px(2)),
-              Expanded(
-                  child: _categoryCard(context, grid, _categories[b], count)),
-            ],
-          ),
-        );
+    // Owner 2026-11-18: "Move merchant on top and the cosmetics and others
+    // below to allow scalability": the merchant hub first, then one
+    // full-width row per category, so more categories fit later.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        pair(0, 1),
-        SizedBox(height: grid.px(2)),
-        pair(2, 3),
-        SizedBox(height: grid.px(2)),
         _merchantHubCard(context, grid),
+        for (final category in _categories) ...[
+          SizedBox(height: grid.px(2)),
+          _categoryCard(context, grid, category, count),
+        ],
       ],
     );
   }

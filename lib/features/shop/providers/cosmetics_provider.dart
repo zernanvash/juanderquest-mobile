@@ -101,6 +101,9 @@ class CosmeticsNotifier extends StateNotifier<CosmeticsState> {
           .dio
           .put('/me/cosmetics/loadout', data: {key: clear ? null : item.id});
       await load();
+      // Owner 2026-11-18: "Cosmetics is not showing up on profile despite
+      // being equipped". The Passport reads the signed-in user's cosmetics.
+      await ref.read(authProvider.notifier).refreshProfile();
       return null;
     } on DioException catch (e) {
       return e.response?.data?['error']?['message']?.toString() ??

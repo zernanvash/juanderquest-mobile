@@ -63,7 +63,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
   bool _appResumed = true;
   late final Future<String> _style;
   String _pinSignature = '';
-  bool _showDoneQuests = false; // Plan 100 WP-9
+  // Owner 2026-11-18: done quests show greyed out; DONE hides them.
+  bool _showDoneQuests = true;
   bool _deepLinkHandled = false;
 
   @override
@@ -634,8 +635,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       visibleSpots = const [];
     }
 
-    // Plan 100 WP-9 (owner: "shadow faded … default hide it totally"):
-    // finished quests are hidden unless "Show done quests" is on.
+    // Owner 2026-11-18: "Once a Quest is done, it should be grey out and
+    // there should be an option to hide it" (replaces Plan 100's hide-by-default).
     final questDone = mapQuestDone(ref.watch(submissionProvider).submissions);
     final hasDoneQuests = visibleQuests.any(questDone);
     visibleQuests = mapVisibleQuests(
@@ -785,9 +786,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                       child: Semantics(
                         button: true,
                         toggled: _showDoneQuests,
-                        label: tr(context,
-                            en: 'Show done quests',
-                            tl: 'Ipakita ang tapos na quest'),
+                        label: _showDoneQuests
+                            ? tr(context,
+                                en: 'Hide done quests',
+                                tl: 'Itago ang tapos na quest')
+                            : tr(context,
+                                en: 'Show done quests',
+                                tl: 'Ipakita ang tapos na quest'),
                         child: ExcludeSemantics(
                           child: PixelChip(
                             tr(context, en: 'DONE', tl: 'TAPOS'),
