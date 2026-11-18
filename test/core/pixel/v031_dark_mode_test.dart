@@ -60,7 +60,15 @@ void main() {
     expect(page.color, PixelSurface.darkPage);
     expect(_band(tester, 'PAGE TITLE'), PixelText3DColors.cream.band);
     expect(_band(tester, 'PANEL TITLE'), PixelText3DColors.gold.band);
-  });
+  }, skip: !PixelSurface.available);
+
+  // Owner 2026-11-18 (v0.3.3): dark mode is off until it is redone.
+  testWidgets('a saved dark mode "on" is ignored while dark mode is off',
+      (tester) async {
+    await tester.pumpWidget(_page(true));
+    expect(find.byKey(const ValueKey('pixel_dark_page')), findsNothing);
+    expect(_band(tester, 'PAGE TITLE'), PixelText3DColors.gold.band);
+  }, skip: PixelSurface.available);
 }
 
 String jsonOf(PixelSettings s) => jsonEncode(s.toJson());

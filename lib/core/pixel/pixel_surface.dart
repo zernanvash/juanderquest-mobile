@@ -19,8 +19,14 @@ class PixelSurface extends InheritedWidget {
   static bool isDark(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<PixelSurface>()?.dark ?? false;
 
-  /// True when the user turned dark mode on.
-  static bool darkMode(BuildContext context) => PixelScope.of(context).darkMode;
+  /// Owner 2026-11-18 (v0.3.3): dark mode is off until it is redone ("it
+  /// dont look good, we have this fixed later"). The switch is gone from
+  /// Settings and a saved "on" is ignored.
+  static const available = false;
+
+  /// True when the user turned dark mode on (and dark mode is available).
+  static bool darkMode(BuildContext context) =>
+      available && PixelScope.of(context).darkMode;
 
   @override
   bool updateShouldNotify(PixelSurface oldWidget) => oldWidget.dark != dark;
