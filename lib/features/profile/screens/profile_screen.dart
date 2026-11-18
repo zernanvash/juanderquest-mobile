@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
+import '../../../core/search/fuzzy_search.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -11,6 +12,7 @@ import '../../../core/pixel/pixel_frame.dart';
 import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
+import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
@@ -37,6 +39,9 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isFollowing = false;
   late String _tab;
+
+  /// Owner 2026-11-18 (v0.3.3): filter for the posted spots.
+  String _spotFilter = '';
 
   static String _normalizeTab(String? raw) =>
       switch (raw?.trim().toLowerCase()) {
@@ -552,10 +557,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String targetHandle,
     AsyncValue<List<SpotModel>> userSpotsAsync,
   ) {
-    final count = userSpotsAsync.maybeWhen(
-      data: (spots) => '${spots.length}',
-      orElse: () => null,
-    );
     // v0.3: one panel for the section, plain rows inside.
     return PixelPanel(
       style: PixelBoxStyle.parchment,
@@ -565,12 +566,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: PixelSectionTitle(
-                  'Posted spots',
-                  value: count,
-                  valueColor: PixelPalette.greenDark,
-                ),
+              const Expanded(
+                // Owner 2026-11-18 (v0.3.3): no count.
+                child: PixelSectionTitle('Posted spots'),
               ),
               if (isMine)
                 PixelButton(
@@ -637,9 +635,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 );
               }
+              final shown = FuzzySearch.filter(
+                userSpots,
+                _spotFilter,
+                (s) => [s.name, s.municipality, s.category, ...s.tags],
+              );
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final (i, spot) in userSpots.indexed) ...[
+                  // Owner 2026-11-18 (v0.3.3): filters as you type and
+                  // tolerates spelling mistakes; empty shows them all.
+                  PixelTextField(
+                    key: const ValueKey('profile_spots_filter'),
+                    label: tr(context, en: 'Filter', tl: 'Salain'),
+                    hint: tr(context,
+                        en: 'Name, town or tag', tl: 'Pangalan, bayan o tag'),
+                    textInputAction: TextInputAction.search,
+                    onChanged: (v) => setState(() => _spotFilter = v),
+                  ),
+                  SizedBox(height: grid.px(2)),
+                  if (shown.isEmpty)
+                    Padding(
+                      key: const ValueKey('profile_spots_no_match'),
+                      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                      child: Text(
+                        tr(context,
+                            en: 'No posted spot matches "$_spotFilter".',
+                            tl: 'Walang tugma sa "$_spotFilter".'),
+                        style:
+                            PixelType.body(context, color: PixelPalette.slate),
+                      ),
+                    ),
+                  for (final (i, spot) in shown.indexed) ...[
                     if (i > 0)
                       Container(
                           height: grid.unit, color: PixelPalette.paperDim),

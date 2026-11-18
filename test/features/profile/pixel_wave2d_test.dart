@@ -478,7 +478,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('POSTED SPOTS'), findsOneWidget);
-      expect(find.text('1'), findsWidgets);
       expect(find.text('Hundred Islands National Park'), findsOneWidget);
       expect(find.byKey(const ValueKey('profile_post_spot')), findsOneWidget);
 
@@ -486,6 +485,55 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('route:/explore'), findsOneWidget);
+    });
+
+    // Owner 2026-11-18 (v0.3.3): no count; a FILTER field that tolerates
+    // spelling mistakes; empty shows every posted spot.
+    testWidgets('posted spots filter narrows as you type, typos ok',
+        (tester) async {
+      _useTallView(tester);
+      final other = _spot.copyWith(
+          id: 's2',
+          slug: 'patar',
+          name: 'Patar White Beach',
+          municipality: 'Bolinao');
+      await _pump(
+        tester,
+        const ProfileScreen(),
+        user: _user,
+        extraOverrides: [
+          userSpotsProvider('u1')
+              .overrideWith((ref) => Future.value([_spot, other])),
+        ],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final filter = find.descendant(
+          of: find.byKey(const ValueKey('profile_spots_filter')),
+          matching: find.byType(EditableText));
+      expect(filter, findsOneWidget);
+      expect(find.text('Hundred Islands National Park'), findsOneWidget);
+      expect(find.text('Patar White Beach'), findsOneWidget);
+
+      await tester.enterText(filter, 'hundered');
+      await tester.pump();
+      expect(find.text('Hundred Islands National Park'), findsOneWidget);
+      expect(find.text('Patar White Beach'), findsNothing);
+
+      await tester.enterText(filter, 'bolnao');
+      await tester.pump();
+      expect(find.text('Hundred Islands National Park'), findsNothing);
+      expect(find.text('Patar White Beach'), findsOneWidget);
+
+      await tester.enterText(filter, 'zzqqx');
+      await tester.pump();
+      expect(
+          find.byKey(const ValueKey('profile_spots_no_match')), findsOneWidget);
+
+      await tester.enterText(filter, '');
+      await tester.pump();
+      expect(find.text('Hundred Islands National Park'), findsOneWidget);
+      expect(find.text('Patar White Beach'), findsOneWidget);
     });
 
     testWidgets('own profile empty state shows + Post a Destination CTA',
