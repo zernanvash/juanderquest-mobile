@@ -19,6 +19,7 @@ import '../../spots/models/spot_model.dart';
 import '../builder/builder_models.dart';
 import '../builder/quest_builder_repository.dart';
 import '../builder/task_validation.dart';
+import '../builder/widgets/nearby_merchants_section.dart';
 import '../builder/widgets/quest_traveler_preview_card.dart';
 import '../builder/widgets/task_item_card.dart';
 import '../builder/widgets/task_settings_panel.dart';
@@ -50,6 +51,7 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
 
   late QuestBuilderState _state;
   SpotModel? _spot;
+  List<NearbySponsorInvite> _sponsorInvites = const [];
 
   bool get isEditMode => widget.questId != null && widget.questId!.isNotEmpty;
 
@@ -395,6 +397,13 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
       radiusMeters: 100,
     );
     final spotId = _spot?.id ?? '';
+    // "Merchants nearby" measures from the first location task's pin.
+    final pinFence = _state.tasks
+            .map((t) => t.verification)
+            .whereType<LocationVerification>()
+            .map((v) => v.fence)
+            .firstOrNull ??
+        defaultFence;
 
     return Theme(
       data: AppTheme.pixel,
@@ -442,9 +451,21 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
                         SizedBox(height: grid.px(3)),
                         _tasksSection(context, grid, defaultFence, spotId),
                         SizedBox(height: grid.px(3)),
+                        NearbyMerchantsSection(
+                          questId: widget.questId,
+                          pinLat: pinFence.lat,
+                          pinLng: pinFence.lng,
+                          onInvitesChanged: (invites) {
+                            if (mounted) {
+                              setState(() => _sponsorInvites = invites);
+                            }
+                          },
+                        ),
+                        SizedBox(height: grid.px(3)),
                         QuestTravelerPreviewCard(
                           state: _state,
                           locationName: _spot?.name ?? 'Pangasinan Destination',
+                          sponsorInvites: _sponsorInvites,
                         ),
                       ],
                     ),

@@ -563,7 +563,9 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
               onPressed: _busy ? null : _submit,
             ),
           ],
-          if (['pending_sponsors', 'scheduled'].contains(status)) ...[
+          // The server takes sponsor requests while a round is
+          // pending_sponsors or active (not scheduled).
+          if (['pending_sponsors', 'active'].contains(status)) ...[
             SizedBox(height: grid.px(2)),
             PixelButton(
               key: const ValueKey('funding_ask_merchant'),
@@ -575,6 +577,8 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
               expand: true,
               onPressed: _busy ? null : _openAskMerchant,
             ),
+          ],
+          if (['pending_sponsors', 'scheduled'].contains(status)) ...[
             SizedBox(height: grid.px(2)),
             PixelButton(
               key: const ValueKey('funding_cancel'),

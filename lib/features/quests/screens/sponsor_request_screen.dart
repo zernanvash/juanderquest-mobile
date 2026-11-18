@@ -29,6 +29,7 @@ class SponsorDirectoryMerchant {
     required this.description,
     required this.sameMunicipality,
     required this.vouchers,
+    this.distanceMeters,
   });
 
   final String id;
@@ -38,6 +39,9 @@ class SponsorDirectoryMerchant {
   final String description;
   final bool sameMunicipality;
   final List<SponsorDirectoryVoucher> vouchers;
+
+  /// Metres from the quest pin; null when the shop has no GPS.
+  final int? distanceMeters;
 
   factory SponsorDirectoryMerchant.fromJson(Map<String, dynamic> json) {
     final rawVouchers = json['vouchers'];
@@ -59,8 +63,15 @@ class SponsorDirectoryMerchant {
       description: json['description']?.toString() ?? '',
       sameMunicipality: json['same_municipality'] == true,
       vouchers: voucherList,
+      distanceMeters: _intOrNull(json['distance_m']),
     );
   }
+}
+
+int? _intOrNull(Object? value) {
+  if (value is num) return value.round();
+  if (value is String) return num.tryParse(value)?.round();
+  return null;
 }
 
 class SponsorDirectoryVoucher {
@@ -87,10 +98,15 @@ class SponsorRequestScreen extends ConsumerStatefulWidget {
     super.key,
     required this.questId,
     required this.planId,
+    this.initialMerchant,
   });
 
   final String questId;
   final String planId;
+
+  /// Opens straight on the request form for this merchant (from the quest
+  /// builder's "Merchants nearby"); back then closes the screen.
+  final SponsorDirectoryMerchant? initialMerchant;
 
   @override
   ConsumerState<SponsorRequestScreen> createState() =>
@@ -115,7 +131,12 @@ class _SponsorRequestScreenState extends ConsumerState<SponsorRequestScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _selected = widget.initialMerchant;
+    if (_selected == null) {
+      _load();
+    } else {
+      _loading = false;
+    }
   }
 
   @override
@@ -318,7 +339,7 @@ class _SponsorRequestScreenState extends ConsumerState<SponsorRequestScreen> {
                             en: 'Ask a merchant', tl: 'Hilingin sa tindahan')
                         : selected.name,
                     onBack: () {
-                      if (selected != null) {
+                      if (selected != null && widget.initialMerchant == null) {
                         setState(() {
                           _selected = null;
                           _selectedVoucherId = null;
