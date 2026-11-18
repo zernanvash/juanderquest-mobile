@@ -434,7 +434,7 @@ class HomePurseStrip extends ConsumerWidget {
               context,
               grid,
               key: const ValueKey('home_purse_rep'),
-              // Owner 2026-11-18 (v0.3.1): the smiley is reputation.
+              // Owner 2026-11-18: the smiley is reputation (new 13px art in v0.3.4).
               icon: DesignerArt.repSmiley,
               value: homeNumber(repCount),
               semantics: '$repCount reputation',
@@ -466,7 +466,17 @@ class HomePurseStrip extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                PixelIconFit(icon, box: 14),
+                // Owner 2026-11-18 (v0.3.4): the 13px smiley; stamp and smiley
+                // share one pixel scale (the smiley's), the size of the coin.
+                PixelIconFit(
+                  icon,
+                  box: 16,
+                  scale: PixelIconFit.fitScale(
+                    DesignerArt.repSmiley,
+                    16,
+                    MediaQuery.devicePixelRatioOf(context),
+                  ),
+                ),
                 SizedBox(width: grid.px(1)),
                 Text(
                   value,

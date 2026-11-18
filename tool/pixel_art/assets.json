@@ -27,8 +27,8 @@
     {"name": "salakot",               "file": "assets/icons/jdq-merchants.png"},
     {"name": "search",                "file": "assets/icons/search.png"},
     {"name": "spotMarker",            "file": "assets/icons/jdq-marker.png"},
-    {"name": "repSmiley",             "file": "assets/icons/jdq-smiley.png"},
-    {"name": "stampIcon",             "file": "assets/icons/jdq-stamp-18.png"},
+    {"name": "repSmiley",             "file": "assets/icons/jdq-smiley-13.png"},
+    {"name": "stampIcon",             "file": "assets/icons/jdq-stamp.png"},
     {"name": "badgeVerified",         "file": "assets/icons/badge-verified-24.png"},
     {"name": "badgeGem",              "file": "assets/icons/badge-gem-24.png"},
     {"name": "juanIdle",              "file": "assets/mascot/__juan-idle.png",                "frameWidth": 64, "frameCount": 8, "fps": 8, "trim": true}
