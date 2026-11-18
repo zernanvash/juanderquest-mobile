@@ -70,6 +70,7 @@ void main() {
     'push_friend_activity': false,
     'push_social': true,
     'push_weekly_recap': true,
+    'push_nearby_quest': true,
     'quiet_hours': true,
   };
 
@@ -103,6 +104,34 @@ void main() {
       {'push_weekly_recap': false}
     ]);
     expect(values['push_weekly_recap'], isFalse);
+  });
+
+  // Owner 2026-11-18: push when a new quest opens near the home town.
+  testWidgets('the Nearby quests switch saves push_nearby_quest',
+      (tester) async {
+    // An older server without the key reads as on.
+    final values = Map<String, dynamic>.from(server)
+      ..remove('push_nearby_quest');
+    final puts = <Map<String, dynamic>>[];
+    await _pump(
+        tester,
+        _client(
+            onGet: () => values,
+            onPut: (b) {
+              puts.add(b);
+              values.addAll(b);
+            }));
+
+    expect(find.text('Nearby quests'), findsOneWidget);
+    const key = ValueKey('notif_switch_push_nearby_quest');
+    expect(tester.widget<PixelSwitch>(find.byKey(key)).value, isTrue);
+
+    await tester.tap(find.byKey(key));
+    await tester.pumpAndSettle();
+    expect(puts, [
+      {'push_nearby_quest': false}
+    ]);
+    expect(tester.widget<PixelSwitch>(find.byKey(key)).value, isFalse);
   });
 
   testWidgets('a failed save flips the switch back and says so',

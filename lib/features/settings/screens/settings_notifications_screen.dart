@@ -64,6 +64,14 @@ const _prefs = [
     'A short summary every Monday',
     'Maikling buod tuwing Lunes',
   ),
+  // Owner 2026-11-18: a new quest within 10 km of your home town (max 1 a day).
+  _Pref(
+    'push_nearby_quest',
+    'Nearby quests',
+    'Mga quest sa malapit',
+    'When a new quest opens near your home town',
+    'Kapag may bagong quest malapit sa bayan mo',
+  ),
   _Pref(
     'quiet_hours',
     'Quiet hours',

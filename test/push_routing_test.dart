@@ -4,6 +4,9 @@ import 'package:juanderquest_app/core/services/push_routing.dart';
 void main() {
   test('app sections pass through, with their query', () {
     expect(appRouteForPushHref('/quests/q1'), '/quests/q1');
+    // Owner 2026-11-18: nearby-quest pushes open the quest.
+    expect(appRouteForPushHref('/quests/quest-tondaligan-mi3x9'),
+        '/quests/quest-tondaligan-mi3x9');
     expect(appRouteForPushHref('/plaza?tab=friends'), '/plaza?tab=friends');
     expect(appRouteForPushHref('/choice/c1/candidates/k2'),
         '/choice/c1/candidates/k2');
