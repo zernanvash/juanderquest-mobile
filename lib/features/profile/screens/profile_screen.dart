@@ -28,6 +28,7 @@ import '../providers/profile_stats_provider.dart';
 import '../providers/user_spots_provider.dart';
 import '../showcase.dart';
 import '../widgets/avatar_picker.dart';
+import '../widgets/avatar_report.dart';
 import '../widgets/profile_hub_tabs.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -158,6 +159,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 : '@${widget.username!.trim()}')
             : null);
     final cosmetics = isMine ? currentUser?.cosmetics : null;
+    // v0.3.10: another explorer's picture (and id, for Report picture).
+    final other = isMine
+        ? null
+        : ref
+            .watch(publicAvatarProvider(
+                (widget.username ?? '').replaceFirst('@', '')))
+            .valueOrNull;
+    final canReportPicture = other != null &&
+        other.id.isNotEmpty &&
+        other.id != currentUser?.id &&
+        resolveAvatarUrl(other.avatarUrl) != null;
     final titleAsset = _cosmeticAsset(cosmetics, 'title');
     final nameColorAsset = _cosmeticAsset(cosmetics, 'nameColor');
 
@@ -209,6 +221,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           iconHeight: 24,
                           onPressed: () => context.push('/notifications'),
                         ),
+                      if (canReportPicture)
+                        PixelIconButton(
+                          key: const ValueKey('profile_more'),
+                          icon: profileMoreIcon,
+                          semanticLabel: 'More',
+                          iconHeight: 12,
+                          onPressed: () => _moreMenu(context, other.id),
+                        ),
                       if (isMine)
                         PixelIconButton(
                           icon: DesignerArt.navSettings,
@@ -234,6 +254,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           displayName,
                           displayHandle,
                           currentUser,
+                          other?.avatarUrl,
                           cosmetics,
                           titleAsset,
                           nameColorAsset,
@@ -318,6 +339,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String displayName,
     String? displayHandle,
     UserModel? currentUser,
+    String? otherAvatarUrl,
     Map<String, dynamic>? cosmetics,
     Map<String, dynamic>? titleAsset,
     Map<String, dynamic>? nameColorAsset,
@@ -374,7 +396,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: _buildAvatarWidget(
                     context,
                     grid,
-                    isMine ? currentUser?.avatarUrl : null,
+                    isMine ? currentUser?.avatarUrl : otherAvatarUrl,
                     displayName,
                   ),
                 ),
@@ -478,6 +500,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  /// v0.3.10 (owner): another explorer's "more" menu.
+  void _moreMenu(BuildContext context, String userId) {
+    void close() => Navigator.of(context, rootNavigator: true).pop();
+    showPixelDialog<void>(
+      context: context,
+      title: tr(context, en: 'More', tl: 'Iba pa'),
+      content: PixelButton(
+        key: const ValueKey('profile_report_picture'),
+        label: tr(context, en: 'Report picture', tl: 'I-report ang larawan'),
+        variant: PixelButtonVariant.secondary,
+        expand: true,
+        onPressed: () {
+          close();
+          showReportAvatar(context, ref, userId);
+        },
+      ),
+      actions: [
+        PixelButton(
+          label: tr(context, en: 'Close', tl: 'Isara'),
+          variant: PixelButtonVariant.ghost,
+          onPressed: close,
+        ),
+      ],
     );
   }
 

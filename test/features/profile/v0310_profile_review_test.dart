@@ -58,6 +58,11 @@ class _Api {
   final requests = <String>[];
   String avatar = '';
 
+  /// Other explorers' `/users/:handle/profile` answers (id, avatar_url).
+  final profiles = <String, Map<String, dynamic>>{};
+  int reportStatus = 201;
+  Object? reportBody;
+
   ApiClient build() {
     final client = ApiClient();
     client.dio.interceptors.add(InterceptorsWrapper(onRequest: (o, h) {
@@ -68,6 +73,22 @@ class _Api {
             'data': data,
           });
       final p = o.path;
+      if (p.endsWith('/avatar/report')) {
+        reportBody = o.data;
+        if (reportStatus == 409) {
+          return h.reject(DioException(
+            requestOptions: o,
+            response: Response(requestOptions: o, statusCode: 409, data: {
+              'success': false,
+              'error': {'code': 'ALREADY_REPORTED'}
+            }),
+          ));
+        }
+        return h.resolve(ok({'reported': true}));
+      }
+      if (p.startsWith('/users/') && p.endsWith('/profile')) {
+        return h.resolve(ok(profiles[p.split('/')[2]] ?? {}));
+      }
       if (p == '/users/me/avatar') {
         avatar = o.method == 'PUT'
             ? '/api/v1/uploads/spot-photos/spot_photo_me.jpg'
@@ -187,6 +208,10 @@ Widget _app(_Api api,
           ProfileScreen(initialTab: s.uri.queryParameters['tab']),
     ),
     GoRoute(path: '/appearance', builder: (_, __) => const AppearanceScreen()),
+    GoRoute(
+      path: '/u/:name',
+      builder: (_, s) => ProfileScreen(username: s.pathParameters['name']),
+    ),
     GoRoute(
       path: '/quests/:id',
       builder: (_, s) => Text('detail ${s.pathParameters['id']}'),
@@ -400,5 +425,70 @@ void main() {
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
     tester.platformDispatcher.clearTextScaleFactorTestValue();
+  });
+
+  group('Report picture (owner: uploads stay instant)', () {
+    const uploaded = '/api/v1/uploads/spot-photos/spot_photo_maria.jpg';
+    _Api withMaria(String avatar) =>
+        _Api()..profiles['maria'] = {'id': 'usr-maria', 'avatar_url': avatar};
+
+    testWidgets('menu hidden on your own profile', (tester) async {
+      await tester.pumpWidget(_app(_Api()));
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('profile_more')), findsNothing);
+    });
+
+    testWidgets('menu hidden for a default identicon', (tester) async {
+      await tester.pumpWidget(_app(
+          withMaria('https://api.dicebear.com/7.x/identicon/svg?seed=m'),
+          initial: '/u/maria'));
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('profile_more')), findsNothing);
+    });
+
+    testWidgets('uploaded picture: shown, reported with a reason',
+        (tester) async {
+      final api = withMaria(uploaded);
+      await tester.pumpWidget(_app(api, initial: '/u/maria'));
+      await _settle(tester);
+      // Another explorer's picture is drawn now (it was always the initial).
+      expect(
+          find.byWidgetPredicate((w) =>
+              w is Image &&
+              w.image is NetworkImage &&
+              (w.image as NetworkImage).url.endsWith('spot_photo_maria.jpg')),
+          findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('profile_more')));
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('profile_report_picture')));
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('avatar_report_reason_spam')));
+      await _settle(tester);
+      expect(api.reportBody, isNull); // not sent before confirming
+      await tester.tap(find.byKey(const ValueKey('avatar_report_confirm')));
+      await _settle(tester);
+      expect(api.reportBody, {'reason': 'spam'});
+      expect(
+          find.text('Thanks. A moderator will take a look.'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('a repeat report (409) says it was already sent',
+        (tester) async {
+      final api = withMaria(uploaded)..reportStatus = 409;
+      await tester.pumpWidget(_app(api, initial: '/u/maria'));
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('profile_more')));
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('profile_report_picture')));
+      await _settle(tester);
+      await tester
+          .tap(find.byKey(const ValueKey('avatar_report_reason_other')));
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('avatar_report_confirm')));
+      await _settle(tester);
+      expect(find.text('You already reported this picture.'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+    });
   });
 }
