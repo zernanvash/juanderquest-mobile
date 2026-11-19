@@ -39,6 +39,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _error;
   String? _notice;
   bool _busy = false;
+  bool _walletBusy = false;
+  String? _walletStatus;
   WalletLoginNeedsAccount? _pendingWallet;
 
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -209,160 +211,78 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _startWalletSignIn() async {
-    ReownAppKitModal modal;
+    if (_busy || _walletBusy) return;
+    setState(() {
+      _walletBusy = true;
+      _walletStatus = 'Opening wallet…';
+      _error = null;
+      _notice = null;
+    });
+
+    ReownAppKitModal? modal;
     try {
       modal = await WalletSignatureService.initialize(context);
-    } catch (error) {
       if (!mounted) return;
-      _showMessage(error is StateError
-          ? error.message
-          : 'Wallet connection is unavailable.');
-      return;
-    }
-    if (!mounted) {
-      await modal.dispose();
-      return;
-    }
 
-    String? walletError;
-    var signing = false;
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => StatefulBuilder(
-          builder: (context, setDialogState) => Theme(
-            data: AppTheme.pixel,
-            child: Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: PixelPanel(
-                  style: PixelBoxStyle.parchment,
-                  padding: 3,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ShadowText(
-                          'SIGN IN WITH YOUR WALLET',
-                          style: PixelType.title(context),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Connect your wallet, then approve a sign-in message. This does not send a transaction or move tokens.',
-                          style: PixelType.body(
-                            context,
-                            color: PixelPalette.slate,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        AppKitModalConnectButton(
-                            appKit: modal, context: context),
-                        if (walletError != null) ...[
-                          const SizedBox(height: 12),
-                          PixelPanel(
-                            style: PixelBoxStyle.red,
-                            padding: 2,
-                            child: Text(
-                              walletError!,
-                              style: PixelType.body(
-                                context,
-                                color: PixelPalette.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            PixelButton(
-                              variant: PixelButtonVariant.secondary,
-                              onPressed: signing
-                                  ? null
-                                  : () => Navigator.of(dialogContext).pop(),
-                              label: 'Cancel',
-                            ),
-                            const SizedBox(width: 8),
-                            PixelButton(
-                              loading: signing,
-                              onPressed: signing
-                                  ? null
-                                  : () async {
-                                      final address = WalletSignatureService
-                                          .connectedAddress(modal);
-                                      if (address == null) {
-                                        setDialogState(() => walletError =
-                                            'Connect an EVM wallet first.');
-                                        return;
-                                      }
-                                      setDialogState(() {
-                                        signing = true;
-                                        walletError = null;
-                                      });
-                                      try {
-                                        final challenge = await ref
-                                            .read(authProvider.notifier)
-                                            .requestWalletChallenge(address);
-                                        if (challenge == null) {
-                                          throw StateError(
-                                              'The sign-in challenge could not be loaded. Check your connection.');
-                                        }
-                                        final signature =
-                                            await WalletSignatureService
-                                                .signChallenge(
-                                                    modal, challenge);
-                                        final result = await ref
-                                            .read(authProvider.notifier)
-                                            .loginWithWallet(
-                                                address: address,
-                                                signature: signature);
-                                        if (result is WalletLoginFailed) {
-                                          if (dialogContext.mounted) {
-                                            setDialogState(() {
-                                              signing = false;
-                                              walletError = result.message;
-                                            });
-                                          }
-                                        } else {
-                                          if (dialogContext.mounted) {
-                                            Navigator.of(dialogContext).pop();
-                                          }
-                                          if (result
-                                                  is WalletLoginNeedsAccount &&
-                                              mounted) {
-                                            _askForAccountDetails(result);
-                                          }
-                                        }
-                                      } catch (error) {
-                                        if (dialogContext.mounted) {
-                                          setDialogState(() {
-                                            signing = false;
-                                            walletError = error is StateError
-                                                ? error.message
-                                                : 'Wallet signing was cancelled or failed.';
-                                          });
-                                        }
-                                      }
-                                    },
-                              label: 'Continue',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
+      final address = await WalletSignatureService.ensureConnected(modal);
+      if (!mounted) return;
+      if (address == null) {
+        // User dismissed the wallet picker without connecting.
+        setState(() {
+          _walletBusy = false;
+          _walletStatus = null;
+        });
+        return;
+      }
+
+      setState(() => _walletStatus = 'Approve sign-in in your wallet…');
+      final challenge = await ref
+          .read(authProvider.notifier)
+          .requestWalletChallenge(address);
+      if (challenge == null) {
+        throw StateError(
+            'The sign-in challenge could not be loaded. Check your connection.');
+      }
+
+      final signature =
+          await WalletSignatureService.signChallenge(modal, challenge);
+      if (!mounted) return;
+
+      setState(() => _walletStatus = 'Verifying signature…');
+      final result = await ref
+          .read(authProvider.notifier)
+          .loginWithWallet(address: address, signature: signature);
+      if (!mounted) return;
+
+      if (result is WalletLoginFailed) {
+        setState(() {
+          _walletBusy = false;
+          _walletStatus = null;
+          _error = result.message;
+        });
+      } else {
+        setState(() {
+          _walletBusy = false;
+          _walletStatus = null;
+        });
+        if (result is WalletLoginNeedsAccount) {
+          _askForAccountDetails(result);
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        final msg = error is StateError
+            ? error.message
+            : 'Wallet sign-in was cancelled or failed.';
+        setState(() {
+          _walletBusy = false;
+          _walletStatus = null;
+          _error = msg;
+        });
+        _showMessage(msg);
+      }
     } finally {
-      await modal.dispose();
+      await modal?.dispose();
     }
   }
 
@@ -382,8 +302,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
+  Widget _passwordToggle(BuildContext context) {
+    final label = _passwordVisible ? 'HIDE' : 'SHOW';
+    return Semantics(
+      button: true,
+      label: _passwordVisible ? 'Hide password' : 'Show password',
+      child: GestureDetector(
+        key: const ValueKey('auth_toggle_password'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _passwordVisible = !_passwordVisible),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Text(
+            label,
+            style: PixelType.small(context, color: PixelPalette.greenDeep)
+                .copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final anyBusy = _busy || _walletBusy;
     return Theme(
       data: AppTheme.pixel,
       child: Scaffold(
@@ -394,8 +336,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
                   child: PixelPanel(
@@ -483,6 +424,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             label: 'Password (8+ characters)',
                             hint: '••••••••',
                             obscureText: !_passwordVisible,
+                            suffix: _passwordToggle(context),
                             autofillHints: const [AutofillHints.newPassword],
                             helperText:
                                 'Already registered? Use that account\'s password to link this wallet.',
@@ -591,6 +533,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : null,
                             hint: '••••••••',
                             obscureText: !_passwordVisible,
+                            suffix: _passwordToggle(context),
                             autofillHints: [
                               _step == _AuthStep.signUp
                                   ? AutofillHints.newPassword
@@ -601,31 +544,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(height: 8),
                             PasswordStrengthMeter(check: _passwordCheck),
                           ],
-                          const SizedBox(height: 4),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: PixelButton(
-                              label: _passwordVisible
-                                  ? 'HIDE PASSWORD'
-                                  : 'SHOW PASSWORD',
-                              variant: PixelButtonVariant.ghost,
-                              onPressed: () => setState(
-                                  () => _passwordVisible = !_passwordVisible),
-                            ),
-                          ),
-                          if (_step == _AuthStep.signIn)
+                          if (_step == _AuthStep.signIn) ...[
+                            const SizedBox(height: 6),
                             Align(
                               alignment: Alignment.centerRight,
-                              child: PixelButton(
-                                key: const ValueKey('auth_forgot_password'),
+                              child: Semantics(
+                                button: true,
                                 label: 'Forgot password?',
-                                variant: PixelButtonVariant.ghost,
-                                onPressed: _busy
-                                    ? null
-                                    : () => context.push(
-                                        '/forgot-password?email=${Uri.encodeQueryComponent(_email.text.trim())}'),
+                                child: GestureDetector(
+                                  key: const ValueKey('auth_forgot_password'),
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: anyBusy
+                                      ? null
+                                      : () => context.push(
+                                          '/forgot-password?email=${Uri.encodeQueryComponent(_email.text.trim())}'),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 6),
+                                    child: Text(
+                                      'Forgot password?',
+                                      style: PixelType.small(
+                                        context,
+                                        color: PixelPalette.greenDeep,
+                                      ).copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: PixelPalette.greenDeep,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
+                          ],
                           if (_step == _AuthStep.signUp) ...[
                             const SizedBox(height: 8),
                             PixelCheckbox(
@@ -690,8 +641,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             key: const ValueKey('auth_wallet_sign_in'),
                             expand: true,
                             variant: PixelButtonVariant.secondary,
-                            onPressed: _busy ? null : _startWalletSignIn,
-                            label: 'Continue with wallet',
+                            loading: _walletBusy,
+                            onPressed: anyBusy ? null : _startWalletSignIn,
+                            label: _walletStatus ?? 'Continue with wallet',
                           ),
                           const SizedBox(height: 6),
                           Text(

@@ -68,6 +68,17 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <package android:name="io.metamask"/>
+        <package android:name="com.wallet.crypto.trustapp"/>
+        <package android:name="org.toshi"/>
+        <package android:name="me.rainbow"/>
+        <package android:name="app.phantom"/>
+        <package android:name="im.token.app"/>
+        <package android:name="com.okinc.okex.gp"/>
+        <package android:name="com.bitkeep.wallet"/>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="wc"/>
+        </intent>
         <!-- Voice guidance (flutter_tts): Android 11+ hides the speech engine without this. -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>

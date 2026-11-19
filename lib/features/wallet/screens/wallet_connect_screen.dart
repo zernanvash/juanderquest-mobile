@@ -99,10 +99,8 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
 
   Future<void> _bind() async {
     final modal = _modal;
-    final address =
-        modal == null ? null : WalletSignatureService.connectedAddress(modal);
-    if (modal == null || address == null) {
-      setState(() => _error = 'Connect an EVM wallet first.');
+    if (modal == null) {
+      setState(() => _error = 'Wallet connection is still initializing.');
       return;
     }
     setState(() {
@@ -111,6 +109,12 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
     });
     final notifier = ref.read(authProvider.notifier);
     try {
+      final address = await WalletSignatureService.ensureConnected(modal);
+      if (!mounted) return;
+      if (address == null) {
+        setState(() => _busy = false);
+        return;
+      }
       final challenge = await notifier.requestWalletChallenge(address);
       if (challenge == null) {
         throw StateError('Could not get a wallet challenge from the API.');
