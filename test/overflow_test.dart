@@ -41,6 +41,7 @@ import 'package:juanderquest_app/features/map/screens/map_view_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/nearby_quizzes_screen.dart';
 import 'package:juanderquest_app/core/widgets/in_app_banner.dart';
+import 'package:juanderquest_app/core/widgets/town_picker.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_explore_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_search_screen.dart';
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
@@ -3068,6 +3069,34 @@ void main() {
                 ),
                 onTap: () {},
                 onDismiss: () {},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+
+      // Team review v0.3.10: home town province -> town combobox.
+      testWidgets('TownPicker 2.0x textScale ${entry.key}', (tester) async {
+        await tester.binding.setSurfaceSize(entry.value);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.pixel,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2.0)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: TownPicker(
+                  towns: const ['San Fabian', 'San Carlos City'],
+                  value: 'San Carlos City',
+                  onChanged: (_) {},
+                ),
               ),
             ),
           ),

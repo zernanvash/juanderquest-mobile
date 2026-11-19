@@ -176,55 +176,61 @@ class InAppBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     final message = item.message;
-    return Padding(
-      padding: EdgeInsets.all(grid.px(4)),
-      child: Semantics(
-        button: true,
-        liveRegion: true,
-        label: message == null ? item.title : '${item.title}. $message',
-        child: ExcludeSemantics(
-          child: GestureDetector(
-            key: const ValueKey('in_app_banner'),
-            behavior: HitTestBehavior.opaque,
-            onTap: onTap,
-            // Swipe it back up to hide it.
-            onVerticalDragEnd: (d) {
-              if ((d.primaryVelocity ?? 0) < 0) onDismiss();
-            },
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48),
-              child: PixelPanel(
-                style: PixelBoxStyle.darkWood.copyWith(shadowPx: 2),
-                padding: 3,
-                child: Row(
-                  children: [
-                    const PixelIconFit(DesignerArt.notifBell, box: 20),
-                    SizedBox(width: grid.px(3)),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            item.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: PixelType.body(context,
-                                    color: PixelPalette.paper)
-                                .copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          if (message != null && message.isNotEmpty)
+    // Team review v0.3.10: the host sits above the Navigator (no Material),
+    // so text fell back to the yellow double-underline debug style.
+    return Material(
+      key: const ValueKey('in_app_banner_material'),
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: EdgeInsets.all(grid.px(4)),
+        child: Semantics(
+          button: true,
+          liveRegion: true,
+          label: message == null ? item.title : '${item.title}. $message',
+          child: ExcludeSemantics(
+            child: GestureDetector(
+              key: const ValueKey('in_app_banner'),
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              // Swipe it back up to hide it.
+              onVerticalDragEnd: (d) {
+                if ((d.primaryVelocity ?? 0) < 0) onDismiss();
+              },
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: PixelPanel(
+                  style: PixelBoxStyle.darkWood.copyWith(shadowPx: 2),
+                  padding: 3,
+                  child: Row(
+                    children: [
+                      const PixelIconFit(DesignerArt.notifBell, box: 20),
+                      SizedBox(width: grid.px(3)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              message,
+                              item.title,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: PixelType.small(context,
-                                  color: PixelPalette.sunLight),
+                              style: PixelType.body(context,
+                                      color: PixelPalette.paper)
+                                  .copyWith(fontWeight: FontWeight.w700),
                             ),
-                        ],
+                            if (message != null && message.isNotEmpty)
+                              Text(
+                                message,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: PixelType.small(context,
+                                    color: PixelPalette.sunLight),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

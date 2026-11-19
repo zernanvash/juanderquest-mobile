@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +6,7 @@ import '../../core/pixel/generated/pixel_palette.g.dart';
 import '../../core/pixel/pixel_controls.dart';
 import '../../core/pixel/pixel_feedback.dart';
 import '../../core/pixel/pixel_text.dart';
+import '../../core/widgets/town_picker.dart';
 import '../auth/providers/auth_provider.dart';
 import '../navigation/services/location_stream_service.dart';
 
@@ -161,6 +160,8 @@ Future<bool> showHomeTownPicker(BuildContext context, WidgetRef ref) async {
   var currentDays = info.currentDays;
   final requiredDays = info.requiredDays;
   var savingGps = false;
+  // null = nothing picked yet; '' = visiting / not from Pangasinan.
+  String? choice = currentTown ?? TownPicker.outside;
 
   final picked = await showPixelDialog<String>(
     context: context,
@@ -196,123 +197,104 @@ Future<bool> showHomeTownPicker(BuildContext context, WidgetRef ref) async {
                 tl: 'Piliin ang iyong bayan, o Bumisita.',
               );
 
-        return SizedBox(
-          height: math.min(380, MediaQuery.sizeOf(ctx).height * 0.5),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      tr(
-                        ctx,
-                        en: 'Set my home town from GPS',
-                        tl: 'Itakda ang sariling bayan gamit ang GPS',
-                      ),
-                      style: PixelType.body(ctx, color: PixelPalette.ink),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    tr(
+                      ctx,
+                      en: 'Set my home town from GPS',
+                      tl: 'Itakda ang sariling bayan gamit ang GPS',
                     ),
+                    style: PixelType.body(ctx, color: PixelPalette.ink),
                   ),
-                  Switch(
-                    key: const ValueKey('home_town_gps_switch'),
-                    value: gpsEnabled,
-                    onChanged: savingGps
-                        ? null
-                        : (next) async {
-                            setModalState(() => savingGps = true);
-                            try {
-                              final res = await ref
-                                  .read(apiClientProvider)
-                                  .dio
-                                  .put('/me/home-town/gps',
-                                      data: {'enabled': next});
-                              final body = res.data;
-                              final data = body is Map ? body['data'] : null;
-                              if (data is Map<String, dynamic>) {
-                                final updated = HomeTownInfo.fromJson(data);
-                                setModalState(() {
-                                  gpsEnabled = updated.gpsEnabled;
-                                  currentTown = updated.town;
-                                  currentSource = updated.source;
-                                  currentDays = updated.currentDays;
-                                });
-                              } else {
-                                setModalState(() => gpsEnabled = next);
-                              }
-                              ref.invalidate(homeTownProvider);
-                            } catch (_) {
-                              if (ctx.mounted) {
-                                showPixelToast(
-                                  ctx,
-                                  tr(
-                                    ctx,
-                                    en: 'Could not update GPS setting.',
-                                    tl: 'Hindi ma-update ang GPS setting.',
-                                  ),
-                                );
-                              }
-                            } finally {
-                              if (ctx.mounted) {
-                                setModalState(() => savingGps = false);
-                              }
-                            }
-                          },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                statusText,
-                key: const ValueKey('home_town_status_text'),
-                style: PixelType.small(ctx, color: PixelPalette.greenDeep)
-                    .copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              // QA 2026-11-17: the explanation scrolls with the towns, so
-              // the list never gets squeezed out of the fixed-height sheet.
-              Expanded(
-                child: ListView(
-                  key: const ValueKey('home_town_list'),
-                  children: [
-                    Text(
-                      explanation,
-                      style: PixelType.small(ctx, color: PixelPalette.slate),
-                    ),
-                    const SizedBox(height: 8),
-                    for (final t in ['', ...info.options])
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: PixelButton(
-                          key: ValueKey('home_town_${t.isEmpty ? 'none' : t}'),
-                          label: (t.isEmpty
-                                  ? tr(
-                                      ctx,
-                                      en: "I'm visiting / not from Pangasinan",
-                                      tl: 'Bumisita lang / hindi taga-Pangasinan',
-                                    )
-                                  : t) +
-                              ((t.isEmpty
-                                      ? currentTown == null
-                                      : t == currentTown)
-                                  ? ' *'
-                                  : ''),
-                          variant: (t.isEmpty
-                                  ? currentTown == null
-                                  : t == currentTown)
-                              ? PixelButtonVariant.primary
-                              : PixelButtonVariant.secondary,
-                          expand: true,
-                          onPressed: gpsEnabled
-                              ? null
-                              : () =>
-                                  Navigator.of(ctx, rootNavigator: true).pop(t),
-                        ),
-                      ),
-                  ],
                 ),
+                Switch(
+                  key: const ValueKey('home_town_gps_switch'),
+                  value: gpsEnabled,
+                  onChanged: savingGps
+                      ? null
+                      : (next) async {
+                          setModalState(() => savingGps = true);
+                          try {
+                            final res = await ref
+                                .read(apiClientProvider)
+                                .dio
+                                .put('/me/home-town/gps',
+                                    data: {'enabled': next});
+                            final body = res.data;
+                            final data = body is Map ? body['data'] : null;
+                            if (data is Map<String, dynamic>) {
+                              final updated = HomeTownInfo.fromJson(data);
+                              setModalState(() {
+                                gpsEnabled = updated.gpsEnabled;
+                                currentTown = updated.town;
+                                currentSource = updated.source;
+                                currentDays = updated.currentDays;
+                                choice = currentTown ?? TownPicker.outside;
+                              });
+                            } else {
+                              setModalState(() => gpsEnabled = next);
+                            }
+                            ref.invalidate(homeTownProvider);
+                          } catch (_) {
+                            if (ctx.mounted) {
+                              showPixelToast(
+                                ctx,
+                                tr(
+                                  ctx,
+                                  en: 'Could not update GPS setting.',
+                                  tl: 'Hindi ma-update ang GPS setting.',
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (ctx.mounted) {
+                              setModalState(() => savingGps = false);
+                            }
+                          }
+                        },
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              statusText,
+              key: const ValueKey('home_town_status_text'),
+              style: PixelType.small(ctx, color: PixelPalette.greenDeep)
+                  .copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              explanation,
+              style: PixelType.small(ctx, color: PixelPalette.slate),
+            ),
+            const SizedBox(height: 8),
+            // Team review v0.3.10: a province -> town combobox instead of
+            // a long list of 49 buttons.
+            TownPicker(
+              key: const ValueKey('home_town_picker'),
+              towns: info.options,
+              value: choice,
+              enabled: !gpsEnabled,
+              onChanged: (next) => setModalState(() => choice = next),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: PixelButton(
+                key: const ValueKey('home_town_save'),
+                label: tr(ctx, en: 'Save', tl: 'I-save'),
+                onPressed: gpsEnabled || choice == null
+                    ? null
+                    : () => Navigator.of(ctx, rootNavigator: true).pop(choice),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     ),

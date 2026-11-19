@@ -8,6 +8,7 @@ import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_idle.dart';
+import '../../../core/pixel/pixel_poppers.dart';
 import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
@@ -23,6 +24,14 @@ class HomeQotdPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final grid = PixelGrid.of(context);
+    // Team review v0.3.10: confetti when you answer right, once (only on the
+    // answer itself, not when an answered question loads again).
+    ref.listen(homeQotdProvider, (prev, next) {
+      final before = prev?.valueOrNull;
+      final after = next.valueOrNull;
+      if (before == null || before.answered || after == null) return;
+      if (after.answered && after.correct) PixelPoppers.fire(context);
+    });
     final async = ref.watch(homeQotdProvider);
     final q = async.valueOrNull;
     final answered = q?.answered == true;
