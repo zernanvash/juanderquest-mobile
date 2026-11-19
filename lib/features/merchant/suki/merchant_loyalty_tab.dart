@@ -15,6 +15,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../dashboard/pixel/home_pixel_art.dart';
 import '../../quests/screens/qr_scan_screen.dart';
 import '../providers/merchant_hub_provider.dart';
+import '../widgets/merchant_counter.dart';
 import 'merchant_suki_codes.dart';
 import 'merchant_suki_models.dart';
 import 'merchant_suki_widgets.dart';
@@ -218,43 +219,7 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
   }
 
   Future<void> _counterScan() async {
-    final scan = ref.read(merchantSukiScannerProvider);
-    var again = true;
-    while (again && mounted) {
-      again = false;
-      if (!mounted) return;
-      final code = await scan(context);
-      if (code == null || !mounted) return;
-      try {
-        final result = await _api.sukiScan(code);
-        if (!mounted) return;
-        again = await showSukiScanResult(context, result);
-      } catch (error) {
-        if (!mounted) return;
-        final next = await showPixelDialog<bool>(
-          context: context,
-          title: tr(context, en: 'Not accepted', tl: 'Hindi tinanggap'),
-          message: merchantSukiErrorText(context, error),
-          actions: [
-            Builder(
-              builder: (ctx) => PixelButton(
-                key: const ValueKey('loyalty_scan_retry'),
-                label: tr(ctx, en: 'Scan next', tl: 'Susunod'),
-                onPressed: () => Navigator.of(ctx).pop(true),
-              ),
-            ),
-            Builder(
-              builder: (ctx) => PixelButton(
-                label: tr(ctx, en: 'Done', tl: 'Tapos'),
-                variant: PixelButtonVariant.secondary,
-                onPressed: () => Navigator.of(ctx).pop(false),
-              ),
-            ),
-          ],
-        );
-        again = next == true;
-      }
-    }
+    await runMerchantCounter(context, ref);
     if (mounted) _load();
   }
 

@@ -12,6 +12,9 @@ class VoucherModel {
   final String? partnerLabel;
   final String? iconKey;
 
+  /// v0.3.10: the shop behind the offer, for its public page.
+  final String merchantId;
+
   VoucherModel({
     required this.id,
     required this.merchantName,
@@ -25,6 +28,7 @@ class VoucherModel {
     this.redeemable = true,
     this.partnerLabel,
     this.iconKey,
+    this.merchantId = '',
   });
 
   factory VoucherModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +45,7 @@ class VoucherModel {
       redeemable: json['redeemable'] ?? (json['availability'] != 'preview'),
       partnerLabel: json['partnerLabel'] ?? json['partner_label'],
       iconKey: json['iconKey'] ?? json['icon_key'],
+      merchantId: '${json['merchant_id'] ?? json['merchantId'] ?? ''}',
     );
   }
 }

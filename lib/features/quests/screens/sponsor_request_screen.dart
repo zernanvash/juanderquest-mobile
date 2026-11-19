@@ -18,6 +18,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/search/fuzzy_search.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../merchant/screens/merchant_page_screen.dart';
 import '../pixel/pixel_tag.dart';
 
 class SponsorDirectoryMerchant {
@@ -536,6 +537,18 @@ class _SponsorRequestScreenState extends ConsumerState<SponsorRequestScreen> {
         grid.px(4),
       ),
       children: [
+        // v0.3.10: see the shop's public page before asking.
+        if (merchant.id.isNotEmpty) ...[
+          PixelButton(
+            key: const ValueKey('sponsor_view_shop'),
+            label:
+                tr(context, en: 'View shop page', tl: 'Tingnan ang tindahan'),
+            variant: PixelButtonVariant.secondary,
+            expand: true,
+            onPressed: () => openMerchantPage(context, merchant.id),
+          ),
+          SizedBox(height: grid.px(2)),
+        ],
         if (_error != null) ...[
           PixelPanel(
             style: PixelBoxStyle.red,

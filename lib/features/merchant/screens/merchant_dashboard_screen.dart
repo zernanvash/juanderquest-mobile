@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
@@ -16,11 +17,14 @@ import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../quests/widgets/sponsorship_conditions_widgets.dart';
+import '../../spots/models/spot_model.dart';
 import '../models/merchant_models.dart';
 import '../providers/merchant_hub_provider.dart';
 import '../suki/merchant_loyalty_tab.dart';
 import '../suki/suki_badge_art.dart';
+import '../widgets/merchant_counter.dart';
 import '../widgets/merchant_pixel_art.dart';
+import 'merchant_page_screen.dart';
 
 const merchantTabNames = [
   'overview',
@@ -50,6 +54,21 @@ String _errorCode(Object error) {
   }
   return '';
 }
+
+/// v0.3.10: picks a photo for the cover / logo. Overridden in tests.
+final merchantPhotoPickerProvider =
+    Provider<Future<({List<int> bytes, String name})?> Function()>(
+  (ref) => () async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+    if (file == null) return null;
+    return (bytes: await file.readAsBytes(), name: file.name);
+  },
+);
 
 /// Plan 95 stage 3: the approved merchant's workspace.
 class MerchantDashboardScreen extends ConsumerStatefulWidget {
@@ -169,6 +188,9 @@ class _MerchantDashboardScreenState
                                 ),
                                 children: [
                                   _identity(context, grid, data),
+                                  SizedBox(height: grid.px(3)),
+                                  // v0.3.10: confirm vouchers, Suki on or off.
+                                  const MerchantCounterPanel(),
                                   SizedBox(height: grid.px(4)),
                                   MerchantTabbedPanel(
                                     selected: _tab,
@@ -274,6 +296,14 @@ class _MerchantDashboardScreenState
                 loading: _publishing,
                 onPressed: _publishing ? null : _togglePublish,
               ),
+              if (data.id.isNotEmpty)
+                PixelButton(
+                  key: const ValueKey('merchant_view_page'),
+                  label:
+                      tr(context, en: 'View my page', tl: 'Tingnan ang page'),
+                  variant: PixelButtonVariant.secondary,
+                  onPressed: () => openMerchantPage(context, data.id),
+                ),
             ],
           ),
         ],
@@ -399,6 +429,7 @@ class _ProfileTabState extends ConsumerState<_ProfileTab> {
   Map<String, dynamic> _original = const {};
   bool _loading = true;
   bool _saving = false;
+  String? _uploading; // 'banner_url' or 'logo_url' while uploading
 
   @override
   void initState() {
@@ -456,6 +487,99 @@ class _ProfileTabState extends ConsumerState<_ProfileTab> {
     }
   }
 
+  /// v0.3.10: upload a cover (banner) or logo photo and save it at once.
+  Future<void> _upload(String field) async {
+    if (_uploading != null) return;
+    final picked = await ref.read(merchantPhotoPickerProvider)();
+    if (picked == null || !mounted) return;
+    if (picked.bytes.length > 8 * 1024 * 1024) {
+      showPixelToast(
+          context,
+          tr(context,
+              en: 'Photo exceeds the 8 MB limit.',
+              tl: 'Lampas 8 MB ang litrato.'));
+      return;
+    }
+    setState(() => _uploading = field);
+    try {
+      final api = ref.read(merchantApiProvider);
+      final url = await api.uploadPhoto(picked.bytes, picked.name);
+      await api.saveProfile({field: url});
+      _original = {..._original, field: url};
+      _controllers[field]!.text = url;
+      if (!mounted) return;
+      showPixelToast(
+          context,
+          field == 'banner_url'
+              ? tr(context,
+                  en: 'Cover photo saved.', tl: 'Na-save ang cover photo.')
+              : tr(context, en: 'Logo saved.', tl: 'Na-save ang logo.'));
+      widget.onSaved();
+    } catch (error) {
+      if (mounted) {
+        showPixelToast(
+            context, _errorText(error, 'Could not upload the photo.'));
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = null);
+    }
+  }
+
+  Widget _photos(BuildContext context, PixelGrid grid) {
+    final cover = _controllers['banner_url']!.text.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PixelPanel(
+          key: const ValueKey('merchant_cover_preview'),
+          style: PixelBoxStyle.slot,
+          padding: 1,
+          child: SizedBox(
+            height: 120,
+            width: double.infinity,
+            child: cover.isEmpty
+                ? Center(
+                    child: Text(
+                      tr(context,
+                          en: 'No cover photo yet',
+                          tl: 'Wala pang cover photo'),
+                      style:
+                          PixelType.small(context, color: PixelPalette.slate),
+                    ),
+                  )
+                : Image.network(
+                    SpotModel.resolveImageUrl(cover),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+          ),
+        ),
+        SizedBox(height: grid.px(2)),
+        Wrap(
+          spacing: grid.px(2),
+          runSpacing: grid.px(2),
+          children: [
+            PixelButton(
+              key: const ValueKey('merchant_upload_cover'),
+              label: tr(context,
+                  en: 'Upload cover photo', tl: 'Mag-upload ng cover'),
+              loading: _uploading == 'banner_url',
+              onPressed:
+                  _uploading == null ? () => _upload('banner_url') : null,
+            ),
+            PixelButton(
+              key: const ValueKey('merchant_upload_logo'),
+              label: tr(context, en: 'Upload logo', tl: 'Mag-upload ng logo'),
+              variant: PixelButtonVariant.secondary,
+              loading: _uploading == 'logo_url',
+              onPressed: _uploading == null ? () => _upload('logo_url') : null,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
@@ -468,6 +592,8 @@ class _ProfileTabState extends ConsumerState<_ProfileTab> {
           icon: DesignerArt.navProfile,
         ),
         SizedBox(height: grid.px(2)),
+        _photos(context, grid),
+        SizedBox(height: grid.px(3)),
         for (final f in _fields) ...[
           PixelTextField(
             key: ValueKey('merchant_profile_${f.$1}'),
@@ -588,6 +714,29 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
     }
   }
 
+  /// v0.3.10: pin a published product as the shop's specialty (max 3).
+  Future<void> _toggleSpecialty(MerchantProductItem item) async {
+    try {
+      await ref
+          .read(merchantApiProvider)
+          .setSpecialty(item.id, !item.isSpecialty);
+      await _load();
+      if (!mounted) return;
+      showPixelToast(
+          context,
+          item.isSpecialty
+              ? tr(context, en: 'Unpinned.', tl: 'Tinanggal ang pin.')
+              : tr(context,
+                  en: 'Pinned as your specialty.',
+                  tl: 'Naka-pin bilang espesyalidad.'));
+    } catch (error) {
+      if (mounted) {
+        showPixelToast(
+            context, _errorText(error, 'Could not change the specialty.'));
+      }
+    }
+  }
+
   Future<void> _archive(MerchantProductItem item) async {
     try {
       await ref.read(merchantApiProvider).archiveProduct(item.id);
@@ -606,8 +755,13 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
-    final items = _items;
-    if (items == null) return const PixelLoader(label: 'Loading catalog');
+    final loaded = _items;
+    if (loaded == null) return const PixelLoader(label: 'Loading catalog');
+    // Specialties first, then the server order.
+    final items = [
+      ...loaded.where((p) => p.isSpecialty),
+      ...loaded.where((p) => !p.isSpecialty),
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -630,6 +784,13 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
             ),
           ],
         ),
+        SizedBox(height: grid.px(1)),
+        Text(
+          tr(context,
+              en: 'Pin up to 3 products as your specialty. They show first on your shop page.',
+              tl: 'Mag-pin ng hanggang 3 produkto bilang espesyalidad.'),
+          style: PixelType.small(context, color: PixelPalette.slate),
+        ),
         SizedBox(height: grid.px(2)),
         if (items.isEmpty)
           Text(
@@ -647,7 +808,20 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
                 children: [
                   Text(items[i].name, style: PixelType.title(context)),
                   SizedBox(height: grid.px(1)),
-                  PixelChip(items[i].priceLabel),
+                  Wrap(
+                    spacing: grid.px(2),
+                    runSpacing: grid.px(1),
+                    children: [
+                      if (items[i].isSpecialty)
+                        PixelChip(
+                          tr(context, en: 'SPECIALTY', tl: 'ESPESYAL'),
+                          key: ValueKey('merchant_specialty_${items[i].id}'),
+                          style: PixelBoxStyle.green,
+                          textColor: PixelPalette.white,
+                        ),
+                      PixelChip(items[i].priceLabel),
+                    ],
+                  ),
                   if (items[i].description.isNotEmpty) ...[
                     SizedBox(height: grid.px(1)),
                     Text(items[i].description, style: PixelType.body(context)),
@@ -657,6 +831,16 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
                     spacing: grid.px(2),
                     runSpacing: grid.px(1),
                     children: [
+                      PixelButton(
+                        key: ValueKey('merchant_pin_${items[i].id}'),
+                        label: items[i].isSpecialty
+                            ? tr(context, en: 'Unpin', tl: 'Alisin ang pin')
+                            : tr(context, en: 'Pin as specialty', tl: 'I-pin'),
+                        variant: items[i].isSpecialty
+                            ? PixelButtonVariant.secondary
+                            : PixelButtonVariant.primary,
+                        onPressed: () => _toggleSpecialty(items[i]),
+                      ),
                       PixelButton(
                         key: ValueKey('merchant_edit_${items[i].id}'),
                         label: 'Edit',

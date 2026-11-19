@@ -15,6 +15,7 @@ import '../features/onboarding/pixel_tutorial.dart';
 import '../features/juanchoice/providers/juanchoice_provider.dart';
 import '../features/quests/providers/campaign_provider.dart';
 import '../features/quests/providers/quest_provider.dart';
+import '../features/shop/providers/shop_nav_provider.dart';
 import '../features/spots/providers/spot_discovery_provider.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -112,6 +113,12 @@ class _MainShellState extends ConsumerState<MainShell> {
           return;
         }
 
+        // v0.3.10: back from a Shop category returns to the Shop hub first.
+        if (currentIndex == shopShellBranch &&
+            ref.read(shopCategoryProvider) != null) {
+          ref.read(shopCategoryProvider.notifier).state = null;
+          return;
+        }
         if (currentIndex != 0) {
           widget.navigationShell.goBranch(0);
           return;
@@ -158,6 +165,10 @@ class _MainShellState extends ConsumerState<MainShell> {
                     onTap: (tab) {
                       _setMenu(false);
                       final branch = _tabBranches[tab];
+                      // v0.3.10: the Shop tab always opens the Shop hub.
+                      if (branch == shopShellBranch) {
+                        ref.read(shopCategoryProvider.notifier).state = null;
+                      }
                       if (branch == currentIndex) {
                         widget.navigationShell
                             .goBranch(branch, initialLocation: true);

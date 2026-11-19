@@ -114,6 +114,7 @@ class MerchantChecklistItem {
 
 class MerchantDashboardData {
   const MerchantDashboardData({
+    this.id = '',
     required this.name,
     required this.category,
     required this.municipality,
@@ -123,6 +124,7 @@ class MerchantDashboardData {
     required this.notice,
   });
 
+  final String id;
   final String name;
   final String category;
   final String municipality;
@@ -137,6 +139,7 @@ class MerchantDashboardData {
     final merchant = _map(json['merchant']);
     final checklist = _map(json['checklist']);
     return MerchantDashboardData(
+      id: _str(merchant['id']),
       name: _str(merchant['name']),
       category: _str(merchant['category']),
       municipality: _str(merchant['municipality']),
@@ -163,6 +166,7 @@ class MerchantProductItem {
     required this.description,
     required this.price,
     required this.currency,
+    this.isSpecialty = false,
   });
 
   final String id;
@@ -170,6 +174,9 @@ class MerchantProductItem {
   final String description;
   final double? price;
   final String currency;
+
+  /// v0.3.10: pinned by the owner as the shop's specialty (max 3).
+  final bool isSpecialty;
 
   String get priceLabel => price == null
       ? 'Informational'
@@ -185,6 +192,8 @@ class MerchantProductItem {
             : double.tryParse('${json['price'] ?? ''}'),
         currency:
             _str(json['currency']).isEmpty ? 'PHP' : _str(json['currency']),
+        isSpecialty:
+            json['is_specialty'] == true || json['specialty_at'] != null,
       );
 }
 

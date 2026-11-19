@@ -14,6 +14,7 @@ import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../celebrations/celebration.dart';
 import '../../dashboard/pixel/home_pixel_art.dart';
+import '../../merchant/screens/merchant_page_screen.dart';
 import '../models/suki_models.dart';
 import '../providers/suki_provider.dart';
 import '../suki_scan_flow.dart';
@@ -141,7 +142,19 @@ class SukiCardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(p.merchant.name, style: PixelType.title(context)),
+                // v0.3.10: the shop name opens its public page.
+                GestureDetector(
+                  key: const ValueKey('suki_card_shop_page'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: p.merchant.id.isEmpty
+                      ? null
+                      : () => openMerchantPage(context, p.merchant.id),
+                  child: Text(
+                      p.merchant.id.isEmpty
+                          ? p.merchant.name
+                          : '${p.merchant.name} >',
+                      style: PixelType.title(context)),
+                ),
                 SizedBox(height: grid.px(1)),
                 Text(
                   [
