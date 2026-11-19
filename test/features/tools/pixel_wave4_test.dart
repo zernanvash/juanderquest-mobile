@@ -710,9 +710,12 @@ void main() {
       await _pump(tester, const QuestFundingScreen(questId: 'quest-1'),
           apiClient: fundingClient());
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.textContaining('Funding round'), findsOneWidget);
+      // v0.3.10: the round now opens with an Overview panel.
+      expect(find.byKey(const ValueKey('funding_overview')), findsOneWidget);
       await tester.enterText(
           find.byKey(const ValueKey('funding_points')), '25');
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('funding_contribute')));
       await tester.tap(find.byKey(const ValueKey('funding_contribute')));
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.textContaining('Contribution recorded'), findsOneWidget);

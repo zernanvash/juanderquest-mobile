@@ -306,6 +306,8 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
   Future<void> _cancel() async {
     final id = _plan?['id']?.toString();
     if (id == null) return;
+    if (!await _confirmEnd(close: false)) return;
+    if (!mounted) return;
     await _run('Round cancelled and any locked points refunded.', () async {
       final response = await ref.read(apiClientProvider).dio.post(
           '/funding-plans/${Uri.encodeComponent(id)}/cancel',
@@ -320,6 +322,8 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
   Future<void> _close() async {
     final id = _plan?['id']?.toString();
     if (id == null) return;
+    if (!await _confirmEnd(close: true)) return;
+    if (!mounted) return;
     await _run(
         'Round closed. Existing traveler reward holds will still be honored.',
         () async {
@@ -395,47 +399,57 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
                     child: _loading
                         ? const Center(
                             child: PixelLoader(label: 'Loading funding plan'))
-                        : ListView(
+                        // A short management page: build every panel so
+                        // the controls below the overview stay reachable.
+                        : SingleChildScrollView(
                             padding: EdgeInsets.fromLTRB(
                               grid.gutter,
                               grid.px(3),
                               grid.gutter,
                               grid.px(8) + MediaQuery.paddingOf(context).bottom,
                             ),
-                            children: [
-                              Text('Fund a real reward pool',
-                                  style: PixelType.title(context)),
-                              SizedBox(height: grid.px(1)),
-                              Text(
-                                'Demo points only. Reserved funds pay approved completions; no fiat or on-chain transfer occurs.',
-                                style: PixelType.body(
-                                  context,
-                                  color: PixelPalette.slate,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text('Fund a real reward pool',
+                                    style: PixelType.title(context)),
+                                SizedBox(height: grid.px(1)),
+                                Text(
+                                  'Demo points only. Reserved funds pay approved completions; no fiat or on-chain transfer occurs.',
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.slate,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: grid.px(3)),
-                              if (_error != null) ...[
-                                _message(context, grid, _error!, error: true),
-                                SizedBox(height: grid.px(2)),
+                                SizedBox(height: grid.px(3)),
+                                if (_error != null) ...[
+                                  _message(context, grid, _error!, error: true),
+                                  SizedBox(height: grid.px(2)),
+                                ],
+                                if (_notice != null) ...[
+                                  _message(context, grid, _notice!,
+                                      error: false),
+                                  SizedBox(height: grid.px(2)),
+                                ],
+                                if (_plan == null)
+                                  _createCard(context, grid)
+                                else ...[
+                                  _overviewPanel(context, grid, status),
+                                  SizedBox(height: grid.px(3)),
+                                  _planCard(
+                                      context, grid, status, canContribute),
+                                  _sponsorshipsPanel(context, grid),
+                                  _historyPanel(context, grid),
+                                ],
+                                SizedBox(height: grid.px(3)),
+                                _message(
+                                  context,
+                                  grid,
+                                  'Accepted traveler submissions keep their reward reserved while under review. Rejected proof can be resubmitted before the hold expires.',
+                                  error: false,
+                                ),
                               ],
-                              if (_notice != null) ...[
-                                _message(context, grid, _notice!, error: false),
-                                SizedBox(height: grid.px(2)),
-                              ],
-                              if (_plan == null)
-                                _createCard(context, grid)
-                              else ...[
-                                _planCard(context, grid, status, canContribute),
-                                _sponsorshipsPanel(context, grid),
-                              ],
-                              SizedBox(height: grid.px(3)),
-                              _message(
-                                context,
-                                grid,
-                                'Accepted traveler submissions keep their reward reserved while under review. Rejected proof can be resubmitted before the hold expires.',
-                                error: false,
-                              ),
-                            ],
+                            ),
                           ),
                   ),
                 ],
@@ -508,50 +522,26 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
 
   Widget _planCard(
       BuildContext context, PixelGrid grid, String status, bool canContribute) {
-    final contributions = (_plan?['contributions'] as List? ?? const [])
-        .whereType<Map>()
-        .toList();
-    final committed = contributions.fold<int>(
-        0, (sum, row) => sum + _asInt(row['committed_points']));
-    final held = contributions.fold<int>(
-        0, (sum, row) => sum + _asInt(row['held_points']));
+    final ended = ['closed', 'expired', 'cancelled'].contains(status);
     return PixelPanel(
+      key: const ValueKey('funding_controls'),
       style: PixelBoxStyle.parchment,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const SizedBox.square(
-                dimension: 20,
-                child: FittedBox(
-                  child: PixelSprite(DesignerArt.handshake, scale: 1),
-                ),
-              ),
-              SizedBox(width: grid.px(1)),
-              Expanded(
-                child: Text(
-                  'Funding round · ${status.replaceAll('_', ' ')}',
-                  style: PixelType.title(context),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: grid.px(1)),
-          Text(
-            '${_plan?['reward_points'] ?? 0} points per completion · ${_plan?['mode'] ?? _mode} model',
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-          Text(
-            'Target ${_plan?['target_points'] ?? 0} points · $committed committed · $held currently held',
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
-          Text(
-            'Ends ${_dateLabel(_plan?['ends_at']?.toString())}',
-            style: PixelType.body(context, color: PixelPalette.slate),
-          ),
+          Text(tr(context, en: 'Manage round', tl: 'Pamahalaan ang round'),
+              style: PixelType.title(context)),
+          if (ended) ...[
+            SizedBox(height: grid.px(1)),
+            Text(
+              tr(context,
+                  en: 'This round has ended. Unused points went back to their funders.',
+                  tl: 'Tapos na ang round na ito. Naibalik sa mga nagpondo ang hindi nagamit na puntos.'),
+              style: PixelType.body(context, color: PixelPalette.slate),
+            ),
+          ],
           if (canContribute) ...[
-            SizedBox(height: grid.px(3)),
+            SizedBox(height: grid.px(2)),
             PixelTextField(
               key: const ValueKey('funding_points'),
               controller: _points,
@@ -630,6 +620,279 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
         ],
       ),
     );
+  }
+
+  /// Team review 2026-11-19: "users dont have overview of numbers". Prefers
+  /// the server's read-only `summary`; falls back to summing contributions.
+  _FundingNumbers get _numbers => _FundingNumbers.from(_plan ?? const {});
+
+  Widget _overviewPanel(BuildContext context, PixelGrid grid, String status) {
+    final n = _numbers;
+    final progress = n.target > 0 ? n.committed / n.target : 0.0;
+    final rows = <(String, String)>[
+      (
+        tr(context, en: 'Per completion', tl: 'Bawat pagkumpleto'),
+        '${n.reward} pts + ${n.fee} fee'
+      ),
+      (
+        tr(context,
+            en: 'Reserved for travelers', tl: 'Nakareserba sa travelers'),
+        '${n.held} pts'
+      ),
+      (tr(context, en: 'Paid out', tl: 'Naibayad'), '${n.paid} pts'),
+      (
+        tr(context, en: 'Remaining', tl: 'Natitira'),
+        '${n.remaining} pts (~${n.completionsLeft} rewards)'
+      ),
+      if (n.refunded > 0)
+        (
+          tr(context, en: 'Returned to funders', tl: 'Naibalik'),
+          '${n.refunded} pts'
+        ),
+      (
+        tr(context, en: 'Completions paid', tl: 'Bayad na pagkumpleto'),
+        '${n.paidCount} of ${n.planned}'
+      ),
+      (
+        tr(context, en: 'Travelers playing', tl: 'Naglalaro'),
+        '${n.activeHolds}'
+      ),
+      (
+        tr(context, en: 'Pending review', tl: 'Hinihintay ang review'),
+        '${n.pendingReview}'
+      ),
+      (
+        tr(context, en: 'Your points', tl: 'Iyong puntos'),
+        '${n.authorCommitted} pts'
+      ),
+      (
+        tr(context, en: 'Sponsors', tl: 'Mga sponsor'),
+        '${n.sponsorCommitted} pts · ${n.acceptedSponsors} accepted · ${n.openRequests} open'
+      ),
+      (
+        tr(context, en: 'Ends', tl: 'Matatapos'),
+        _dateLabel(_plan?['ends_at']?.toString())
+      ),
+    ];
+    return PixelPanel(
+      key: const ValueKey('funding_overview'),
+      style: PixelBoxStyle.parchment,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SizedBox.square(
+                dimension: 20,
+                child: FittedBox(
+                  child: PixelSprite(DesignerArt.handshake, scale: 1),
+                ),
+              ),
+              SizedBox(width: grid.px(1)),
+              Expanded(
+                child: Text(tr(context, en: 'Overview', tl: 'Buod'),
+                    style: PixelType.title(context)),
+              ),
+            ],
+          ),
+          SizedBox(height: grid.px(1)),
+          Wrap(
+            spacing: grid.px(1),
+            runSpacing: grid.px(1),
+            children: [
+              PixelTag(status.replaceAll('_', ' ').toUpperCase(),
+                  key: const ValueKey('funding_status_tag')),
+              PixelTag(n.mode == 'window'
+                  ? tr(context, en: 'OPEN WINDOW', tl: 'BUKAS NA WINDOW')
+                  : tr(context, en: 'FIXED BUDGET', tl: 'TAKDANG BADYET')),
+            ],
+          ),
+          SizedBox(height: grid.px(2)),
+          PixelProgressBar(value: progress, idle: false),
+          SizedBox(height: grid.px(1)),
+          Text(
+            '${n.committed} committed of ${n.target} target',
+            key: const ValueKey('funding_committed_line'),
+            style:
+                PixelType.body(context).copyWith(fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: grid.px(2)),
+          for (final row in rows)
+            Padding(
+              padding: EdgeInsets.only(bottom: grid.px(1)),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(row.$1,
+                        style: PixelType.small(context,
+                            color: PixelPalette.slate)),
+                  ),
+                  SizedBox(width: grid.px(2)),
+                  Expanded(
+                    child: Text(row.$2,
+                        textAlign: TextAlign.end,
+                        style: PixelType.small(context)),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Contributions, sponsorships and traveler reservations, newest first.
+  Widget _historyPanel(BuildContext context, PixelGrid grid) {
+    final events = <(DateTime, String)>[];
+    void add(Object? raw, String text) {
+      final at = DateTime.tryParse('${raw ?? ''}');
+      if (at != null) events.add((at, text));
+    }
+
+    for (final c
+        in (_plan?['contributions'] as List? ?? const []).whereType<Map>()) {
+      final who = c['funder_kind'] == 'merchant'
+          ? tr(context, en: 'A sponsor', tl: 'Isang sponsor')
+          : tr(context, en: 'You', tl: 'Ikaw');
+      add(c['created_at'],
+          '$who committed ${_asInt(c['committed_points'])} pts');
+    }
+    for (final s
+        in (_plan?['sponsorships'] as List? ?? const []).whereType<Map>()) {
+      final shop = s['merchant_name']?.toString() ?? 'Merchant';
+      add(s['updated_at'] ?? s['created_at'],
+          'Sponsor request · $shop · ${s['status'] ?? 'requested'}');
+    }
+    for (final h in (_plan?['holds'] as List? ?? const []).whereType<Map>()) {
+      final pts = _asInt(h['reward_points']);
+      switch (h['status']) {
+        case 'paid':
+          add(h['settled_at'] ?? h['created_at'], 'Reward paid · $pts pts');
+        case 'released':
+          final reason = '${h['release_reason'] ?? ''}'.replaceAll('_', ' ');
+          add(h['released_at'] ?? h['created_at'],
+              'Reservation returned${reason.isEmpty ? '' : ' · $reason'}');
+        default:
+          add(
+              h['created_at'],
+              h['attempt_status'] == 'submitted'
+                  ? 'Traveler submitted proof · $pts pts reserved'
+                  : 'Traveler accepted · $pts pts reserved');
+      }
+    }
+    events.sort((a, b) => b.$1.compareTo(a.$1));
+    final shown = events.take(30).toList();
+    return Padding(
+      padding: EdgeInsets.only(top: grid.px(3)),
+      child: PixelPanel(
+        key: const ValueKey('funding_history'),
+        style: PixelBoxStyle.parchment,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(tr(context, en: 'History', tl: 'Kasaysayan'),
+                style: PixelType.title(context)),
+            SizedBox(height: grid.px(1)),
+            if (shown.isEmpty)
+              Text(
+                tr(context,
+                    en: 'Nothing has happened in this round yet.',
+                    tl: 'Wala pang nangyari sa round na ito.'),
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+            for (final e in shown)
+              Padding(
+                padding: EdgeInsets.only(top: grid.px(1)),
+                child: Text(
+                  '${_dateLabel(e.$1.toIso8601String())} · ${e.$2}',
+                  style: PixelType.small(context),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Team review 2026-11-19: "add a prompt warning when cancelling a fund and
+  /// add details whats affected". Mirrors the server: close/cancel refund the
+  /// unreserved budget, expire open sponsor requests and pause the quest once
+  /// no traveler reservation is still open; open reservations are honored.
+  Future<bool> _confirmEnd({required bool close}) async {
+    final n = _numbers;
+    final budget = n.mode != 'window';
+    final lines = <String>[
+      if (close)
+        tr(context,
+            en: 'No new travelers can accept this quest from now on.',
+            tl: 'Wala nang bagong traveler na makakatanggap ng quest na ito.'),
+      if (n.activeHolds > 0)
+        tr(context,
+            en: '${n.activeHolds} traveler(s) who already accepted keep their reserved reward (${n.held} pts) until they finish or the reservation runs out${n.pendingReview > 0 ? '; ${n.pendingReview} waiting for review will still be paid if approved' : ''}.',
+            tl: 'Mananatili ang nakareserbang gantimpala (${n.held} pts) ng ${n.activeHolds} traveler na tumanggap na hanggang matapos sila o maubos ang reserba.'),
+      if (budget && n.remaining > 0)
+        tr(context,
+            en: '${n.remaining} unreserved pts return now: ${n.authorRemaining} to you, ${n.sponsorRemaining} to sponsors.',
+            tl: 'Ibabalik ngayon ang ${n.remaining} pts: ${n.authorRemaining} sa iyo, ${n.sponsorRemaining} sa mga sponsor.'),
+      if (!budget)
+        tr(context,
+            en: 'Open-window funding: nothing more is taken from funders after this.',
+            tl: 'Open window: wala nang kukunin sa mga nagpondo pagkatapos nito.'),
+      if (n.openRequests > 0)
+        tr(context,
+            en: '${n.openRequests} open sponsor request(s) will be withdrawn.',
+            tl: 'Babawiin ang ${n.openRequests} bukas na hiling sa sponsor.'),
+      n.activeHolds > 0
+          ? tr(context,
+              en:
+                  'The quest pauses after the last reservation resolves and pays no new rewards.',
+              tl: 'Ihihinto ang quest kapag natapos ang huling reserba.')
+          : tr(context,
+              en: 'The quest pauses now and pays no new rewards.',
+              tl: 'Ihihinto na ang quest at wala nang bagong gantimpala.'),
+      tr(context,
+          en: 'This cannot be undone. You can set up a new round later.',
+          tl: 'Hindi na ito maibabalik. Maaari kang gumawa ng bagong round mamaya.'),
+    ];
+    final confirmed = await showPixelDialog<bool>(
+      context: context,
+      title: close
+          ? tr(context, en: 'Close this round early?', tl: 'Isara nang maaga?')
+          : tr(context, en: 'Cancel this round?', tl: 'Kanselahin ang round?'),
+      content: Column(
+        key: const ValueKey('funding_end_details'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text('• $line', style: PixelType.body(context)),
+            ),
+        ],
+      ),
+      actions: [
+        Builder(
+          builder: (dialogContext) => PixelButton(
+            key: const ValueKey('funding_end_keep'),
+            label: tr(context, en: 'Keep round', tl: 'Huwag'),
+            variant: PixelButtonVariant.secondary,
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+          ),
+        ),
+        Builder(
+          builder: (dialogContext) => PixelButton(
+            key: const ValueKey('funding_end_confirm'),
+            label: close
+                ? tr(context, en: 'Close round', tl: 'Isara')
+                : tr(context, en: 'Cancel round', tl: 'Kanselahin'),
+            variant: PixelButtonVariant.danger,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+          ),
+        ),
+      ],
+    );
+    return confirmed == true;
   }
 
   Widget _sponsorshipsPanel(BuildContext context, PixelGrid grid) {
@@ -799,3 +1062,100 @@ int? _asIntOrNull(Object? value) =>
     value is num ? value.toInt() : int.tryParse('${value ?? ''}');
 
 int _asInt(Object? value) => _asIntOrNull(value) ?? 0;
+
+/// Overview numbers for one round (all plain ints).
+class _FundingNumbers {
+  const _FundingNumbers({
+    required this.mode,
+    required this.target,
+    required this.committed,
+    required this.held,
+    required this.paid,
+    required this.remaining,
+    required this.refunded,
+    required this.reward,
+    required this.fee,
+    required this.planned,
+    required this.completionsLeft,
+    required this.activeHolds,
+    required this.pendingReview,
+    required this.paidCount,
+    required this.authorCommitted,
+    required this.authorRemaining,
+    required this.sponsorCommitted,
+    required this.sponsorRemaining,
+    required this.openRequests,
+    required this.acceptedSponsors,
+  });
+
+  final String mode;
+  final int target, committed, held, paid, remaining, refunded, reward, fee;
+  final int planned, completionsLeft, activeHolds, pendingReview, paidCount;
+  final int authorCommitted, authorRemaining, sponsorCommitted;
+  final int sponsorRemaining, openRequests, acceptedSponsors;
+
+  factory _FundingNumbers.from(Map plan) {
+    final contributions =
+        (plan['contributions'] as List? ?? const []).whereType<Map>().toList();
+    final holds =
+        (plan['holds'] as List? ?? const []).whereType<Map>().toList();
+    final sponsorships =
+        (plan['sponsorships'] as List? ?? const []).whereType<Map>().toList();
+    int sum(Iterable<Map> rows, String field) =>
+        rows.fold(0, (total, row) => total + _asInt(row[field]));
+    final authorRows =
+        contributions.where((c) => c['funder_kind'] != 'merchant');
+    final sponsorRows =
+        contributions.where((c) => c['funder_kind'] == 'merchant');
+    final summary = plan['summary'] is Map ? plan['summary'] as Map : const {};
+    final holdSummary =
+        summary['holds'] is Map ? summary['holds'] as Map : const {};
+    int pick(Map source, String key, int fallback) =>
+        source.containsKey(key) ? _asInt(source[key]) : fallback;
+    final reward = _asInt(plan['reward_points']);
+    final fee = _asInt(plan['fee_points']);
+    final remaining = pick(
+        summary, 'remaining_points', sum(contributions, 'remaining_points'));
+    final perCompletion = reward + fee;
+    return _FundingNumbers(
+      mode: plan['mode']?.toString() ?? 'budget',
+      target: _asInt(plan['target_points']),
+      committed: pick(
+          summary, 'committed_points', sum(contributions, 'committed_points')),
+      held: pick(summary, 'held_points', sum(contributions, 'held_points')),
+      paid: pick(
+          summary,
+          'paid_points',
+          sum(contributions, 'paid_reward_points') +
+              sum(contributions, 'paid_fee_points')),
+      remaining: remaining,
+      refunded: pick(
+          summary, 'refunded_points', sum(contributions, 'refunded_points')),
+      reward: reward,
+      fee: fee,
+      planned: _asInt(plan['planned_completions']),
+      completionsLeft: pick(summary, 'completions_left',
+          perCompletion > 0 ? remaining ~/ perCompletion : 0),
+      activeHolds: pick(holdSummary, 'active',
+          holds.where((h) => h['status'] == 'held').length),
+      pendingReview: pick(
+          holdSummary,
+          'pending_review',
+          holds
+              .where((h) =>
+                  h['status'] == 'held' && h['attempt_status'] == 'submitted')
+              .length),
+      paidCount: pick(holdSummary, 'paid',
+          holds.where((h) => h['status'] == 'paid').length),
+      authorCommitted: sum(authorRows, 'committed_points'),
+      authorRemaining: sum(authorRows, 'remaining_points'),
+      sponsorCommitted: sum(sponsorRows, 'committed_points'),
+      sponsorRemaining: sum(sponsorRows, 'remaining_points'),
+      openRequests: sponsorships
+          .where((s) => ['requested', 'countered'].contains(s['status']))
+          .length,
+      acceptedSponsors:
+          sponsorships.where((s) => s['status'] == 'accepted').length,
+    );
+  }
+}
