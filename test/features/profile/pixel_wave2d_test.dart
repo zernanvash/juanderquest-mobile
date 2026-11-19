@@ -1,3 +1,4 @@
+import 'package:juanderquest_app/features/profile/widgets/avatar_report.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -352,6 +353,8 @@ Future<void> _pump(
         spotDiscoveryProvider.overrideWith(
             (ref) => spotsNotifier?.call(ref) ?? _SpotsFixture(ref, spots)),
         userSpotsProvider.overrideWith((ref, handle) => Future.value(const [])),
+        // v0.3.10: other explorers' profiles load their picture; no network in tests.
+        publicAvatarProvider.overrideWith((ref, handle) async => null),
         ...extraOverrides,
       ],
       child: MaterialApp.router(routerConfig: _router(home, initial: initial)),
@@ -536,7 +539,8 @@ void main() {
       expect(find.text('Patar White Beach'), findsOneWidget);
     });
 
-    testWidgets('own profile empty state shows + Post a Destination CTA',
+    // v0.3.10 team review: the empty state has no CTA (the header has Post).
+    testWidgets('own profile empty state shows a message without a CTA',
         (tester) async {
       _useTallView(tester);
       await _pump(
@@ -553,12 +557,9 @@ void main() {
       expect(find.text('POSTED SPOTS'), findsOneWidget);
       expect(find.text('0'), findsWidgets);
       expect(find.byKey(const ValueKey('profile_no_spots')), findsOneWidget);
-      expect(
-          find.text(
-              'No destinations posted yet. Share a hidden spot in Pangasinan!'),
-          findsOneWidget);
+      expect(find.textContaining('No spots posted yet'), findsOneWidget);
       expect(find.byKey(const ValueKey('profile_post_spot_empty')),
-          findsOneWidget);
+          findsNothing);
     });
 
     testWidgets('own profile error state shows retry button', (tester) async {
@@ -625,7 +626,7 @@ void main() {
       expect(find.text('POSTED SPOTS'), findsOneWidget);
       expect(find.text('0'), findsWidgets);
       expect(find.byKey(const ValueKey('profile_no_spots')), findsOneWidget);
-      expect(find.text('No destinations posted yet by this explorer.'),
+      expect(find.text('No spots posted yet by this explorer.'),
           findsOneWidget);
       expect(
           find.byKey(const ValueKey('profile_post_spot_empty')), findsNothing);

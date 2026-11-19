@@ -79,7 +79,9 @@ void main() {
     expect(submittedBody['mode'], 'budget');
     expect(submittedBody['planned_completions'], 10);
     expect(submittedBody['idempotency_key'], isA<String>());
-    expect(find.textContaining('Funding round · draft'), findsOneWidget);
+    // v0.3.10: the management page shows the round status as a tag.
+    expect(find.byKey(const ValueKey('funding_status_tag')), findsOneWidget);
+    expect(find.text('DRAFT'), findsOneWidget);
   });
 
   testWidgets('funding setup remains usable at 320px with 2x text',
@@ -110,6 +112,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.byType(ListView), findsOneWidget);
+    expect(find.byType(SingleChildScrollView), findsWidgets);
+    expect(find.text('Set up this round'), findsOneWidget);
   });
 }
