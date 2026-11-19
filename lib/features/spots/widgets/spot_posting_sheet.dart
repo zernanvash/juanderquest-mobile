@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_art.dart';
@@ -18,9 +19,11 @@ import '../models/spot_model.dart';
 import '../providers/spot_recognition_provider.dart';
 import '../studio/pixel/studio_category_grid.dart';
 import '../studio/pixel/studio_icons.dart';
+import '../studio/pixel/studio_picker_field.dart';
 import '../studio/pixel/studio_section.dart';
 import '../studio/pixel/studio_text.dart';
 import '../studio/pixel/studio_text_field.dart';
+import '../utils/pangasinan_towns.dart';
 import '../utils/spot_posting.dart';
 
 class SpotPostingSheetResult {
@@ -95,6 +98,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _municipalityController = TextEditingController();
+  String _province = defaultSpotProvince;
   final _addressController = TextEditingController();
   final _hoursController = TextEditingController();
   final _picker = ImagePicker();
@@ -661,14 +665,33 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
           ],
           if (_editAddress) ...[
             SizedBox(height: grid.px(2)),
-            StudioTextField(
+            // Team review 2026-11-19: fixed province -> town pickers.
+            StudioPickerField(
+              key: const ValueKey('studio_province'),
+              label: tr(context, en: 'Province', tl: 'Probinsya'),
+              value: _province,
+              options: spotProvinceTowns.keys.toList(),
+              onSelected: (province) => setState(() {
+                if (province != _province) _municipalityController.text = '';
+                _province = province;
+                _touched = _touched.copyWith(location: true);
+              }),
+            ),
+            SizedBox(height: grid.px(2)),
+            StudioPickerField(
               key: const ValueKey('studio_municipality'),
-              controller: _municipalityController,
-              label: 'Municipality / city',
-              maxLength: 100,
+              label:
+                  tr(context, en: 'Municipality / city', tl: 'Bayan / lungsod'),
+              hint: tr(context, en: 'Choose a town', tl: 'Pumili ng bayan'),
+              value: canonicalSpotTown(_municipalityController.text,
+                  province: _province),
+              options: spotProvinceTowns[_province] ?? const [],
               errorText: _fieldErrors['municipality'],
-              onChanged: (_) =>
-                  setState(() => _touched = _touched.copyWith(location: true)),
+              onSelected: (town) => setState(() {
+                _municipalityController.text = town;
+                _touched = _touched.copyWith(location: true);
+                _fieldErrors = Map.of(_fieldErrors)..remove('municipality');
+              }),
             ),
             SizedBox(height: grid.px(2)),
             StudioTextField(

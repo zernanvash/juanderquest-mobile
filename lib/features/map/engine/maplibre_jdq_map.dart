@@ -816,14 +816,21 @@ class MapLibreJdqMap extends JdqMap {
     1.0,
   ];
 
-  /// Map pin heights on screen (Plan 100 WP-8).
-  static const questPinDp = 40.0;
-  static const spotPinDp = 32.0;
+  /// Map pin heights on screen (Plan 100 WP-8). Team review 2026-11-19:
+  /// "the markers are too small, can barely see them" (were 40/32 dp, and
+  /// the 64 px spot art rounded down to 1x = ~21 dp on a 3x phone).
+  static const questPinDp = 60.0;
+  static const spotPinDp = 48.0;
 
   /// Pixel art scales by whole numbers (tool/pixel_art/README.md); an art
-  /// bigger than the target (spot pin, 64 px) only shrinks by halves.
+  /// bigger than the target only shrinks by halves.
   static double _wholeScale(double s) =>
       s >= 1 ? s.roundToDouble() : 1 / (1 / s).round();
+
+  /// The raster scale for a pin art [artHeight] px tall at [dpr].
+  @visibleForTesting
+  static double pinScale(double targetDp, double dpr, int artHeight) =>
+      _wholeScale(targetDp * dpr / artHeight);
 
   Future<Uint8List?> _rasterizeToPng(PixelArt art,
       {double scale = 2, ColorFilter? filter}) async {

@@ -1,3 +1,5 @@
+import 'pangasinan_towns.dart';
+
 const List<Map<String, dynamic>> spotPostingCategories = [
   {
     'id': 'eat_drink',
@@ -316,7 +318,7 @@ SpotPostingDraft applyRecognition(
   var next = draft;
   if (!touched.location) {
     next = next.copyWith(
-      municipality: rec.municipality ?? next.municipality,
+      municipality: canonicalSpotTown(rec.municipality) ?? next.municipality,
       barangay: rec.barangay ?? '',
       address: rec.formattedAddress.isNotEmpty ? rec.formattedAddress : next.address,
     );
@@ -394,6 +396,8 @@ Map<String, String> validatePostingDraft(SpotPostingDraft draft) {
   final municipality = draft.municipality.trim();
   if (municipality.length < 2 || municipality.length > 100) {
     errors['municipality'] = 'Municipality or city is required.';
+  } else if (canonicalSpotTown(municipality) == null) {
+    errors['municipality'] = 'Choose the town from the list.';
   }
   final address = draft.address.trim();
   if (address.length < 3 || address.length > 300) {

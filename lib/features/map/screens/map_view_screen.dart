@@ -932,7 +932,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                 bottom: 28,
                 left: 12,
                 right: 12,
-                child: _AreaBanner(
+                child: MapAreaBanner(
                   area: _focusedArea!,
                   questsCount: visibleQuests.length,
                   spotsCount: visibleSpots.length,
@@ -1351,14 +1351,15 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
   }
 }
 
-class _AreaBanner extends StatelessWidget {
+class MapAreaBanner extends StatelessWidget {
   final AdminArea area;
   final int questsCount;
   final int spotsCount;
   final VoidCallback onClear;
   final VoidCallback onPinSpot;
 
-  const _AreaBanner({
+  const MapAreaBanner({
+    super.key,
     required this.area,
     required this.questsCount,
     required this.spotsCount,
@@ -1417,19 +1418,18 @@ class _AreaBanner extends StatelessWidget {
             ),
             SizedBox(width: grid.px(0.5)),
           ],
-          PixelButton(
-            label: 'ZOOM OUT',
-            variant: PixelButtonVariant.secondary,
-            onPressed: onClear,
-          ),
-          SizedBox(width: grid.px(0.5)),
-          PixelIconButton(
-            key: const ValueKey('area_clear'),
-            icon: MapMarkerArt.iconClose,
-            iconHeight: 24, // Plan 100 WP-8
-            semanticLabel: 'Clear area focus',
-            style: PixelBoxStyle.parchment,
-            onPressed: onClear,
+          // Team review 2026-11-19: "zoom out and x do same thing, remove
+          // zoom out, just a small x with no background box".
+          Tooltip(
+            message: tr(context, en: 'Close map', tl: 'Isara ang mapa'),
+            child: PixelIconButton(
+              key: const ValueKey('area_clear'),
+              icon: MapMarkerArt.iconClose,
+              iconHeight: 16,
+              boxed: false,
+              semanticLabel: tr(context, en: 'Close map', tl: 'Isara ang mapa'),
+              onPressed: onClear,
+            ),
           ),
         ],
       ),
