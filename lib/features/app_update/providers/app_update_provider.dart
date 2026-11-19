@@ -25,6 +25,22 @@ enum UpdateStatus {
   error,
 }
 
+/// A higher build code is an update, except for local debug/test builds
+/// (build code below 100, e.g. `0.3.10+1`) of the same version name: those
+/// would otherwise prompt "v0.3.10 -> v0.3.10" (phone QA 2026-11-19).
+bool isNewerRelease({
+  required int latestCode,
+  required String latestName,
+  required int installedCode,
+  required String installedName,
+}) {
+  if (latestCode <= installedCode) return false;
+  if (installedCode < 100 && latestName.trim() == installedName.trim()) {
+    return false;
+  }
+  return true;
+}
+
 class AppUpdateState {
   final UpdateStatus status;
   final String installedVersionName;
@@ -51,7 +67,12 @@ class AppUpdateState {
 
   bool get hasUpdate =>
       latestVersion != null &&
-      latestVersion!.versionCode > installedVersionCode;
+      isNewerRelease(
+        latestCode: latestVersion!.versionCode,
+        latestName: latestVersion!.versionName,
+        installedCode: installedVersionCode,
+        installedName: installedVersionName,
+      );
 
   bool get isDownloading => status == UpdateStatus.downloading;
   bool get isReadyToInstall => status == UpdateStatus.readyToInstall || isCached;
@@ -152,7 +173,12 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
       final now = DateTime.now();
 
       if (latest != null) {
-        final isUpdateAvailable = latest.versionCode > state.installedVersionCode;
+        final isUpdateAvailable = isNewerRelease(
+          latestCode: latest.versionCode,
+          latestName: latest.versionName,
+          installedCode: state.installedVersionCode,
+          installedName: state.installedVersionName,
+        );
 
         // Check if full completed APK is already cached on local storage
         bool isCached = false;

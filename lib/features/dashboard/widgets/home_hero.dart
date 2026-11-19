@@ -16,6 +16,7 @@ import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../auth/models/user_model.dart';
+import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../profile/providers/profile_stats_provider.dart';
@@ -90,10 +91,9 @@ class HomeHero extends ConsumerWidget {
     final accentToken = frame?.accentToken ?? 'sun';
     final mainToken = frame?.textToken ?? 'paper';
     final initial = displayName.isEmpty ? 'J' : displayName[0].toUpperCase();
-    final avatarUrl = currentUser?.avatarUrl ?? '';
-    final validAvatar = avatarUrl.isNotEmpty &&
-        !avatarUrl.endsWith('.svg') &&
-        (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
+    // v0.3.10: uploaded pictures are root-relative; resolve like CosmeticAvatar.
+    final avatarUrl = resolveAvatarUrl(currentUser?.avatarUrl) ?? '';
+    final validAvatar = avatarUrl.isNotEmpty;
 
     final questsCount = stats.completedQuestsCount;
     final visitsCount = engagement?.verifiedVisits ?? 0;
