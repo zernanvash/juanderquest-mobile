@@ -74,7 +74,11 @@ class _SukiCardsScreenState extends ConsumerState<SukiCardsScreen> {
   Future<void> _refresh() async {
     ref.invalidate(sukiNearbyHereProvider);
     ref.invalidate(mySukiCardsProvider);
-    await ref.read(mySukiCardsProvider.future);
+    try {
+      await ref.read(mySukiCardsProvider.future);
+    } catch (_) {
+      // v0.3.10: the error panel shows it; never an uncaught refresh error.
+    }
   }
 
   @override

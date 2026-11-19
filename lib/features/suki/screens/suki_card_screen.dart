@@ -126,7 +126,14 @@ class SukiCardScreen extends ConsumerWidget {
     return RefreshIndicator(
       color: PixelPalette.green,
       backgroundColor: PixelPalette.parchment,
-      onRefresh: () => ref.refresh(sukiProgramProvider(programId).future),
+      // v0.3.10: a failed refresh (Suki switched off, offline) shows the
+      // error panel; it must not escape as an uncaught error.
+      onRefresh: () async {
+        try {
+          ref.invalidate(sukiProgramProvider(programId));
+          await ref.read(sukiProgramProvider(programId).future);
+        } catch (_) {}
+      },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(grid.gutter, grid.px(3), grid.gutter,

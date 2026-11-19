@@ -58,7 +58,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) {
-    if (_done) return;
+    // v0.3.10: a late camera frame after the screen closed is ignored.
+    if (_done || !mounted) return;
     for (final b in capture.barcodes) {
       final code = widget.extract(b.rawValue);
       if (code != null) {
