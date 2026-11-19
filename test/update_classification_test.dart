@@ -80,5 +80,23 @@ void main() {
         UpdateClass.reinstallRequired,
       );
     });
+
+    test('admin min_supported_build requires update even when latest build is not newer', () {
+      final fromServer = AppVersionInfo.fromJson({
+        'schemaVersion': 1,
+        'versionCode': 175,
+        'versionName': '0.3.9',
+        'downloadUrl': 'https://example.test/app.apk',
+        'min_supported_build': 200,
+      });
+      expect(
+        classifyUpdate(installedBuild: 199, manifest: fromServer),
+        UpdateClass.required,
+      );
+      expect(
+        classifyUpdate(installedBuild: 200, manifest: fromServer),
+        UpdateClass.none,
+      );
+    });
   });
 }

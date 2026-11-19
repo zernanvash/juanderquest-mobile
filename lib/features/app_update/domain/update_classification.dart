@@ -35,11 +35,15 @@ UpdateClass classifyUpdate({
     return UpdateClass.reinstallRequired;
   }
 
+  final minSupported = manifest.effectiveMinSupportedBuild;
+  if (installedBuild < minSupported) {
+    return UpdateClass.required;
+  }
+
   final latestBuild = manifest.buildNumber ?? manifest.versionCode;
   if (latestBuild <= installedBuild) return UpdateClass.none;
 
-  final minSupported = manifest.minSupportedBuildNumber ?? manifest.minSupportedVersionCode;
-  if (manifest.forceUpdate || manifest.updatePolicy == UpdatePolicy.mandatory || installedBuild < minSupported) {
+  if (manifest.forceUpdate || manifest.updatePolicy == UpdatePolicy.mandatory) {
     return UpdateClass.required;
   }
 

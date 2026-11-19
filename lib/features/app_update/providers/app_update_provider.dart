@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
@@ -28,6 +30,10 @@ enum UpdateStatus {
 /// A higher build code is an update, except for local debug/test builds
 /// (build code below 100, e.g. `0.3.10+1`) of the same version name: those
 /// would otherwise prompt "v0.3.10 -> v0.3.10" (phone QA 2026-11-19).
+/// Server floor (Plan 109 WP-5). Local debug builds (code < 100) are never forced.
+bool _belowMinSupported(AppVersionInfo latest, int installedCode) =>
+    installedCode >= 100 && latest.effectiveMinSupportedBuild > installedCode;
+
 bool isNewerRelease({
   required int latestCode,
   required String latestName,
@@ -67,12 +73,19 @@ class AppUpdateState {
 
   bool get hasUpdate =>
       latestVersion != null &&
-      isNewerRelease(
-        latestCode: latestVersion!.versionCode,
-        latestName: latestVersion!.versionName,
-        installedCode: installedVersionCode,
-        installedName: installedVersionName,
-      );
+      (isNewerRelease(
+            latestCode: latestVersion!.buildNumber ?? latestVersion!.versionCode,
+            latestName: latestVersion!.versionName,
+            installedCode: installedVersionCode,
+            installedName: installedVersionName,
+          ) ||
+          _belowMinSupported(latestVersion!, installedVersionCode));
+
+  bool get isUpdateRequired =>
+      latestVersion != null &&
+      (latestVersion!.forceUpdate ||
+          latestVersion!.updatePolicy == UpdatePolicy.mandatory ||
+          _belowMinSupported(latestVersion!, installedVersionCode));
 
   bool get isDownloading => status == UpdateStatus.downloading;
   bool get isReadyToInstall => status == UpdateStatus.readyToInstall || isCached;
@@ -174,11 +187,12 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
 
       if (latest != null) {
         final isUpdateAvailable = isNewerRelease(
-          latestCode: latest.versionCode,
-          latestName: latest.versionName,
-          installedCode: state.installedVersionCode,
-          installedName: state.installedVersionName,
-        );
+              latestCode: latest.buildNumber ?? latest.versionCode,
+              latestName: latest.versionName,
+              installedCode: state.installedVersionCode,
+              installedName: state.installedVersionName,
+            ) ||
+            _belowMinSupported(latest, state.installedVersionCode);
 
         // Check if full completed APK is already cached on local storage
         bool isCached = false;
@@ -364,4 +378,64 @@ final appUpdateProvider =
     StateNotifierProvider<AppUpdateNotifier, AppUpdateState>((ref) {
   final repository = ref.watch(updateRepositoryProvider);
   return AppUpdateNotifier(repository: repository);
+});
+
+class DismissedAnnouncementNotifier extends StateNotifier<Set<String>> {
+  static const _storageKey = 'jdq_dismissed_announcements_v1';
+  static const _maxStored = 20;
+
+  final FlutterSecureStorage? _storage;
+
+  DismissedAnnouncementNotifier([FlutterSecureStorage? storage])
+      : _storage = storage,
+        super(const {}) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final storage = _storage;
+    if (storage == null) return;
+    try {
+      final raw = await storage.read(key: _storageKey);
+      if (raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        state = decoded.whereType<String>().toSet();
+      }
+    } catch (_) {
+      // Ignore storage errors (e.g. missing plugin in widget tests).
+    }
+  }
+
+  Future<void> dismiss(String key) async {
+    if (key.isEmpty || state.contains(key)) return;
+    final next = <String>[...state, key];
+    if (next.length > _maxStored) {
+      next.removeRange(0, next.length - _maxStored);
+    }
+    state = next.toSet();
+    final storage = _storage;
+    if (storage == null) return;
+    try {
+      await storage.write(key: _storageKey, value: jsonEncode(next));
+    } catch (_) {
+      // Ignore storage errors.
+    }
+  }
+}
+
+final dismissedAnnouncementProvider =
+    StateNotifierProvider<DismissedAnnouncementNotifier, Set<String>>((ref) {
+  return DismissedAnnouncementNotifier(const FlutterSecureStorage());
+});
+
+final activeAnnouncementProvider = Provider<AppAnnouncement?>((ref) {
+  final updateLatest = ref.watch(appUpdateProvider).latestVersion;
+  final startupLatest = ref.watch(startupUpdateControllerProvider).latestVersion;
+  final announcement = updateLatest?.announcement ?? startupLatest?.announcement;
+  if (announcement == null) return null;
+  if (announcement.isExpiredAt(DateTime.now())) return null;
+  final dismissed = ref.watch(dismissedAnnouncementProvider);
+  if (dismissed.contains(announcement.dismissalKey)) return null;
+  return announcement;
 });

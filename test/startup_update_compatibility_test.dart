@@ -58,4 +58,26 @@ void main() {
   test('a newer compatible APK passes the startup gate', () async {
     expect(await phaseForInstalledBuild('124'), GatePhase.ready);
   });
+
+  test('admin min_supported_build blocks an older build even when minimumBaseVersionCode is 1', () async {
+    PackageInfo.setMockInitialValues(
+      appName: 'JuanDerQuest',
+      packageName: 'dev.zernanvash.juanderquest',
+      version: '0.3.9',
+      buildNumber: '220',
+      buildSignature: '',
+    );
+    final release = AppVersionInfo.fromJson({
+      'schemaVersion': 1,
+      'versionCode': 223,
+      'versionName': '0.3.9',
+      'downloadUrl': 'https://example.test/app.apk',
+      'minimumBaseVersionCode': 1,
+      'min_supported_build': 223,
+    });
+    final controller = StartupUpdateController(_ReleaseRepository(release));
+    await controller.initStartupGate();
+    expect(controller.debugState.phase, GatePhase.baseRequired);
+    controller.dispose();
+  });
 }

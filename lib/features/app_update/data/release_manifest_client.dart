@@ -40,6 +40,8 @@ class ReleaseManifestClient {
     Duration timeout = const Duration(seconds: 8),
   }) async {
     AppVersionInfo? newest;
+    int? maxMinSupportedBuild;
+    AppAnnouncement? activeAnnouncement;
     for (final candidate in _manifestUrls) {
       try {
         final uri = Uri.tryParse(candidate);
@@ -60,6 +62,12 @@ class ReleaseManifestClient {
         } else {
           release = parse(map);
         }
+        if (release.minSupportedBuild != null &&
+            (maxMinSupportedBuild == null ||
+                release.minSupportedBuild! > maxMinSupportedBuild)) {
+          maxMinSupportedBuild = release.minSupportedBuild;
+        }
+        activeAnnouncement ??= release.announcement;
         if (newest == null || release.versionCode > newest.versionCode) {
           newest = release;
         }
@@ -67,6 +75,13 @@ class ReleaseManifestClient {
         debugPrint(
             '[ReleaseManifestClient] Update check failed for $candidate: $error');
       }
+    }
+    if (newest != null &&
+        (maxMinSupportedBuild != null || activeAnnouncement != null)) {
+      return newest.withControlMetadata(
+        minSupportedBuild: maxMinSupportedBuild,
+        announcement: activeAnnouncement,
+      );
     }
     return newest;
   }
