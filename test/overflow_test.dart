@@ -2442,6 +2442,117 @@ void main() {
       );
     });
 
+    // v0.3.10 quests: funding management page (overview + history) and the
+    // author's action bar on their own quest, at 2.0x text.
+    for (final entry in const {
+      'small portrait': Size(320, 568),
+      'small landscape': Size(568, 320),
+    }.entries) {
+      testWidgets(
+          'v0.3.10 QuestFundingScreen overview does not overflow in ${entry.key} at 2.0x text scale',
+          (tester) async {
+        final client = ApiClient(enableRetries: false);
+        client.dio.interceptors.add(InterceptorsWrapper(
+          onRequest: (options, handler) => handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'data': {
+                'plan': {
+                  'id': 'plan-1',
+                  'status': 'pending_sponsors',
+                  'mode': 'budget',
+                  'reward_points': 100,
+                  'fee_points': 6,
+                  'planned_completions': 10000,
+                  'target_points': '1060000',
+                  'ends_at': '2026-12-01T00:00:00Z',
+                  'contributions': [
+                    {
+                      'funder_kind': 'author',
+                      'committed_points': '1000000',
+                      'remaining_points': '999894',
+                      'held_points': '106',
+                      'created_at': '2026-11-18T11:12:14.000Z',
+                    },
+                  ],
+                  'holds': [
+                    {
+                      'status': 'released',
+                      'release_reason': 'idle_expired',
+                      'reward_points': 100,
+                      'created_at': '2026-11-18T13:00:00.000Z',
+                      'released_at': '2026-11-19T13:00:00.000Z',
+                    },
+                  ],
+                  'sponsorships': [
+                    {
+                      'id': 'sp-1',
+                      'merchant_name':
+                          'Dagupan Seaside Heritage Grill & Local Pasalubong Empanada Store',
+                      'status': 'countered',
+                      'points': 5000,
+                      'created_at': '2026-11-19T02:00:00.000Z',
+                    },
+                  ],
+                  'summary': {
+                    'committed_points': 1000000,
+                    'remaining_points': 999894,
+                    'held_points': 106,
+                    'paid_points': 0,
+                    'completions_left': 9433,
+                    'holds': {
+                      'active': 1,
+                      'pending_review': 0,
+                      'paid': 0,
+                      'released': 1,
+                    },
+                  },
+                },
+              },
+            },
+          )),
+        ));
+        await testScreenOverflow(
+          tester,
+          ProviderScope(
+            overrides: [apiClientProvider.overrideWithValue(client)],
+            child: const QuestFundingScreen(questId: 'quest-1'),
+          ),
+          entry.value,
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          'v0.3.10 QuestDetailScreen author bar does not overflow in ${entry.key} at 2.0x text scale',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          QuestDetailScreen(
+            quest: QuestModel(
+              id: 'q1',
+              title: dummyQuest.title,
+              description: dummyQuest.description,
+              category: dummyQuest.category,
+              locationName: dummyQuest.locationName,
+              gpsLat: dummyQuest.gpsLat,
+              gpsLng: dummyQuest.gpsLng,
+              radiusMeters: dummyQuest.radiusMeters,
+              rewardPoints: dummyQuest.rewardPoints,
+              markerImageUrl: dummyQuest.markerImageUrl,
+              authorId: dummyUser.id,
+            ),
+          ),
+          entry.value,
+          2.0,
+          clampScale: false,
+        );
+      });
+    }
+
     for (final entry in const {
       'small portrait': Size(320, 568),
       'small landscape': Size(568, 320),

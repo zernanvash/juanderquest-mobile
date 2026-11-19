@@ -210,6 +210,7 @@ class _DetailContent extends ConsumerStatefulWidget {
 
 class _DetailContentState extends ConsumerState<_DetailContent> {
   QuestAttemptModel? _attempt;
+  DateTime? _lastExpiredAt;
   bool _completed = false;
   bool _loading = false;
   bool _stepSubmitting = false;
@@ -248,6 +249,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       if (!mounted) return;
       setState(() {
         _completed = data['has_completed'] == true;
+        _lastExpiredAt = DateTime.tryParse('${data['last_expired_at'] ?? ''}');
         final rawAttempt = data['active_attempt'];
         if (rawAttempt is Map<String, dynamic>) {
           _attempt = QuestAttemptModel.fromJson(rawAttempt);
@@ -281,19 +283,22 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     });
     try {
       // Owner 2026-11-18: "Prevent users from accepting quests if they are
-      // outside the required radius, and display a prompt".
-      final pos = await ref.read(questAcceptPositionProvider)();
-      if (!mounted) return;
-      if (pos == null) {
-        showPixelToast(context, _noGpsMessage);
-        return;
-      }
-      final distance = Geolocator.distanceBetween(pos.latitude, pos.longitude,
-          widget.quest.gpsLat, widget.quest.gpsLng);
-      final slack = pos.accuracy.clamp(0, 50).toDouble();
-      if (distance > widget.quest.radiusMeters + slack) {
-        await _showTooFar(distance);
-        return;
+      // outside the required radius, and display a prompt". Team review
+      // 2026-11-19: never for the quest's own author (they edit it anywhere).
+      if (!_isAuthor) {
+        final pos = await ref.read(questAcceptPositionProvider)();
+        if (!mounted) return;
+        if (pos == null) {
+          showPixelToast(context, _noGpsMessage);
+          return;
+        }
+        final distance = Geolocator.distanceBetween(pos.latitude, pos.longitude,
+            widget.quest.gpsLat, widget.quest.gpsLng);
+        final slack = pos.accuracy.clamp(0, 50).toDouble();
+        if (distance > widget.quest.radiusMeters + slack) {
+          await _showTooFar(distance);
+          return;
+        }
       }
       final response = await ref
           .read(apiClientProvider)
@@ -846,6 +851,13 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     }
   }
 
+  bool get _isAuthor {
+    final user = ref.read(authProvider).user;
+    return user != null &&
+        widget.quest.authorId != null &&
+        widget.quest.authorId == user.id;
+  }
+
   bool get _isQuestHost {
     final user = ref.read(authProvider).user;
     if (user == null) return false;
@@ -993,17 +1005,15 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                                   _hostScan(context, grid),
                                   SizedBox(height: grid.px(3)),
                                 ],
-                                if (isAuthor) ...[
-                                  _authorTools(context, grid),
-                                  SizedBox(height: grid.px(3)),
-                                ],
                               ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    _bottomBar(context, grid, displaySteps),
+                    isAuthor
+                        ? _authorBar(context, grid)
+                        : _bottomBar(context, grid, displaySteps),
                   ],
                 ),
               ),
@@ -1755,48 +1765,90 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     );
   }
 
-  Widget _authorTools(BuildContext context, PixelGrid grid) {
-    return PixelPanel(
-      style: PixelBoxStyle.wood,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'You made this quest',
-            style: PixelType.body(context, color: PixelPalette.paper)
-                .copyWith(fontWeight: FontWeight.w700),
+  /// Team review 2026-11-19: the author never sees "Accept quest" on their
+  /// own quest (the server refuses self-attempts: CREATOR_SELF_ATTEMPT);
+  /// their primary actions are Edit, Funding and the QR sheet.
+  Widget _authorBar(BuildContext context, PixelGrid grid) {
+    return Container(
+      key: const ValueKey('quest_author_bar'),
+      color: PixelPalette.ink,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            grid.px(3),
+            grid.px(2),
+            grid.px(3),
+            grid.px(2),
           ),
-          SizedBox(height: grid.px(2)),
-          Wrap(
-            spacing: grid.px(2),
-            runSpacing: grid.px(1),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              PixelButton(
-                key: const ValueKey('quest_edit_btn'),
-                label: 'Edit',
-                variant: PixelButtonVariant.secondary,
-                onPressed: () =>
-                    context.push('/quests/${widget.quest.id}/edit'),
+              Text(
+                tr(context,
+                    en: "You made this quest. Authors can't play their own quest for rewards.",
+                    tl: 'Ikaw ang gumawa ng quest na ito. Hindi ito malalaro ng may-akda para sa gantimpala.'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: PixelType.small(context, color: PixelPalette.paperDim),
               ),
-              PixelButton(
-                key: const ValueKey('quest_qr_sheet_btn'),
-                label: 'QR sheet',
-                variant: PixelButtonVariant.secondary,
-                onPressed: () =>
-                    context.push('/quests/${widget.quest.id}/qr-sheet'),
-              ),
-              PixelButton(
-                key: const ValueKey('quest_funding_btn'),
-                label: 'Funding',
-                variant: PixelButtonVariant.secondary,
-                onPressed: () =>
-                    context.push('/quests/${widget.quest.id}/funding'),
+              SizedBox(height: grid.px(2)),
+              Wrap(
+                spacing: grid.px(2),
+                runSpacing: grid.px(1),
+                children: [
+                  PixelButton(
+                    key: const ValueKey('quest_edit_btn'),
+                    label: tr(context, en: 'Edit', tl: 'I-edit'),
+                    onPressed: () =>
+                        context.push('/quests/${widget.quest.id}/edit'),
+                  ),
+                  PixelButton(
+                    key: const ValueKey('quest_funding_btn'),
+                    label: tr(context, en: 'Funding', tl: 'Pondo'),
+                    variant: PixelButtonVariant.secondary,
+                    onPressed: () =>
+                        context.push('/quests/${widget.quest.id}/funding'),
+                  ),
+                  PixelButton(
+                    key: const ValueKey('quest_qr_sheet_btn'),
+                    label: 'QR sheet',
+                    variant: PixelButtonVariant.secondary,
+                    onPressed: () =>
+                        context.push('/quests/${widget.quest.id}/qr-sheet'),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  /// "Start within 2d 4h" / "Next step within 18h" (null when not timed).
+  String? _idleLabel(BuildContext context) {
+    final attempt = _attempt;
+    final expires = attempt?.idleExpiresAt;
+    if (attempt == null || !attempt.isInProgress || expires == null) {
+      return null;
+    }
+    final left = expires.difference(DateTime.now());
+    final span = left.isNegative
+        ? '0m'
+        : left.inHours >= 24
+            ? '${left.inDays}d ${left.inHours % 24}h'
+            : left.inHours >= 1
+                ? '${left.inHours}h'
+                : '${left.inMinutes.clamp(1, 59)}m';
+    final started =
+        attempt.steps.any((step) => step.isVerified || step.isPendingReview);
+    return started
+        ? tr(context,
+            en: 'Next step within $span',
+            tl: 'Susunod na hakbang sa loob ng $span')
+        : tr(context, en: 'Start within $span', tl: 'Simulan sa loob ng $span');
   }
 
   Widget _bottomBar(
@@ -1817,13 +1869,18 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         .where((step) => step.isVerified || step.isPendingReview)
         .length;
     final total = displaySteps.length;
+    final idleLabel = _idleLabel(context);
     final status = _completed
         ? 'Quest completed and reviewed. Your reward is recorded in your account.'
         : isSubmitted
             ? 'Proof submitted. Waiting for independent review; no reward has been granted yet.'
             : hasAttempt
                 ? 'Quest accepted. ${_attempt!.verifiedSteps} of ${_attempt!.requiredSteps} required tasks done. Finish them all, then tap Finish quest.'
-                : null;
+                : _lastExpiredAt != null
+                    ? tr(context,
+                        en: 'Your last acceptance expired after no activity. Accept again for a fresh time window.',
+                        tl: 'Nag-expire ang huli mong pagtanggap dahil walang aktibidad. Tanggapin muli para sa bagong oras.')
+                    : null;
     return Container(
       color: PixelPalette.ink,
       child: SafeArea(
@@ -1839,12 +1896,27 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                '$done / $total tasks done',
-                style: PixelType.small(
-                  context,
-                  color: PixelPalette.paperDim,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$done / $total tasks done',
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.paperDim,
+                      ),
+                    ),
+                  ),
+                  if (idleLabel != null)
+                    Flexible(
+                      child: PixelTag(
+                        idleLabel,
+                        key: const ValueKey('quest_idle_chip'),
+                        style: PixelBoxStyle.gold,
+                        textColor: PixelPalette.ink,
+                      ),
+                    ),
+                ],
               ),
               if (status != null) ...[
                 SizedBox(height: grid.px(1)),

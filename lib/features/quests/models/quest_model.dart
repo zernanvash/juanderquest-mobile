@@ -128,6 +128,10 @@ class QuestAttemptModel {
   final List<QuestStepModel> steps;
   final String? reviewNotes;
 
+  /// v0.3.10: an accepted quest expires after this time without progress
+  /// (server setting `quest_accept_idle_hours`); null when not applicable.
+  final DateTime? idleExpiresAt;
+
   const QuestAttemptModel({
     required this.id,
     required this.questId,
@@ -141,6 +145,7 @@ class QuestAttemptModel {
     this.stepOrderMode = 'sequential',
     this.steps = const [],
     this.reviewNotes,
+    this.idleExpiresAt,
   });
 
   bool get isCompleted => status == 'completed';
@@ -165,6 +170,7 @@ class QuestAttemptModel {
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order)),
       reviewNotes: json['review_notes'] as String?,
+      idleExpiresAt: DateTime.tryParse('${json['idle_expires_at'] ?? ''}'),
     );
   }
 }
