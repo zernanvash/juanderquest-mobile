@@ -16,7 +16,6 @@ class _CommandTileSpec {
     required this.icon,
     this.badge,
     this.badgeLive = false,
-    this.subtitle,
     this.route,
     this.onTap,
   });
@@ -26,7 +25,6 @@ class _CommandTileSpec {
   final PixelArt icon;
   final String? badge;
   final bool badgeLive;
-  final String? subtitle;
   final String? route;
   final VoidCallback? onTap;
 }
@@ -36,16 +34,12 @@ class _CommandTileSpec {
 class HomeCommandGrid extends StatefulWidget {
   const HomeCommandGrid({
     super.key,
-    this.activeQuestsCount = 0,
-    this.savedCount = 0,
     this.nearbyQuizCount = 0,
     this.voteLive = false,
     this.onOpenQuizzes,
     this.onNavigate,
   });
 
-  final int activeQuestsCount;
-  final int savedCount;
   final int nearbyQuizCount;
   final bool voteLive;
   final VoidCallback? onOpenQuizzes;
@@ -66,11 +60,10 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
 
   List<_CommandTileSpec> _tiles(BuildContext context) {
     return <_CommandTileSpec>[
-      _CommandTileSpec(
-        key: const ValueKey('home_menu_quests'),
+      // Team review v0.3.10: no "0 active · 0 saved" line on the button.
+      const _CommandTileSpec(
+        key: ValueKey('home_menu_quests'),
         label: 'QUESTS',
-        subtitle:
-            '${widget.activeQuestsCount} active · ${widget.savedCount} saved',
         icon: DesignerArt.questMarker,
         route: '/quests',
       ),
@@ -102,7 +95,8 @@ class _HomeCommandGridState extends State<HomeCommandGrid> {
       ),
       const _CommandTileSpec(
         key: ValueKey('home_tile_add_spot'),
-        label: '+ SPOT',
+        // Team review v0.3.10: "change '+ spot' to 'post'".
+        label: 'POST',
         icon: DesignerArt.spotMarker,
         badge: '+XP',
         route: '/map/add-spot',
@@ -276,22 +270,6 @@ class _MenuIconTileState extends State<_MenuIconTile> {
                                 .copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        if (spec.subtitle != null) ...[
-                          const SizedBox(height: 1),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              spec.subtitle!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: PixelType.small(
-                                context,
-                                color: PixelPalette.slate,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),

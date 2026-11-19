@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/open_route.dart';
-import '../../../core/dev/test_content.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
 import '../../quests/models/quest_model.dart';
-import '../../quests/pixel/saved_quests.dart';
-import '../../quests/providers/quest_provider.dart';
 import '../../submissions/providers/submission_provider.dart';
 import '../providers/home_dashboard_providers.dart';
 import 'home_command_grid.dart';
@@ -45,12 +42,6 @@ class MainMenuPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final grid = PixelGrid.of(context);
-    final quests = withoutTestContent(
-      ref.watch(questProvider).quests,
-      (quest) => quest.isTest,
-      showTest: ref.watch(showTestContentProvider),
-    );
-    final inProgress = inProgressQuests(quests, ref.watch(submissionProvider));
     final radar =
         ref.watch(quizRadarProvider.select((s) => s.inRangeIncomplete));
     final nearby = ref.watch(homeNearbyQuizProvider).valueOrNull;
@@ -80,8 +71,6 @@ class MainMenuPanel extends ConsumerWidget {
           ),
           SizedBox(height: grid.px(2)),
           HomeCommandGrid(
-            activeQuestsCount: inProgress.length,
-            savedCount: ref.watch(savedQuestsProvider).length,
             nearbyQuizCount:
                 radar.isNotEmpty ? radar.length : (nearby?.items.length ?? 0),
             voteLive: voteLive,

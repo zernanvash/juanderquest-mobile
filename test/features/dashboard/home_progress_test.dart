@@ -819,7 +819,8 @@ void main() {
       expect(find.text('0/7'), findsOneWidget);
     });
 
-    testWidgets('test quests stay off Home unless Developer mode shows them',
+    // Team review v0.3.10: the QUESTS tile shows no "N active · N saved".
+    testWidgets('main menu QUESTS tile shows no counts, test quests or not',
         (tester) async {
       final testQuest = QuestModel(
         id: 'q-sim',
@@ -855,7 +856,8 @@ void main() {
       final state =
           QuestState(quests: [_quests.first, testQuest], isLoading: false);
       await _pump(tester, overrides: _overrides(quests: state), menu: true);
-      expect(find.text('1 active · 0 saved'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
+      expect(find.textContaining('active ·'), findsNothing);
 
       await _pump(
         tester,
@@ -865,7 +867,8 @@ void main() {
         ],
         menu: true,
       );
-      expect(find.text('2 active · 0 saved'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
+      expect(find.textContaining('active ·'), findsNothing);
     });
 
     testWidgets(

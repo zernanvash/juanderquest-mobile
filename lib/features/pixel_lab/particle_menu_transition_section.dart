@@ -379,8 +379,6 @@ class _ParticleMenuTransitionSectionState
                                             ),
                                             SizedBox(height: grid.px(1)),
                                             HomeCommandGrid(
-                                              activeQuestsCount: 2,
-                                              savedCount: 3,
                                               nearbyQuizCount: 1,
                                               voteLive: true,
                                               onOpenQuizzes: () {

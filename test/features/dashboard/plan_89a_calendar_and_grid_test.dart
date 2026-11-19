@@ -234,8 +234,6 @@ void main() {
     await tester.pumpWidget(
       _wrapPixel(
         child: HomeCommandGrid(
-          activeQuestsCount: 2,
-          savedCount: 5,
           nearbyQuizCount: 3,
           voteLive: true,
           onNavigate: (r) => navigatedTo = r,
@@ -244,7 +242,15 @@ void main() {
     );
 
     expect(find.byKey(const ValueKey('home_menu_quests')), findsOneWidget);
-    expect(find.text('2 active · 5 saved'), findsOneWidget);
+    // Team review v0.3.10: no counts line; '+ SPOT' is now 'POST'.
+    expect(find.textContaining('active ·'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home_tile_add_spot')),
+        matching: find.text('POST'),
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('home_tile_route')), findsNothing);
     expect(find.byKey(const ValueKey('home_tile_merchants')), findsOneWidget);
     expect(find.text('GO'), findsNothing);
@@ -415,8 +421,6 @@ void main() {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const HomeCommandGrid(
-                  activeQuestsCount: 2,
-                  savedCount: 4,
                   nearbyQuizCount: 1,
                 ),
                 const SizedBox(height: 8),
@@ -571,8 +575,6 @@ void main() {
           child: Column(
             children: [
               const HomeCommandGrid(
-                activeQuestsCount: 1,
-                savedCount: 1,
                 nearbyQuizCount: 0,
               ),
               HomeAdventureCalendar(initialDate: DateTime(2026, 11, 14)),
