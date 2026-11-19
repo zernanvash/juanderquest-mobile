@@ -62,13 +62,14 @@ class StartupUpdateController extends StateNotifier<StartupGateState> {
       if (versionInfo != null) {
         state = state.copyWith(latestVersion: versionInfo);
 
-        // Check if a native base release is strictly required
-        // baseReleaseRequired describes the available release; an already
-        // compatible installed base must never be blocked by that flag.
-        if (versionInfo.minimumBaseVersionCode > buildNumber) {
+        // Check if a native base release or admin-configured min_supported_build
+        // is strictly required.
+        final minBuild = versionInfo.effectiveMinSupportedBuild;
+        if (minBuild > buildNumber) {
           state = state.copyWith(
             phase: GatePhase.baseRequired,
-            statusMessage: 'A new base platform update is required to continue.',
+            statusMessage:
+                'Update required (minimum Build $minBuild; installed Build $buildNumber).',
             isMandatory: true,
           );
           return;

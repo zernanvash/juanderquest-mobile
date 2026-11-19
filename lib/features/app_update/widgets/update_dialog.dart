@@ -19,12 +19,20 @@ class UpdateDialog extends ConsumerWidget {
     required this.versionInfo,
   });
 
-  static Future<void> show(BuildContext context, AppVersionInfo versionInfo) {
+  static Future<void> show(
+    BuildContext context,
+    AppVersionInfo versionInfo, {
+    int? installedBuild,
+  }) {
+    final mustUpdate = versionInfo.forceUpdate ||
+        versionInfo.updatePolicy == UpdatePolicy.mandatory ||
+        (installedBuild != null &&
+            versionInfo.effectiveMinSupportedBuild > installedBuild);
     return showDialog(
       context: context,
-      barrierDismissible: !versionInfo.forceUpdate,
+      barrierDismissible: !mustUpdate,
       builder: (ctx) => PopScope(
-        canPop: !versionInfo.forceUpdate,
+        canPop: !mustUpdate,
         child: UpdateDialog(versionInfo: versionInfo),
       ),
     );
@@ -35,8 +43,14 @@ class UpdateDialog extends ConsumerWidget {
     final updateState = ref.watch(appUpdateProvider);
     final isDownloading = updateState.status == UpdateStatus.downloading;
     final isInstalling = updateState.status == UpdateStatus.installing;
+    final isMandatory = versionInfo.forceUpdate ||
+        versionInfo.updatePolicy == UpdatePolicy.mandatory ||
+        versionInfo.effectiveMinSupportedBuild >
+            updateState.installedVersionCode;
 
-    return Theme(
+    return PopScope(
+      canPop: !isMandatory,
+      child: Theme(
       data: AppTheme.pixel,
       child: Dialog(
         backgroundColor: Colors.transparent,
@@ -196,7 +210,7 @@ class UpdateDialog extends ConsumerWidget {
                   ],
                   Row(
                     children: [
-                      if (!versionInfo.forceUpdate &&
+                      if (!isMandatory &&
                           !isDownloading &&
                           !isInstalling) ...[
                         Expanded(
@@ -210,7 +224,7 @@ class UpdateDialog extends ConsumerWidget {
                         const SizedBox(width: 12),
                       ],
                       Expanded(
-                        flex: versionInfo.forceUpdate ? 1 : 2,
+                        flex: isMandatory ? 1 : 2,
                         child: PixelButton(
                           expand: true,
                           label: isDownloading
@@ -250,6 +264,7 @@ class UpdateDialog extends ConsumerWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

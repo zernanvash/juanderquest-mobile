@@ -12,7 +12,9 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/update_classification.dart';
+import '../providers/app_update_provider.dart';
 import '../providers/startup_update_controller.dart';
+import 'app_announcement_banner.dart';
 
 class StartupUpdateGate extends ConsumerWidget {
   final Widget child;
@@ -25,10 +27,29 @@ class StartupUpdateGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final gateState = ref.watch(startupUpdateControllerProvider);
+    final updateState = ref.watch(appUpdateProvider);
 
-    // If gate is ready, render main application
+    final updateLatest = updateState.latestVersion;
+    if (gateState.isReady &&
+        updateLatest != null &&
+        updateLatest.effectiveMinSupportedBuild >
+            updateState.installedVersionCode) {
+      return Theme(
+        data: AppTheme.pixel,
+        child: _BaseRequiredView(
+          state: gateState.copyWith(
+            phase: GatePhase.baseRequired,
+            latestVersion: updateLatest,
+            installedVersionCode: updateState.installedVersionCode,
+            isMandatory: true,
+          ),
+        ),
+      );
+    }
+
+    // If gate is ready, render main application wrapped with announcement host.
     if (gateState.isReady) {
-      return child;
+      return AppAnnouncementHost(child: child);
     }
 
     return Theme(
@@ -181,6 +202,7 @@ class _BaseRequiredView extends StatelessWidget {
   Widget build(BuildContext context) {
     final downloadUrl = state.latestVersion?.downloadUrl ??
         'https://github.com/zernanvash/juanderquest-mobile/releases/latest/download/juanderquest-latest.apk';
+    final minBuild = state.latestVersion?.effectiveMinSupportedBuild ?? 1;
 
     return Scaffold(
       backgroundColor: PixelPalette.ink,
@@ -219,6 +241,14 @@ class _BaseRequiredView extends StatelessWidget {
                     style:
                         PixelType.body(context, color: PixelPalette.paperDim),
                   ),
+                  if (minBuild > state.installedVersionCode) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Minimum required: Build $minBuild · Installed: Build ${state.installedVersionCode}',
+                      textAlign: TextAlign.center,
+                      style: PixelType.small(context, color: PixelPalette.gold),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   if (state.latestVersion?.changelog != null &&
                       state.latestVersion!.changelog.isNotEmpty) ...[

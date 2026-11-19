@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
@@ -51,7 +53,15 @@ class AppUpdateState {
 
   bool get hasUpdate =>
       latestVersion != null &&
-      latestVersion!.versionCode > installedVersionCode;
+      ((latestVersion!.buildNumber ?? latestVersion!.versionCode) >
+              installedVersionCode ||
+          latestVersion!.effectiveMinSupportedBuild > installedVersionCode);
+
+  bool get isUpdateRequired =>
+      latestVersion != null &&
+      (latestVersion!.forceUpdate ||
+          latestVersion!.updatePolicy == UpdatePolicy.mandatory ||
+          latestVersion!.effectiveMinSupportedBuild > installedVersionCode);
 
   bool get isDownloading => status == UpdateStatus.downloading;
   bool get isReadyToInstall => status == UpdateStatus.readyToInstall || isCached;
@@ -152,7 +162,9 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
       final now = DateTime.now();
 
       if (latest != null) {
-        final isUpdateAvailable = latest.versionCode > state.installedVersionCode;
+        final latestBuild = latest.buildNumber ?? latest.versionCode;
+        final isUpdateAvailable = latestBuild > state.installedVersionCode ||
+            latest.effectiveMinSupportedBuild > state.installedVersionCode;
 
         // Check if full completed APK is already cached on local storage
         bool isCached = false;
@@ -338,4 +350,64 @@ final appUpdateProvider =
     StateNotifierProvider<AppUpdateNotifier, AppUpdateState>((ref) {
   final repository = ref.watch(updateRepositoryProvider);
   return AppUpdateNotifier(repository: repository);
+});
+
+class DismissedAnnouncementNotifier extends StateNotifier<Set<String>> {
+  static const _storageKey = 'jdq_dismissed_announcements_v1';
+  static const _maxStored = 20;
+
+  final FlutterSecureStorage? _storage;
+
+  DismissedAnnouncementNotifier([FlutterSecureStorage? storage])
+      : _storage = storage,
+        super(const {}) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final storage = _storage;
+    if (storage == null) return;
+    try {
+      final raw = await storage.read(key: _storageKey);
+      if (raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        state = decoded.whereType<String>().toSet();
+      }
+    } catch (_) {
+      // Ignore storage errors (e.g. missing plugin in widget tests).
+    }
+  }
+
+  Future<void> dismiss(String key) async {
+    if (key.isEmpty || state.contains(key)) return;
+    final next = <String>[...state, key];
+    if (next.length > _maxStored) {
+      next.removeRange(0, next.length - _maxStored);
+    }
+    state = next.toSet();
+    final storage = _storage;
+    if (storage == null) return;
+    try {
+      await storage.write(key: _storageKey, value: jsonEncode(next));
+    } catch (_) {
+      // Ignore storage errors.
+    }
+  }
+}
+
+final dismissedAnnouncementProvider =
+    StateNotifierProvider<DismissedAnnouncementNotifier, Set<String>>((ref) {
+  return DismissedAnnouncementNotifier(const FlutterSecureStorage());
+});
+
+final activeAnnouncementProvider = Provider<AppAnnouncement?>((ref) {
+  final updateLatest = ref.watch(appUpdateProvider).latestVersion;
+  final startupLatest = ref.watch(startupUpdateControllerProvider).latestVersion;
+  final announcement = updateLatest?.announcement ?? startupLatest?.announcement;
+  if (announcement == null) return null;
+  if (announcement.isExpiredAt(DateTime.now())) return null;
+  final dismissed = ref.watch(dismissedAnnouncementProvider);
+  if (dismissed.contains(announcement.dismissalKey)) return null;
+  return announcement;
 });
