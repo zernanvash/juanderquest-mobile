@@ -71,6 +71,24 @@ void main() {
     expect(find.byKey(const ValueKey('in_app_banner')), findsNothing);
   });
 
+  // Team review v0.3.10: "notif banner have this yellow line on text".
+  testWidgets('banner text has no debug underline (Material ancestor)',
+      (tester) async {
+    await _pump(tester, QuizRadarState(items: [_quiz()]));
+    final banner = find.byKey(const ValueKey('in_app_banner'));
+    expect(
+      find.ancestor(of: banner, matching: find.byType(Material)),
+      findsWidgets,
+    );
+    final texts = tester.widgetList<RichText>(
+        find.descendant(of: banner, matching: find.byType(RichText)));
+    expect(texts, isNotEmpty);
+    for (final t in texts) {
+      expect(t.text.style?.decoration, isNot(TextDecoration.underline));
+      expect(t.text.style?.decorationColor, isNot(const Color(0xFFFFFF00)));
+    }
+  });
+
   testWidgets('the banner hides itself after a few seconds', (tester) async {
     await _pump(tester, QuizRadarState(items: [_quiz()]));
     expect(find.byKey(const ValueKey('in_app_banner')), findsOneWidget);
