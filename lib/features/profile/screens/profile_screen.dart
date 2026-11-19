@@ -586,7 +586,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   children: [
                     Row(
                       children: [
-                        const PixelMicro(PixelMicroArt.sparkle, scale: 2),
+                        const PixelMicro(PixelMicroArt.sparkle, scale: 4),
                         SizedBox(width: grid.px(1)),
                         Flexible(
                           child:
@@ -623,7 +623,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     children: [
                       Row(
                         children: [
-                          const PixelMicro(PixelMicroArt.coin, scale: 2),
+                          const PixelMicro(PixelMicroArt.coin, scale: 4),
                           SizedBox(width: grid.px(1)),
                           Flexible(
                             child:
