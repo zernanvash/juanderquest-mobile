@@ -173,73 +173,74 @@ class ProfileQuestsTab extends ConsumerWidget {
                         height: grid.unit,
                         color: PixelPalette.paperDim,
                       ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: grid.px(2)),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: grid.px(1),
-                            runSpacing: grid.px(1),
-                            crossAxisAlignment: WrapCrossAlignment.center,
+                    // v0.3.10 (team review): the whole row opens the quest
+                    // (its detail has the Edit button); drafts have no
+                    // public detail yet, so they open the builder.
+                    Semantics(
+                      button: true,
+                      label: q.title,
+                      child: GestureDetector(
+                        key: ValueKey('profile_quest_open_${q.id}'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => context.push(
+                          isMine && q.status == 'draft'
+                              ? '/quests/${q.id}/edit'
+                              : '/quests/${q.id}',
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: grid.px(4)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (isMine)
-                                PixelChip(
-                                  q.status.toUpperCase(),
-                                  style: q.status == 'published'
-                                      ? PixelBoxStyle.green
-                                      : PixelBoxStyle.gold,
-                                  textColor: q.status == 'published'
-                                      ? PixelPalette.white
-                                      : PixelPalette.ink,
+                              Wrap(
+                                spacing: grid.px(1),
+                                runSpacing: grid.px(1),
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (isMine)
+                                    PixelChip(
+                                      q.status.toUpperCase(),
+                                      style: q.status == 'published'
+                                          ? PixelBoxStyle.green
+                                          : PixelBoxStyle.gold,
+                                      textColor: q.status == 'published'
+                                          ? PixelPalette.white
+                                          : PixelPalette.ink,
+                                    ),
+                                  PixelChip(
+                                    '+${q.rewardPoints} pts',
+                                    style: PixelBoxStyle.slot,
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: grid.px(2)),
+                              Text(
+                                q.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: PixelType.title(context),
+                              ),
+                              SizedBox(height: grid.px(2)),
+                              Text(
+                                [
+                                  if (q.spotName != null) q.spotName!,
+                                  if (q.spotName == null &&
+                                      q.locationName != null)
+                                    q.locationName!,
+                                  tr(
+                                    context,
+                                    en: '${q.stepCount} tasks',
+                                    tl: '${q.stepCount} gawain',
+                                  ),
+                                ].join(' · '),
+                                style: PixelType.small(
+                                  context,
+                                  color: PixelPalette.slate,
                                 ),
-                              PixelChip(
-                                '+${q.rewardPoints} pts',
-                                style: PixelBoxStyle.slot,
                               ),
                             ],
                           ),
-                          SizedBox(height: grid.px(1)),
-                          Text(
-                            q.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: PixelType.title(context),
-                          ),
-                          SizedBox(height: grid.px(1)),
-                          Text(
-                            [
-                              if (q.spotName != null) q.spotName!,
-                              if (q.spotName == null && q.locationName != null)
-                                q.locationName!,
-                              tr(
-                                context,
-                                en: '${q.stepCount} tasks',
-                                tl: '${q.stepCount} gawain',
-                              ),
-                            ].join(' · '),
-                            style: PixelType.small(
-                              context,
-                              color: PixelPalette.slate,
-                            ),
-                          ),
-                          SizedBox(height: grid.px(2)),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: PixelButton(
-                              key: ValueKey('profile_quest_open_${q.id}'),
-                              label: isMine && q.status != 'published'
-                                  ? tr(context, en: 'Edit ›', tl: 'I-edit ›')
-                                  : tr(context, en: 'Open ›', tl: 'Buksan ›'),
-                              variant: PixelButtonVariant.secondary,
-                              onPressed: () => context.push(
-                                isMine && q.status != 'published'
-                                    ? '/quests/${q.id}/edit'
-                                    : '/quests/${q.id}',
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],

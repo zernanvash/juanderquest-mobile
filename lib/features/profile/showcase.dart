@@ -263,8 +263,13 @@ class ProfileShowcaseSection extends ConsumerWidget {
     Widget slot(int i) {
       final badge = i < b.length ? b[i] : null;
       return Expanded(
-        child: KeyedSubtree(
+        child: GestureDetector(
           key: ValueKey('profile_badge_slot_$i'),
+          behavior: HitTestBehavior.opaque,
+          // v0.3.10: an empty "+ Equip" slot opens the picker.
+          onTap: isMine && badge == null
+              ? () => showBadgePicker(context, ref, [for (final x in b) x.id])
+              : null,
           child: SizedBox(
             height: grid.px(22),
             child:

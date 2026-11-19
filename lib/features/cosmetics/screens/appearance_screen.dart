@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -11,6 +12,7 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../profile/widgets/avatar_picker.dart';
 import '../../shop/models/cosmetic_item.dart';
 import '../../shop/providers/cosmetics_provider.dart';
 import '../widgets/cosmetic_avatar.dart';
@@ -72,6 +74,8 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
                         _preview(context, grid, name, user?.avatarUrl, banner,
                             frame, title, color),
                         SizedBox(height: grid.px(4)),
+                        _photoRow(context, grid, user?.avatarUrl),
+                        SizedBox(height: grid.px(2)),
                         if (state.isLoading)
                           const Center(
                               child: PixelLoader(label: 'Loading cosmetics'))
@@ -194,6 +198,42 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
     );
   }
 
+  /// v0.3.10 (team review): take or upload a profile picture.
+  Widget _photoRow(BuildContext context, PixelGrid grid, String? avatarUrl) {
+    final hasPhoto = resolveAvatarUrl(avatarUrl) != null;
+    return PixelPanel(
+      style: PixelBoxStyle.parchment,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tr(context, en: 'Profile picture', tl: 'Larawan'),
+                    style: PixelType.title(context)),
+                SizedBox(height: grid.px(1)),
+                Text(
+                  hasPhoto
+                      ? tr(context, en: 'Your photo', tl: 'Litrato mo')
+                      : tr(context, en: 'Your initial', tl: 'Inisyal mo'),
+                  maxLines: 2,
+                  style: PixelType.body(context, color: PixelPalette.slate),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: grid.px(2)),
+          PixelButton(
+            key: const ValueKey('appearance_photo_change'),
+            label: tr(context, en: 'Change', tl: 'Palitan'),
+            variant: PixelButtonVariant.secondary,
+            onPressed: () => showAvatarOptions(context, ref),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _slot(
     BuildContext context,
     PixelGrid grid,
@@ -253,23 +293,42 @@ class _AppearanceScreenState extends ConsumerState<AppearanceScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            PixelButton(
-              key: const ValueKey('appearance_pick_none'),
-              label: 'None',
-              variant: selected == null
-                  ? PixelButtonVariant.primary
-                  : PixelButtonVariant.secondary,
-              onPressed: () {
-                Navigator.of(context).pop();
-                if (selected != null) {
-                  ref
-                      .read(cosmeticsProvider.notifier)
-                      .equip(selected, clear: true);
-                }
-              },
+            // v0.3.10 (team review): "None" reads as plain text, not a box.
+            Semantics(
+              button: true,
+              selected: selected == null,
+              child: GestureDetector(
+                key: const ValueKey('appearance_pick_none'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  if (selected != null) {
+                    ref
+                        .read(cosmeticsProvider.notifier)
+                        .equip(selected, clear: true);
+                  }
+                },
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Center(
+                    child: Text(
+                      selected == null
+                          ? tr(context, en: 'None (in use)', tl: 'Wala (gamit)')
+                          : tr(context, en: 'None', tl: 'Wala'),
+                      textAlign: TextAlign.center,
+                      style: PixelType.body(
+                        context,
+                        color: selected == null
+                            ? PixelPalette.ink
+                            : PixelPalette.slate,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             for (final item in owned) ...[
-              SizedBox(height: grid.px(2)),
+              SizedBox(height: grid.px(1)),
               PixelButton(
                 key: ValueKey('appearance_pick_${item.id}'),
                 label: item.name,
