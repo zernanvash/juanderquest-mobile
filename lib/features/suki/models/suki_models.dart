@@ -257,6 +257,7 @@ class SukiRedemption {
     required this.title,
     required this.merchantName,
     required this.createdAt,
+    this.expiresAt,
     this.usedAt,
     this.costPoints = 0,
   });
@@ -267,6 +268,7 @@ class SukiRedemption {
   final String title;
   final String merchantName;
   final DateTime? createdAt;
+  final DateTime? expiresAt;
   final DateTime? usedAt;
   final int costPoints;
 
@@ -283,6 +285,7 @@ class SukiRedemption {
       merchantName:
           '${merchant['name'] ?? j['merchant_name'] ?? 'Partner Merchant'}',
       createdAt: _date(j['created_at']),
+      expiresAt: _date(j['expires_at']),
       usedAt: _date(j['used_at']),
       costPoints: _int(j['cost_points']),
     );

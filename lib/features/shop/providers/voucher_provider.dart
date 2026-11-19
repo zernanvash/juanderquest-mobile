@@ -84,6 +84,7 @@ class VoucherNotifier extends StateNotifier<VoucherState> {
               offerTitle: r.title,
               code: r.code,
               redeemedAt: r.createdAt ?? DateTime.now(),
+              expiresAt: r.expiresAt,
               usedAt: r.usedAt,
               costPoints: r.costPoints,
             ),
@@ -123,6 +124,7 @@ class VoucherNotifier extends StateNotifier<VoucherState> {
           state = state.copyWith(error: msg);
           return (success: false, code: null, error: msg, redeemed: null);
         }
+        final expiresRaw = data is Map ? data['expires_at'] : null;
         final redeemed = state.redeemedVouchers
                 .where((r) => r.code == code)
                 .firstOrNull ??
@@ -132,6 +134,9 @@ class VoucherNotifier extends StateNotifier<VoucherState> {
               offerTitle: voucher.offerTitle,
               code: code,
               redeemedAt: DateTime.now(),
+              expiresAt: expiresRaw is String
+                  ? DateTime.tryParse(expiresRaw)
+                  : null,
               costPoints: voucher.costPoints,
             );
         if (!state.redeemedVouchers.any((r) => r.code == code)) {

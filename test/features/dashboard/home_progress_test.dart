@@ -939,10 +939,13 @@ void main() {
       final width =
           tester.view.physicalSize.width / tester.view.devicePixelRatio;
       final bell = tester.getRect(find.byTooltip('Notifications'));
+      final qr =
+          tester.getRect(find.byKey(const ValueKey('home_qr_button')));
       final purse =
           tester.getRect(find.byKey(const ValueKey('home_hero_purse_bar')));
       expect(width - bell.right, lessThan(16));
-      expect(bell.left - purse.right, lessThan(16));
+      expect(bell.left - qr.right, lessThan(16));
+      expect(qr.left - purse.right, lessThan(16));
     });
   });
 }

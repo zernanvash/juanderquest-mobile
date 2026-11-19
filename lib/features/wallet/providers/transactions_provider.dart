@@ -236,17 +236,20 @@ List<TransactionRecord> parseTransactionsBundle({
     }
   }
 
-  // 3. Redeemed Vouchers (/vouchers/mine)
+  // 3. Redeemed Vouchers (/me/redemptions -> data.items[])
   if (vouchersData != null) {
     for (final raw in vouchersData) {
       if (raw is! Map) continue;
+      final voucher = raw['voucher'] is Map ? raw['voucher'] as Map : const {};
+      final merchantObj =
+          raw['merchant'] is Map ? raw['merchant'] as Map : const {};
       final code = '${raw['code'] ?? raw['redemption_code'] ?? ''}';
       final merchant =
-          '${raw['merchantName'] ?? raw['merchant_name'] ?? raw['partner_label'] ?? 'Partner Shop'}';
+          '${merchantObj['name'] ?? raw['merchantName'] ?? raw['merchant_name'] ?? raw['partner_label'] ?? 'Partner Shop'}';
       final title =
-          '${raw['offerTitle'] ?? raw['offer_title'] ?? raw['title'] ?? 'Partner Voucher'}';
-      final cost = ((raw['costPoints'] ?? raw['cost_points'] ?? 0) as num).toInt();
-      final usedAt = raw['usedAt'] ?? raw['used_at'];
+          '${voucher['title'] ?? raw['offerTitle'] ?? raw['offer_title'] ?? raw['title'] ?? 'Partner Voucher'}';
+      final cost = ((raw['cost_points'] ?? raw['costPoints'] ?? 0) as num).toInt();
+      final usedAt = raw['used_at'] ?? raw['usedAt'];
       items.add(
         TransactionRecord(
           receiptId: code.isNotEmpty
@@ -257,7 +260,8 @@ List<TransactionRecord> parseTransactionsBundle({
           category: TransactionCategory.vouchers,
           amountLabel: cost > 0 ? '-$cost pts' : 'Voucher',
           isCredit: false,
-          timestamp: _parseDate(raw['redeemedAt'] ?? raw['redeemed_at'] ?? raw['created_at']),
+          timestamp: _parseDate(
+              raw['created_at'] ?? raw['redeemedAt'] ?? raw['redeemed_at']),
           status: usedAt != null ? 'Used' : 'Active',
           settlement: 'Off-Chain Voucher',
           voucherCode: code.isNotEmpty ? code : null,
@@ -296,6 +300,9 @@ final transactionsProvider =
       if (res.statusCode == 200 && res.data is Map && res.data['success'] == true) {
         final data = res.data['data'];
         if (data is List) return data;
+        if (data is Map && data['items'] is List) {
+          return data['items'] as List;
+        }
         if (data is Map && data['vouchers'] is List) {
           return data['vouchers'] as List;
         }
@@ -307,7 +314,7 @@ final transactionsProvider =
   final results = await Future.wait<dynamic>([
     fetchMap('/wallet/ledger'),
     fetchMap('/me/chain/badges'),
-    fetchList('/vouchers/mine'),
+    fetchList('/me/redemptions'),
   ]);
 
   return parseTransactionsBundle(

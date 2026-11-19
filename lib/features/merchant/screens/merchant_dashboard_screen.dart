@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/l10n/app_language.dart';
@@ -24,7 +25,11 @@ import '../suki/merchant_loyalty_tab.dart';
 import '../suki/suki_badge_art.dart';
 import '../widgets/merchant_counter.dart';
 import '../widgets/merchant_pixel_art.dart';
+import 'merchant_analytics_screen.dart';
+import 'merchant_counter_history_screen.dart';
 import 'merchant_page_screen.dart';
+import 'merchant_staff_screen.dart';
+import 'merchant_vouchers_screen.dart';
 
 const merchantTabNames = [
   'overview',
@@ -392,7 +397,61 @@ class _MerchantDashboardScreenState
             ),
           ),
         ],
+        Container(height: grid.unit, color: PixelPalette.paperDim),
+        SizedBox(height: grid.px(2)),
+        Text(
+          'WORKSPACE TOOLS',
+          style: PixelType.small(context, color: PixelPalette.slate),
+        ),
+        SizedBox(height: grid.px(1)),
+        Wrap(
+          spacing: grid.px(2),
+          runSpacing: grid.px(2),
+          children: [
+            PixelButton(
+              key: const ValueKey('merchant_open_vouchers'),
+              label: tr(context, en: 'Vouchers', tl: 'Mga voucher'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => _openTool(
+                context,
+                '/merchant/vouchers',
+                const MerchantVouchersScreen(),
+              ),
+            ),
+            PixelButton(
+              key: const ValueKey('merchant_open_staff'),
+              label: tr(context, en: 'Staff', tl: 'Mga staff'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => _openTool(
+                context,
+                '/merchant/staff',
+                const MerchantStaffScreen(),
+              ),
+            ),
+            PixelButton(
+              key: const ValueKey('merchant_open_analytics'),
+              label: tr(context, en: 'Analytics', tl: 'Estadistika'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => _openTool(
+                context,
+                '/merchant/analytics',
+                const MerchantAnalyticsScreen(),
+              ),
+            ),
+            PixelButton(
+              key: const ValueKey('merchant_open_counter_history'),
+              label: tr(context, en: 'Scan history', tl: 'Kasaysayan'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => _openTool(
+                context,
+                '/merchant/counter-history',
+                const MerchantCounterHistoryScreen(),
+              ),
+            ),
+          ],
+        ),
         if (data.notice.isNotEmpty) ...[
+          SizedBox(height: grid.px(2)),
           Container(height: grid.unit, color: PixelPalette.paperDim),
           SizedBox(height: grid.px(2)),
           Text(
@@ -402,6 +461,17 @@ class _MerchantDashboardScreenState
         ],
       ],
     );
+  }
+
+  void _openTool(BuildContext context, String path, Widget screen) {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      router.push(path);
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => screen),
+      );
+    }
   }
 }
 

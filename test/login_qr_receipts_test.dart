@@ -163,10 +163,19 @@ void main() {
         vouchersData: [
           {
             'code': 'VCH-1',
-            'offerTitle': 'Free Coffee',
-            'merchantName': 'Cafe Lingayen',
-            'costPoints': 100,
-            'redeemedAt': '2026-11-16T08:00:00Z',
+            'cost_points': 100,
+            'source': 'shop',
+            'created_at': '2026-11-16T08:00:00Z',
+            'used_at': null,
+            'voucher': {
+              'id': 'v-1',
+              'title': 'Free Coffee',
+              'description': 'One brewed coffee',
+            },
+            'merchant': {
+              'id': 'm-1',
+              'name': 'Cafe Lingayen',
+            },
           },
         ],
       );
@@ -179,6 +188,10 @@ void main() {
           contains('https://amoy.polygonscan.com/tx/0xdeadbeef'));
       expect(list[2].category, TransactionCategory.governance);
       expect(list[3].voucherCode, 'VCH-1');
+      expect(list[3].title, 'Free Coffee');
+      expect(list[3].subtitle, 'Cafe Lingayen');
+      expect(list[3].amountLabel, '-100 pts');
+      expect(list[3].status, 'Active');
     });
   });
 

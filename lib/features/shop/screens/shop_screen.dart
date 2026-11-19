@@ -23,6 +23,7 @@ import '../../cosmetics/widgets/profile_banner.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../merchant/models/merchant_models.dart';
 import '../../merchant/providers/merchant_hub_provider.dart';
+import '../../merchant/screens/merchant_directory_screen.dart';
 import '../../merchant/screens/merchant_page_screen.dart';
 import '../../suki/widgets/shop_suki_section.dart';
 import '../../wallet/providers/transactions_provider.dart';
@@ -349,6 +350,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   ),
                   Expanded(
                     child: ListView(
+                      key: ValueKey('shop_list_${_selectedTab ?? "hub"}'),
                       padding: EdgeInsets.fromLTRB(
                         grid.gutter,
                         grid.px(3),
@@ -437,6 +439,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           SizedBox(height: grid.px(2)),
           _categoryCard(context, grid, category, count),
         ],
+        SizedBox(height: grid.px(2)),
+        _partnerDirectoryCard(context, grid),
         SizedBox(height: grid.px(2)),
         GestureDetector(
           key: const ValueKey('shop_transactions_card'),
@@ -636,6 +640,53 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _partnerDirectoryCard(BuildContext context, PixelGrid grid) {
+    return GestureDetector(
+      key: const ValueKey('shop_browse_partners_button'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        pixelTick(context);
+        final router = GoRouter.maybeOf(context);
+        if (router != null) {
+          router.push('/merchants');
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const MerchantDirectoryScreen(),
+            ),
+          );
+        }
+      },
+      child: PixelPanel(
+        style: PixelBoxStyle.parchment.copyWith(corner: 2, shadowPx: 1),
+        padding: 2,
+        child: Row(
+          children: [
+            const SizedBox.square(
+              dimension: 20,
+              child: FittedBox(
+                child: PixelSprite(DesignerArt.salakot, scale: 1),
+              ),
+            ),
+            SizedBox(width: grid.px(2)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Browse Partner Shops', style: PixelType.title(context)),
+                  Text(
+                    'Find Pangasinan merchants, offers & Suki cards',
+                    style: PixelType.small(context, color: PixelPalette.slate),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1111,6 +1162,23 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   style: canAfford ? PixelBoxStyle.coin : PixelBoxStyle.slot,
                   textColor: canAfford ? PixelPalette.paper : PixelPalette.ink,
                 ),
+                if (voucher.remainingStock != null)
+                  PixelChip(
+                    voucher.isOutOfStock
+                        ? 'Out of stock'
+                        : '${voucher.remainingStock} left',
+                    style: voucher.isOutOfStock
+                        ? PixelBoxStyle.stone
+                        : PixelBoxStyle.parchment,
+                    textColor: voucher.isOutOfStock
+                        ? PixelPalette.white
+                        : PixelPalette.ink,
+                  ),
+                if (voucher.validDays != null)
+                  PixelChip(
+                    'Valid ${voucher.validDays}d',
+                    style: PixelBoxStyle.slot,
+                  ),
               ],
             ),
             SizedBox(height: grid.px(2)),
@@ -1158,11 +1226,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             else
               PixelButton(
                 key: ValueKey('shop_redeem_${voucher.id}'),
-                label: canAfford
-                    ? 'Redeem voucher'
-                    : 'Need ${voucher.costPoints - userPoints} more mJDQ',
+                label: voucher.isOutOfStock
+                    ? 'Out of stock'
+                    : canAfford
+                        ? 'Redeem voucher'
+                        : 'Need ${voucher.costPoints - userPoints} more mJDQ',
                 expand: true,
-                onPressed: canAfford && voucher.redeemable
+                onPressed: canAfford && voucher.redeemable && !voucher.isOutOfStock
                     ? () async {
                         // Owner 2026-11-19: vouchers need no wallet.
                         _showVoucherConfirmationDialog(

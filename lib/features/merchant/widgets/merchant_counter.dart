@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
@@ -12,6 +13,7 @@ import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../providers/merchant_hub_provider.dart';
+import '../screens/merchant_counter_history_screen.dart';
 import '../suki/merchant_loyalty_tab.dart' show merchantSukiScannerProvider;
 import '../suki/merchant_suki_codes.dart';
 import '../suki/merchant_suki_widgets.dart';
@@ -167,6 +169,23 @@ class MerchantCounterPanel extends ConsumerWidget {
                 label: tr(context, en: 'Enter code', tl: 'I-type ang code'),
                 variant: PixelButtonVariant.secondary,
                 onPressed: () => runMerchantCounter(context, ref, manual: true),
+              ),
+              PixelButton(
+                key: const ValueKey('merchant_counter_history_btn'),
+                label: tr(context, en: 'History', tl: 'Kasaysayan'),
+                variant: PixelButtonVariant.secondary,
+                onPressed: () {
+                  final router = GoRouter.maybeOf(context);
+                  if (router != null) {
+                    router.push('/merchant/counter-history');
+                  } else {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const MerchantCounterHistoryScreen(),
+                      ),
+                    );
+                  }
+                },
               ),
             ],
           ),
