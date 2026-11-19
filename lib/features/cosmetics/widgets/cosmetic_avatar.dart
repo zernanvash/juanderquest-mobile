@@ -3,6 +3,23 @@ import 'package:flutter/material.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_text.dart';
+import '../../spots/models/spot_model.dart';
+
+/// The picture to show for an account's `avatar_url`, or null for the
+/// initial-letter fallback. Uploaded pictures are root-relative
+/// (`/api/v1/uploads/...`, v0.3.10) and resolve against the API origin; the
+/// default DiceBear SVGs cannot be drawn by Image.network.
+String? resolveAvatarUrl(String? raw) {
+  final value = raw?.trim() ?? '';
+  if (value.isEmpty) return null;
+  final path = Uri.tryParse(value)?.path ?? value;
+  if (path.endsWith('.svg') || path.endsWith('/svg')) return null;
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return value;
+  }
+  if (!value.startsWith('/')) return null;
+  return SpotModel.resolveImageUrl(value);
+}
 
 class CosmeticAvatar extends StatelessWidget {
   const CosmeticAvatar({
@@ -30,6 +47,7 @@ class CosmeticAvatar extends StatelessWidget {
     final width = ((frame?['width'] as num?) ?? 0).toDouble();
     final borderColor = width > 0 ? colors.first : PixelPalette.wood;
     final borderWidth = width > 0 ? width : 2.0;
+    final url = resolveAvatarUrl(imageUrl);
 
     return Container(
       width: size + borderWidth * 2,
@@ -47,9 +65,9 @@ class CosmeticAvatar extends StatelessWidget {
             : null,
       ),
       child: ClipRect(
-        child: imageUrl != null && imageUrl!.isNotEmpty
+        child: url != null
             ? Image.network(
-                imageUrl!,
+                url,
                 width: size,
                 height: size,
                 fit: BoxFit.cover,

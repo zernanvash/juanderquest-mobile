@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../cosmetics/widgets/profile_banner.dart';
 import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
@@ -26,6 +27,7 @@ import '../../spots/providers/spot_discovery_provider.dart';
 import '../providers/profile_stats_provider.dart';
 import '../providers/user_spots_provider.dart';
 import '../showcase.dart';
+import '../widgets/avatar_picker.dart';
 import '../widgets/profile_hub_tabs.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -98,18 +100,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String? avatarUrl,
     String displayName,
   ) {
-    final isValidUrl = avatarUrl != null &&
-        avatarUrl.isNotEmpty &&
-        !avatarUrl.endsWith('.svg') &&
-        (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'));
+    // v0.3.10: uploaded pictures are root-relative API paths.
+    final url = resolveAvatarUrl(avatarUrl);
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'J';
     return SizedBox(
       width: grid.px(42),
       height: grid.px(42),
       child: ClipRect(
-        child: isValidUrl
+        child: url != null
             ? Image.network(
-                avatarUrl,
+                url,
                 fit: BoxFit.cover,
                 filterQuality: FilterQuality.medium,
                 errorBuilder: (_, __, ___) => _avatarFallback(context, initial),
@@ -364,14 +364,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PixelPanel(
-                style: PixelBoxStyle.gold,
-                padding: 1,
-                child: _buildAvatarWidget(
-                  context,
-                  grid,
-                  isMine ? currentUser?.avatarUrl : null,
-                  displayName,
+              _avatarTile(
+                context,
+                grid,
+                isMine,
+                PixelPanel(
+                  style: PixelBoxStyle.gold,
+                  padding: 1,
+                  child: _buildAvatarWidget(
+                    context,
+                    grid,
+                    isMine ? currentUser?.avatarUrl : null,
+                    displayName,
+                  ),
                 ),
               ),
               SizedBox(width: grid.px(2)),
@@ -472,6 +477,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// v0.3.10 (team review): tap your own avatar to take, choose or remove
+  /// a profile picture.
+  Widget _avatarTile(
+      BuildContext context, PixelGrid grid, bool isMine, Widget tile) {
+    if (!isMine) return tile;
+    return Semantics(
+      button: true,
+      label: tr(context,
+          en: 'Change profile picture', tl: 'Palitan ang larawan sa profile'),
+      child: GestureDetector(
+        key: const ValueKey('profile_avatar_edit'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => showAvatarOptions(context, ref),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            tile,
+            Positioned(
+              right: -grid.px(1),
+              bottom: -grid.px(1),
+              child: ExcludeSemantics(
+                child: PixelChip(
+                  tr(context, en: 'EDIT', tl: 'PALITAN'),
+                  style: PixelBoxStyle.parchment,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -623,28 +661,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             data: (userSpots) {
               if (userSpots.isEmpty) {
-                return KeyedSubtree(
+                // v0.3.10 (team review): no second post button here; the
+                // header already has + Post Spot.
+                return Text(
                   key: const ValueKey('profile_no_spots'),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        isMine
-                            ? 'No destinations posted yet. Share a hidden spot in Pangasinan!'
-                            : 'No destinations posted yet by this explorer.',
-                        style:
-                            PixelType.body(context, color: PixelPalette.slate),
-                      ),
-                      if (isMine) ...[
-                        SizedBox(height: grid.px(2)),
-                        PixelButton(
-                          key: const ValueKey('profile_post_spot_empty'),
-                          label: '+ Post a Destination',
-                          onPressed: () => context.push('/map/add-spot'),
-                        ),
-                      ],
-                    ],
-                  ),
+                  isMine
+                      ? tr(context,
+                          en:
+                              'No spots posted yet. Your hidden finds in Pangasinan will show here.',
+                          tl:
+                              'Wala ka pang na-post na lugar. Dito lalabas ang mga natuklasan mo sa Pangasinan.')
+                      : tr(context,
+                          en: 'No spots posted yet by this explorer.',
+                          tl: 'Wala pang na-post na lugar ang explorer na ito.'),
+                  style: PixelType.body(context, color: PixelPalette.slate),
                 );
               }
               final shown = FuzzySearch.filter(
