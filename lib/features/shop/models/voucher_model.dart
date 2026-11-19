@@ -15,6 +15,14 @@ class VoucherModel {
   /// v0.3.10: the shop behind the offer, for its public page.
   final String merchantId;
 
+  /// Plan 110a/b: optional stock cap, validity days, and remaining inventory.
+  final int? stockLimit;
+  final int? validDays;
+  final int redeemedCount;
+  final int? remainingStock;
+
+  bool get isOutOfStock => remainingStock != null && remainingStock! <= 0;
+
   VoucherModel({
     required this.id,
     required this.merchantName,
@@ -29,7 +37,17 @@ class VoucherModel {
     this.partnerLabel,
     this.iconKey,
     this.merchantId = '',
+    this.stockLimit,
+    this.validDays,
+    this.redeemedCount = 0,
+    this.remainingStock,
   });
+
+  static int? _optInt(Object? raw) {
+    if (raw == null) return null;
+    if (raw is num) return raw.toInt();
+    return int.tryParse(raw.toString());
+  }
 
   factory VoucherModel.fromJson(Map<String, dynamic> json) {
     return VoucherModel(
@@ -46,6 +64,10 @@ class VoucherModel {
       partnerLabel: json['partnerLabel'] ?? json['partner_label'],
       iconKey: json['iconKey'] ?? json['icon_key'],
       merchantId: '${json['merchant_id'] ?? json['merchantId'] ?? ''}',
+      stockLimit: _optInt(json['stock_limit'] ?? json['stockLimit']),
+      validDays: _optInt(json['valid_days'] ?? json['validDays']),
+      redeemedCount: _optInt(json['redeemed_count'] ?? json['redeemedCount']) ?? 0,
+      remainingStock: _optInt(json['remaining_stock'] ?? json['remainingStock']),
     );
   }
 }

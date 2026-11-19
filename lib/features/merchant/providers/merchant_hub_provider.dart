@@ -229,4 +229,100 @@ class MerchantApi {
         queryParameters: {'days': days},
       ))
           .data));
+
+  // Plan 110b: Workspace bridges (voucher CRUD, staff, history, analytics, directory).
+  Future<MerchantManagedVoucherList> manageVouchers() async =>
+      MerchantManagedVoucherList.fromJson(
+        _data((await _api.dio.get('/merchant/vouchers/manage')).data),
+      );
+
+  Future<MerchantManagedVoucher> createVoucher({
+    required String title,
+    required String description,
+    required int costPoints,
+    int? stockLimit,
+    int? validDays,
+    String? iconKey,
+  }) async =>
+      MerchantManagedVoucher.fromJson(_data((await _api.dio.post(
+        '/merchant/vouchers',
+        data: {
+          'title': title.trim(),
+          'description': description.trim(),
+          'cost_points': costPoints,
+          if (stockLimit != null) 'stock_limit': stockLimit,
+          if (validDays != null) 'valid_days': validDays,
+          if (iconKey != null) 'icon_key': iconKey,
+        },
+      ))
+          .data));
+
+  Future<MerchantManagedVoucher> updateVoucher(
+    String id,
+    Map<String, dynamic> fields,
+  ) async =>
+      MerchantManagedVoucher.fromJson(_data((await _api.dio.patch(
+        '/merchant/vouchers/${Uri.encodeComponent(id)}',
+        data: fields,
+      ))
+          .data));
+
+  Future<void> archiveVoucher(String id) =>
+      _api.dio.delete('/merchant/vouchers/${Uri.encodeComponent(id)}');
+
+  Future<MerchantStaffList> staff() async => MerchantStaffList.fromJson(
+        _data((await _api.dio.get('/merchant/staff')).data),
+      );
+
+  Future<MerchantStaffMember> addStaff(String email) async =>
+      MerchantStaffMember.fromJson(_data((await _api.dio.post(
+        '/merchant/staff',
+        data: {'email': email.trim()},
+      ))
+          .data));
+
+  Future<void> revokeStaff(String userId) =>
+      _api.dio.delete('/merchant/staff/${Uri.encodeComponent(userId)}');
+
+  Future<List<MerchantCounterEvent>> counterHistory({int limit = 50}) async {
+    final data = _data((await _api.dio.get(
+      '/merchant/counter/history',
+      queryParameters: {'limit': limit},
+    ))
+        .data);
+    return _rows(data['items']).map(MerchantCounterEvent.fromJson).toList();
+  }
+
+  Future<MerchantAnalyticsData> analytics({int days = 30}) async =>
+      MerchantAnalyticsData.fromJson(_data((await _api.dio.get(
+        '/merchant/analytics',
+        queryParameters: {'days': days},
+      ))
+          .data));
+
+  Future<PublicMerchantPage> publicMerchants({
+    String? q,
+    String? municipality,
+    String? category,
+    double? lat,
+    double? lng,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final params = <String, dynamic>{
+      'page': page,
+      'limit': limit,
+      if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      if (municipality != null && municipality.trim().isNotEmpty)
+        'municipality': municipality.trim(),
+      if (category != null && category.trim().isNotEmpty)
+        'category': category.trim(),
+      if (lat != null && lng != null) ...{'lat': lat, 'lng': lng},
+    };
+    return PublicMerchantPage.fromJson(_data((await _api.dio.get(
+      '/merchants',
+      queryParameters: params,
+    ))
+        .data));
+  }
 }
