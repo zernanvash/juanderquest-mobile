@@ -47,11 +47,16 @@ class SponsorDirectoryMerchant {
     final rawVouchers = json['vouchers'];
     final voucherList = <SponsorDirectoryVoucher>[];
     if (rawVouchers is List) {
+      // v0.3.10: one dropdown item per id (a repeated or empty id is an
+      // assertion in DropdownButton and a grey screen in release).
+      final seen = <String>{};
       for (final v in rawVouchers) {
         if (v is Map) {
-          voucherList.add(
-            SponsorDirectoryVoucher.fromJson(Map<String, dynamic>.from(v)),
-          );
+          final voucher =
+              SponsorDirectoryVoucher.fromJson(Map<String, dynamic>.from(v));
+          if (voucher.id.isNotEmpty && seen.add(voucher.id)) {
+            voucherList.add(voucher);
+          }
         }
       }
     }
