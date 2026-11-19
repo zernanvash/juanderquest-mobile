@@ -26,7 +26,9 @@ import '../../merchant/providers/merchant_hub_provider.dart';
 import '../../merchant/screens/merchant_directory_screen.dart';
 import '../../merchant/screens/merchant_page_screen.dart';
 import '../../suki/widgets/shop_suki_section.dart';
+import '../../wallet/providers/transactions_provider.dart';
 import '../../wallet/screens/wallet_connect_screen.dart';
+import '../../wallet/widgets/transaction_receipt_sheet.dart';
 import '../models/cosmetic_item.dart';
 import '../models/shop_teaser.dart';
 import '../models/voucher_model.dart';
@@ -278,6 +280,33 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   ),
                   SizedBox(height: PixelGrid.of(modalCtx).px(3)),
                   PixelButton(
+                    key: const ValueKey('shop_voucher_receipt'),
+                    label: 'View / Share Receipt',
+                    variant: PixelButtonVariant.secondary,
+                    expand: true,
+                    onPressed: () {
+                      Navigator.of(modalCtx).pop();
+                      showTransactionReceiptSheet(
+                        context,
+                        TransactionRecord(
+                          receiptId: 'JDQ-VCH-${redeemed.code}',
+                          title: redeemed.offerTitle,
+                          subtitle: redeemed.merchantName,
+                          category: TransactionCategory.vouchers,
+                          amountLabel: '-${redeemed.costPoints} pts',
+                          isCredit: false,
+                          timestamp: redeemed.redeemedAt,
+                          status: redeemed.usedAt != null ? 'Used' : 'Active',
+                          settlement: 'Off-Chain Voucher',
+                          voucherCode: redeemed.code,
+                          walletAddress:
+                              ref.read(authProvider).user?.walletAddress,
+                        ),
+                      );
+                    },
+                  ),
+                  SizedBox(height: PixelGrid.of(modalCtx).px(2)),
+                  PixelButton(
                     label: 'Done',
                     expand: true,
                     onPressed: () => Navigator.of(modalCtx).pop(),
@@ -412,6 +441,37 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         ],
         SizedBox(height: grid.px(2)),
         _partnerDirectoryCard(context, grid),
+        SizedBox(height: grid.px(2)),
+        GestureDetector(
+          key: const ValueKey('shop_transactions_card'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.push('/transactions'),
+          child: PixelPanel(
+            style: PixelBoxStyle.parchment.copyWith(corner: 2, shadowPx: 1),
+            padding: 2,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Transactions & Receipts',
+                          style: PixelType.title(context)),
+                      SizedBox(height: grid.px(1)),
+                      Text(
+                        'View invoices, share proof & copy PolygonScan links',
+                        style:
+                            PixelType.small(context, color: PixelPalette.slate),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: grid.px(2)),
+                const PixelChip('OPEN ›', style: PixelBoxStyle.gold),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

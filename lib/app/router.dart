@@ -6,6 +6,8 @@ import '../core/theme/app_theme.dart';
 import '../features/app_update/widgets/startup_update_gate.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/login_screen.dart';
+import '../features/qr/screens/quick_qr_screen.dart';
+import '../features/wallet/screens/transactions_screen.dart';
 import '../features/wallet/screens/wallet_connect_screen.dart';
 import '../features/quests/models/quest_model.dart';
 import '../features/quests/screens/quest_detail_screen.dart';
@@ -474,6 +476,24 @@ final routerProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           child: const RecapScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/qr',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: QuickQrScreen(
+            initialTab: state.uri.queryParameters['tab'] ?? 'scan',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/transactions',
+        pageBuilder: (context, state) => buildDirectionalSlidePage(
+          context: context,
+          state: state,
+          child: const TransactionsScreen(),
         ),
       ),
       GoRoute(

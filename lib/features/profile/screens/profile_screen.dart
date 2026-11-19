@@ -482,6 +482,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               variant: PixelButtonVariant.secondary,
               onPressed: () => context.push('/my-quests'),
             ),
+            SizedBox(height: grid.px(2)),
+            PixelButton(
+              key: const ValueKey('profile_transactions'),
+              label: tr(context,
+                  en: 'Transactions & Receipts ›',
+                  tl: 'Mga Transaksyon at Resibo ›'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => context.push('/transactions'),
+            ),
           ] else ...[
             SizedBox(height: grid.px(3)),
             PixelButton(

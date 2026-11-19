@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -37,6 +38,44 @@ class WalletSignatureService {
       return null;
     }
     return address;
+  }
+
+  /// Ensures a wallet session is connected with minimal clicks:
+  /// - If already connected, returns the address immediately.
+  /// - Otherwise opens the Reown wallet picker directly and resolves as soon
+  ///   as a wallet connects (or returns null if the user cancels).
+  static Future<String?> ensureConnected(ReownAppKitModal modal) async {
+    final existing = connectedAddress(modal);
+    if (existing != null) return existing;
+
+    final completer = Completer<String?>();
+    void onConnect(ModalConnect? _) {
+      final addr = connectedAddress(modal);
+      if (addr != null && !completer.isCompleted) {
+        completer.complete(addr);
+      }
+    }
+
+    void onError(ModalError? err) {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          StateError(err?.message ?? 'Wallet connection failed.'),
+        );
+      }
+    }
+
+    modal.onModalConnect.subscribe(onConnect);
+    modal.onModalError.subscribe(onError);
+    try {
+      await modal.openModalView();
+      if (!completer.isCompleted) {
+        completer.complete(connectedAddress(modal));
+      }
+      return await completer.future;
+    } finally {
+      modal.onModalConnect.unsubscribe(onConnect);
+      modal.onModalError.unsubscribe(onError);
+    }
   }
 
   static String personalSignPayload(String message) {

@@ -28,6 +28,7 @@ class PixelTextField extends StatefulWidget {
     this.autofocus = false,
     this.autovalidateMode,
     this.prefix,
+    this.suffix,
     this.plainFont = false,
   });
 
@@ -51,6 +52,7 @@ class PixelTextField extends StatefulWidget {
   final bool autofocus;
   final AutovalidateMode? autovalidateMode;
   final Widget? prefix;
+  final Widget? suffix;
 
   /// Types in the phone's normal font instead of the pixel font. For login and
   /// sign-up: Silkscreen has no real lowercase, so typed passwords looked like
@@ -159,16 +161,32 @@ class _PixelTextFieldState extends State<PixelTextField> {
                 // second box inside the field.
                 bevel: false,
               ),
-              padding: 2,
-              child: widget.prefix == null
-                  ? input
-                  : Row(
-                      children: [
+              padding: 0,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: grid.px(3),
+                  vertical: grid.px(2),
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 28),
+                  child: Row(
+                    crossAxisAlignment: widget.maxLines > 1
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.center,
+                    children: [
+                      if (widget.prefix != null) ...[
                         widget.prefix!,
                         SizedBox(width: grid.px(2)),
-                        Expanded(child: input),
                       ],
-                    ),
+                      Expanded(child: input),
+                      if (widget.suffix != null) ...[
+                        SizedBox(width: grid.px(2)),
+                        widget.suffix!,
+                      ],
+                    ],
+                  ),
+                ),
+              ),
             ),
             if (hasError) ...[
               SizedBox(height: grid.px(1)),

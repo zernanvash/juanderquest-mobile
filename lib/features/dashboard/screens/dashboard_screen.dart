@@ -23,6 +23,7 @@ import '../../spots/providers/spot_discovery_provider.dart';
 import '../../spots/screens/interests_screen.dart';
 import '../../submissions/providers/submission_provider.dart';
 import '../home_tips.dart';
+import '../pixel/home_pixel_art.dart';
 import '../providers/home_daily_provider.dart';
 import '../providers/home_dashboard_providers.dart';
 import '../providers/home_qotd_provider.dart';
@@ -159,6 +160,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           // currencies sat off the right edge (owner
                           // 2026-11-17). The strip aligns itself right.
                           const Expanded(flex: 3, child: HomePurseStrip()),
+                          Tooltip(
+                            message: 'QR Scanner & My QR',
+                            child: PixelIconButton(
+                              key: const ValueKey('home_qr_button'),
+                              icon: HomePixelArt.qrCode,
+                              semanticLabel: 'QR Scanner and My QR',
+                              iconHeight: 24,
+                              boxed: false,
+                              onPressed: () => context.push('/qr'),
+                            ),
+                          ),
                           // Owner 2026-11-16: only the bell on Home (Search is on
                           // Explore, the Map in the menu, Settings on Profile).
                           Tooltip(

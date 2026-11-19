@@ -135,10 +135,11 @@ void main() {
       expect(find.byKey(const ValueKey('auth_wallet_sign_in')), findsOneWidget);
 
       // Password visibility toggle
-      expect(find.text('SHOW PASSWORD'), findsOneWidget);
-      await tester.tap(find.text('SHOW PASSWORD'));
+      expect(find.byKey(const ValueKey('auth_toggle_password')), findsOneWidget);
+      expect(find.text('SHOW'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('auth_toggle_password')));
       await tester.pumpAndSettle();
-      expect(find.text('HIDE PASSWORD'), findsOneWidget);
+      expect(find.text('HIDE'), findsOneWidget);
     });
 
     testWidgets('empty validation shows error panel on sign in',
