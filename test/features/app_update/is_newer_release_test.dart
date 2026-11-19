@@ -58,4 +58,16 @@ void main() {
       isFalse,
     );
   });
+
+  test('a local debug build of a newer version is never offered an older release',
+      () {
+    expect(
+      isNewerRelease(
+          latestCode: 223,
+          latestName: '0.3.9',
+          installedCode: 1,
+          installedName: '0.3.10'),
+      isFalse,
+    );
+  });
 }

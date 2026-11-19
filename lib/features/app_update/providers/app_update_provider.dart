@@ -41,10 +41,27 @@ bool isNewerRelease({
   required String installedName,
 }) {
   if (latestCode <= installedCode) return false;
-  if (installedCode < 100 && latestName.trim() == installedName.trim()) {
-    return false;
+  // Local debug builds (code < 100): only a strictly newer version name counts,
+  // so a v0.3.10 dev build is never offered v0.3.9.
+  if (installedCode < 100) {
+    return _compareVersionNames(latestName, installedName) > 0;
   }
   return true;
+}
+
+int _compareVersionNames(String a, String b) {
+  List<int> parts(String v) => v
+      .trim()
+      .split(RegExp(r'[^0-9]+'))
+      .where((p) => p.isNotEmpty)
+      .map(int.parse)
+      .toList();
+  final x = parts(a), y = parts(b);
+  for (var i = 0; i < x.length || i < y.length; i++) {
+    final d = (i < x.length ? x[i] : 0) - (i < y.length ? y[i] : 0);
+    if (d != 0) return d;
+  }
+  return 0;
 }
 
 class AppUpdateState {
