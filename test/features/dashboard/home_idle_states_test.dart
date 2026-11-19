@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:juanderquest_app/core/pixel/pixel_box.dart';
 import 'package:juanderquest_app/core/pixel/pixel_idle.dart';
+import 'package:juanderquest_app/core/pixel/pixel_poppers.dart';
 import 'package:juanderquest_app/core/pixel/pixel_rpg.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
@@ -86,6 +87,48 @@ void main() {
     expect(find.textContaining('Already answered'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
+  });
+
+  // Team review v0.3.10: "add confetti when answer qotd right".
+  for (final right in [true, false]) {
+    testWidgets('QOTD answer ${right ? 'right fires' : 'wrong skips'} confetti',
+        (tester) async {
+      PixelPoppers.debugFired = 0;
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          homeQotdProvider.overrideWith((ref) => _Answering(ref, right)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.pixel,
+          home: const Scaffold(body: HomeQotdPanel()),
+        ),
+      ));
+      expect(PixelPoppers.debugFired, 0);
+      await tester.tap(find.byKey(const ValueKey('home_qotd_option_o1')));
+      await tester.pump();
+      expect(PixelPoppers.debugFired, right ? 1 : 0);
+      // Tapping again (already answered) never fires a second time.
+      await tester.tap(find.byKey(const ValueKey('home_qotd_option_o1')));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(PixelPoppers.debugFired, right ? 1 : 0);
+    });
+  }
+
+  testWidgets('an already-answered QOTD loading again fires no confetti',
+      (tester) async {
+    PixelPoppers.debugFired = 0;
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        homeQotdProvider.overrideWith((ref) => _Qotd(ref, answered: true)),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.pixel,
+        home: const Scaffold(body: HomeQotdPanel()),
+      ),
+    ));
+    await tester.pump();
+    expect(PixelPoppers.debugFired, 0);
   });
 
   // QA 2026-11-17: MISSED showed only the red pick, not the right answer.
@@ -186,6 +229,33 @@ class _Qotd extends HomeQotdNotifier {
         explanation: answered ? 'Alaminos City has them.' : null,
       ),
     );
+  }
+}
+
+class _Answering extends HomeQotdNotifier {
+  _Answering(super.ref, this.right) : super(autoLoad: false) {
+    state = const AsyncValue.data(
+      HomeQotdState(
+        date: '2026-11-19',
+        quizTitle: 'Daily Lore',
+        questionId: 'qq-3',
+        questionText: 'Where is Hundred Islands?',
+        options: [HomeQotdOption(id: 'o1', ordinal: 1, text: 'Alaminos')],
+      ),
+    );
+  }
+
+  final bool right;
+
+  @override
+  Future<void> answer(String optionId) async {
+    final current = state.value!;
+    if (current.answered) return;
+    state = AsyncValue.data(current.copyWith(
+      answered: true,
+      selectedOptionId: optionId,
+      correct: right,
+    ));
   }
 }
 
