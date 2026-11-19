@@ -181,8 +181,20 @@ class _QuestFundingScreenState extends ConsumerState<QuestFundingScreen> {
   }
 
   Future<void> _openAskMerchant() async {
-    final planId = _plan?['id']?.toString();
-    if (planId == null || planId.isEmpty) return;
+    // v0.3.10: never a silent no-op. A round without an id cannot take
+    // requests yet: say so and reload it.
+    final planId = '${_plan?['id'] ?? ''}'.trim();
+    if (planId.isEmpty) {
+      await _load();
+      if (!mounted) return;
+      setState(() {
+        _notice = null;
+        _error = tr(context,
+            en: 'This funding round is still saving. Try again in a moment.',
+            tl: 'Sine-save pa ang funding round. Subukang muli maya-maya.');
+      });
+      return;
+    }
     final sent = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) =>

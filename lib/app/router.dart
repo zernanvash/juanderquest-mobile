@@ -29,6 +29,7 @@ import '../features/cosmetics/screens/appearance_screen.dart';
 import '../features/map/screens/map_view_screen.dart';
 import '../features/merchant/screens/affiliate_pending_screen.dart';
 import '../features/merchant/screens/merchant_dashboard_screen.dart';
+import '../features/merchant/screens/merchant_page_screen.dart';
 import '../features/merchant/suki/suki_standee_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
@@ -382,6 +383,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/merchant',
           builder: (context, state) => MerchantDashboardScreen(
               initialTab: state.uri.queryParameters['tab'] ?? 'overview')),
+      // v0.3.10: a shop's public page (in-app links use openMerchantPage).
+      GoRoute(
+          path: '/merchants/:id',
+          builder: (context, state) =>
+              MerchantPageScreen(merchantId: state.pathParameters['id']!)),
       // Plan 107: the Suki Card counter standee to print.
       GoRoute(
           path: '/merchant/suki/standee',

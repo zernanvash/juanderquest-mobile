@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -75,6 +76,28 @@ class MerchantApi {
 
   Future<void> archiveProduct(String id) =>
       _api.dio.delete('/merchant/products/$id');
+
+  /// v0.3.10: pin (or unpin) a published product as the shop's specialty.
+  Future<void> setSpecialty(String id, bool pinned) => _api.dio.put(
+        '/merchant/products/${Uri.encodeComponent(id)}/specialty',
+        data: {'pinned': pinned},
+      );
+
+  /// v0.3.10: uploads a photo through the shared `/spot-media` pipeline and
+  /// returns its URL (root-relative for local storage).
+  Future<String> uploadPhoto(List<int> bytes, String filename) async {
+    final response = await _api.dio.post(
+      '/spot-media',
+      data: FormData.fromMap({
+        'media': MultipartFile.fromBytes(bytes, filename: filename),
+      }),
+    );
+    final url = _data(response.data)['url'];
+    if (url is! String || url.isEmpty) {
+      throw StateError('The upload did not return a URL.');
+    }
+    return url;
+  }
 
   Future<MerchantPointSummary> points() async => MerchantPointSummary.fromJson(
         _data((await _api.dio.get('/merchant/points')).data),

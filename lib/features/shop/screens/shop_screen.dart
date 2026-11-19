@@ -23,12 +23,14 @@ import '../../cosmetics/widgets/profile_banner.dart';
 import '../../cosmetics/widgets/cosmetic_avatar.dart';
 import '../../merchant/models/merchant_models.dart';
 import '../../merchant/providers/merchant_hub_provider.dart';
+import '../../merchant/screens/merchant_page_screen.dart';
 import '../../suki/widgets/shop_suki_section.dart';
 import '../../wallet/screens/wallet_connect_screen.dart';
 import '../models/cosmetic_item.dart';
 import '../models/shop_teaser.dart';
 import '../models/voucher_model.dart';
 import '../providers/cosmetics_provider.dart';
+import '../providers/shop_nav_provider.dart';
 import '../providers/voucher_provider.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
@@ -55,7 +57,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   ];
 
   /// null: the category hub. 0 Cosmetics, 1 Vouchers, 2 Coming soon, 3 My items.
-  int? _selectedTab;
+  int? get _selectedTab => ref.watch(shopCategoryProvider);
+  set _selectedTab(int? value) =>
+      ref.read(shopCategoryProvider.notifier).state = value;
   String _filter = 'banner';
   bool _inventoryVouchers = false;
   bool? _liveGrid; // null: follow the system animation setting (Plan 69)
@@ -1051,9 +1055,24 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             SizedBox(height: grid.px(2)),
             Text(voucher.offerTitle, style: PixelType.title(context)),
             SizedBox(height: grid.px(1)),
-            Text(
-              voucher.merchantName,
-              style: PixelType.body(context, color: PixelPalette.slate),
+            // v0.3.10: the shop name opens its public page.
+            GestureDetector(
+              key: ValueKey('shop_voucher_merchant_${voucher.id}'),
+              behavior: HitTestBehavior.opaque,
+              onTap: voucher.merchantId.isEmpty
+                  ? null
+                  : () => openMerchantPage(context, voucher.merchantId),
+              child: Text(
+                voucher.merchantId.isEmpty
+                    ? voucher.merchantName
+                    : '${voucher.merchantName} >',
+                style: PixelType.body(
+                  context,
+                  color: voucher.merchantId.isEmpty
+                      ? PixelPalette.slate
+                      : PixelPalette.greenDark,
+                ),
+              ),
             ),
             Text(
               voucher.location,

@@ -120,6 +120,7 @@ import 'package:juanderquest_app/features/merchant/models/merchant_models.dart';
 import 'package:juanderquest_app/features/merchant/providers/merchant_hub_provider.dart';
 import 'package:juanderquest_app/features/merchant/screens/affiliate_pending_screen.dart';
 import 'package:juanderquest_app/features/merchant/screens/merchant_dashboard_screen.dart';
+import 'package:juanderquest_app/features/merchant/screens/merchant_page_screen.dart';
 import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/suki/screens/suki_card_screen.dart';
@@ -3286,6 +3287,161 @@ void main() {
             size);
         expect(find.byKey(const ValueKey('spot_suki_row')), findsOneWidget);
       });
+    }
+  });
+
+  // v0.3.10 Shop track: the public merchant page, the hub's counter, catalog
+  // pins and cover upload, and a Shop category, at 2.0x text.
+  group('v0.3.10 Shop zero-overflow (2.0x text)', () {
+    const longShop = 'Bonuan Waterfront Bangus Grill and Pasalubong Center';
+    const longItem =
+        'Inihaw na Bangus Belly with Atchara and Garlic Rice Platter';
+    final routes = <String, Object?>{
+      '/merchants/m1': {
+        'merchant': {
+          'id': 'm1',
+          'name': longShop,
+          'category': 'dining and pasalubong',
+          'municipality': 'San Fabian, Pangasinan',
+          'location': 'Purok 3, Barangay Bonuan Gueset, beside the river',
+          'description': 'Grilled bangus, halo-halo and pasalubong. ' * 4,
+          'logo_url': null,
+          'banner_url': null,
+          'contact_phone': '0917 000 0000',
+          'contact_email': 'hello.bonuan.waterfront.grill@example.com',
+          'gps_lat': 16.04,
+          'gps_lng': 120.33,
+          'is_published': false,
+        },
+        'specialties': [
+          {
+            'id': 'p1',
+            'name': longItem,
+            'price': '1250.00',
+            'is_specialty': true
+          },
+        ],
+        'products': [
+          {
+            'id': 'p2',
+            'name': longItem,
+            'price': null,
+            'description': 'x ' * 40
+          },
+        ],
+        'vouchers': [
+          {
+            'id': 'v1',
+            'title': 'Free halo-halo with any family platter order',
+            'cost_points': '12000'
+          },
+        ],
+        'suki': {
+          'enabled': true,
+          'program': {
+            'id': 'suki_1',
+            'title': 'Bangus Lovers Suki Card for Regulars',
+            'reward_text': 'Free large halo-halo with leche flan',
+            'reward_tag': '₱250 OFF',
+            'visits_required': 12,
+          },
+          'my_card': {'visits': 7, 'required': 12},
+        },
+        'viewer': {'is_member': false},
+      },
+      '/merchant/dashboard': {
+        'merchant': {
+          'id': 'm1',
+          'name': longShop,
+          'category': 'dining',
+          'municipality': 'Dagupan City',
+          'is_published': true,
+        },
+        'counts': {'active_products': 3},
+        'checklist': {'items': []},
+        'truthful_notice': {'statement': ''},
+      },
+      '/merchant/profile': {'name': longShop, 'banner_url': '', 'logo_url': ''},
+      '/merchant/products': [
+        {
+          'id': 'p1',
+          'name': longItem,
+          'price': '1250.00',
+          'specialty_at': '2026-11-19T00:00:00Z'
+        },
+        {'id': 'p2', 'name': longItem, 'price': null, 'description': 'x ' * 40},
+      ],
+      '/merchant/suki': {'role': 'owner', 'program': null},
+    };
+
+    Future<void> pumpShop(WidgetTester tester, Widget child, Size size) async {
+      tester.view.physicalSize = Size(size.width * 2, size.height * 2);
+      tester.view.devicePixelRatio = 2.0;
+      tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+      final overflowErrors = <FlutterErrorDetails>[];
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = (details) {
+        if (details.toString().contains('overflowed')) {
+          overflowErrors.add(details);
+        }
+        originalOnError?.call(details);
+      };
+      addTearDown(() {
+        FlutterError.onError = originalOnError;
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+      });
+      final client = ApiClient(enableRetries: false);
+      client.dio.interceptors.insert(
+          0,
+          InterceptorsWrapper(
+            onRequest: (options, handler) => handler.resolve(Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {'success': true, 'data': routes[options.path] ?? const {}},
+            )),
+          ));
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          apiClientProvider.overrideWithValue(client),
+          authProvider.overrideWith((ref) => InertAuthNotifier(
+              ref.watch(apiClientProvider),
+              ref.watch(authRefreshProvider.notifier),
+              dummyUser)),
+        ],
+        child: MaterialApp(theme: AppTheme.pixel, home: child),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(seconds: 1));
+      // Scroll to the end so every section lays out.
+      final list = find.byType(ListView);
+      if (list.evaluate().isNotEmpty) {
+        await tester.drag(list.first, const Offset(0, -4000));
+        await tester.pump();
+      }
+      // Let late requests and toasts finish.
+      await tester.pump(const Duration(seconds: 5));
+      tester.takeException();
+      expect(overflowErrors, isEmpty,
+          reason: overflowErrors.map((e) => e.toString()).join('\n'));
+    }
+
+    for (final size in const [Size(320, 568), Size(568, 320)]) {
+      final label = '${size.width.toInt()}x${size.height.toInt()}';
+      testWidgets('MerchantPageScreen $label', (tester) async {
+        await pumpShop(
+            tester, const MerchantPageScreen(merchantId: 'm1'), size);
+        expect(find.byType(MerchantPageScreen), findsOneWidget);
+      });
+      for (final tab in const ['overview', 'profile', 'catalog']) {
+        testWidgets('MerchantDashboardScreen $tab $label', (tester) async {
+          await pumpShop(
+              tester, MerchantDashboardScreen(initialTab: tab), size);
+          expect(find.byType(MerchantDashboardScreen), findsOneWidget);
+        });
+      }
     }
   });
 }
