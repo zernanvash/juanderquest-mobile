@@ -18,8 +18,8 @@ import '../auth/providers/auth_provider.dart';
 import '../cosmetics/widgets/cosmetic_avatar.dart';
 import '../spots/widgets/spot_like_heart.dart';
 import '../settings/home_town.dart';
-import '../vote/pixel/wave3_art.dart';
 import 'activity_text.dart';
+import 'plaza_art.dart';
 import 'plaza_models.dart';
 import 'plaza_comments_sheet.dart';
 import 'plaza_provider.dart';
@@ -118,7 +118,8 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                         canPop ? () => Navigator.of(context).maybePop() : null,
                     actions: [
                       PixelIconButton(
-                        icon: Wave3Art.refresh,
+                        key: const ValueKey('plaza_refresh'),
+                        icon: PlazaArt.refresh,
                         semanticLabel: 'Refresh Plaza',
                         onPressed: () {
                           ref.invalidate(plazaStandingsProvider(standingsKey));

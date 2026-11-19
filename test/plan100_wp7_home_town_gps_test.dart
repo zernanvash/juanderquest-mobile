@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
@@ -248,29 +249,34 @@ void main() {
     expect(find.text('Set my home town from GPS'), findsOneWidget);
     expect(find.text('finding… (2/5 days)'), findsOneWidget);
 
-    // The town list scrolls inside the sheet (QA 2026-11-17).
-    Future<void> showBolinao() => tester.scrollUntilVisible(
-          find.byKey(const ValueKey('home_town_Bolinao')),
-          40,
-          scrollable: find.descendant(
-            of: find.byKey(const ValueKey('home_town_list')),
-            matching: find.byType(Scrollable),
-          ),
-        );
-
-    // Tapping Bolinao while GPS is ON does nothing (read-only)
-    await showBolinao();
-    await tester.tap(find.byKey(const ValueKey('home_town_Bolinao')));
-    await tester.pumpAndSettle();
-    expect(find.text('Set my home town from GPS'), findsOneWidget);
+    // Team review v0.3.10: province -> town comboboxes, read-only while
+    // GPS is on.
+    DropdownButtonFormField<String> townBox() =>
+        tester.widget(find.descendant(
+            of: find.byKey(const ValueKey('town_picker_town')),
+            matching: find.byType(DropdownButtonFormField<String>),
+            matchRoot: true));
+    PixelButton save() =>
+        tester.widget(find.byKey(const ValueKey('home_town_save')));
+    expect(find.byKey(const ValueKey('town_picker_town')), findsNothing);
+    expect(save().onPressed, isNull);
 
     // Turn GPS OFF
     await tester.tap(find.byKey(const ValueKey('home_town_gps_switch')));
     await tester.pumpAndSettle();
 
-    // Now tapping Bolinao saves and closes dialog
-    await showBolinao();
-    await tester.tap(find.byKey(const ValueKey('home_town_Bolinao')));
+    // Pangasinan, then Bolinao, then Save.
+    await tester.tap(find.byKey(const ValueKey('town_picker_province')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pangasinan').last);
+    await tester.pumpAndSettle();
+    expect(townBox().onChanged, isNotNull);
+    expect(save().onPressed, isNull); // no town yet
+    await tester.tap(find.byKey(const ValueKey('town_picker_town')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bolinao').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('home_town_save')));
     await tester.pumpAndSettle();
     expect(find.text('Set my home town from GPS'), findsNothing);
     expect(savedTown, 'Bolinao');

@@ -7,6 +7,7 @@ import 'package:juanderquest_app/core/pixel/pixel_box.dart';
 import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/services/push_service.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
+import 'package:juanderquest_app/features/plaza/plaza_art.dart';
 import 'package:juanderquest_app/features/plaza/plaza_models.dart';
 import 'package:juanderquest_app/features/plaza/plaza_provider.dart';
 import 'package:juanderquest_app/features/plaza/plaza_screen.dart';
@@ -233,6 +234,7 @@ void main() {
           homeTownProvider.overrideWith(
             (ref) async => const HomeTownInfo(
               town: null,
+              gpsEnabled: false,
               options: ['Bolinao', 'Dagupan City'],
             ),
           ),
@@ -250,10 +252,31 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('plaza_set_home_town')));
     await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('home_town_Dagupan City')),
-      findsOneWidget,
+    // Team review v0.3.10: a province -> town combobox, not 49 buttons.
+    expect(find.byKey(const ValueKey('home_town_picker')), findsOneWidget);
+    expect(find.text('Outside Pangasinan / visiting'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('town_picker_province')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pangasinan').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('town_picker_town')));
+    await tester.pumpAndSettle();
+    expect(find.text('Dagupan City'), findsWidgets);
+    expect(find.text('Bolinao'), findsWidgets);
+  });
+
+  testWidgets('the Plaza refresh button uses the two-arrow icon', (
+    tester,
+  ) async {
+    final feedNotifier = _FakePlazaFeedNotifier(
+      ApiClient(),
+      AsyncValue.data([testActivity]),
     );
-    expect(find.text("I'm visiting / not from Pangasinan *"), findsOneWidget);
+    await tester.pumpWidget(createPlazaApp(feedNotifier));
+    await tester.pumpAndSettle();
+    final button = tester
+        .widget<PixelIconButton>(find.byKey(const ValueKey('plaza_refresh')));
+    expect(button.icon, PlazaArt.refresh);
+    expect(button.semanticLabel, 'Refresh Plaza');
   });
 }
