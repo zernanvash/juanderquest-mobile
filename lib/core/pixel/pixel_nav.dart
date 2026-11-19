@@ -372,6 +372,10 @@ class PixelAppBar extends StatelessWidget {
 
   bool _isMainTab(BuildContext context) {
     if (isTab) return true;
+    // Screens pushed with Navigator.push (QR scanner, Suki and merchant
+    // sub-pages) are never tabs. Asking go_router there can spin forever
+    // inside GoRouterState.of (go_router 14.8.1) and freeze the app (ANR).
+    if (ModalRoute.of(context)?.settings is! Page<Object?>) return false;
     try {
       final route = GoRouterState.of(context);
       final path = route.uri.path;
