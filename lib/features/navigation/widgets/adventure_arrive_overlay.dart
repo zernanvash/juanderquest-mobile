@@ -24,6 +24,13 @@ class AdventureArriveOverlay extends StatefulWidget {
   final String destinationName;
   final int? tripMinutes;
   final double? tripKm;
+  final bool hasStopVlogClip;
+  final bool hasFinalStopVlogClip;
+  final bool isMovingTooFast;
+  final int vlogClipCount;
+  final VoidCallback? onRecordStopVlog;
+  final VoidCallback? onRecordFinalStopVlog;
+  final VoidCallback? onOpenTrailVlogStudio;
   final VoidCallback onContinueCheckIn;
   final VoidCallback onDone;
 
@@ -40,6 +47,13 @@ class AdventureArriveOverlay extends StatefulWidget {
     required this.destinationName,
     this.tripMinutes,
     this.tripKm,
+    this.hasStopVlogClip = false,
+    this.hasFinalStopVlogClip = false,
+    this.isMovingTooFast = false,
+    this.vlogClipCount = 0,
+    this.onRecordStopVlog,
+    this.onRecordFinalStopVlog,
+    this.onOpenTrailVlogStudio,
     required this.onContinueCheckIn,
     required this.onDone,
   });
@@ -245,6 +259,31 @@ class _AdventureArriveOverlayState extends State<AdventureArriveOverlay> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              if (widget.onRecordStopVlog != null) ...[
+                                SizedBox(height: grid.px(2)),
+                                PixelButton(
+                                  key: const ValueKey('nav_record_stop_vlog'),
+                                  label: widget.isMovingTooFast
+                                      ? 'PARK FIRST TO VLOG'
+                                      : (widget.hasStopVlogClip
+                                          ? 'CLIP SAVED · RETAKE'
+                                          : 'RECORD 3S VLOG CLIP'),
+                                  expand: true,
+                                  style: widget.isMovingTooFast
+                                      ? null
+                                      : (widget.hasStopVlogClip
+                                          ? PixelBoxStyle.green
+                                          : PixelBoxStyle.gold),
+                                  textColor: widget.isMovingTooFast
+                                      ? null
+                                      : (widget.hasStopVlogClip
+                                          ? PixelPalette.paper
+                                          : PixelPalette.ink),
+                                  onPressed: widget.isMovingTooFast
+                                      ? null
+                                      : widget.onRecordStopVlog,
+                                ),
+                              ],
                               if (widget.nextStop != null) ...[
                                 SizedBox(height: grid.px(2)),
                                 PixelPanel(
@@ -281,6 +320,36 @@ class _AdventureArriveOverlayState extends State<AdventureArriveOverlay> {
                                   '+$displayReward PTS',
                                   key: const ValueKey('nav_arrive_reward_chip'),
                                   style: PixelBoxStyle.gold,
+                                ),
+                              ],
+                              if (widget.onRecordFinalStopVlog != null &&
+                                  !widget.hasFinalStopVlogClip) ...[
+                                SizedBox(height: grid.px(2)),
+                                PixelButton(
+                                  key: const ValueKey(
+                                      'nav_record_final_stop_vlog'),
+                                  label: widget.isMovingTooFast
+                                      ? 'PARK FIRST TO VLOG'
+                                      : 'RECORD FINAL STOP CLIP',
+                                  expand: true,
+                                  variant: PixelButtonVariant.secondary,
+                                  onPressed: widget.isMovingTooFast
+                                      ? null
+                                      : widget.onRecordFinalStopVlog,
+                                ),
+                              ],
+                              if (widget.onOpenTrailVlogStudio != null) ...[
+                                SizedBox(height: grid.px(1.5)),
+                                PixelButton(
+                                  key: const ValueKey(
+                                      'nav_open_trail_vlog_studio'),
+                                  label: widget.vlogClipCount > 0
+                                      ? 'TRAIL VLOG (${widget.vlogClipCount} CLIPS)'
+                                      : 'CREATE TRAIL VLOG',
+                                  expand: true,
+                                  style: PixelBoxStyle.gold,
+                                  textColor: PixelPalette.ink,
+                                  onPressed: widget.onOpenTrailVlogStudio,
                                 ),
                               ],
                             ] else ...[

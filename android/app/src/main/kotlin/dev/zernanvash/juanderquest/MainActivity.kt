@@ -16,6 +16,7 @@ class MainActivity : FlutterActivity() {
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         ArSensorBridge(applicationContext, messenger)
         ArCoreBridge(this, messenger)
+        TrailVlogCompilerBridge(applicationContext, messenger)
         flutterEngine.platformViewsController.registry
             .registerViewFactory("jdq/arcore_view", ArCoreViewFactory(this, messenger))
 

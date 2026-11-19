@@ -54,6 +54,12 @@ import 'package:juanderquest_app/features/quests/screens/sponsor_request_screen.
 import 'package:juanderquest_app/features/quests/widgets/sponsorship_conditions_widgets.dart';
 import 'package:juanderquest_app/features/spots/theater/theater_title_block.dart';
 import 'package:juanderquest_app/features/trail/trail_catalog_screen.dart';
+import 'package:juanderquest_app/features/trail_vlog/models/vlog_manifest.dart';
+import 'package:juanderquest_app/features/trail_vlog/services/trail_vlog_vault.dart';
+import 'package:juanderquest_app/features/trail_vlog/services/vlog_camera_adapter.dart';
+import 'package:juanderquest_app/features/trail_vlog/services/vlog_compiler_service.dart';
+import 'package:juanderquest_app/features/trail_vlog/widgets/pixel_vlog_recorder_sheet.dart';
+import 'package:juanderquest_app/features/trail_vlog/widgets/trail_vlog_studio_sheet.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/models/cultural_quiz_model.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/providers/cultural_quiz_provider.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/cultural_quiz_detail_screen.dart';
@@ -3692,6 +3698,185 @@ void main() {
       });
     }
   });
+
+  group('Plan 115: Trail Vlog 2.0x Text Scale Overflow Gates', () {
+    for (final entry in {
+      'portrait 320x568': const Size(320, 568),
+      'landscape 568x320': const Size(568, 320),
+    }.entries) {
+      final label = entry.key;
+      final size = entry.value;
+
+      testWidgets(
+          '115 AdventureArriveOverlay with vlog CTAs does not overflow in $label at 2.0x text',
+          (tester) async {
+        const stop1 = TrailStop(
+          position: 1,
+          spotId: 's1',
+          name: 'Capitol Building of Pangasinan Province',
+          municipality: 'Lingayen',
+          category: 'Heritage',
+          lat: 16.0218,
+          lng: 120.2319,
+          arriveOffsetMin: 10,
+          dwellMin: 15,
+          legMinutes: 10,
+          legKm: 4.0,
+          checkinRadiusM: 60,
+          checkedIn: true,
+          narration: 'Stop 1',
+        );
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: AdventureArriveOverlay(
+              checkedInStop: stop1,
+              stops: const [stop1],
+              totalStops: 4,
+              destinationName: 'Bolinao',
+              onRecordStopVlog: () {},
+              onContinueCheckIn: () {},
+              onDone: () {},
+            ),
+          ),
+          size,
+          2.0,
+          clampScale: false,
+        );
+        await testScreenOverflow(
+          tester,
+          Scaffold(
+            body: AdventureArriveOverlay(
+              isTrailCompleted: true,
+              trailTitle: 'Pangasinan Coastal Heritage Forty Char Trail',
+              trailRewardPoints: 150,
+              destinationName: 'Bolinao',
+              vlogClipCount: 3,
+              hasFinalStopVlogClip: false,
+              onRecordFinalStopVlog: () {},
+              onOpenTrailVlogStudio: () {},
+              onContinueCheckIn: () {},
+              onDone: () {},
+            ),
+          ),
+          size,
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          '115 PixelVlogRecorderSheet does not overflow in $label at 2.0x text',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          ProviderScope(
+            overrides: [
+              vlogCameraAdapterFactoryProvider
+                  .overrideWithValue(() => _OverflowVlogCam()),
+            ],
+            child: const Scaffold(
+              body: PixelVlogRecorderSheet(
+                trailId: 't1',
+                trailTitle: 'Pangasinan Heritage Trail',
+                totalStops: 4,
+                totalKm: 42.5,
+                kind: VlogClipKind.stop,
+                stopPosition: 2,
+                spotName: 'Hundred Islands National Park Alaminos',
+                municipality: 'Alaminos City',
+              ),
+            ),
+          ),
+          size,
+          2.0,
+          clampScale: false,
+        );
+      });
+
+      testWidgets(
+          '115 TrailVlogStudioSheet does not overflow in $label at 2.0x text',
+          (tester) async {
+        final vault = TrailVlogVault();
+        const manifest = TrailVlogManifest(
+          trailId: 't-studio',
+          trailTitle: 'Pangasinan Coastal Heritage Wonders Trail',
+          totalStops: 4,
+          totalKm: 42.5,
+          rewardPoints: 150,
+          clips: [
+            VlogClipEntry(
+              id: 'stop_1',
+              kind: VlogClipKind.stop,
+              stopPosition: 1,
+              spotName: 'Lingayen Capitol Building',
+              municipality: 'Lingayen',
+              capturedAtIso: '2026-11-19T02:00:00Z',
+              filePath: '/tmp/stop_1.mp4',
+            ),
+          ],
+        );
+        await testScreenOverflow(
+          tester,
+          ProviderScope(
+            overrides: [
+              trailVlogVaultProvider.overrideWithValue(vault),
+              vlogCompilerServiceProvider.overrideWithValue(
+                _OverflowVlogCompiler(vault),
+              ),
+            ],
+            child: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                child: const Scaffold(
+                  body: TrailVlogStudioSheet(
+                    manifest: manifest,
+                    hasVipFramesOverride: true,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          size,
+          2.0,
+          clampScale: false,
+        );
+      });
+    }
+  });
+}
+
+class _OverflowVlogCam implements VlogCameraAdapter {
+  @override
+  bool get isInitialized => true;
+  @override
+  bool get isAudioEnabled => true;
+  @override
+  bool get isFrontCamera => false;
+  @override
+  String? get errorMessage => null;
+  @override
+  Future<void> initialize({
+    required bool frontCamera,
+    required bool enableAudio,
+  }) async {}
+  @override
+  Future<void> startRecording() async {}
+  @override
+  Future<String> stopRecording() async => '/tmp/mock.mp4';
+  @override
+  Widget buildPreview(BuildContext context) =>
+      const ColoredBox(color: PixelPalette.wood);
+  @override
+  Future<void> dispose() async {}
+}
+
+class _OverflowVlogCompiler extends VlogCompilerService {
+  _OverflowVlogCompiler(TrailVlogVault vault) : super(vault: vault);
+
+  @override
+  Future<Map<String, String>> extractThumbnails(List<String> clipPaths) async =>
+      const {};
 }
 
 class _FixedQuizRadarNotifier extends QuizRadarNotifier {

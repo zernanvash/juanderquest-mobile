@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +14,9 @@ import '../../core/pixel/pixel_nav.dart';
 import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/providers/auth_provider.dart';
+import '../trail_vlog/models/vlog_manifest.dart';
+import '../trail_vlog/services/trail_vlog_vault.dart';
+import '../trail_vlog/widgets/trail_vlog_studio_sheet.dart';
 import 'models/trail_models.dart';
 import 'services/trails_api.dart';
 
@@ -48,11 +53,30 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
   String _createKey = TrailsApi.newIdempotencyKey();
   bool _creating = false;
   String? _createError;
+  List<TrailVlogManifest> _savedVlogs = const [];
+  int _loadedVlogRev = -1;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  Future<void> _loadSavedVlogs() async {
+    try {
+      final list = await ref.read(trailVlogVaultProvider).listAllVlogs();
+      if (mounted) {
+        setState(() => _savedVlogs = list);
+      }
+    } catch (_) {
+      // Ignore in widget tests without platform path_provider.
+    }
+  }
+
+  Future<void> _deleteVlog(TrailVlogManifest manifest) async {
+    await ref.read(trailVlogVaultProvider).deleteTrailVlog(manifest.trailId);
+    ref.read(trailVlogRevisionProvider.notifier).state++;
+    _snack('Deleted local vlog for ${manifest.trailTitle}.');
   }
 
   @override
@@ -189,6 +213,11 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final vlogRev = ref.watch(trailVlogRevisionProvider);
+    if (_loadedVlogRev != vlogRev) {
+      _loadedVlogRev = vlogRev;
+      unawaited(_loadSavedVlogs());
+    }
     return Theme(
       data: AppTheme.pixel,
       child: Builder(
@@ -270,8 +299,31 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
         : items
             .where((t) => t.tier == TrailTier.personal || t.isUnlocked)
             .toList();
+    final vlogWidgets = <Widget>[
+      if (_tab == 1 && _savedVlogs.isNotEmpty) ...[
+        Text(
+          'SAVED TRAIL VLOGS',
+          key: const ValueKey('trail_saved_vlogs_section'),
+          style: PixelType.title(context, color: PixelPalette.ink),
+        ),
+        SizedBox(height: grid.px(1.5)),
+        for (final vlog in _savedVlogs) ...[
+          _SavedVlogCard(
+            manifest: vlog,
+            onOpen: () => TrailVlogStudioSheet.show(
+              context,
+              manifest: vlog,
+            ),
+            onDelete: () => unawaited(_deleteVlog(vlog)),
+          ),
+          SizedBox(height: grid.px(1.5)),
+        ],
+        SizedBox(height: grid.px(1.5)),
+      ],
+    ];
     if (shown.isEmpty) {
       return [
+        ...vlogWidgets,
         PixelPanel(
           key: const ValueKey('trail_empty'),
           style: PixelBoxStyle.parchment,
@@ -285,6 +337,7 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
       ];
     }
     return [
+      ...vlogWidgets,
       for (final trail in shown) ...[
         _TrailCard(
           trail: trail,
@@ -510,6 +563,69 @@ class _TrailCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SavedVlogCard extends StatelessWidget {
+  const _SavedVlogCard({
+    required this.manifest,
+    required this.onOpen,
+    required this.onDelete,
+  });
+
+  final TrailVlogManifest manifest;
+  final VoidCallback onOpen;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final mb = manifest.compiledSizeBytes != null
+        ? ' · ${(manifest.compiledSizeBytes! / (1024 * 1024)).toStringAsFixed(1)} MB'
+        : '';
+    return PixelPanel(
+      key: ValueKey('trail_vlog_card_${manifest.trailId}'),
+      style: PixelBoxStyle.parchment,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  manifest.trailTitle.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.body(context, color: PixelPalette.ink)
+                      .copyWith(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  '${manifest.totalClips} CLIPS · ${manifest.totalStops} STOPS$mb',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: PixelType.small(context, color: PixelPalette.slate),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: grid.px(1)),
+          PixelChip(
+            'OPEN',
+            key: ValueKey('trail_vlog_open_${manifest.trailId}'),
+            style: PixelBoxStyle.gold,
+            onTap: onOpen,
+          ),
+          SizedBox(width: grid.px(1)),
+          PixelChip(
+            'DEL',
+            key: ValueKey('trail_vlog_del_${manifest.trailId}'),
+            style: PixelBoxStyle.red,
+            textColor: PixelPalette.paper,
+            onTap: onDelete,
+          ),
+        ],
       ),
     );
   }

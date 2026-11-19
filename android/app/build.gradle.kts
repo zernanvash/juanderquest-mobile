@@ -113,6 +113,10 @@ dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
     // World AR (Plan 47). "AR Optional": the app installs on phones without ARCore.
     implementation("com.google.ar:core:1.56.0")
+    // Plan 115 (v0.4.0): Hardware-accelerated Trail Vlog stitching & HUD overlay export.
+    implementation("androidx.media3:media3-transformer:1.4.1")
+    implementation("androidx.media3:media3-effect:1.4.1")
+    implementation("androidx.media3:media3-common:1.4.1")
 }
 
 // The AR Lab and AR Test apps have no registered Firebase client (main.dart initialises Firebase

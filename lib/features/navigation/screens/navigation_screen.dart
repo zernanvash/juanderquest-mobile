@@ -17,6 +17,10 @@ import '../../map/engine/jdq_map_canvas.dart';
 import '../../map/engine/maplibre_jdq_map.dart';
 import '../../trail/models/trail_models.dart';
 import '../../trail/services/trails_api.dart';
+import '../../trail_vlog/models/vlog_manifest.dart';
+import '../../trail_vlog/services/trail_vlog_vault.dart';
+import '../../trail_vlog/widgets/pixel_vlog_recorder_sheet.dart';
+import '../../trail_vlog/widgets/trail_vlog_studio_sheet.dart';
 import '../models/route_model.dart';
 import '../providers/navigation_provider.dart';
 import '../services/location_stream_service.dart';
@@ -58,6 +62,105 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   WakelockService? _wakelockService;
   Timer? _pulseTimer;
   bool _pulseFrame = false;
+  TrailVlogManifest? _vlogManifest;
+  String? _loadedVlogTrailId;
+  int _loadedVlogRevision = -1;
+
+  void _syncVlogManifest(NavigationState navState, int revision) {
+    final trailId = navState.selectedTrail?.id;
+    if (trailId == null) {
+      if (_vlogManifest != null || _loadedVlogTrailId != null) {
+        _vlogManifest = null;
+        _loadedVlogTrailId = null;
+        _loadedVlogRevision = revision;
+      }
+      return;
+    }
+    if (_loadedVlogTrailId == trailId && _loadedVlogRevision == revision) {
+      return;
+    }
+    _loadedVlogTrailId = trailId;
+    _loadedVlogRevision = revision;
+    unawaited(_loadVlogManifest(trailId));
+  }
+
+  Future<void> _loadVlogManifest(String trailId) async {
+    try {
+      final manifest =
+          await ref.read(trailVlogVaultProvider).loadManifest(trailId);
+      if (!mounted || _loadedVlogTrailId != trailId) return;
+      setState(() => _vlogManifest = manifest);
+    } catch (_) {
+      // Ignore in headless tests without platform path_provider.
+    }
+  }
+
+  Future<void> _openVlogRecorder({
+    required NavigationState navState,
+    required VlogClipKind kind,
+    required int stopPosition,
+    String? spotId,
+    required String spotName,
+    required String municipality,
+  }) async {
+    final trail = navState.selectedTrail;
+    if (trail == null) return;
+    if (navState.currentSpeedMs > 3.0) {
+      showPixelToast(context, 'Park first to vlog');
+      return;
+    }
+    _pulseTimer?.cancel();
+    _pulseTimer = null;
+    await PixelVlogRecorderSheet.show(
+      context,
+      trailId: trail.id,
+      trailTitle: trail.title,
+      totalStops: trail.stops.isNotEmpty ? trail.stops.length : trail.stopCount,
+      totalKm: trail.totalKm,
+      rewardPoints: navState.trailCompletionReward ?? trail.rewardPoints,
+      kind: kind,
+      stopPosition: stopPosition,
+      spotId: spotId,
+      spotName: spotName,
+      municipality: municipality,
+      currentSpeedMs: navState.currentSpeedMs,
+      frameStyle: _vlogManifest?.frameStyle ?? VlogFrameStyle.defaultFrame,
+    );
+    if (mounted) {
+      unawaited(_loadVlogManifest(trail.id));
+    }
+  }
+
+  Future<void> _openTrailVlogStudio(NavigationState navState) async {
+    final trail = navState.selectedTrail;
+    if (trail == null) return;
+    final totalStops =
+        trail.stops.isNotEmpty ? trail.stops.length : trail.stopCount;
+    final reward = navState.trailCompletionReward ?? trail.rewardPoints;
+    final manifest = _vlogManifest ??
+        await ref.read(trailVlogVaultProvider).ensureManifest(
+              trailId: trail.id,
+              trailTitle: trail.title,
+              totalStops: totalStops,
+              totalKm: trail.totalKm,
+              rewardPoints: reward,
+            );
+    if (!mounted) return;
+    final routeCoords = <double>[
+      for (final p in navState.route?.coordinates ?? const <LatLng>[]) ...[
+        p.longitude,
+        p.latitude,
+      ],
+    ];
+    await TrailVlogStudioSheet.show(
+      context,
+      manifest: manifest.copyWith(
+        rewardPoints: reward > 0 ? reward : manifest.rewardPoints,
+      ),
+      stops: trail.stops,
+      routeCoords: routeCoords,
+    );
+  }
 
   void _syncPulseTimer(BuildContext context, NavigationState navState) {
     final reduce = MediaQuery.disableAnimationsOf(context);
@@ -385,6 +488,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   @override
   Widget build(BuildContext context) {
     final navState = ref.watch(navigationProvider(widget.destination));
+    final vlogRev = ref.watch(trailVlogRevisionProvider);
+    _syncVlogManifest(navState, vlogRev);
     _syncPulseTimer(context, navState);
     final notifier = ref.read(navigationProvider(widget.destination).notifier);
     final route = navState.route;
@@ -627,6 +732,32 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                               Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  if (navState.selectedTrail != null &&
+                                      !navState.isTrailCompleted) ...[
+                                    _squareMapButton(
+                                      key: const ValueKey('nav_road_vlog_clip'),
+                                      label: '+CLIP',
+                                      semanticLabel:
+                                          'Record 3 second road vlog clip',
+                                      isHighlighted: _vlogManifest?.roadClipForLeg(
+                                              navState.currentStopNumber) !=
+                                          null,
+                                      onTap: () => unawaited(
+                                        _openVlogRecorder(
+                                          navState: navState,
+                                          kind: VlogClipKind.road,
+                                          stopPosition:
+                                              navState.currentStopNumber,
+                                          spotName: 'On The Road',
+                                          municipality: navState
+                                                  .nextUncheckedStop
+                                                  ?.municipality ??
+                                              'Pangasinan',
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
                                   _squareMapButton(
                                     key: const ValueKey('nav_mute_button'),
                                     label:
@@ -733,6 +864,50 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                             ? (route.summary.durationSeconds / 60).ceil()
                             : null,
                         tripKm: route?.summary.distanceKm,
+                        hasStopVlogClip: navState.lastCheckedInStop != null &&
+                            (_vlogManifest?.hasStopClip(
+                                    navState.lastCheckedInStop!.position) ??
+                                false),
+                        hasFinalStopVlogClip: navState.selectedTrail != null &&
+                            navState.selectedTrail!.stops.isNotEmpty &&
+                            (_vlogManifest?.hasStopClip(
+                                    navState.selectedTrail!.stops.last.position) ??
+                                false),
+                        isMovingTooFast: navState.currentSpeedMs > 3.0,
+                        vlogClipCount: _vlogManifest?.totalClips ?? 0,
+                        onRecordStopVlog: navState.lastCheckedInStop != null
+                            ? () {
+                                final stop = navState.lastCheckedInStop!;
+                                unawaited(_openVlogRecorder(
+                                  navState: navState,
+                                  kind: VlogClipKind.stop,
+                                  stopPosition: stop.position,
+                                  spotId: stop.spotId,
+                                  spotName: stop.name,
+                                  municipality: stop.municipality,
+                                ));
+                              }
+                            : null,
+                        onRecordFinalStopVlog: navState.isTrailCompleted &&
+                                navState.selectedTrail != null &&
+                                navState.selectedTrail!.stops.isNotEmpty
+                            ? () {
+                                final finalStop =
+                                    navState.selectedTrail!.stops.last;
+                                unawaited(_openVlogRecorder(
+                                  navState: navState,
+                                  kind: VlogClipKind.stop,
+                                  stopPosition: finalStop.position,
+                                  spotId: finalStop.spotId,
+                                  spotName: finalStop.name,
+                                  municipality: finalStop.municipality,
+                                ));
+                              }
+                            : null,
+                        onOpenTrailVlogStudio: navState.isTrailCompleted &&
+                                navState.selectedTrail != null
+                            ? () => unawaited(_openTrailVlogStudio(navState))
+                            : null,
                         onContinueCheckIn: () =>
                             unawaited(notifier.continueAfterCheckIn()),
                         onDone: () {
