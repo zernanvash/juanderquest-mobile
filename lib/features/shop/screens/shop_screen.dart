@@ -73,7 +73,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     });
   }
 
-  /// Plan 67: browsing is open to everyone; buying needs a linked wallet.
+  /// Plan 67: browsing is open to everyone; buying cosmetics needs a linked
+  /// wallet. Vouchers do not (owner 2026-11-19).
   Future<bool> _walletReady(String itemTitle) async {
     if (ref.read(authProvider).user?.hasBoundWallet == true) return true;
     return showConnectWalletPromptDialog(context, itemTitle: itemTitle);
@@ -373,7 +374,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             vertical: grid.px(1),
           ),
           child: Text(
-            'Link your wallet to buy or redeem >',
+            'Link your wallet to buy cosmetics >',
             style: PixelType.small(context),
           ),
         ),
@@ -1103,10 +1104,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 expand: true,
                 onPressed: canAfford && voucher.redeemable
                     ? () async {
-                        if (!await _walletReady(voucher.offerTitle) ||
-                            !context.mounted) {
-                          return;
-                        }
+                        // Owner 2026-11-19: vouchers need no wallet.
                         _showVoucherConfirmationDialog(
                           context: context,
                           voucher: voucher,
