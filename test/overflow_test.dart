@@ -121,6 +121,11 @@ import 'package:juanderquest_app/features/merchant/providers/merchant_hub_provid
 import 'package:juanderquest_app/features/merchant/screens/affiliate_pending_screen.dart';
 import 'package:juanderquest_app/features/merchant/screens/merchant_dashboard_screen.dart';
 import 'package:juanderquest_app/features/merchant/screens/merchant_page_screen.dart';
+import 'package:juanderquest_app/features/merchant/screens/merchant_vouchers_screen.dart';
+import 'package:juanderquest_app/features/merchant/screens/merchant_staff_screen.dart';
+import 'package:juanderquest_app/features/merchant/screens/merchant_counter_history_screen.dart';
+import 'package:juanderquest_app/features/merchant/screens/merchant_analytics_screen.dart';
+import 'package:juanderquest_app/features/merchant/screens/merchant_directory_screen.dart';
 import 'package:juanderquest_app/core/pixel/generated/pixel_palette.g.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/suki/screens/suki_card_screen.dart';
@@ -3483,6 +3488,118 @@ void main() {
         {'id': 'p2', 'name': longItem, 'price': null, 'description': 'x ' * 40},
       ],
       '/merchant/suki': {'role': 'owner', 'program': null},
+      '/merchant/vouchers/manage': {
+        'merchant_id': 'm1',
+        'role': 'owner',
+        'items': [
+          {
+            'id': 'v1',
+            'title': 'Unlimited Pancit & Halo-Halo Family Bundle',
+            'description': 'Show your redeemed code at the Bonuan Waterfront counter daily.',
+            'cost_points': 250,
+            'availability': 'live',
+            'is_active': true,
+            'stock_limit': 50,
+            'valid_days': 30,
+            'redeemed_count': 18,
+            'used_count': 12,
+          },
+          {
+            'id': 'v2',
+            'title': 'Archived Holiday Treat Voucher',
+            'description': 'Expired seasonal promo.',
+            'cost_points': 100,
+            'availability': 'preview',
+            'is_active': false,
+            'redeemed_count': 0,
+            'used_count': 0,
+          },
+        ],
+      },
+      '/merchant/staff': {
+        'merchant_id': 'm1',
+        'items': [
+          {
+            'id': 'mm-1',
+            'user_id': 'u1',
+            'display_name': 'Bonuan Waterfront Owner Account',
+            'email': 'owner.bonuan.grill@juanderquest.example',
+            'role': 'owner',
+            'status': 'active',
+          },
+          {
+            'id': 'mm-2',
+            'user_id': 'u2',
+            'display_name': 'Front Counter Cashier One',
+            'email': 'cashier.counter@juanderquest.example',
+            'role': 'staff',
+            'status': 'active',
+          },
+        ],
+      },
+      '/merchant/counter/history': {
+        'merchant_id': 'm1',
+        'items': [
+          {
+            'kind': 'voucher',
+            'customer': 'Suki #ABCDEF12',
+            'code': 'JDQ-AB12CD-EF34GH',
+            'method': 'purchase',
+            'detail': 'Unlimited Pancit & Halo-Halo Family Bundle',
+            'staff_name': 'Front Counter Cashier One',
+            'at': '2026-11-19T02:00:00Z',
+          },
+          {
+            'kind': 'suki_reward',
+            'customer': 'Suki #99887766',
+            'code': 'JDQ-SUKI11-REWARD',
+            'method': 'counter',
+            'detail': 'Free Large Halo-Halo with Leche Flan',
+            'staff_name': 'Bonuan Waterfront Owner Account',
+            'at': '2026-11-18T11:30:00Z',
+          },
+        ],
+      },
+      '/merchant/analytics': {
+        'merchant_id': 'm1',
+        'days': 30,
+        'funding': {
+          'active_sponsorships': 3,
+          'total_points_committed': 12500,
+          'total_points_paid': 8400,
+          'funded_completions': 64,
+        },
+        'vouchers': {
+          'active_catalog_count': 8,
+          'shop_redeemed_in_window': 142,
+          'perks_granted_in_window': 39,
+          'confirmed_at_counter_in_window': 115,
+        },
+        'suki': {
+          'visits_in_window': 320,
+          'unique_customers': 185,
+          'repeat_customers': 74,
+          'rewards_issued': 29,
+          'rewards_claimed': 21,
+        },
+      },
+      '/merchants': {
+        'items': [
+          {
+            'id': 'm1',
+            'name': longShop,
+            'category': 'dining',
+            'municipality': 'Dagupan City',
+            'description': 'Freshly grilled Bonuan bangus and halo-halo by the waterfront.',
+            'distance_m': 1450,
+            'active_voucher_count': 4,
+            'has_active_suki': true,
+          },
+        ],
+        'page': 1,
+        'limit': 20,
+        'total': 30,
+      },
     };
 
     Future<void> pumpShop(WidgetTester tester, Widget child, Size size) async {
@@ -3553,6 +3670,26 @@ void main() {
           expect(find.byType(MerchantDashboardScreen), findsOneWidget);
         });
       }
+      testWidgets('MerchantVouchersScreen $label', (tester) async {
+        await pumpShop(tester, const MerchantVouchersScreen(), size);
+        expect(find.byType(MerchantVouchersScreen), findsOneWidget);
+      });
+      testWidgets('MerchantStaffScreen $label', (tester) async {
+        await pumpShop(tester, const MerchantStaffScreen(), size);
+        expect(find.byType(MerchantStaffScreen), findsOneWidget);
+      });
+      testWidgets('MerchantCounterHistoryScreen $label', (tester) async {
+        await pumpShop(tester, const MerchantCounterHistoryScreen(), size);
+        expect(find.byType(MerchantCounterHistoryScreen), findsOneWidget);
+      });
+      testWidgets('MerchantAnalyticsScreen $label', (tester) async {
+        await pumpShop(tester, const MerchantAnalyticsScreen(), size);
+        expect(find.byType(MerchantAnalyticsScreen), findsOneWidget);
+      });
+      testWidgets('MerchantDirectoryScreen $label', (tester) async {
+        await pumpShop(tester, const MerchantDirectoryScreen(), size);
+        expect(find.byType(MerchantDirectoryScreen), findsOneWidget);
+      });
     }
   });
 }

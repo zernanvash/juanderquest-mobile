@@ -30,6 +30,11 @@ import '../features/map/screens/map_view_screen.dart';
 import '../features/merchant/screens/affiliate_pending_screen.dart';
 import '../features/merchant/screens/merchant_dashboard_screen.dart';
 import '../features/merchant/screens/merchant_page_screen.dart';
+import '../features/merchant/screens/merchant_vouchers_screen.dart';
+import '../features/merchant/screens/merchant_staff_screen.dart';
+import '../features/merchant/screens/merchant_counter_history_screen.dart';
+import '../features/merchant/screens/merchant_analytics_screen.dart';
+import '../features/merchant/screens/merchant_directory_screen.dart';
 import '../features/merchant/suki/suki_standee_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
 import '../features/vote/screens/proposal_list_screen.dart';
@@ -383,6 +388,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/merchant',
           builder: (context, state) => MerchantDashboardScreen(
               initialTab: state.uri.queryParameters['tab'] ?? 'overview')),
+      // Plan 110b: Merchant workspace bridges (vouchers CRUD, staff, history, analytics) & public directory.
+      GoRoute(
+          path: '/merchant/vouchers',
+          builder: (context, state) => const MerchantVouchersScreen()),
+      GoRoute(
+          path: '/merchant/staff',
+          builder: (context, state) => const MerchantStaffScreen()),
+      GoRoute(
+          path: '/merchant/counter-history',
+          builder: (context, state) => const MerchantCounterHistoryScreen()),
+      GoRoute(
+          path: '/merchant/analytics',
+          builder: (context, state) => const MerchantAnalyticsScreen()),
+      GoRoute(
+          path: '/merchants',
+          builder: (context, state) => const MerchantDirectoryScreen()),
       // v0.3.10: a shop's public page (in-app links use openMerchantPage).
       GoRoute(
           path: '/merchants/:id',
