@@ -338,7 +338,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
               onDoubleTapLike: () => _setLiked(true),
               child: CustomScrollView(
                 controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
+                // Owner 2026-11-20: bouncing past the bottom glitched (content springs
+                // while the photo stays put). Bounce at the top only; stop at the end.
+                physics: const TopBounceScrollPhysics(),
                 slivers: [
                   // First Viewport: unobstructed photo, top controls, hero block, scroll hint
                   SliverToBoxAdapter(
@@ -531,5 +533,27 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
         ],
       ),
     );
+  }
+}
+
+/// Bounces when pulled past the top (the backdrop is built for that) but stops
+/// dead at the bottom, like Android's clamping physics.
+class TopBounceScrollPhysics extends BouncingScrollPhysics {
+  const TopBounceScrollPhysics({super.parent});
+
+  @override
+  TopBounceScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      TopBounceScrollPhysics(parent: buildParent(ancestor));
+
+  @override
+  double applyBoundaryConditions(ScrollMetrics position, double value) {
+    final max = position.maxScrollExtent;
+    // Already at/after the end and moving further down: refuse the overscroll.
+    if (value > position.pixels && position.pixels >= max) {
+      return value - position.pixels;
+    }
+    // Crossing the end in one step: stop exactly at it.
+    if (position.pixels < max && value > max) return value - max;
+    return super.applyBoundaryConditions(position, value);
   }
 }
