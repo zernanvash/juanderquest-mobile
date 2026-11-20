@@ -757,6 +757,19 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 8),
+                                    if ((_vlogManifest?.totalClips ?? 0) > 0) ...[
+                                      _squareMapButton(
+                                        key: const ValueKey(
+                                            'nav_open_vlog_studio'),
+                                        label: 'VLOG',
+                                        semanticLabel: 'Open Trail Vlog Studio',
+                                        isHighlighted: true,
+                                        onTap: () => unawaited(
+                                          _openTrailVlogStudio(navState),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
                                   ],
                                   _squareMapButton(
                                     key: const ValueKey('nav_mute_button'),

@@ -21,6 +21,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
+import androidx.media3.effect.TextureOverlay
+import com.google.common.collect.ImmutableList
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
@@ -116,7 +118,7 @@ class TrailVlogCompilerBridge(
                         val bmp = BitmapFactory.decodeFile(overlayFile.absolutePath)
                         if (bmp != null) {
                             val overlay = BitmapOverlay.createStaticBitmapOverlay(bmp)
-                            videoEffects.add(OverlayEffect(listOf(overlay)))
+                            videoEffects.add(OverlayEffect(ImmutableList.of<TextureOverlay>(overlay)))
                         }
                     }
                 }
