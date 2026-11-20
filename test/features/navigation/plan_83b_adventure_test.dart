@@ -427,7 +427,9 @@ void main() {
   );
 
   setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({
+      'tutorial_seen_quest_play': 'true',
+    });
     SafetyDisclaimerSheet.testAcknowledgedOverride = true;
   });
 

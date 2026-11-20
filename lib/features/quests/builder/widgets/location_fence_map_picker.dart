@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/pixel/generated/designer_art.g.dart';
 import '../../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../../core/pixel/pixel_art.dart';
 import '../../../../core/pixel/pixel_box.dart';
 import '../../../../core/pixel/pixel_controls.dart';
+import '../../../../core/pixel/pixel_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../map/engine/jdq_map.dart';
 import '../../../map/engine/jdq_map_canvas.dart';
@@ -36,17 +38,19 @@ class _LocationFenceMapPickerState
     extends ConsumerState<LocationFenceMapPicker> {
   late final JdqMap _map;
   late final Future<String> _style;
-  // Locked by default so a page scroll that crosses the map never moves the pin.
-  bool _editing = false;
+  late LatLng _center;
+  bool _locating = false;
 
   @override
   void initState() {
     super.initState();
+    _center = LatLng(widget.fence.lat, widget.fence.lng);
     _map = ref.read(jdqMapFactoryProvider)();
     _style = ref.read(mapStyleProvider.future);
     _map.onCameraIdle = () {
-      if (!_editing) return;
       final c = _map.camera.center;
+      if (mounted) setState(() => _center = c);
+      _syncFence(c);
       if ((c.latitude - widget.fence.lat).abs() < 1e-6 &&
           (c.longitude - widget.fence.lng).abs() < 1e-6) {
         return;
@@ -55,14 +59,12 @@ class _LocationFenceMapPickerState
         widget.fence.copyWith(lat: c.latitude, lng: c.longitude),
       );
     };
+    _map.onTapEmpty = (point) =>
+        unawaited(_map.easeTo(point, _map.camera.zoom, reducedMotion: true));
     unawaited(
-      _map.easeTo(
-        LatLng(widget.fence.lat, widget.fence.lng),
-        16,
-        reducedMotion: true,
-      ),
+      _map.easeTo(_center, 16, reducedMotion: true),
     );
-    _syncFence();
+    _syncFence(_center);
   }
 
   @override
@@ -71,23 +73,19 @@ class _LocationFenceMapPickerState
     if (oldWidget.fence.lat != widget.fence.lat ||
         oldWidget.fence.lng != widget.fence.lng ||
         oldWidget.fence.radiusMeters != widget.fence.radiusMeters) {
-      _syncFence();
-      if (!_editing &&
-          (oldWidget.fence.lat != widget.fence.lat ||
-              oldWidget.fence.lng != widget.fence.lng)) {
+      final target = LatLng(widget.fence.lat, widget.fence.lng);
+      if ((target.latitude - _center.latitude).abs() > 1e-6 ||
+          (target.longitude - _center.longitude).abs() > 1e-6) {
+        _center = target;
         unawaited(
-          _map.easeTo(
-            LatLng(widget.fence.lat, widget.fence.lng),
-            _map.camera.zoom,
-            reducedMotion: true,
-          ),
+          _map.easeTo(target, _map.camera.zoom, reducedMotion: true),
         );
       }
+      _syncFence(_center);
     }
   }
 
-  void _syncFence() {
-    final center = LatLng(widget.fence.lat, widget.fence.lng);
+  void _syncFence(LatLng center) {
     const dist = Distance();
     final radius = widget.fence.radiusMeters.toDouble();
     final ring = <LatLng>[
@@ -95,6 +93,37 @@ class _LocationFenceMapPickerState
         dist.offset(center, radius, deg.toDouble()),
     ];
     unawaited(_map.setFocusArea(AreaShape([AreaPolygon(ring)])));
+  }
+
+  Future<void> _useMyLocation() async {
+    setState(() => _locating = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 8),
+      );
+      if (!mounted) return;
+      final point = LatLng(pos.latitude, pos.longitude);
+      setState(() => _center = point);
+      _syncFence(point);
+      await _map.easeTo(point, _map.camera.zoom);
+      widget.onChanged(
+        widget.fence.copyWith(lat: point.latitude, lng: point.longitude),
+      );
+    } catch (_) {
+      // Ignore location failures; user can drag the map.
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
   }
 
   @override
@@ -112,19 +141,16 @@ class _LocationFenceMapPickerState
           style: PixelBoxStyle.slot,
           padding: 1,
           child: SizedBox(
-            height: 180,
+            height: 200,
             child: Stack(
               children: [
-                IgnorePointer(
-                  ignoring: !_editing,
-                  child: JdqMapCanvas(
-                    map: _map,
-                    style: _style,
-                    fallback: const ColoredBox(color: PixelPalette.paperDim),
-                    onFallback: () {},
-                  ),
+                JdqMapCanvas(
+                  map: _map,
+                  style: _style,
+                  fallback: const ColoredBox(color: PixelPalette.paperDim),
+                  onFallback: () {},
                 ),
-                // Center pin
+                // Fixed center pin (user drags the map underneath).
                 IgnorePointer(
                   child: Center(
                     child: Padding(
@@ -164,19 +190,46 @@ class _LocationFenceMapPickerState
                   ),
                 ),
                 Positioned(
+                  top: 8,
+                  right: 8,
+                  child: PixelButton(
+                    key: const ValueKey('fence_map_my_location'),
+                    label: 'Use my location',
+                    variant: PixelButtonVariant.secondary,
+                    loading: _locating,
+                    onPressed: _locating ? null : _useMyLocation,
+                  ),
+                ),
+                Positioned(
                   right: 8,
                   bottom: 8,
                   child: PixelButton(
-                    key: const ValueKey('fence_map_move_pin'),
-                    label: _editing ? 'Done' : 'Move pin',
+                    key: const ValueKey('fence_map_use_location'),
+                    label: 'Use this location',
                     style: PixelBoxStyle.wood,
                     textColor: PixelPalette.white,
-                    onPressed: () => setState(() => _editing = !_editing),
+                    onPressed: () {
+                      final c = _map.camera.center;
+                      setState(() => _center = c);
+                      _syncFence(c);
+                      widget.onChanged(
+                        widget.fence.copyWith(
+                          lat: c.latitude,
+                          lng: c.longitude,
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
             ),
           ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Drag map under pin · ${_center.latitude.toStringAsFixed(5)}, ${_center.longitude.toStringAsFixed(5)}',
+          key: const ValueKey('fence_map_coords'),
+          style: PixelType.small(context, color: PixelPalette.slate),
         ),
         const SizedBox(height: 12),
         PixelPanel(

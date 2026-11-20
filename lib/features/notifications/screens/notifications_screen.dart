@@ -318,10 +318,18 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final read = item['read'] == true;
     final id = item['id'].toString();
     final href = item['href']?.toString() ?? '';
+    final kind = item['kind']?.toString();
     final timeLabel = _formatRelativeTime(item['created_at']);
     void open() {
       if (!read) _markRead(id);
-      if (href.isNotEmpty) openRoute(context, appRouteForPushHref(href));
+      final route = appRouteForNotification(
+        href: href,
+        kind: kind,
+        data: item,
+      );
+      if (route != '/notifications') {
+        openRoute(context, route);
+      }
     }
 
     // Owner 2026-11-18 (v0.3.3): the whole note opens it (no OPEN button);

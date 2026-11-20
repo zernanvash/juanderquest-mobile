@@ -8,7 +8,8 @@ import 'package:juanderquest_app/features/profile/screens/affiliate_application_
 import 'package:latlong2/latlong.dart';
 
 void main() {
-  testWidgets('AffiliateApplicationScreen uses JdqMapCanvas and places pin on tap',
+  testWidgets(
+      'AffiliateApplicationScreen uses fixed centre pin (drag camera, tap does not drop pin, confirm returns centre)',
       (tester) async {
     final fakeMap = FakeJdqMap();
 
@@ -27,11 +28,22 @@ void main() {
 
     expect(find.byType(JdqMapCanvas), findsOneWidget);
 
+    // Tapping does not drop a pin on the map.
     fakeMap.onTapEmpty?.call(const LatLng(16.041, 120.335));
     await tester.pump();
+    expect(fakeMap.pins, isEmpty);
 
-    expect(fakeMap.pins, hasLength(1));
-    expect(fakeMap.pins.first.point.latitude, closeTo(16.041, 1e-6));
+    // Dragging/panning the camera updates the centre pin coordinates.
+    await fakeMap.easeTo(const LatLng(16.041, 120.335), 15,
+        reducedMotion: true);
+    await tester.pump();
+    expect(find.textContaining('Pin: 16.041000, 120.335000'), findsOneWidget);
+
+    // Confirm button returns/keeps the current camera centre.
+    final confirmBtn = find.byKey(const ValueKey('affiliate_confirm_location'));
+    await tester.ensureVisible(confirmBtn);
+    await tester.tap(confirmBtn);
+    await tester.pump();
     expect(find.textContaining('Pin: 16.041000, 120.335000'), findsOneWidget);
   });
 }

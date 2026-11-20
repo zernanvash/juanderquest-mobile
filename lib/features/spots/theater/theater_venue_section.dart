@@ -107,9 +107,12 @@ class _TheaterVenueSectionState extends ConsumerState<TheaterVenueSection> {
           ],
           SizedBox(height: grid.px(2)),
 
-          // Non-interactive pixel-framed JdqMapCanvas preview
+          // Non-interactive pixel-framed JdqMapCanvas preview; tap opens full map.
           if (_hasCoords)
-            PixelPanel(
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => context.go('/map?spot=${spot.id}'),
+              child: PixelPanel(
               style: PixelBoxStyle.inkDialogue.copyWith(
                 fill: PixelPalette.ink,
                 outline: PixelPalette.paper,
@@ -149,6 +152,7 @@ class _TheaterVenueSectionState extends ConsumerState<TheaterVenueSection> {
                   ),
                 ),
               ),
+            ),
             ),
 
           SizedBox(height: grid.px(2)),

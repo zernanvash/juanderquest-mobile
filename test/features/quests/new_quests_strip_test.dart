@@ -17,15 +17,15 @@ QuestModel _q(String id, DateTime? created) => QuestModel(
     );
 
 void main() {
-  test('new quests: last 72 h only, newest first (owner 2026-11-18)', () {
-    final now = DateTime.utc(2026, 11, 18, 12);
+  test('new quests: last 24 h only, newest first, boundary on createdAt', () {
+    final now = DateTime.utc(2026, 11, 20, 12);
     final list = newQuests([
-      _q('old', now.subtract(const Duration(days: 4))),
-      _q('day', now.subtract(const Duration(hours: 20))),
+      _q('old_24h01m', now.subtract(const Duration(hours: 24, minutes: 1))),
+      _q('edge_23h59m', now.subtract(const Duration(hours: 23, minutes: 59))),
       _q('hour', now.subtract(const Duration(hours: 1))),
       _q('nodate', null),
     ], now: now);
-    expect(list.map((q) => q.id), ['hour', 'day']);
+    expect(list.map((q) => q.id), ['hour', 'edge_23h59m']);
   });
 
   test('QuestModel reads created_at', () {

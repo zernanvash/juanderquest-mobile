@@ -16,6 +16,7 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../../core/pixel/pixel_rpg.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
@@ -200,27 +201,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         builder: (context) {
           final grid = PixelGrid.of(context);
           final canPop = Navigator.of(context).canPop();
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  PixelAppBar(
-                    title: isMine ? 'Passport' : 'Profile',
-                    isTab: isMine,
-                    onBack: canPop && !isMine
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
-                    actions: [
-                      if (isMine)
-                        PixelIconButton(
-                          icon: DesignerArt.notifBell,
-                          semanticLabel: 'Notifications',
-                          iconHeight: 24,
-                          onPressed: () => context.push('/notifications'),
-                        ),
+          return PageTutorialHost(
+            page: TutorialPage.profile,
+            suppressed: !isMine,
+            stepsBuilder: (ctx) =>
+                buildPageTutorialSteps(ctx, TutorialPage.profile),
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: DitherBackground(
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                child: Column(
+                  children: [
+                    PixelAppBar(
+                      title: isMine ? 'Passport' : 'Profile',
+                      isTab: isMine,
+                      onBack: canPop && !isMine
+                          ? () => Navigator.of(context).maybePop()
+                          : null,
+                      actions: [
+                        if (isMine) ...[
+                          const TutorialHelpButton(page: TutorialPage.profile),
+                          SizedBox(width: grid.px(1)),
+                          PixelIconButton(
+                            icon: DesignerArt.notifBell,
+                            semanticLabel: 'Notifications',
+                            iconHeight: 24,
+                            onPressed: () => context.push('/notifications'),
+                          ),
+                        ],
                       if (canReportPicture)
                         PixelIconButton(
                           key: const ValueKey('profile_more'),
@@ -302,6 +311,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           );
         },

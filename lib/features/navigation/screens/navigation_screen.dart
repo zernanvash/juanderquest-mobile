@@ -15,6 +15,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../map/engine/jdq_map.dart';
 import '../../map/engine/jdq_map_canvas.dart';
 import '../../map/engine/maplibre_jdq_map.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../trail/models/trail_models.dart';
 import '../../trail/services/trails_api.dart';
 import '../../trail_vlog/models/vlog_manifest.dart';
@@ -528,11 +529,15 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
           final grid = PixelGrid.of(context);
           final canPop = Navigator.of(context).canPop();
 
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            body: Stack(
-              fit: StackFit.expand,
-              children: [
+          return PageTutorialHost(
+            page: TutorialPage.questPlay,
+            stepsBuilder: (ctx) =>
+                buildPageTutorialSteps(ctx, TutorialPage.questPlay),
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
                 // 1. Full-screen Vector Map Canvas
                 Listener(
                   onPointerDown: (_) {
@@ -570,6 +575,12 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                           ? () => Navigator.of(context).maybePop()
                           : null,
                     ),
+                  ),
+                  Positioned(
+                    top: MediaQuery.paddingOf(context).top + 56,
+                    right: 12,
+                    child: const TutorialHelpButton(
+                        page: TutorialPage.questPlay),
                   ),
 
                   // 3. Preview Bottom Sheet
@@ -933,6 +944,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                     ),
                 ],
               ],
+            ),
             ),
           );
         },

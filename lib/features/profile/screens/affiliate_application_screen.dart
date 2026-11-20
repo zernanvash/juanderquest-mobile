@@ -11,6 +11,7 @@ import '../../../core/config/map_config.dart';
 import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
+import '../../../core/pixel/pixel_art.dart';
 import '../../../core/pixel/pixel_background.dart';
 import '../../../core/pixel/pixel_box.dart';
 import '../../../core/pixel/pixel_controls.dart';
@@ -97,22 +98,20 @@ class _AffiliateApplicationScreenState
     super.initState();
     _map = ref.read(jdqMapFactoryProvider)();
     _style = ref.read(mapStyleProvider.future);
-    _map.onTapEmpty = (point) {
-      setState(() {
-        _pin = point;
-        _error = null;
-      });
-      _syncPin();
+    _map.onCameraIdle = () {
+      final c = _map.camera.center;
+      if (mounted) {
+        setState(() {
+          _mapCenter = c;
+          _pin = c;
+          _error = null;
+        });
+      }
     };
+    _map.onTapEmpty = (point) =>
+        unawaited(_map.easeTo(point, _map.camera.zoom, reducedMotion: true));
     unawaited(_map.easeTo(_mapCenter, _mapZoom, reducedMotion: true));
     Future.microtask(_loadApplication);
-  }
-
-  void _syncPin() {
-    final pin = _pin;
-    unawaited(_map.setPins(
-      pin == null ? const [] : [JdqPin('affiliate_pin', pin, 'Business pin')],
-    ));
   }
 
   @override
@@ -161,7 +160,6 @@ class _AffiliateApplicationScreenState
             _pin = LatLng(lat, lng);
             _mapCenter = _pin!;
             _mapZoom = 15;
-            _syncPin();
             unawaited(_map.easeTo(_mapCenter, _mapZoom, reducedMotion: true));
           }
           _contact.text = data['contact_name']?.toString() ?? '';
@@ -360,12 +358,11 @@ class _AffiliateApplicationScreenState
         _pin = point;
         _error = null;
       });
-      _syncPin();
       _moveMap(point, 16);
     } catch (_) {
       if (mounted) {
         setState(() => _error =
-            'Current location is unavailable. Search or tap the map instead.');
+            'Current location is unavailable. Search or drag the map instead.');
       }
     }
   }
@@ -820,7 +817,6 @@ class _AffiliateApplicationScreenState
                 setState(() {
                   _pin = null;
                   _places = const [];
-                  _syncPin();
                   if (place['type'] == 'city' ||
                       place['type'] == 'municipality') {
                     _municipality.text =
@@ -875,13 +871,45 @@ class _AffiliateApplicationScreenState
               const Positioned.fill(
                 child: PixelCrosshairReticle(),
               ),
+              const IgnorePointer(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 30),
+                    child: SizedBox.square(
+                      dimension: 36,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: PixelSprite(DesignerArt.spotMarker, scale: 1),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: PixelButton(
+                  key: const ValueKey('affiliate_confirm_location'),
+                  label: 'Use this location',
+                  style: PixelBoxStyle.wood,
+                  textColor: PixelPalette.white,
+                  onPressed: () {
+                    final c = _map.camera.center;
+                    setState(() {
+                      _mapCenter = c;
+                      _pin = c;
+                      _error = null;
+                    });
+                  },
+                ),
+              ),
             ],
           ),
         ),
         SizedBox(height: grid.px(2)),
         Text(
           _pin == null
-              ? 'Pan or zoom, then tap to place your business pin.'
+              ? 'Drag or zoom the map to place the pin at your business.'
               : 'Pin: ${_pin!.latitude.toStringAsFixed(6)}, ${_pin!.longitude.toStringAsFixed(6)}',
           style: PixelType.body(context, color: PixelPalette.slate),
         ),

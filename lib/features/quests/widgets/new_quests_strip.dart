@@ -18,7 +18,7 @@ import '../providers/quest_provider.dart';
 List<QuestModel> newQuests(
   List<QuestModel> quests, {
   required DateTime now,
-  Duration window = const Duration(hours: 72),
+  Duration window = const Duration(hours: 24),
 }) {
   final fresh = quests
       .where(

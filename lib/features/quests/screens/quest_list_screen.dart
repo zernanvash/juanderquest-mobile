@@ -10,6 +10,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/quest_card.dart';
@@ -100,28 +101,34 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
       child: Builder(
         builder: (context) {
           final grid = PixelGrid.of(context);
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  PixelAppBar(
-                    title: 'My quests',
-                    onBack: () {
-                      if (Navigator.of(context).canPop()) {
-                        Navigator.of(context).pop();
-                      } else {
-                        context.go('/dashboard');
-                      }
-                    },
-                    actions: [
-                      MjdqChip(
-                        points,
-                      ),
-                    ],
-                  ),
+          return PageTutorialHost(
+            page: TutorialPage.quests,
+            stepsBuilder: (ctx) =>
+                buildPageTutorialSteps(ctx, TutorialPage.quests),
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: DitherBackground(
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                child: Column(
+                  children: [
+                    PixelAppBar(
+                      title: 'My quests',
+                      onBack: () {
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        } else {
+                          context.go('/dashboard');
+                        }
+                      },
+                      actions: [
+                        const TutorialHelpButton(page: TutorialPage.quests),
+                        SizedBox(width: grid.px(2)),
+                        MjdqChip(
+                          points,
+                        ),
+                      ],
+                    ),
                   Expanded(
                     child: RefreshIndicator(
                       color: PixelPalette.green,
@@ -149,6 +156,7 @@ class _QuestListScreenState extends ConsumerState<QuestListScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           );
         },

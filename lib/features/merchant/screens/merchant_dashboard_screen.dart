@@ -14,6 +14,7 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_input.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
@@ -151,19 +152,26 @@ class _MerchantDashboardScreenState
         builder: (context) {
           final grid = PixelGrid.of(context);
           final data = _data;
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  PixelAppBar(
-                    title: 'Merchant hub',
-                    onBack: Navigator.of(context).canPop()
-                        ? () => Navigator.of(context).maybePop()
-                        : null,
-                  ),
+          return PageTutorialHost(
+            page: TutorialPage.merchantHub,
+            stepsBuilder: (ctx) =>
+                buildPageTutorialSteps(ctx, TutorialPage.merchantHub),
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: DitherBackground(
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                child: Column(
+                  children: [
+                    PixelAppBar(
+                      title: 'Merchant hub',
+                      onBack: Navigator.of(context).canPop()
+                          ? () => Navigator.of(context).maybePop()
+                          : null,
+                      actions: const [
+                        TutorialHelpButton(page: TutorialPage.merchantHub),
+                      ],
+                    ),
                   Expanded(
                     child: _loading && data == null
                         ? const Center(
@@ -249,6 +257,7 @@ class _MerchantDashboardScreenState
                   ),
                 ],
               ),
+            ),
             ),
           );
         },

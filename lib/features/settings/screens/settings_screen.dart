@@ -24,6 +24,7 @@ import '../../dashboard/home_tips.dart';
 import '../../dashboard/pixel/home_pixel_art.dart';
 import '../../merchant/models/merchant_models.dart';
 import '../../merchant/providers/merchant_hub_provider.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../vote/pixel/wave3_art.dart';
 import '../home_town.dart';
 
@@ -210,22 +211,27 @@ class SettingsScreen extends ConsumerWidget {
                                   onTap: () =>
                                       _showTextSizeDialog(context, ref),
                                 ),
-                                // Owner 2026-11-04: run the first-run tutorial again on Home.
+                                // Owner 2026-11-04 / Plan 116: replay all page tutorials.
                                 _SettingsTile(
                                   key: const ValueKey(
                                       'settings_replay_tutorial'),
                                   pixelIcon: Wave3Art.refresh,
                                   title: tr(context,
-                                      en: 'Replay tutorial',
-                                      tl: 'Ulitin ang Gabay'),
+                                      en: 'Replay tutorials',
+                                      tl: 'Ulitin ang mga Gabay'),
                                   onTap: () async {
                                     await ref
                                         .read(
                                             homeTipsControllerProvider.notifier)
                                         .resetForReplay();
+                                    final replayAll = ref
+                                        .read(tutorialCoordinatorProvider
+                                            .notifier)
+                                        .replayAll();
                                     if (context.mounted) {
                                       context.go('/dashboard');
                                     }
+                                    await replayAll;
                                   },
                                 ),
                                 _SettingsTile(

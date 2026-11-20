@@ -11,6 +11,7 @@ import '../core/pixel/pixel_nav.dart';
 import '../features/companion/widgets/companion_card.dart';
 import '../features/dashboard/home_tips.dart';
 import '../features/dashboard/widgets/main_menu_overlay.dart';
+import '../features/onboarding/page_tutorials.dart';
 import '../features/onboarding/pixel_tutorial.dart';
 import '../features/juanchoice/providers/juanchoice_provider.dart';
 import '../features/quests/providers/campaign_provider.dart';
@@ -82,7 +83,10 @@ class _MainShellState extends ConsumerState<MainShell> {
     final tips = ref.watch(homeTipsControllerProvider);
     final tipsKeys = ref.watch(homeTipsKeysProvider);
     final onMainPage = MainShell.showsHotbar(widget.location);
-    final showTips = tips.showing && currentIndex == 0 && onMainPage;
+    final coordinatorActive =
+        ref.watch(tutorialCoordinatorProvider).activePage != null;
+    final showTips =
+        tips.showing && currentIndex == 0 && onMainPage && !_menuOpen && !coordinatorActive;
 
     return PopScope(
       canPop: false,

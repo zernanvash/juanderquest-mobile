@@ -14,6 +14,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
@@ -331,23 +332,29 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       child: Builder(
         builder: (context) {
           final grid = PixelGrid.of(context);
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  PixelAppBar(
-                    title: 'Traveler Shop',
-                    isTab: true,
-                    actions: [
-                      MjdqChip(
-                        points,
-                        animateOnIncrease: true,
-                      ),
-                    ],
-                  ),
+          return PageTutorialHost(
+            page: TutorialPage.shop,
+            stepsBuilder: (ctx) =>
+                buildPageTutorialSteps(ctx, TutorialPage.shop),
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: DitherBackground(
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                child: Column(
+                  children: [
+                    PixelAppBar(
+                      title: 'Traveler Shop',
+                      isTab: true,
+                      actions: [
+                        const TutorialHelpButton(page: TutorialPage.shop),
+                        SizedBox(width: grid.px(2)),
+                        MjdqChip(
+                          points,
+                          animateOnIncrease: true,
+                        ),
+                      ],
+                    ),
                   Expanded(
                     child: ListView(
                       key: ValueKey('shop_list_${_selectedTab ?? "hub"}'),
@@ -384,6 +391,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           );
         },

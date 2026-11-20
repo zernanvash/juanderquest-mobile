@@ -111,6 +111,7 @@ import 'package:juanderquest_app/features/dashboard/home_tips.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_daily_provider.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_dashboard_providers.dart';
 import 'package:juanderquest_app/features/dashboard/providers/home_qotd_provider.dart';
+import 'package:juanderquest_app/features/onboarding/page_tutorials.dart';
 import 'package:juanderquest_app/features/onboarding/pixel_tutorial.dart';
 import 'package:juanderquest_app/features/juanchoice/providers/juanchoice_provider.dart';
 import 'package:juanderquest_app/features/juanchoice/models/juanchoice_models.dart';
@@ -3842,6 +3843,34 @@ void main() {
           clampScale: false,
         );
       });
+    }
+
+    for (final size in [const Size(320, 568), const Size(568, 320)]) {
+      for (final page in TutorialPage.values) {
+        testWidgets(
+            'Plan 116 tutorial overlay (${page.key}) fits $size @ 2.0x text',
+            (tester) async {
+          await testScreenOverflow(
+            tester,
+            ProviderScope(
+              child: MaterialApp(
+                theme: AppTheme.pixel,
+                home: Scaffold(
+                  body: Builder(
+                    builder: (ctx) => PixelTutorialOverlay(
+                      steps: buildPageTutorialSteps(ctx, page),
+                      onDone: () {},
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            size,
+            2.0,
+            clampScale: false,
+          );
+        });
+      }
     }
   });
 }

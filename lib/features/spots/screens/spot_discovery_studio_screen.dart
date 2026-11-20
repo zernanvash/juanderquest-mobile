@@ -360,6 +360,40 @@ class _SpotDiscoveryStudioScreenState
               onPressed: _locating ? null : () => _useGps(),
             ),
           ),
+          Positioned(
+            left: 8,
+            bottom: 8,
+            child: PixelPanel(
+              style: PixelBoxStyle.parchment,
+              padding: 1,
+              child: Text(
+                '${_pin.lat.toStringAsFixed(5)}, ${_pin.lng.toStringAsFixed(5)}',
+                key: const ValueKey('studio_pin_coords'),
+                style: PixelType.small(context, color: PixelPalette.ink),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 8,
+            bottom: 8,
+            child: PixelButton(
+              key: const ValueKey('studio_use_location'),
+              label: 'Use this location',
+              style: PixelBoxStyle.wood,
+              textColor: PixelPalette.white,
+              onPressed: () {
+                _panTimer?.cancel();
+                final cam = _map.camera;
+                _movePin(
+                  cam.center.latitude,
+                  cam.center.longitude,
+                  SpotLocationSource.mapCrosshair,
+                  moveMap: false,
+                  zoom: cam.zoom,
+                );
+              },
+            ),
+          ),
         ]),
       ),
       if (_note != null || _source == SpotLocationSource.fallbackAnchor)

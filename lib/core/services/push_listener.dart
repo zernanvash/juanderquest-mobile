@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/open_route.dart';
 import '../../app/router.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/notifications/providers/local_notifications_provider.dart';
+import '../../features/onboarding/page_tutorials.dart';
 import '../widgets/in_app_banner.dart';
 import 'push_routing.dart';
 import 'push_service.dart';
@@ -51,8 +53,28 @@ class _PushListenerState extends ConsumerState<PushListener> {
   }
 
   void _open(RemoteMessage message) {
-    final route = appRouteForPushHref(message.data['href'] as String?);
+    final route = appRouteForNotification(
+      href: message.data['href']?.toString(),
+      kind: message.data['kind']?.toString(),
+      data: message.data,
+    );
+    final notificationId =
+        (message.data['notification_id'] ?? message.data['id'])?.toString();
+    if (notificationId != null &&
+        notificationId.isNotEmpty &&
+        ref.read(authProvider).isAuthenticated) {
+      unawaited(
+        ref
+            .read(apiClientProvider)
+            .dio
+            .patch('/notifications/$notificationId/read')
+            .then((_) => ref.invalidate(serverUnreadNotificationsProvider))
+            .catchError((_) {}),
+      );
+    }
     try {
+      // Never block a deep link or notification tap with a page tour.
+      ref.read(tutorialCoordinatorProvider.notifier).deferNextNavigation();
       // A tab page switches tabs; pushing it would stack it on this tab.
       openRouteWith(ref.read(routerProvider), route);
     } catch (e) {
@@ -68,7 +90,11 @@ class _PushListenerState extends ConsumerState<PushListener> {
               'push:${DateTime.now().millisecondsSinceEpoch}',
           title: message.notification?.title ?? 'JuanDerQuest',
           message: message.notification?.body,
-          href: appRouteForPushHref(message.data['href'] as String?),
+          href: appRouteForNotification(
+            href: message.data['href']?.toString(),
+            kind: message.data['kind']?.toString(),
+            data: message.data,
+          ),
         ));
   }
 

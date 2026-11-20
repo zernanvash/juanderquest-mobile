@@ -10,6 +10,7 @@ import '../../core/pixel/pixel_controls.dart';
 import '../../core/pixel/pixel_feedback.dart';
 import '../../core/pixel/pixel_grid.dart';
 import '../../core/pixel/pixel_nav.dart';
+import '../onboarding/page_tutorials.dart';
 import '../../core/pixel/pixel_text_3d.dart';
 import '../../core/pixel/pixel_text.dart';
 import '../../core/services/push_service.dart';
@@ -105,29 +106,35 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
         builder: (context) {
           final grid = PixelGrid.of(context);
           final canPop = Navigator.of(context).canPop();
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  PixelAppBar(
-                    title: 'Plaza',
-                    onBack:
-                        canPop ? () => Navigator.of(context).maybePop() : null,
-                    actions: [
-                      PixelIconButton(
-                        key: const ValueKey('plaza_refresh'),
-                        icon: PlazaArt.refresh,
-                        semanticLabel: 'Refresh Plaza',
-                        onPressed: () {
-                          ref.invalidate(plazaStandingsProvider(standingsKey));
-                          _reloadFeed();
-                        },
-                      ),
-                    ],
-                  ),
+          return PageTutorialHost(
+            page: TutorialPage.plaza,
+            stepsBuilder: (ctx) =>
+                buildPageTutorialSteps(ctx, TutorialPage.plaza),
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: DitherBackground(
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                child: Column(
+                  children: [
+                    PixelAppBar(
+                      title: 'Plaza',
+                      onBack:
+                          canPop ? () => Navigator.of(context).maybePop() : null,
+                      actions: [
+                        const TutorialHelpButton(page: TutorialPage.plaza),
+                        SizedBox(width: grid.px(2)),
+                        PixelIconButton(
+                          key: const ValueKey('plaza_refresh'),
+                          icon: PlazaArt.refresh,
+                          semanticLabel: 'Refresh Plaza',
+                          onPressed: () {
+                            ref.invalidate(plazaStandingsProvider(standingsKey));
+                            _reloadFeed();
+                          },
+                        ),
+                      ],
+                    ),
                   Expanded(
                     child: RefreshIndicator(
                       color: PixelPalette.green,
@@ -274,6 +281,7 @@ class _PlazaScreenState extends ConsumerState<PlazaScreen>
                   ),
                 ],
               ),
+            ),
             ),
           );
         },

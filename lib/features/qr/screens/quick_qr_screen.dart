@@ -15,6 +15,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -338,17 +339,25 @@ class _QuickQrScreenState extends ConsumerState<QuickQrScreen> {
       child: Builder(
         builder: (context) {
           final grid = PixelGrid.of(context);
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  PixelAppBar(
-                    title: tr(context, en: 'QR Hub', tl: 'QR Hub'),
-                    onBack: canPop ? () => Navigator.of(context).maybePop() : null,
-                  ),
+          return PageTutorialHost(
+            page: TutorialPage.quickQr,
+            stepsBuilder: (ctx) =>
+                buildPageTutorialSteps(ctx, TutorialPage.quickQr),
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: DitherBackground(
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                child: Column(
+                  children: [
+                    PixelAppBar(
+                      title: tr(context, en: 'QR Hub', tl: 'QR Hub'),
+                      onBack:
+                          canPop ? () => Navigator.of(context).maybePop() : null,
+                      actions: const [
+                        TutorialHelpButton(page: TutorialPage.quickQr),
+                      ],
+                    ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       grid.gutter,
@@ -391,6 +400,7 @@ class _QuickQrScreenState extends ConsumerState<QuickQrScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           );
         },

@@ -9,10 +9,9 @@ import 'package:juanderquest_app/features/quests/builder/builder_models.dart';
 import 'package:juanderquest_app/features/quests/builder/widgets/location_fence_map_picker.dart';
 import 'package:latlong2/latlong.dart';
 
-// Phone test 2026-11-01: scrolling the builder page over a task map moved the
-// pin. The map is now locked until "Move pin" is tapped.
 void main() {
-  testWidgets('dragging over the locked map scrolls the page, not the pin',
+  testWidgets(
+      'fixed centre pin: dragging camera updates point & fence, tap does not drop pin, confirm returns centre',
       (tester) async {
     final fakeMap = FakeJdqMap();
     final changes = <GeoFence>[];
@@ -38,31 +37,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fakeMap.focus, isNotNull);
+    // Map is never wrapped in an active IgnorePointer.
+    final blockingIgnore = find.ancestor(
+      of: find.byType(JdqMapCanvas),
+      matching: find.byWidgetPredicate(
+          (w) => w is IgnorePointer && w.ignoring == true),
+    );
+    expect(blockingIgnore, findsNothing);
 
-    await tester.drag(
-        find.byType(LocationFenceMapPicker), const Offset(0, -200));
+    // Tapping the canvas does not drop a pin on FakeJdqMap.
+    await tester.tap(find.byType(JdqMapCanvas));
     await tester.pump();
-    expect(
-        changes.where((f) => f.lat != 16.2044 || f.lng != 120.0406), isEmpty);
-    final scroll =
-        tester.state<ScrollableState>(find.byType(Scrollable).first).position;
-    expect(scroll.pixels, greaterThan(100),
-        reason: 'the drag should scroll the page');
-    scroll.jumpTo(0);
-    await tester.pump();
+    expect(changes, isEmpty);
 
-    expect(find.text('Move pin'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('fence_map_move_pin')));
-    await tester.pump();
-    expect(find.text('Done'), findsOneWidget);
-    final ignore = tester.widget<IgnorePointer>(find
-        .ancestor(
-            of: find.byType(JdqMapCanvas), matching: find.byType(IgnorePointer))
-        .first);
-    expect(ignore.ignoring, isFalse);
-
+    // Dragging/panning the camera updates the picked point and geofence circle.
     await fakeMap.easeTo(const LatLng(16.2050, 120.0410), 16,
         reducedMotion: true);
+    await tester.pump();
     expect(changes.last.lat, closeTo(16.2050, 1e-6));
+    expect(changes.last.lng, closeTo(120.0410, 1e-6));
+    expect(find.textContaining('16.20500, 120.04100'), findsOneWidget);
+
+    // Confirm button returns the current camera centre.
+    changes.clear();
+    await tester.tap(find.byKey(const ValueKey('fence_map_use_location')));
+    await tester.pump();
+    expect(changes.length, 1);
+    expect(changes.single.lat, closeTo(16.2050, 1e-6));
+    expect(changes.single.lng, closeTo(120.0410, 1e-6));
   });
 }

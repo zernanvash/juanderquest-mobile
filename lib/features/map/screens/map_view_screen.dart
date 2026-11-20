@@ -18,6 +18,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/pixel/pixel_theme.dart';
 import '../../../core/widgets/satellite_toggle.dart';
@@ -690,23 +691,29 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
 
     return Theme(
       data: PixelTheme.build(),
-      child: JdqScaffold(
-        padding: EdgeInsets.zero,
-        appBar: PreferredSize(
-          preferredSize: Size.fromHeight(PixelAppBar.heightOf(context)),
-          child: PixelAppBar(
-            title: 'MAP',
-            isTab: true,
-            actions: [
-              PixelIconButton(
-                icon: DesignerArt.search,
-                semanticLabel: 'Search Spots',
-                style: PixelBoxStyle.parchment,
-                onPressed: () => context.push('/search'),
-              ),
-            ],
+      child: PageTutorialHost(
+        page: TutorialPage.map,
+        suppressed: _pinPlacementActive,
+        stepsBuilder: (ctx) => buildPageTutorialSteps(ctx, TutorialPage.map),
+        child: JdqScaffold(
+          padding: EdgeInsets.zero,
+          appBar: PreferredSize(
+            preferredSize: Size.fromHeight(PixelAppBar.heightOf(context)),
+            child: PixelAppBar(
+              title: 'MAP',
+              isTab: true,
+              actions: [
+                const TutorialHelpButton(page: TutorialPage.map),
+                const SizedBox(width: 8),
+                PixelIconButton(
+                  icon: DesignerArt.search,
+                  semanticLabel: 'Search Spots',
+                  style: PixelBoxStyle.parchment,
+                  onPressed: () => context.push('/search'),
+                ),
+              ],
+            ),
           ),
-        ),
         body: Stack(
           children: [
             _canvas(satellite: satellite),
@@ -980,6 +987,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
               ),
           ],
         ),
+      ),
       ),
     );
   }

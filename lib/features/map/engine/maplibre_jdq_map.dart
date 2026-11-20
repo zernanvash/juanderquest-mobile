@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -1197,8 +1198,13 @@ class MapLibreJdqMap extends JdqMap {
                 northeast: const gl.LatLng(21.5, 127),
               ),
             ),
+            scrollGesturesEnabled: true,
+            zoomGesturesEnabled: true,
             rotateGesturesEnabled: true,
             tiltGesturesEnabled: true,
+            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{
+              Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
+            },
             compassEnabled: false,
             attributionButtonPosition: gl.AttributionButtonPosition.bottomLeft,
             trackCameraPosition: true,

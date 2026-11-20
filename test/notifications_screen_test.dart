@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
 import 'package:juanderquest_app/features/notifications/screens/notifications_screen.dart';
@@ -121,5 +122,71 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.textContaining('all caught up'), findsOneWidget);
+  });
+
+  testWidgets('tapping a notification marks it read and routes to its target',
+      (tester) async {
+    final client = ApiClient(enableRetries: false);
+    var markedRead = false;
+    client.dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      if (options.path == '/notifications' && options.method == 'GET') {
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'success': true,
+            'data': {
+              'items': [
+                {
+                  'id': 'notif-tap-1',
+                  'kind': 'quest_reward',
+                  'quest_id': 'q-42',
+                  'title': 'Quest reward!',
+                  'message': 'You earned 50 XP.',
+                  'read': false,
+                },
+              ],
+            },
+          },
+        ));
+      }
+      if (options.path == '/notifications/notif-tap-1/read' &&
+          options.method == 'PATCH') {
+        markedRead = true;
+        return handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true}));
+      }
+      return handler.reject(DioException(requestOptions: options));
+    }));
+
+    final router = GoRouter(
+      initialLocation: '/notifications',
+      routes: [
+        GoRoute(
+          path: '/notifications',
+          builder: (_, __) => const NotificationsScreen(),
+        ),
+        GoRoute(
+          path: '/quests/:id',
+          builder: (_, state) => Scaffold(
+            body: Text('QUEST:${state.pathParameters['id']}'),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [apiClientProvider.overrideWithValue(client)],
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('notification_notif-tap-1')));
+    await tester.pumpAndSettle();
+
+    expect(markedRead, isTrue);
+    expect(find.text('QUEST:q-42'), findsOneWidget);
   });
 }

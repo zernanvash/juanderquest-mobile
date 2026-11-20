@@ -19,6 +19,7 @@ import '../../../core/pixel/pixel_controls.dart';
 import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_nav.dart';
+import '../../onboarding/page_tutorials.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../quests/widgets/new_quests_strip.dart';
 import '../../../core/dev/test_content.dart';
@@ -187,28 +188,34 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
             onPopInvokedWithResult: (didPop, _) {
               if (!didPop) _closeSearch();
             },
-            child: Scaffold(
-              backgroundColor: PixelPalette.paper,
-              appBar: PreferredSize(
-                preferredSize: Size.fromHeight(PixelAppBar.heightOf(context)),
-                child: PixelAppBar(
-                  title: 'Explore',
-                  isTab: true,
-                  actions: [
-                    // Search is the open box under the bar (owner 2026-11-16).
-                    // Owner 2026-11-16: Saved sits right of Search (the Map
-                    // moved to the main menu).
-                    PixelIconButton(
-                      key: const ValueKey('explore_appbar_saved'),
-                      icon: ExploreArt.bookmarkSaved,
-                      semanticLabel: 'Saved places',
-                      style: PixelBoxStyle.parchment,
-                      iconHeight: 24,
-                      onPressed: () => context.push('/saved'),
-                    ),
-                  ],
+            child: PageTutorialHost(
+              page: TutorialPage.explore,
+              stepsBuilder: (ctx) =>
+                  buildPageTutorialSteps(ctx, TutorialPage.explore),
+              child: Scaffold(
+                backgroundColor: PixelPalette.paper,
+                appBar: PreferredSize(
+                  preferredSize: Size.fromHeight(PixelAppBar.heightOf(context)),
+                  child: PixelAppBar(
+                    title: 'Explore',
+                    isTab: true,
+                    actions: [
+                      const TutorialHelpButton(page: TutorialPage.explore),
+                      SizedBox(width: grid.px(2)),
+                      // Search is the open box under the bar (owner 2026-11-16).
+                      // Owner 2026-11-16: Saved sits right of Search (the Map
+                      // moved to the main menu).
+                      PixelIconButton(
+                        key: const ValueKey('explore_appbar_saved'),
+                        icon: ExploreArt.bookmarkSaved,
+                        semanticLabel: 'Saved places',
+                        style: PixelBoxStyle.parchment,
+                        iconHeight: 24,
+                        onPressed: () => context.push('/saved'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               body: // Owner 2026-11-17: a faint fade on Explore ("too distracting").
                   PixelPanelTexture(
                 strength: 0.35,
@@ -370,6 +377,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                   ),
                 ),
               ),
+            ),
             ),
           );
         },

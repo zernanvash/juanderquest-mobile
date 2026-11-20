@@ -208,7 +208,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({
+      'tutorial_seen_quest_play': 'true',
+    });
   });
 
   const target = NavTarget(

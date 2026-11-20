@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/open_route.dart';
 import '../../app/router.dart';
 import '../../features/notifications/providers/local_notifications_provider.dart';
+import '../../features/onboarding/page_tutorials.dart';
 import '../pixel/generated/designer_art.g.dart';
 import '../pixel/generated/pixel_palette.g.dart';
 import '../pixel/pixel_text_3d.dart';
@@ -116,6 +117,7 @@ class _InAppBannerHostState extends ConsumerState<InAppBannerHost> {
     final href = item.href;
     if (href == null || href.isEmpty) return;
     try {
+      ref.read(tutorialCoordinatorProvider.notifier).deferNextNavigation();
       openRouteWith(ref.read(routerProvider), href);
     } catch (e) {
       debugPrint('[Banner] Could not open $href: $e');

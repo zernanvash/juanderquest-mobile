@@ -11,6 +11,7 @@ import '../../core/pixel/pixel_controls.dart';
 import '../../core/pixel/pixel_feedback.dart';
 import '../../core/pixel/pixel_grid.dart';
 import '../../core/pixel/pixel_nav.dart';
+import '../onboarding/page_tutorials.dart';
 import '../../core/pixel/pixel_text.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/providers/auth_provider.dart';
@@ -224,18 +225,25 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
         builder: (context) {
           final grid = PixelGrid.of(context);
           final canPop = Navigator.of(context).canPop();
-          return Scaffold(
-            backgroundColor: PixelPalette.paper,
-            body: DitherBackground(
-              top: PixelPalette.paper,
-              bottom: PixelPalette.parchment,
-              child: Column(
-                children: [
-                  PixelAppBar(
-                    title: 'Trails',
-                    onBack:
-                        canPop ? () => Navigator.of(context).maybePop() : null,
-                  ),
+          return PageTutorialHost(
+            page: TutorialPage.trail,
+            stepsBuilder: (ctx) =>
+                buildPageTutorialSteps(ctx, TutorialPage.trail),
+            child: Scaffold(
+              backgroundColor: PixelPalette.paper,
+              body: DitherBackground(
+                top: PixelPalette.paper,
+                bottom: PixelPalette.parchment,
+                child: Column(
+                  children: [
+                    PixelAppBar(
+                      title: 'Trails',
+                      onBack:
+                          canPop ? () => Navigator.of(context).maybePop() : null,
+                      actions: const [
+                        TutorialHelpButton(page: TutorialPage.trail),
+                      ],
+                    ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       grid.px(4),
@@ -265,6 +273,7 @@ class _TrailCatalogScreenState extends ConsumerState<TrailCatalogScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           );
         },
