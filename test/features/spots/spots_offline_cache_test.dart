@@ -30,8 +30,7 @@ void main() {
       id: 'spot-patar-beach',
       slug: 'patar-white-beach',
       name: 'Patar White Beach',
-      description:
-          'Golden-white sands and clear waters along the Bolinao coastline.',
+      description: 'Golden-white sands and clear waters along the Bolinao coastline.',
       category: 'nature_outdoors',
       subcategory: 'beach',
       municipality: 'Bolinao',
@@ -51,9 +50,7 @@ void main() {
       repository = SpotsCacheRepository(memoryFallback: memoryStore);
     });
 
-    test(
-        '1. Saves and retrieves public spots with metadata and freshness flags',
-        () async {
+    test('1. Saves and retrieves public spots with metadata and freshness flags', () async {
       // Initially empty
       final initial = await repository.loadSpots();
       expect(initial, isNull);
@@ -72,8 +69,7 @@ void main() {
       expect(result.partition, equals(SpotsCacheRepository.publicPartition));
     });
 
-    test('2. Correctly flags stale cache when age exceeds staleThreshold',
-        () async {
+    test('2. Correctly flags stale cache when age exceeds staleThreshold', () async {
       await repository.saveSpots([testSpot1]);
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
@@ -100,8 +96,7 @@ void main() {
       expect(loaded.tags, equals(tags));
     });
 
-    test('4. Partition isolation and purge user partition upon logout',
-        () async {
+    test('4. Partition isolation and purge user partition upon logout', () async {
       const userA = 'user-scout-123';
       const userPartition = 'user_$userA';
 
@@ -109,13 +104,11 @@ void main() {
       await repository.saveSpots([testSpot2], partition: userPartition);
 
       // Public spots remain intact
-      await repository.saveSpots([testSpot1],
-          partition: SpotsCacheRepository.publicPartition);
+      await repository.saveSpots([testSpot1], partition: SpotsCacheRepository.publicPartition);
 
       // Both exist
       final userCache = await repository.loadSpots(partition: userPartition);
-      final publicCache = await repository.loadSpots(
-          partition: SpotsCacheRepository.publicPartition);
+      final publicCache = await repository.loadSpots(partition: SpotsCacheRepository.publicPartition);
 
       expect(userCache, isNotNull);
       expect(userCache!.spots.first.id, equals(testSpot2.id));
@@ -126,10 +119,8 @@ void main() {
       await repository.purgeUserPartition(userA);
 
       // User A partition is now gone, while public spots remain
-      final purgedUserCache =
-          await repository.loadSpots(partition: userPartition);
-      final remainingPublicCache = await repository.loadSpots(
-          partition: SpotsCacheRepository.publicPartition);
+      final purgedUserCache = await repository.loadSpots(partition: userPartition);
+      final remainingPublicCache = await repository.loadSpots(partition: SpotsCacheRepository.publicPartition);
 
       expect(purgedUserCache, isNull);
       expect(remainingPublicCache, isNotNull);

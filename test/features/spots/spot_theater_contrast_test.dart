@@ -7,9 +7,7 @@ import 'package:juanderquest_app/features/spots/theater/theater_panel.dart';
 
 double _linearize(double component) {
   final c = component / 255.0;
-  return c <= 0.04045
-      ? c / 12.92
-      : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+  return c <= 0.04045 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
 }
 
 double _relativeLuminance(Color color) {
@@ -36,9 +34,7 @@ Color _blendOverWhite(Color tint, double alpha) {
 
 void main() {
   group('Spot Theater Contrast Tests (All-White Photo Baseline)', () {
-    test(
-        '82% ink fill over pure white photo achieves WCAG AA contrast >= 4.5:1',
-        () {
+    test('82% ink fill over pure white photo achieves WCAG AA contrast >= 4.5:1', () {
       const ink = PixelPalette.ink;
       const alpha = 0.82;
       final effectivePanelBg = _blendOverWhite(ink, alpha);
@@ -61,9 +57,7 @@ void main() {
       expect(sunContrast, greaterThanOrEqualTo(4.5)); // Typically ~5.5:1
     });
 
-    test(
-        'TheaterBottomScrim (88% ink) provides >= 4.5:1 contrast for title text over white photo',
-        () {
+    test('TheaterBottomScrim (88% ink) provides >= 4.5:1 contrast for title text over white photo', () {
       const ink = PixelPalette.ink;
       const alpha = 0.88;
       final effectiveScrimBg = _blendOverWhite(ink, alpha);
@@ -74,9 +68,7 @@ void main() {
       expect(titleContrast, greaterThan(11.0)); // High-contrast legibility
     });
 
-    testWidgets(
-        'TheaterPanel renders content with guaranteed minimum 82% ink opacity',
-        (tester) async {
+    testWidgets('TheaterPanel renders content with guaranteed minimum 82% ink opacity', (tester) async {
       await tester.pumpWidget(
         const PixelScope(
           settings: PixelSettings(),
