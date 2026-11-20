@@ -53,8 +53,7 @@ SpotModel _makeSpot({
     id: id,
     slug: id,
     name: name,
-    description:
-        'A picturesque destination nestled in the heart of Pangasinan.',
+    description: 'A picturesque destination nestled in the heart of Pangasinan.',
     category: category,
     subcategory: 'general',
     municipality: municipality,
@@ -134,8 +133,7 @@ Widget _wrapScreen({
   );
 }
 
-Future<void> _scrollTo(WidgetTester tester, Finder finder,
-    {int maxDrags = 20, double dy = -250}) async {
+Future<void> _scrollTo(WidgetTester tester, Finder finder, {int maxDrags = 20, double dy = -250}) async {
   for (var i = 0; i < maxDrags; i++) {
     if (finder.evaluate().isNotEmpty) return;
     await tester.drag(find.byType(ListView), Offset(0, dy));
@@ -164,9 +162,7 @@ void main() {
   ];
 
   group('Explore Screen Overflow Tests (2.0x text scaling)', () {
-    testWidgets(
-        'Populated feed in portrait (320x568) with chip tap and like tap',
-        (tester) async {
+    testWidgets('Populated feed in portrait (320x568) with chip tap and like tap', (tester) async {
       final notifier = _TestDiscoveryNotifier(
         ProviderContainer().read(Provider((ref) => ref)),
         SpotDiscoveryState(spots: spots, isInitialLoading: false),
@@ -192,8 +188,7 @@ void main() {
       }
 
       // Tap LIKE button if present in viewport or scroll down
-      final likeBtn =
-          find.text('108'); // Lingayen Beach Capitol (length 21): 45 + 63 = 108
+      final likeBtn = find.text('108'); // Lingayen Beach Capitol (length 21): 45 + 63 = 108
       await _scrollTo(tester, likeBtn);
       if (likeBtn.evaluate().isNotEmpty) {
         await tester.tap(likeBtn.first);
@@ -203,9 +198,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets(
-        'Populated feed in landscape (568x320) with chip tap and like tap',
-        (tester) async {
+    testWidgets('Populated feed in landscape (568x320) with chip tap and like tap', (tester) async {
       final notifier = _TestDiscoveryNotifier(
         ProviderContainer().read(Provider((ref) => ref)),
         SpotDiscoveryState(spots: spots, isInitialLoading: false),
@@ -234,9 +227,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets(
-        'Empty filter state in portrait (320x568) and landscape (568x320)',
-        (tester) async {
+    testWidgets('Empty filter state in portrait (320x568) and landscape (568x320)', (tester) async {
       for (final size in [const Size(320, 568), const Size(568, 320)]) {
         final notifier = _TestDiscoveryNotifier(
           ProviderContainer().read(Provider((ref) => ref)),
@@ -262,16 +253,14 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('Error state in portrait (320x568) and landscape (568x320)',
-        (tester) async {
+    testWidgets('Error state in portrait (320x568) and landscape (568x320)', (tester) async {
       for (final size in [const Size(320, 568), const Size(568, 320)]) {
         final notifier = _TestDiscoveryNotifier(
           ProviderContainer().read(Provider((ref) => ref)),
           const SpotDiscoveryState(
             spots: [],
             isInitialLoading: false,
-            failure: ApiFailure(
-                code: 'network_error', message: 'Connection timeout'),
+            failure: ApiFailure(code: 'network_error', message: 'Connection timeout'),
           ),
         );
 
