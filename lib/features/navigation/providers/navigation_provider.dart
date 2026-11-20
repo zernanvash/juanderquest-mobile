@@ -648,13 +648,13 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       String? loadError;
       final trailsFuture = _trailsApi
           .fetchTrailsNear(
-        lat: dest.lat,
-        lng: dest.lng,
-      )
+            lat: dest.lat,
+            lng: dest.lng,
+          )
           .catchError((Object e) {
-        loadError = TrailsApi.extractErrorMessage(e);
-        return <NearbyTrail>[];
-      });
+            loadError = TrailsApi.extractErrorMessage(e);
+            return <NearbyTrail>[];
+          });
 
       final tripPlanFuture = _trailsApi
           .planTrip(
