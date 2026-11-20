@@ -32,7 +32,8 @@ void main() {
       expect(categoryLabel('stay'), 'Places to stay');
     });
 
-    test('formats fallback unknown categories with capitalization and spacing', () {
+    test('formats fallback unknown categories with capitalization and spacing',
+        () {
       expect(categoryLabel('eco_tourism'), 'Eco tourism');
       expect(categoryLabel('farm_tours'), 'Farm tours');
       expect(categoryLabel('diving-snorkeling'), 'Diving snorkeling');

@@ -58,6 +58,18 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   late final JdqMap _nativeMap;
   late final Future<String> _style;
   RouteModel? _lastFittedRoute;
+  // Preview camera: set when the user pans/zooms; a re-fetch of the same route then keeps
+  // their view (see build()).
+  bool _userMovedPreviewCamera = false;
+  String? _lastFitKey;
+
+  /// Same route ≈ same endpoints (~100 m) and same shape size; GPS jitter doesn't change it.
+  static String _routeFitKey(RouteModel r) {
+    String p(LatLng c) =>
+        '${c.latitude.toStringAsFixed(3)},${c.longitude.toStringAsFixed(3)}';
+    return '${p(r.coordinates.first)}|${p(r.coordinates.last)}|${r.coordinates.length ~/ 20}';
+  }
+
   StreamSubscription<Position>? _positionSubscription;
   JdqRouteOverlay? _lastOverlay;
   WakelockService? _wakelockService;
@@ -504,7 +516,9 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
 
     _syncOverlay(overlay);
 
-    // Auto-fit bounds in preview whenever the selected route changes
+    // Auto-fit bounds in preview when a new route arrives. Once the user has moved/zoomed the
+    // map, a re-fetch of the same route (GPS refresh) must not snap the camera back; only a
+    // genuinely different route (other start/end/shape) re-fits.
     if (route != null &&
         !navState.isAdventureActive &&
         !identical(route, _lastFittedRoute) &&
@@ -517,7 +531,12 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
                 .isAdventureActive &&
             !identical(_lastFittedRoute, fittedTarget)) {
           _lastFittedRoute = fittedTarget;
-          _fitRouteBounds(fittedTarget, originPoint);
+          final key = _routeFitKey(fittedTarget);
+          if (!_userMovedPreviewCamera || key != _lastFitKey) {
+            _lastFitKey = key;
+            _userMovedPreviewCamera = false;
+            _fitRouteBounds(fittedTarget, originPoint);
+          }
         }
       });
     }
@@ -538,413 +557,433 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
               body: Stack(
                 fit: StackFit.expand,
                 children: [
-                // 1. Full-screen Vector Map Canvas
-                Listener(
-                  onPointerDown: (_) {
-                    if (navState.isAdventureActive &&
-                        navState.isCameraFollowing) {
-                      notifier.setCameraFollowing(false);
-                    }
-                  },
-                  child: JdqMapCanvas(
-                    map: _nativeMap,
-                    style: _style,
-                    fallback: const ColoredBox(
-                      color: PixelPalette.paper,
-                      child: Center(
-                        child: Text(
-                          'Offline Map Mode',
-                          style: TextStyle(fontFamily: 'Silkscreen'),
+                  // 1. Full-screen Vector Map Canvas
+                  Listener(
+                    onPointerDown: (_) {
+                      if (!navState.isAdventureActive) {
+                        _userMovedPreviewCamera = true;
+                      }
+                      if (navState.isAdventureActive &&
+                          navState.isCameraFollowing) {
+                        notifier.setCameraFollowing(false);
+                      }
+                    },
+                    child: JdqMapCanvas(
+                      map: _nativeMap,
+                      style: _style,
+                      fallback: const ColoredBox(
+                        color: PixelPalette.paper,
+                        child: Center(
+                          child: Text(
+                            'Offline Map Mode',
+                            style: TextStyle(fontFamily: 'Silkscreen'),
+                          ),
                         ),
                       ),
-                    ),
-                    onFallback: () {},
-                  ),
-                ),
-
-                if (!navState.isAdventureActive) ...[
-                  // 2. Preview Top Bar (Back + TO destination)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: RoutePreviewTopBar(
-                      toLabel: widget.destination.name,
-                      isTrail: navState.selectedTrail != null,
-                      onBack: canPop
-                          ? () => Navigator.of(context).maybePop()
-                          : null,
-                    ),
-                  ),
-                  Positioned(
-                    top: MediaQuery.paddingOf(context).top + 56,
-                    right: 12,
-                    child: const TutorialHelpButton(
-                        page: TutorialPage.questPlay),
-                  ),
-
-                  // 3. Preview Bottom Sheet
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: RoutePreviewSheet(
-                      navState: navState,
-                      onSelectCosting: notifier.setCosting,
-                      onChangeOrigin: () {
-                        OriginPickerSheet.show(
-                          context,
-                          currentOrigin: navState.origin,
-                          onSelect: notifier.setOrigin,
-                          avoidCongested: navState.avoidCongested,
-                          onToggleAvoidCongested: notifier.toggleAvoidCongested,
-                          selectedDetoursCount: navState.selectedDetours.length,
-                          onOpenDetours: navState.isDirectRoute
-                              ? () => _openDetours(navState, notifier)
-                              : null,
-                        );
-                      },
-                      onSelectDirect: notifier.selectDirectRoute,
-                      onSelectTrail: (trail) {
-                        if (trail.isUnlocked) {
-                          unawaited(notifier.selectUnlockedTrail(trail.id));
-                        } else {
-                          _openTrailOffer(trail, notifier);
-                        }
-                      },
-                      onInspectTrail: (trail) =>
-                          _openTrailOffer(trail, notifier),
-                      onOpenSteps: () {
-                        if (route != null && route.maneuvers.isNotEmpty) {
-                          StepsSheet.show(
-                            context,
-                            maneuvers: route.maneuvers,
-                            activeStepIndex: navState.activeStepIndex,
-                            onStepSelected: (idx) => _focusStep(idx, route),
-                          );
-                        }
-                      },
-                      onGo: () => unawaited(_handleStartAdventure()),
-                      onRetry: () => notifier.fetchRoute(),
-                      onRetryTrails: () => notifier.fetchNearbyTrails(),
-                    ),
-                  ),
-                ] else ...[
-                  // Adventure Top Banner (safe-area aware, tap opens StepsSheet)
-                  Positioned(
-                    top: MediaQuery.paddingOf(context).top + 8,
-                    left: 12,
-                    right: 12,
-                    child: AdventureTopBanner(
-                      currentManeuver: navState.currentManeuver,
-                      distanceToManeuverM: navState.distanceToManeuverM,
-                      upcomingManeuvers: navState.upcomingManeuvers,
-                      isRerouting: navState.isRerouting,
-                      onOpenSteps: () {
-                        if (route != null && route.maneuvers.isNotEmpty) {
-                          StepsSheet.show(
-                            context,
-                            maneuvers: route.maneuvers,
-                            activeStepIndex: navState.activeStepIndex,
-                            onStepSelected: (idx) => _focusStep(idx, route),
-                          );
-                        }
-                      },
+                      onFallback: () {},
                     ),
                   ),
 
-                  // Loading Toast (driving only)
-                  if (navState.isLoadingRoute)
+                  if (!navState.isAdventureActive) ...[
+                    // 2. Preview Top Bar (Back + TO destination)
                     Positioned(
-                      top: MediaQuery.paddingOf(context).top + 110,
-                      left: grid.px(4),
-                      right: grid.px(4),
-                      child: Center(
-                        child: PixelPanel(
-                          style: PixelBoxStyle.parchment,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const PixelLoader(label: 'Routing', artPx: 6),
-                              SizedBox(width: grid.px(2)),
-                              Flexible(
-                                child: Text(
-                                  'Calculating Valhalla road network...',
-                                  style: PixelType.body(context),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: RoutePreviewTopBar(
+                        toLabel: widget.destination.name,
+                        isTrail: navState.selectedTrail != null,
+                        onBack: canPop
+                            ? () => Navigator.of(context).maybePop()
+                            : null,
                       ),
                     ),
-
-                  // Error Toast Banner (driving only)
-                  if (navState.error != null)
                     Positioned(
-                      top: MediaQuery.paddingOf(context).top + 110,
-                      left: grid.px(4),
-                      right: grid.px(4),
-                      child: PixelPanel(
-                        style: PixelBoxStyle.gold,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                navState.error!,
-                                style: PixelType.body(
-                                  context,
-                                  color: PixelPalette.goldDeep,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: grid.px(1)),
-                            PixelButton(
-                              key: const ValueKey('nav_error_retry'),
-                              label: 'Retry',
-                              variant: PixelButtonVariant.secondary,
-                              onPressed: () => notifier.fetchRoute(),
-                            ),
-                          ],
-                        ),
+                      top: MediaQuery.paddingOf(context).top + 56,
+                      right: 12,
+                      child: const TutorialHelpButton(
+                          page: TutorialPage.questPlay),
+                    ),
+
+                    // 3. Preview Bottom Sheet
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: RoutePreviewSheet(
+                        navState: navState,
+                        onSelectCosting: notifier.setCosting,
+                        onChangeOrigin: () {
+                          OriginPickerSheet.show(
+                            context,
+                            currentOrigin: navState.origin,
+                            onSelect: notifier.setOrigin,
+                            avoidCongested: navState.avoidCongested,
+                            onToggleAvoidCongested:
+                                notifier.toggleAvoidCongested,
+                            selectedDetoursCount:
+                                navState.selectedDetours.length,
+                            onOpenDetours: navState.isDirectRoute
+                                ? () => _openDetours(navState, notifier)
+                                : null,
+                          );
+                        },
+                        onSelectDirect: notifier.selectDirectRoute,
+                        onSelectTrail: (trail) {
+                          if (trail.isUnlocked) {
+                            unawaited(notifier.selectUnlockedTrail(trail.id));
+                          } else {
+                            _openTrailOffer(trail, notifier);
+                          }
+                        },
+                        onInspectTrail: (trail) =>
+                            _openTrailOffer(trail, notifier),
+                        onOpenSteps: () {
+                          if (route != null && route.maneuvers.isNotEmpty) {
+                            StepsSheet.show(
+                              context,
+                              maneuvers: route.maneuvers,
+                              activeStepIndex: navState.activeStepIndex,
+                              onStepSelected: (idx) => _focusStep(idx, route),
+                            );
+                          }
+                        },
+                        onGo: () => unawaited(_handleStartAdventure()),
+                        onRetry: () => notifier.fetchRoute(),
+                        onRetryTrails: () => notifier.fetchNearbyTrails(),
                       ),
                     ),
-
-                  // Driving bottom stack: Speed box + Mute/Re-centre + Bottom bar
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Speed box (hidden if unknown or compact landscape)
-                              if (navState.currentPosition != null &&
-                                  navState.currentSpeedMs >= 0 &&
-                                  MediaQuery.orientationOf(context) !=
-                                      Orientation.landscape &&
-                                  MediaQuery.sizeOf(context).height >= 450)
-                                _speedBox(context, navState.currentSpeedMs)
-                              else
-                                const SizedBox.shrink(),
-
-                              // Right-edge 48dp square controls
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (navState.selectedTrail != null &&
-                                      !navState.isTrailCompleted) ...[
-                                    _squareMapButton(
-                                      key: const ValueKey('nav_road_vlog_clip'),
-                                      label: '+CLIP',
-                                      semanticLabel:
-                                          'Record 3 second road vlog clip',
-                                      isHighlighted: _vlogManifest?.roadClipForLeg(
-                                              navState.currentStopNumber) !=
-                                          null,
-                                      onTap: () => unawaited(
-                                        _openVlogRecorder(
-                                          navState: navState,
-                                          kind: VlogClipKind.road,
-                                          stopPosition:
-                                              navState.currentStopNumber,
-                                          spotName: 'On The Road',
-                                          municipality: navState
-                                                  .nextUncheckedStop
-                                                  ?.municipality ??
-                                              'Pangasinan',
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    if ((_vlogManifest?.totalClips ?? 0) > 0) ...[
-                                      _squareMapButton(
-                                        key: const ValueKey(
-                                            'nav_open_vlog_studio'),
-                                        label: 'VLOG',
-                                        semanticLabel: 'Open Trail Vlog Studio',
-                                        isHighlighted: true,
-                                        onTap: () => unawaited(
-                                          _openTrailVlogStudio(navState),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                    ],
-                                  ],
-                                  _squareMapButton(
-                                    key: const ValueKey('nav_mute_button'),
-                                    label:
-                                        navState.isVoiceMuted ? 'MUTE' : 'VOX',
-                                    semanticLabel: navState.isVoiceMuted
-                                        ? 'Unmute voice'
-                                        : 'Mute voice',
-                                    isHighlighted: false,
-                                    onTap: notifier.toggleVoiceMuted,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _squareMapButton(
-                                    key: const ValueKey('nav_recenter'),
-                                    label: 'CTR',
-                                    semanticLabel: 'Re-centre map',
-                                    isHighlighted: !navState.isCameraFollowing,
-                                    blinkDim: !navState.isCameraFollowing &&
-                                        _pulseFrame,
-                                    onTap: () {
-                                      notifier.setCameraFollowing(true);
-                                      if (navState.currentPosition != null) {
-                                        unawaited(_nativeMap.easeTo(
-                                          LatLng(
-                                            navState.currentPosition!.latitude,
-                                            navState.currentPosition!.longitude,
-                                          ),
-                                          16.5,
-                                          bearing:
-                                              navState.currentPosition!.speed >
-                                                      1.0
-                                                  ? navState
-                                                      .currentPosition!.heading
-                                                  : null,
-                                          tilt: 45.0,
-                                        ));
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        AdventureBottomBar(
-                          summary: route?.summary ?? const RouteSummary.empty(),
-                          selectedTrail: navState.selectedTrail,
-                          nextStop: navState.nextUncheckedStop,
-                          totalStops: navState.totalTrailStops,
-                          currentStopNumber: navState.currentStopNumber,
-                          isWithinCheckinRadius: navState.isWithinCheckinRadius,
-                          currentSpeedMs: navState.currentSpeedMs,
-                          isCheckingIn: navState.isCheckingIn,
-                          hasArrivedDirect: navState.hasArrivedDirect,
-                          isTrailCompleted: navState.isTrailCompleted,
-                          trailRewardPoints:
-                              navState.trailCompletionReward ?? 0,
-                          remainingDistanceMeters:
-                              navState.remainingDistanceMeters,
-                          remainingDurationSeconds:
-                              navState.remainingDurationSeconds,
-                          distanceToStopMeters: navState.nextUncheckedStop !=
-                                  null
-                              ? Geolocator.distanceBetween(
-                                  navState.effectiveOriginPoint.latitude,
-                                  navState.effectiveOriginPoint.longitude,
-                                  navState.nextUncheckedStop!.point.latitude,
-                                  navState.nextUncheckedStop!.point.longitude,
-                                )
-                              : null,
-                          isDegraded: route?.isStraightLineFallback == true,
-                          onCheckIn: () => notifier.checkInCurrentStop(),
-                          onOpenSteps: () {
-                            if (route != null && route.maneuvers.isNotEmpty) {
-                              StepsSheet.show(
-                                context,
-                                maneuvers: route.maneuvers,
-                                activeStepIndex: navState.activeStepIndex,
-                                onStepSelected: (idx) => _focusStep(idx, route),
-                              );
-                            }
-                          },
-                          onEnd: _confirmEndAdventure,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Centred Check-In / Arrival / Completion Overlay Card
-                  if (navState.lastCheckedInStop != null ||
-                      navState.isTrailCompleted ||
-                      navState.hasArrivedDirect)
-                    Positioned.fill(
-                      child: AdventureArriveOverlay(
-                        checkedInStop: navState.lastCheckedInStop,
-                        nextStop: navState.nextUncheckedStop,
-                        stops: navState.selectedTrail?.stops ?? const [],
-                        totalStops: navState.totalTrailStops,
-                        isTrailCompleted: navState.isTrailCompleted,
-                        trailTitle: navState.selectedTrail?.title,
-                        trailRewardPoints: navState.trailCompletionReward,
-                        hasArrivedDirect: navState.hasArrivedDirect,
-                        destinationName: widget.destination.name,
-                        tripMinutes: route != null
-                            ? (route.summary.durationSeconds / 60).ceil()
-                            : null,
-                        tripKm: route?.summary.distanceKm,
-                        hasStopVlogClip: navState.lastCheckedInStop != null &&
-                            (_vlogManifest?.hasStopClip(
-                                    navState.lastCheckedInStop!.position) ??
-                                false),
-                        hasFinalStopVlogClip: navState.selectedTrail != null &&
-                            navState.selectedTrail!.stops.isNotEmpty &&
-                            (_vlogManifest?.hasStopClip(
-                                    navState.selectedTrail!.stops.last.position) ??
-                                false),
-                        isMovingTooFast: navState.currentSpeedMs > 3.0,
-                        vlogClipCount: _vlogManifest?.totalClips ?? 0,
-                        onRecordStopVlog: navState.lastCheckedInStop != null
-                            ? () {
-                                final stop = navState.lastCheckedInStop!;
-                                unawaited(_openVlogRecorder(
-                                  navState: navState,
-                                  kind: VlogClipKind.stop,
-                                  stopPosition: stop.position,
-                                  spotId: stop.spotId,
-                                  spotName: stop.name,
-                                  municipality: stop.municipality,
-                                ));
-                              }
-                            : null,
-                        onRecordFinalStopVlog: navState.isTrailCompleted &&
-                                navState.selectedTrail != null &&
-                                navState.selectedTrail!.stops.isNotEmpty
-                            ? () {
-                                final finalStop =
-                                    navState.selectedTrail!.stops.last;
-                                unawaited(_openVlogRecorder(
-                                  navState: navState,
-                                  kind: VlogClipKind.stop,
-                                  stopPosition: finalStop.position,
-                                  spotId: finalStop.spotId,
-                                  spotName: finalStop.name,
-                                  municipality: finalStop.municipality,
-                                ));
-                              }
-                            : null,
-                        onOpenTrailVlogStudio: navState.isTrailCompleted &&
-                                navState.selectedTrail != null
-                            ? () => unawaited(_openTrailVlogStudio(navState))
-                            : null,
-                        onContinueCheckIn: () =>
-                            unawaited(notifier.continueAfterCheckIn()),
-                        onDone: () {
-                          _stopLiveNavigation(keepAdventureState: false);
-                          if (canPop) {
-                            Navigator.of(context).maybePop();
+                  ] else ...[
+                    // Adventure Top Banner (safe-area aware, tap opens StepsSheet)
+                    Positioned(
+                      top: MediaQuery.paddingOf(context).top + 8,
+                      left: 12,
+                      right: 12,
+                      child: AdventureTopBanner(
+                        currentManeuver: navState.currentManeuver,
+                        distanceToManeuverM: navState.distanceToManeuverM,
+                        upcomingManeuvers: navState.upcomingManeuvers,
+                        isRerouting: navState.isRerouting,
+                        onOpenSteps: () {
+                          if (route != null && route.maneuvers.isNotEmpty) {
+                            StepsSheet.show(
+                              context,
+                              maneuvers: route.maneuvers,
+                              activeStepIndex: navState.activeStepIndex,
+                              onStepSelected: (idx) => _focusStep(idx, route),
+                            );
                           }
                         },
                       ),
                     ),
+
+                    // Loading Toast (driving only)
+                    if (navState.isLoadingRoute)
+                      Positioned(
+                        top: MediaQuery.paddingOf(context).top + 110,
+                        left: grid.px(4),
+                        right: grid.px(4),
+                        child: Center(
+                          child: PixelPanel(
+                            style: PixelBoxStyle.parchment,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const PixelLoader(label: 'Routing', artPx: 6),
+                                SizedBox(width: grid.px(2)),
+                                Flexible(
+                                  child: Text(
+                                    'Calculating Valhalla road network...',
+                                    style: PixelType.body(context),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Error Toast Banner (driving only)
+                    if (navState.error != null)
+                      Positioned(
+                        top: MediaQuery.paddingOf(context).top + 110,
+                        left: grid.px(4),
+                        right: grid.px(4),
+                        child: PixelPanel(
+                          style: PixelBoxStyle.gold,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  navState.error!,
+                                  style: PixelType.body(
+                                    context,
+                                    color: PixelPalette.goldDeep,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: grid.px(1)),
+                              PixelButton(
+                                key: const ValueKey('nav_error_retry'),
+                                label: 'Retry',
+                                variant: PixelButtonVariant.secondary,
+                                onPressed: () => notifier.fetchRoute(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // Driving bottom stack: Speed box + Mute/Re-centre + Bottom bar
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Speed box (hidden if unknown or compact landscape)
+                                if (navState.currentPosition != null &&
+                                    navState.currentSpeedMs >= 0 &&
+                                    MediaQuery.orientationOf(context) !=
+                                        Orientation.landscape &&
+                                    MediaQuery.sizeOf(context).height >= 450)
+                                  _speedBox(context, navState.currentSpeedMs)
+                                else
+                                  const SizedBox.shrink(),
+
+                                // Right-edge 48dp square controls
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (navState.selectedTrail != null &&
+                                        !navState.isTrailCompleted) ...[
+                                      _squareMapButton(
+                                        key: const ValueKey(
+                                            'nav_road_vlog_clip'),
+                                        label: '+CLIP',
+                                        semanticLabel:
+                                            'Record 3 second road vlog clip',
+                                        isHighlighted: _vlogManifest
+                                                ?.roadClipForLeg(navState
+                                                    .currentStopNumber) !=
+                                            null,
+                                        onTap: () => unawaited(
+                                          _openVlogRecorder(
+                                            navState: navState,
+                                            kind: VlogClipKind.road,
+                                            stopPosition:
+                                                navState.currentStopNumber,
+                                            spotName: 'On The Road',
+                                            municipality: navState
+                                                    .nextUncheckedStop
+                                                    ?.municipality ??
+                                                'Pangasinan',
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      if ((_vlogManifest?.totalClips ?? 0) >
+                                          0) ...[
+                                        _squareMapButton(
+                                          key: const ValueKey(
+                                              'nav_open_vlog_studio'),
+                                          label: 'VLOG',
+                                          semanticLabel:
+                                              'Open Trail Vlog Studio',
+                                          isHighlighted: true,
+                                          onTap: () => unawaited(
+                                            _openTrailVlogStudio(navState),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                      ],
+                                    ],
+                                    _squareMapButton(
+                                      key: const ValueKey('nav_mute_button'),
+                                      label: navState.isVoiceMuted
+                                          ? 'MUTE'
+                                          : 'VOX',
+                                      semanticLabel: navState.isVoiceMuted
+                                          ? 'Unmute voice'
+                                          : 'Mute voice',
+                                      isHighlighted: false,
+                                      onTap: notifier.toggleVoiceMuted,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _squareMapButton(
+                                      key: const ValueKey('nav_recenter'),
+                                      label: 'CTR',
+                                      semanticLabel: 'Re-centre map',
+                                      isHighlighted:
+                                          !navState.isCameraFollowing,
+                                      blinkDim: !navState.isCameraFollowing &&
+                                          _pulseFrame,
+                                      onTap: () {
+                                        notifier.setCameraFollowing(true);
+                                        if (navState.currentPosition != null) {
+                                          unawaited(_nativeMap.easeTo(
+                                            LatLng(
+                                              navState
+                                                  .currentPosition!.latitude,
+                                              navState
+                                                  .currentPosition!.longitude,
+                                            ),
+                                            16.5,
+                                            bearing: navState.currentPosition!
+                                                        .speed >
+                                                    1.0
+                                                ? navState
+                                                    .currentPosition!.heading
+                                                : null,
+                                            tilt: 45.0,
+                                          ));
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          AdventureBottomBar(
+                            summary:
+                                route?.summary ?? const RouteSummary.empty(),
+                            selectedTrail: navState.selectedTrail,
+                            nextStop: navState.nextUncheckedStop,
+                            totalStops: navState.totalTrailStops,
+                            currentStopNumber: navState.currentStopNumber,
+                            isWithinCheckinRadius:
+                                navState.isWithinCheckinRadius,
+                            currentSpeedMs: navState.currentSpeedMs,
+                            isCheckingIn: navState.isCheckingIn,
+                            hasArrivedDirect: navState.hasArrivedDirect,
+                            isTrailCompleted: navState.isTrailCompleted,
+                            trailRewardPoints:
+                                navState.trailCompletionReward ?? 0,
+                            remainingDistanceMeters:
+                                navState.remainingDistanceMeters,
+                            remainingDurationSeconds:
+                                navState.remainingDurationSeconds,
+                            distanceToStopMeters: navState.nextUncheckedStop !=
+                                    null
+                                ? Geolocator.distanceBetween(
+                                    navState.effectiveOriginPoint.latitude,
+                                    navState.effectiveOriginPoint.longitude,
+                                    navState.nextUncheckedStop!.point.latitude,
+                                    navState.nextUncheckedStop!.point.longitude,
+                                  )
+                                : null,
+                            isDegraded: route?.isStraightLineFallback == true,
+                            onCheckIn: () => notifier.checkInCurrentStop(),
+                            onOpenSteps: () {
+                              if (route != null && route.maneuvers.isNotEmpty) {
+                                StepsSheet.show(
+                                  context,
+                                  maneuvers: route.maneuvers,
+                                  activeStepIndex: navState.activeStepIndex,
+                                  onStepSelected: (idx) =>
+                                      _focusStep(idx, route),
+                                );
+                              }
+                            },
+                            onEnd: _confirmEndAdventure,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Centred Check-In / Arrival / Completion Overlay Card
+                    if (navState.lastCheckedInStop != null ||
+                        navState.isTrailCompleted ||
+                        navState.hasArrivedDirect)
+                      Positioned.fill(
+                        child: AdventureArriveOverlay(
+                          checkedInStop: navState.lastCheckedInStop,
+                          nextStop: navState.nextUncheckedStop,
+                          stops: navState.selectedTrail?.stops ?? const [],
+                          totalStops: navState.totalTrailStops,
+                          isTrailCompleted: navState.isTrailCompleted,
+                          trailTitle: navState.selectedTrail?.title,
+                          trailRewardPoints: navState.trailCompletionReward,
+                          hasArrivedDirect: navState.hasArrivedDirect,
+                          destinationName: widget.destination.name,
+                          tripMinutes: route != null
+                              ? (route.summary.durationSeconds / 60).ceil()
+                              : null,
+                          tripKm: route?.summary.distanceKm,
+                          hasStopVlogClip: navState.lastCheckedInStop != null &&
+                              (_vlogManifest?.hasStopClip(
+                                      navState.lastCheckedInStop!.position) ??
+                                  false),
+                          hasFinalStopVlogClip:
+                              navState.selectedTrail != null &&
+                                  navState.selectedTrail!.stops.isNotEmpty &&
+                                  (_vlogManifest?.hasStopClip(navState
+                                          .selectedTrail!
+                                          .stops
+                                          .last
+                                          .position) ??
+                                      false),
+                          isMovingTooFast: navState.currentSpeedMs > 3.0,
+                          vlogClipCount: _vlogManifest?.totalClips ?? 0,
+                          onRecordStopVlog: navState.lastCheckedInStop != null
+                              ? () {
+                                  final stop = navState.lastCheckedInStop!;
+                                  unawaited(_openVlogRecorder(
+                                    navState: navState,
+                                    kind: VlogClipKind.stop,
+                                    stopPosition: stop.position,
+                                    spotId: stop.spotId,
+                                    spotName: stop.name,
+                                    municipality: stop.municipality,
+                                  ));
+                                }
+                              : null,
+                          onRecordFinalStopVlog: navState.isTrailCompleted &&
+                                  navState.selectedTrail != null &&
+                                  navState.selectedTrail!.stops.isNotEmpty
+                              ? () {
+                                  final finalStop =
+                                      navState.selectedTrail!.stops.last;
+                                  unawaited(_openVlogRecorder(
+                                    navState: navState,
+                                    kind: VlogClipKind.stop,
+                                    stopPosition: finalStop.position,
+                                    spotId: finalStop.spotId,
+                                    spotName: finalStop.name,
+                                    municipality: finalStop.municipality,
+                                  ));
+                                }
+                              : null,
+                          onOpenTrailVlogStudio: navState.isTrailCompleted &&
+                                  navState.selectedTrail != null
+                              ? () => unawaited(_openTrailVlogStudio(navState))
+                              : null,
+                          onContinueCheckIn: () =>
+                              unawaited(notifier.continueAfterCheckIn()),
+                          onDone: () {
+                            _stopLiveNavigation(keepAdventureState: false);
+                            if (canPop) {
+                              Navigator.of(context).maybePop();
+                            }
+                          },
+                        ),
+                      ),
+                  ],
                 ],
-              ],
-            ),
+              ),
             ),
           );
         },

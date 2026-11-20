@@ -26,11 +26,13 @@ Widget _harness(Future<List<HiddenGemModel>> Function() load) {
   final router = GoRouter(routes: [
     GoRoute(
       path: '/',
-      builder: (_, __) => const Scaffold(body: SingleChildScrollView(child: HiddenGemCard())),
+      builder: (_, __) =>
+          const Scaffold(body: SingleChildScrollView(child: HiddenGemCard())),
     ),
     GoRoute(
       path: '/explore/:slug',
-      builder: (_, state) => Scaffold(body: Text('detail:${state.pathParameters['slug']}')),
+      builder: (_, state) =>
+          Scaffold(body: Text('detail:${state.pathParameters['slug']}')),
     ),
   ]);
   return ProviderScope(
@@ -54,7 +56,8 @@ void main() {
     expect(_gem.crowdLabel, 'Estimated quiet');
   });
 
-  testWidgets('renders the ad-style card with Not sponsored disclosure', (tester) async {
+  testWidgets('renders the ad-style card with Not sponsored disclosure',
+      (tester) async {
     await tester.pumpWidget(_harness(() async => const [_gem]));
     await tester.pumpAndSettle();
 
@@ -65,7 +68,8 @@ void main() {
     expect(find.text('Estimated quiet'), findsOneWidget);
   });
 
-  testWidgets('unknown crowd is hidden and the fallback header is Local treasure',
+  testWidgets(
+      'unknown crowd is hidden and the fallback header is Local treasure',
       (tester) async {
     await tester.pumpWidget(_harness(() async => const [_unknownGem]));
     await tester.pumpAndSettle();
@@ -91,7 +95,8 @@ void main() {
     expect(find.text('HIDDEN GEM'), findsNothing);
   });
 
-  testWidgets('collapses on network error instead of blocking the feed', (tester) async {
+  testWidgets('collapses on network error instead of blocking the feed',
+      (tester) async {
     await tester.pumpWidget(_harness(() async => throw Exception('offline')));
     await tester.pumpAndSettle();
     expect(find.text('HIDDEN GEM'), findsNothing);

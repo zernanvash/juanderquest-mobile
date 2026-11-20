@@ -207,11 +207,11 @@ void main() {
       await tester.pumpWidget(_wrapScreen(spot: _fullSpot, user: authorUser));
       await tester.pumpAndSettle();
 
-      // Before scrolling, ADD PHOTO and PLAY QUEST are hidden.
-      expect(find.byKey(const ValueKey('spot_add_photo')), findsNothing);
+      // The network cover never loads in tests → no-photo layout: ADD PHOTO shows at once
+      // (owner 2026-11-20); PLAY QUEST still needs a quest.
+      expect(find.byKey(const ValueKey('spot_add_photo')), findsOneWidget);
       expect(find.byKey(const ValueKey('spot_play_quest_btn')), findsNothing);
 
-      // Scroll slightly so scrolled-only actions appear under GET DIRECTIONS.
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('spot_add_photo')), findsOneWidget);

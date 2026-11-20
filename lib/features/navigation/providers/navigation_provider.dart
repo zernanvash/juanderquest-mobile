@@ -333,7 +333,9 @@ class NavigationState {
       color: isTrailOrQuiet
           ? const Color(0xFF2D6A4F) // Forest emerald
           : const Color(0xFF0284C7), // Sky route blue
-      fitBounds: !isAdventureActive,
+      // The overlay is re-sent on every pulse frame; fitting here snapped the camera back each
+      // tick so the user could not zoom. NavigationScreen fits once per new route instead.
+      fitBounds: false,
     );
   }
 }
@@ -646,13 +648,13 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
       String? loadError;
       final trailsFuture = _trailsApi
           .fetchTrailsNear(
-            lat: dest.lat,
-            lng: dest.lng,
-          )
+        lat: dest.lat,
+        lng: dest.lng,
+      )
           .catchError((Object e) {
-            loadError = TrailsApi.extractErrorMessage(e);
-            return <NearbyTrail>[];
-          });
+        loadError = TrailsApi.extractErrorMessage(e);
+        return <NearbyTrail>[];
+      });
 
       final tripPlanFuture = _trailsApi
           .planTrip(

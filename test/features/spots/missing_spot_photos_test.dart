@@ -12,6 +12,7 @@ import 'package:juanderquest_app/features/spots/explore/widgets/explore_spot_car
 import 'package:juanderquest_app/features/spots/models/spot_model.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
 import 'package:juanderquest_app/features/spots/theater/theater_still_photo.dart';
+import 'package:juanderquest_app/features/spots/theater/theater_title_block.dart';
 
 // Network images always fail in flutter_test (HTTP 400), which stands in for a
 // photo that was taken down.
@@ -189,6 +190,47 @@ void main() {
           .getSize(find.byKey(const Key('theater_first_viewport_compact')));
       expect(header.height, lessThan(520));
       expect(find.text('Tondol White Sand Beach'), findsWidgets);
+    });
+
+    // Owner 2026-11-20: without a photo there is nothing to scroll past, so ADD PHOTO shows at
+    // once and the SCROLL hint is hidden.
+    testWidgets('no photos at all: ADD PHOTO at once, no scroll hint',
+        (tester) async {
+      await _size(tester, const Size(400, 900));
+      await tester.pumpWidget(_app(SpotDetailScreen(spot: _spot())));
+      await tester.pumpAndSettle();
+      final compact = find.byKey(const Key('theater_first_viewport_compact'));
+      expect(
+          find.descendant(
+              of: compact,
+              matching: find.byKey(const ValueKey('spot_add_photo'))),
+          findsOneWidget);
+      expect(find.text('SCROLL ▼'), findsNothing);
+    });
+
+    testWidgets('with a cover photo: SCROLL hint, ADD PHOTO waits for a scroll',
+        (tester) async {
+      await _size(tester, const Size(400, 900));
+      Widget viewport(double offset) => _app(Scaffold(
+            body: SingleChildScrollView(
+              child: TheaterFirstViewport(
+                spot: _spot(),
+                scrollOffset: offset,
+                onDirections: () {},
+                onPlayQuest: () {},
+                onAddPhoto: () {},
+                hasPhoto: true,
+              ),
+            ),
+          ));
+      await tester.pumpWidget(viewport(0));
+      await tester.pump();
+      expect(find.text('SCROLL ▼'), findsOneWidget);
+      expect(find.byKey(const ValueKey('spot_add_photo')), findsNothing);
+      await tester.pumpWidget(viewport(10));
+      await tester.pump();
+      expect(find.text('SCROLL ▼'), findsNothing);
+      expect(find.byKey(const ValueKey('spot_add_photo')), findsOneWidget);
     });
 
     for (final size in const [Size(320, 568), Size(568, 320)]) {

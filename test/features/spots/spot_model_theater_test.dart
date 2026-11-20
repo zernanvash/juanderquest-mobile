@@ -34,7 +34,8 @@ void main() {
         'id': 'spot-2',
         'slug': 'patar-beach',
         'name': 'Patar Beach',
-        'description': 'Golden white sands of Bolinao. Watch the stunning sunset over the West Philippine Sea.',
+        'description':
+            'Golden white sands of Bolinao. Watch the stunning sunset over the West Philippine Sea.',
         'category': 'nature',
         'subcategory': 'beach',
         'municipality': 'Bolinao',
@@ -54,7 +55,8 @@ void main() {
 
       expect(spot.goodFor, ['Swimming', 'Sunset viewing', 'Photography']);
       expect(spot.bestTime, ['4:00 PM - 6:00 PM', 'Summer']);
-      expect(spot.hours, {'monday': 'Open 24 hours', 'sunday': 'Open 24 hours'});
+      expect(
+          spot.hours, {'monday': 'Open 24 hours', 'sunday': 'Open 24 hours'});
       expect(spot.amenities, ['Parking', 'Restrooms', 'Cottages']);
       expect(spot.sourceUrl, 'https://bolinao.gov.ph');
       expect(spot.isTest, isTrue);
@@ -142,7 +144,9 @@ void main() {
       expect(restored.media[1].isVideo, original.media[1].isVideo);
     });
 
-    test('media order: image_url -> attached_assets -> photos, with de-duplication', () {
+    test(
+        'media order: image_url -> attached_assets -> photos, with de-duplication',
+        () {
       final json = {
         'id': 'spot-media-order',
         'slug': 'media-order-spot',
@@ -217,7 +221,8 @@ void main() {
         'id': 's1',
         'slug': 's1',
         'name': 'Spot 1',
-        'description': 'Hundred Islands is a cluster of 124 islands. It offers island hopping and snorkeling.',
+        'description':
+            'Hundred Islands is a cluster of 124 islands. It offers island hopping and snorkeling.',
         'category': 'nature',
         'subcategory': 'park',
         'municipality': 'Alaminos',
@@ -227,7 +232,8 @@ void main() {
         'gps_lat': 0,
         'gps_lng': 0,
       });
-      expect(spotWithPeriod.teaser, 'Hundred Islands is a cluster of 124 islands.');
+      expect(spotWithPeriod.teaser,
+          'Hundred Islands is a cluster of 124 islands.');
 
       final spotWithExclamation = spotWithPeriod.copyWith(
         description: 'Experience the magic of Pangasinan! Plan your visit now.',

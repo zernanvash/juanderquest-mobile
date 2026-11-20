@@ -113,7 +113,9 @@ void main() {
       expect(result.insertionIndex, 3);
     });
 
-    test('clamps insertion index to ordinary.length when list has fewer than 3 items', () {
+    test(
+        'clamps insertion index to ordinary.length when list has fewer than 3 items',
+        () {
       const spots = [
         _FakeSpot('s1', 'Spot 1'),
         _FakeSpot('w1', 'Winner 1'),

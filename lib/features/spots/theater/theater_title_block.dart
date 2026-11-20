@@ -78,6 +78,8 @@ class TheaterFirstViewport extends StatelessWidget {
               onAddPhoto: onAddPhoto,
               onOpenSponsoredQuest: onOpenSponsoredQuest,
               hasQuests: hasQuests,
+              // Owner 2026-11-20: no photo → ADD PHOTO right away, no scroll hint.
+              hasCover: false,
             ),
           ],
         ),
@@ -129,6 +131,7 @@ class _HeroTitleBlock extends StatelessWidget {
     this.onAddPhoto,
     this.onOpenSponsoredQuest,
     this.hasQuests = false,
+    this.hasCover = true,
   });
 
   final SpotModel spot;
@@ -138,6 +141,10 @@ class _HeroTitleBlock extends StatelessWidget {
   final VoidCallback? onAddPhoto;
   final ValueChanged<String>? onOpenSponsoredQuest;
   final bool hasQuests;
+
+  /// A cover photo fills the first screen: the secondary actions wait for a scroll and the
+  /// SCROLL hint shows. Without one, the actions show at once and there is no hint.
+  final bool hasCover;
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +251,8 @@ class _HeroTitleBlock extends StatelessWidget {
         ),
 
         // Scrolled-only secondary actions: ADD PHOTO + PLAY QUEST
-        if (scrollOffset > 0 && (onAddPhoto != null || hasQuests)) ...[
+        if ((scrollOffset > 0 || !hasCover) &&
+            (onAddPhoto != null || hasQuests)) ...[
           SizedBox(height: grid.px(1.5)),
           Row(
             children: [
@@ -274,7 +282,7 @@ class _HeroTitleBlock extends StatelessWidget {
         ],
 
         // Stepped SCROLL ▼ hint (bobs 2 art px at 4 fps)
-        if (scrollOffset < 10) ...[
+        if (hasCover && scrollOffset < 10) ...[
           SizedBox(height: grid.px(2)),
           Center(
             child: _SteppedScrollHint(

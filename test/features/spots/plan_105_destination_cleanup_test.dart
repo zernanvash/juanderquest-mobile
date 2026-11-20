@@ -187,11 +187,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Hidden before scrolling
-      expect(find.byKey(const ValueKey('spot_add_photo')), findsNothing);
-      expect(find.byKey(const ValueKey('spot_play_quest_btn')), findsNothing);
-
-      // Scroll down slightly -> ADD PHOTO & PLAY QUEST appear under GET DIRECTIONS
+      // Network photos never load in tests, so this is the no-photo layout: ADD PHOTO and
+      // PLAY QUEST show at once (owner 2026-11-20). The cover-photo layout, where they wait
+      // for a scroll, is covered in missing_spot_photos_test.dart.
+      expect(find.byKey(const ValueKey('theater_first_viewport_compact')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('spot_add_photo')), findsOneWidget);
+      expect(find.byKey(const ValueKey('spot_play_quest_btn')), findsOneWidget);
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('spot_add_photo')), findsOneWidget);
