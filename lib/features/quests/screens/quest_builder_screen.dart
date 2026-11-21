@@ -309,6 +309,9 @@ class _QuestBuilderScreenState extends ConsumerState<QuestBuilderScreen> {
       if (!mounted) return;
       setState(() {
         _serverError = switch (failure.code) {
+          'DESTINATION_NOT_PUBLISHED' =>
+            'You can add quests here once this place is published.',
+          // Older servers only let the poster add quests.
           'FORBIDDEN_NOT_DESTINATION_AUTHOR' =>
             'Only the scout who posted this place can add quests.',
           'TASK_TOO_FAR' =>
