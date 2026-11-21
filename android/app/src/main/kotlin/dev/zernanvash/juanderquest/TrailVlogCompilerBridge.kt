@@ -151,7 +151,11 @@ class TrailVlogCompilerBridge(
                 }
             }
 
-            val composition = Composition.Builder(sequences).build()
+            // Stop/outro cards are silent images while clips with mic sound carry audio; Media3 rejects a
+            // sequence that mixes the two unless it fills the gaps with silence.
+            val composition = Composition.Builder(sequences)
+                .experimentalSetForceAudioTrack(true)
+                .build()
             var finished = false
 
             val transformer = Transformer.Builder(context)
@@ -237,8 +241,9 @@ class TrailVlogCompilerBridge(
             File(videoPaths.first()).copyTo(outFile, overwrite = true)
             return true
         }
+        var muxer: MediaMuxer? = null
         return try {
-            val muxer = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            muxer = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             var outVideoTrack = -1
             var outAudioTrack = -1
             var muxerStarted = false
@@ -313,11 +318,17 @@ class TrailVlogCompilerBridge(
             if (muxerStarted) {
                 muxer.stop()
             }
-            muxer.release()
             muxerStarted
         } catch (_: Exception) {
-            File(videoPaths.first()).copyTo(outFile, overwrite = true)
-            true
+            // Clips that cannot be stitched (e.g. mixed camera formats) fail honestly instead of
+            // reporting success with only the first 3-second clip.
+            outFile.delete()
+            false
+        } finally {
+            try {
+                muxer?.release()
+            } catch (_: Exception) {
+            }
         }
     }
 
