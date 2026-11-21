@@ -10,7 +10,8 @@ void main() {
     final line = File('pubspec.yaml')
         .readAsLinesSync()
         .firstWhere((l) => l.startsWith('version: '));
-    // 0.1.n = the classic (non-pixel) app, 0.2.n = the pixel app, 0.3.n = the v0.3 makeover; bump n every release.
-    expect(line, matches(RegExp(r'^version: 0.[123].\d+\+1$')));
+    // 0.1.n = the classic (non-pixel) app, 0.2.n = the pixel app, 0.3.n = the v0.3 makeover,
+    // 0.4.n = v0.4 (Trail Vlog, Region I launch); bump n every release.
+    expect(line, matches(RegExp(r'^version: 0\.[1234]\.\d+\+1$')));
   });
 }
