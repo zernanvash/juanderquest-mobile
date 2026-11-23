@@ -193,11 +193,18 @@ class SukiProgramDetail {
     required this.program,
     this.card,
     this.rewards = const [],
+    this.isComingSoon = false,
   });
 
   final SukiProgram program;
   final SukiCardProgress? card;
   final List<SukiReward> rewards;
+  final bool isComingSoon;
+
+  factory SukiProgramDetail.comingSoon() => SukiProgramDetail(
+        program: SukiProgram.fromJson(const {}),
+        isComingSoon: true,
+      );
 
   factory SukiProgramDetail.fromJson(Map<String, dynamic> j) =>
       SukiProgramDetail(

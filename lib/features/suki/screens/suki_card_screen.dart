@@ -20,7 +20,7 @@ import '../providers/suki_provider.dart';
 import '../suki_scan_flow.dart';
 import '../widgets/suki_card_grid.dart';
 import '../widgets/suki_pass_sheet.dart';
-import 'suki_cards_screen.dart' show SukiErrorPanel;
+import 'suki_cards_screen.dart' show SukiComingSoonPanel, SukiErrorPanel;
 
 /// Plan 107 (`/suki/:programId`): one shop's card, its rewards and the pass.
 class SukiCardScreen extends ConsumerWidget {
@@ -58,7 +58,12 @@ class SukiCardScreen extends ConsumerWidget {
                       padding: EdgeInsets.all(grid.gutter),
                       children: [SukiErrorPanel(error: error)],
                     ),
-                    data: (data) => _body(context, ref, grid, data),
+                    data: (data) => data.isComingSoon
+                        ? ListView(
+                            padding: EdgeInsets.all(grid.gutter),
+                            children: const [SukiComingSoonPanel()],
+                          )
+                        : _body(context, ref, grid, data),
                   ),
                 ),
               ],

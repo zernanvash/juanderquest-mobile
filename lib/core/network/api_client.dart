@@ -214,5 +214,7 @@ class ApiClient {
     }
   }
 
+  String? get authToken => _authToken;
+
   bool get isAuthenticated => _authToken != null;
 }

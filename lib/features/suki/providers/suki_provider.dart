@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,63 @@ import '../../../core/l10n/app_language.dart';
 import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/suki_models.dart';
+
+/// List wrapper carrying an empty "coming soon" flag when Suki is disabled.
+class SukiProgramList extends ListBase<SukiProgram> {
+  SukiProgramList(this._items, {this.isComingSoon = false});
+
+  const SukiProgramList.comingSoon()
+      : _items = const [],
+        isComingSoon = true;
+
+  final List<SukiProgram> _items;
+  final bool isComingSoon;
+
+  @override
+  int get length => _items.length;
+
+  @override
+  set length(int newLength) =>
+      throw UnsupportedError('SukiProgramList is unmodifiable');
+
+  @override
+  SukiProgram operator [](int index) => _items[index];
+
+  @override
+  void operator []=(int index, SukiProgram value) =>
+      throw UnsupportedError('SukiProgramList is unmodifiable');
+}
+
+/// List wrapper carrying an empty "coming soon" flag when Suki is disabled.
+class SukiCardList extends ListBase<SukiCard> {
+  SukiCardList(this._items, {this.isComingSoon = false});
+
+  const SukiCardList.comingSoon()
+      : _items = const [],
+        isComingSoon = true;
+
+  final List<SukiCard> _items;
+  final bool isComingSoon;
+
+  @override
+  int get length => _items.length;
+
+  @override
+  set length(int newLength) =>
+      throw UnsupportedError('SukiCardList is unmodifiable');
+
+  @override
+  SukiCard operator [](int index) => _items[index];
+
+  @override
+  void operator []=(int index, SukiCard value) =>
+      throw UnsupportedError('SukiCardList is unmodifiable');
+}
+
+bool isSukiComingSoonState(Object? value) =>
+    (value is SukiProgramList && value.isComingSoon) ||
+    (value is SukiCardList && value.isComingSoon) ||
+    (value is SukiProgramDetail && value.isComingSoon);
 
 /// Plan 107 — the customer's Suki Card calls (plan §6.4).
 class SukiApi {
@@ -95,22 +154,39 @@ class SukiApi {
 final sukiApiProvider =
     Provider<SukiApi>((ref) => SukiApi(ref.watch(apiClientProvider)));
 
-/// The signed-in traveler's Suki cards (empty when signed out).
+/// The signed-in traveler's Suki cards (empty when signed out or disabled).
 final mySukiCardsProvider =
     FutureProvider.autoDispose<List<SukiCard>>((ref) async {
   if (ref.watch(authProvider.select((s) => s.user == null))) return const [];
-  return ref.read(sukiApiProvider).myCards();
+  try {
+    return await ref.read(sukiApiProvider).myCards();
+  } catch (error) {
+    if (isSukiDisabled(error)) return const SukiCardList.comingSoon();
+    rethrow;
+  }
 });
 
 /// Active Suki programs, nearest first when a point is given.
 final nearbySukiProgramsProvider = FutureProvider.autoDispose
-    .family<List<SukiProgram>, ({double? lat, double? lng})>((ref, at) =>
-        ref.read(sukiApiProvider).nearby(lat: at.lat, lng: at.lng));
+    .family<List<SukiProgram>, ({double? lat, double? lng})>((ref, at) async {
+  try {
+    return await ref.read(sukiApiProvider).nearby(lat: at.lat, lng: at.lng);
+  } catch (error) {
+    if (isSukiDisabled(error)) return const SukiProgramList.comingSoon();
+    rethrow;
+  }
+});
 
 /// One program page (`/suki/:programId`).
 final sukiProgramProvider = FutureProvider.autoDispose
-    .family<SukiProgramDetail, String>(
-        (ref, id) => ref.read(sukiApiProvider).program(id));
+    .family<SukiProgramDetail, String>((ref, id) async {
+  try {
+    return await ref.read(sukiApiProvider).program(id);
+  } catch (error) {
+    if (isSukiDisabled(error)) return SukiProgramDetail.comingSoon();
+    rethrow;
+  }
+});
 
 /// The server's error code (`error.code`), or ''.
 String sukiErrorCode(Object error) {
@@ -123,8 +199,11 @@ String sukiErrorCode(Object error) {
   return '';
 }
 
-/// `suki_enabled` is off on the server (503 SUKI_DISABLED).
-bool isSukiDisabled(Object error) => sukiErrorCode(error) == 'SUKI_DISABLED';
+/// `suki_enabled` is off on the server (503 SUKI_DISABLED / FEATURE_DISABLED).
+bool isSukiDisabled(Object error) {
+  final code = sukiErrorCode(error);
+  return code == 'SUKI_DISABLED' || code == 'FEATURE_DISABLED';
+}
 
 String sukiComingSoonText(BuildContext context) => tr(context,
     en: 'Suki Cards are coming soon.', tl: 'Malapit na ang Suki Cards.');
@@ -173,6 +252,7 @@ String sukiErrorText(BuildContext context, Object error) {
           en: 'This Suki Card is not active right now.',
           tl: 'Hindi aktibo ang Suki Card na ito ngayon.');
     case 'SUKI_DISABLED':
+    case 'FEATURE_DISABLED':
       return sukiComingSoonText(context);
   }
   if (error is DioException) {

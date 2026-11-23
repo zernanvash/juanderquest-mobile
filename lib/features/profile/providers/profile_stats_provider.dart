@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../submissions/providers/submission_provider.dart';
 
 enum BadgeState { earned, inProgress, locked }
@@ -28,7 +29,10 @@ class ProfileStatsModel {
 final profileStatsProvider = Provider<ProfileStatsModel>((ref) {
   final subState = ref.watch(submissionProvider);
 
-  if (subState.submissions.isEmpty && !subState.isLoading) {
+  if (subState.submissions.isEmpty &&
+      !subState.isLoading &&
+      subState.error == null &&
+      ref.read(apiClientProvider).isAuthenticated) {
     // Read the notifier now: using ref inside the microtask asserts once a
     // dependency changed (live updates refresh submissions; 2026-11-18).
     final notifier = ref.read(submissionProvider.notifier);

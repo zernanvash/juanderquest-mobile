@@ -46,7 +46,12 @@ final sukiQuickFixProvider =
 final sukiNearbyHereProvider =
     FutureProvider.autoDispose<List<SukiProgram>>((ref) async {
   final at = await ref.read(sukiQuickFixProvider)();
-  return ref.read(sukiApiProvider).nearby(lat: at.lat, lng: at.lng);
+  try {
+    return await ref.read(sukiApiProvider).nearby(lat: at.lat, lng: at.lng);
+  } catch (error) {
+    if (isSukiDisabled(error)) return const SukiProgramList.comingSoon();
+    rethrow;
+  }
 });
 
 /// Plan 107 (`/suki`): my Suki Cards, cards near me, and Scan Suki.
@@ -182,6 +187,9 @@ class _SukiCardsScreenState extends ConsumerState<SukiCardsScreen> {
                               ? SukiErrorPanel(error: error)
                               : const SizedBox.shrink(),
                           data: (programs) {
+                            if (isSukiComingSoonState(programs)) {
+                              return const SukiComingSoonPanel();
+                            }
                             final others = [
                               for (final p in programs)
                                 if (!mineIds.contains(p.id)) p
@@ -224,6 +232,25 @@ class _SukiCardsScreenState extends ConsumerState<SukiCardsScreen> {
 
 Widget _divider(PixelGrid grid) =>
     Container(height: grid.unit, color: PixelPalette.paperDim);
+
+/// "Coming soon" panel shown when Suki is switched off.
+class SukiComingSoonPanel extends StatelessWidget {
+  const SukiComingSoonPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PixelPanel(
+      key: const ValueKey('suki_coming_soon'),
+      style: PixelBoxStyle.slot,
+      padding: 2,
+      child: Text(
+        sukiComingSoonText(context),
+        textAlign: TextAlign.center,
+        style: PixelType.body(context, color: PixelPalette.ink),
+      ),
+    );
+  }
+}
 
 /// "Coming soon" when Suki is switched off, else the plain error.
 class SukiErrorPanel extends StatelessWidget {

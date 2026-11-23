@@ -96,6 +96,7 @@ final homeTownSightingThrottleProvider =
 final homeTownSightingProvider = FutureProvider<void>((ref) async {
   final auth = ref.watch(authProvider);
   if (!auth.isAuthenticated) return;
+  final api = ref.read(apiClientProvider);
   final info = await ref.watch(homeTownProvider.future);
   if (!info.gpsEnabled) return;
 
@@ -109,12 +110,12 @@ final homeTownSightingProvider = FutureProvider<void>((ref) async {
     final perm = await locationService.checkPermission();
     final hasPerm = perm.name == 'whileInUse' || perm.name == 'always';
     if (!hasPerm) return;
+    throttle.markSent(now);
     final pos = await locationService.getCurrentPosition(
       timeLimit: const Duration(seconds: 6),
     );
     if (pos == null) return;
-    throttle.markSent(now);
-    final res = await ref.read(apiClientProvider).dio.post(
+    final res = await api.dio.post(
       '/me/home-town/sighting',
       data: {
         'lat': pos.latitude,

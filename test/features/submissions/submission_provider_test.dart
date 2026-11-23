@@ -39,6 +39,7 @@ void main() {
     test('requests a server challenge and submits it instead of a marker code', () async {
       final requests = <RequestOptions>[];
       final client = ApiClient();
+      client.setAuthToken('test-token');
       client.dio.httpClientAdapter = _FakeAdapter((options) async {
         requests.add(options);
         if (options.path == '/quests/q1/challenge') {
@@ -85,6 +86,7 @@ void main() {
     test('fails truthfully without submitting when the challenge endpoint is unavailable', () async {
       final requests = <RequestOptions>[];
       final client = ApiClient();
+      client.setAuthToken('test-token');
       client.dio.httpClientAdapter = _FakeAdapter((options) async {
         requests.add(options);
         if (options.path == '/quests/q1/challenge') {
@@ -120,6 +122,7 @@ void main() {
     test('concurrent fetchSubmissions calls deduplicate to exactly 1 network request', () async {
       int requestCount = 0;
       final client = ApiClient();
+      client.setAuthToken('test-token');
       client.dio.httpClientAdapter = _FakeAdapter((options) async {
         if (options.method == 'GET' && options.path == '/submissions') {
           requestCount++;
@@ -145,6 +148,7 @@ void main() {
     test('automatic repeated calls within 30s throttle to 1 request, while force=true bypasses throttle', () async {
       int requestCount = 0;
       final client = ApiClient();
+      client.setAuthToken('test-token');
       client.dio.httpClientAdapter = _FakeAdapter((options) async {
         if (options.method == 'GET' && options.path == '/submissions') {
           requestCount++;
@@ -164,6 +168,119 @@ void main() {
       // Manual or post-submit force=true fetch
       await notifier.fetchSubmissions(force: true);
       expect(requestCount, equals(2), reason: 'force=true bypasses cooldown');
+    });
+
+    test('401 stops the loop: <=1 request for 10 calls, 0 while signed out, 1 after new token', () async {
+      int requestCount = 0;
+      bool returnUnauthorized = true;
+      final client = ApiClient(enableRetries: false);
+      client.setAuthToken('expired-token');
+      client.dio.httpClientAdapter = _FakeAdapter((options) async {
+        if (options.method == 'GET' && options.path == '/submissions') {
+          requestCount++;
+          if (returnUnauthorized) {
+            return _json({
+              'success': false,
+              'error': {'code': 'UNAUTHORIZED', 'message': 'Expired token'},
+            }, 401);
+          }
+          return _json({'success': true, 'data': []}, 200);
+        }
+        return _json({'success': false}, 404);
+      });
+
+      final notifier = SubmissionNotifier(client);
+
+      for (var i = 0; i < 10; i++) {
+        await notifier.fetchSubmissions();
+      }
+      expect(requestCount, 1);
+      expect(notifier.state.errorCode, 'UNAUTHORIZED');
+
+      // While signed out / no token, even force: true sends nothing.
+      client.setAuthToken(null);
+      notifier.onAuthTokenChanged(null);
+      await notifier.fetchSubmissions();
+      await notifier.fetchSubmissions(force: true);
+      expect(requestCount, 1);
+
+      // Setting a new token allows exactly one fetch.
+      returnUnauthorized = false;
+      client.setAuthToken('fresh-token');
+      notifier.onAuthTokenChanged('fresh-token');
+      await notifier.fetchSubmissions();
+      expect(requestCount, 2);
+      expect(notifier.state.error, isNull);
+    });
+
+    test('consecutive server errors back off 30s -> 60s -> 120s -> 300s and reset on force or success', () async {
+      int requestCount = 0;
+      bool fail = true;
+      var now = DateTime(2026, 11, 23, 12, 0, 0);
+      final client = ApiClient(enableRetries: false);
+      client.setAuthToken('valid-token');
+      client.dio.httpClientAdapter = _FakeAdapter((options) async {
+        if (options.method == 'GET' && options.path == '/submissions') {
+          requestCount++;
+          if (fail) {
+            return _json({
+              'success': false,
+              'error': {'code': 'SERVER_ERROR', 'message': 'Temporary outage'},
+            }, 500);
+          }
+          return _json({'success': true, 'data': []}, 200);
+        }
+        return _json({'success': false}, 404);
+      });
+
+      final notifier = SubmissionNotifier(client, clock: () => now);
+
+      // Failure #1 -> backoff 30s
+      await notifier.fetchSubmissions();
+      expect(requestCount, 1);
+      now = now.add(const Duration(seconds: 29));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 1);
+
+      // At +30s -> Failure #2 -> backoff 60s
+      now = now.add(const Duration(seconds: 1));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 2);
+      now = now.add(const Duration(seconds: 59));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 2);
+
+      // At +60s -> Failure #3 -> backoff 120s
+      now = now.add(const Duration(seconds: 1));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 3);
+      now = now.add(const Duration(seconds: 119));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 3);
+
+      // At +120s -> Failure #4 -> backoff 240s
+      now = now.add(const Duration(seconds: 1));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 4);
+      now = now.add(const Duration(seconds: 239));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 4);
+
+      // At +240s -> Failure #5 -> backoff capped at 300s
+      now = now.add(const Duration(seconds: 1));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 5);
+      now = now.add(const Duration(seconds: 299));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 5);
+
+      // force=true succeeds and resets backoff to 30s
+      fail = false;
+      await notifier.fetchSubmissions(force: true);
+      expect(requestCount, 6);
+      now = now.add(const Duration(seconds: 30));
+      await notifier.fetchSubmissions();
+      expect(requestCount, 7);
     });
   });
 }

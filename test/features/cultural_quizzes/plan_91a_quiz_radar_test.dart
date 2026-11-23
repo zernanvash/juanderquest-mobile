@@ -200,6 +200,64 @@ void main() {
     expect(apiCalls, 2);
   });
 
+  test('QuizRadarNotifier throttles and backs off after failures', () async {
+    var apiCalls = 0;
+    var now = DateTime(2026, 11, 23, 12, 0);
+    final fakeClient = ApiClient(enableRetries: false);
+    fakeClient.dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          apiCalls++;
+          handler.reject(
+            DioException(
+              requestOptions: options,
+              response: Response(
+                requestOptions: options,
+                statusCode: 500,
+                data: {'success': false},
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        culturalQuizApiClientProvider.overrideWithValue(fakeClient),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final testNotifier = QuizRadarNotifier(
+      container.read(Provider((ref) => ref)),
+      clock: () => now,
+      lastKnownPositionReader: () async => null,
+    );
+    addTearDown(testNotifier.dispose);
+
+    await testNotifier.checkWithLocation(lat: 16.02, lng: 120.23, origin: 'gps');
+    expect(apiCalls, 1);
+
+    // Even if moved >50m, throttled for 30s after failure #1
+    now = now.add(const Duration(seconds: 20));
+    await testNotifier.checkWithLocation(lat: 16.03, lng: 120.23, origin: 'gps');
+    expect(apiCalls, 1);
+
+    // At +30s -> failure #2 -> backoff 60s
+    now = now.add(const Duration(seconds: 10));
+    await testNotifier.checkWithLocation(lat: 16.04, lng: 120.23, origin: 'gps');
+    expect(apiCalls, 2);
+
+    now = now.add(const Duration(seconds: 45));
+    await testNotifier.checkWithLocation(lat: 16.05, lng: 120.23, origin: 'gps');
+    expect(apiCalls, 2);
+
+    now = now.add(const Duration(seconds: 15));
+    await testNotifier.checkWithLocation(lat: 16.06, lng: 120.23, origin: 'gps');
+    expect(apiCalls, 3);
+  });
+
   test('markCompleted moves a passed quiz to completed and drops the banner',
       () {
     final container = ProviderContainer();

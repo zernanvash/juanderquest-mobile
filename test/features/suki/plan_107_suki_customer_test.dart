@@ -634,4 +634,32 @@ void main() {
       expect(c.read(voucherProvider).redeemedVouchers, hasLength(1));
     });
   });
+
+  group('Plan 116b Part 1b: Suki 503 disabled providers', () {
+    for (final code in ['SUKI_DISABLED', 'FEATURE_DISABLED']) {
+      test('providers return coming soon state with no thrown error on 503 $code',
+          () async {
+        final err = _serverError(code, status: 503);
+        final c = ProviderContainer(overrides: [
+          _signedIn(),
+          _noFix(),
+          sukiApiProvider.overrideWithValue(_FakeSukiApi(error: err)),
+        ]);
+        addTearDown(c.dispose);
+
+        final nearby = await c
+            .read(nearbySukiProgramsProvider((lat: null, lng: null)).future);
+        expect(nearby, isEmpty);
+        expect(isSukiComingSoonState(nearby), isTrue);
+
+        final here = await c.read(sukiNearbyHereProvider.future);
+        expect(here, isEmpty);
+        expect(isSukiComingSoonState(here), isTrue);
+
+        final detail = await c.read(sukiProgramProvider('suki_abc123').future);
+        expect(detail.isComingSoon, isTrue);
+        expect(isSukiComingSoonState(detail), isTrue);
+      });
+    }
+  });
 }
