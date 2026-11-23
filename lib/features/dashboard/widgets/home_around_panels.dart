@@ -37,7 +37,7 @@ class HomeNearbyPanel extends ConsumerWidget {
     final grid = PixelGrid.of(context);
     final loc = ref.watch(homeLastKnownLocationProvider).valueOrNull;
     final spots = withoutTestContent<SpotModel>(
-      ref.watch(spotDiscoveryProvider.select((s) => s.spots)),
+      ref.watch(homeNearbySpotsProvider).valueOrNull ?? const <SpotModel>[],
       (s) => s.isTest,
       showTest: ref.watch(showTestContentProvider),
     );

@@ -339,6 +339,61 @@ class MapLibreJdqMap extends JdqMap {
   bool? _lastOverlap;
   static final Map<String, Uint8List> _labelBitmapCache = {};
   static final Map<String, Uint8List> _routeMarkerBitmapCache = {};
+  static final Map<String, Uint8List> _clusterBitmapCache = {};
+  final Set<String> _registeredClusterIcons = {};
+
+  static Future<Uint8List?> _rasterizeClusterBadge(int count, double dpr) async {
+    final label = count > 999 ? '999+' : '$count';
+    final cacheKey = '$label|${dpr.toStringAsFixed(1)}';
+    final cached = _clusterBitmapCache[cacheKey];
+    if (cached != null) return cached;
+    try {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: TextStyle(
+            fontFamily: 'Silkscreen',
+            fontSize: 12.0 * dpr,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF3E1F0A),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final padX = 8.0 * dpr;
+      final sideH = math.max(26.0 * dpr, tp.height + 8.0 * dpr);
+      final sideW = math.max(sideH, tp.width + padX * 2);
+      final border = math.max(1.5, 2.0 * dpr);
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      // Outer crisp wood ink frame
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, sideW, sideH),
+          Radius.circular(sideH / 2),
+        ),
+        Paint()..color = const Color(0xFF3E1F0A),
+      );
+      // Gold parchment interior
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(border, border, sideW - border * 2, sideH - border * 2),
+          Radius.circular((sideH - border * 2) / 2),
+        ),
+        Paint()..color = const Color(0xFFF2C14E),
+      );
+      tp.paint(canvas, Offset((sideW - tp.width) / 2, (sideH - tp.height) / 2));
+      final img = await recorder
+          .endRecording()
+          .toImage(sideW.ceil(), sideH.ceil());
+      final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+      final png = bytes?.buffer.asUint8List();
+      if (png != null) _clusterBitmapCache[cacheKey] = png;
+      return png;
+    } catch (_) {
+      return null;
+    }
+  }
   gl.LatLng _ll(LatLng point) => gl.LatLng(point.latitude, point.longitude);
   Future<void> _safe(Future<void> Function() action) async {
     if (_disposed || !_ready) return;
@@ -506,16 +561,38 @@ class MapLibreJdqMap extends JdqMap {
   @override
   Future<void> setPins(List<JdqPin> pins) async {
     _pins = pins;
-    await _safe(
-      () => _controller!.setGeoJsonSource(
+    await _safe(() async {
+      final c = _controller!;
+      final dpr = WidgetsBinding
+              .instance.platformDispatcher.views.firstOrNull?.devicePixelRatio ??
+          2.0;
+      for (final p in pins) {
+        final count = p.clusterCount;
+        if (count == null) continue;
+        final iconName = 'jdq-cluster-$count';
+        if (_registeredClusterIcons.contains(iconName)) continue;
+        final bytes = await _rasterizeClusterBadge(count, dpr);
+        if (bytes != null) {
+          await c.addImage(iconName, bytes);
+          _registeredClusterIcons.add(iconName);
+        }
+      }
+      await c.setGeoJsonSource(
         'jdq-pins',
         _collection([
           for (final p in pins)
-            _point(p.point,
-                {'id': p.id, 'name': p.label, 'quest': p.quest, 'done': p.done}),
+            _point(p.point, {
+              'id': p.id,
+              'name': p.label,
+              'quest': p.quest,
+              'done': p.done,
+              'cluster': p.clusterCount != null,
+              if (p.clusterCount != null)
+                'cluster_icon': 'jdq-cluster-${p.clusterCount}',
+            }),
         ]),
-      ),
-    );
+      );
+    });
   }
 
   @override
@@ -1047,6 +1124,19 @@ class MapLibreJdqMap extends JdqMap {
               iconAnchor: 'bottom',
               iconOpacity: _doneOpacity,
             ),
+            filter: const ['!=', ['get', 'cluster'], true],
+          );
+          await c.addSymbolLayer(
+            'jdq-pins',
+            'jdq-pin-clusters',
+            const gl.SymbolLayerProperties(
+              iconImage: ['get', 'cluster_icon'],
+              iconSize: 1.0,
+              iconAllowOverlap: true,
+              iconIgnorePlacement: true,
+              iconAnchor: 'center',
+            ),
+            filter: const ['==', ['get', 'cluster'], true],
           );
           symbolsAdded = true;
         }
@@ -1065,6 +1155,18 @@ class MapLibreJdqMap extends JdqMap {
             circleStrokeColor: '#FFFFFF',
             circleStrokeWidth: 2,
           ),
+          filter: const ['!=', ['get', 'cluster'], true],
+        );
+        await c.addCircleLayer(
+          'jdq-pins',
+          'jdq-pin-cluster-dots',
+          const gl.CircleLayerProperties(
+            circleRadius: 12,
+            circleColor: '#F2C14E',
+            circleStrokeColor: '#3E1F0A',
+            circleStrokeWidth: 2,
+          ),
+          filter: const ['==', ['get', 'cluster'], true],
         );
       }
 
@@ -1127,6 +1229,8 @@ class MapLibreJdqMap extends JdqMap {
     try {
       final c = _controller!;
       final hits = await c.queryRenderedFeatures(point, [
+        'jdq-pin-clusters',
+        'jdq-pin-cluster-dots',
         'jdq-pin-symbols',
         'jdq-pin-dots',
         'admin-place-labels',
@@ -1136,7 +1240,9 @@ class MapLibreJdqMap extends JdqMap {
         if (hit is! Map) continue;
         final id = (hit['properties'] as Map?)?['id'];
         if (id is! String) continue;
-        if (id.startsWith('spot:') || id.startsWith('quest:')) {
+        if (id.startsWith('spot:') ||
+            id.startsWith('quest:') ||
+            id.startsWith('cluster:')) {
           onTapPin?.call(id);
         } else {
           onTapPlace?.call(id);

@@ -70,13 +70,16 @@ class JdqRouteOverlay {
 
 class JdqPin {
   const JdqPin(this.id, this.point, this.label,
-      {this.quest = false, this.done = false});
+      {this.quest = false, this.done = false, this.clusterCount});
   final String id, label;
   final LatLng point;
   final bool quest;
 
   /// Plan 100 WP-9: a quest you finished, drawn faded ("shadow").
   final bool done;
+
+  /// Plan 116b Part 2: aggregated spot count for `/spots/map` cluster bubbles.
+  final int? clusterCount;
 }
 
 /// No platform controller escapes into screen logic or widget tests.

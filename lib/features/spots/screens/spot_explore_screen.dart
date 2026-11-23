@@ -9,6 +9,7 @@ import '../explore/widgets/explore_spotlight_row.dart';
 import '../providers/hidden_gem_provider.dart';
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -50,13 +51,85 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   String _query = '';
+  String _submittedQuery = '';
+  Timer? _searchDebounce;
+  CancelToken? _searchCancelToken;
+  List<SpotSearchHit> _remoteSearchHits = const [];
 
-  bool get _searching => _searchFocus.hasFocus || _query.trim().isNotEmpty;
+  bool get _searching =>
+      _searchFocus.hasFocus || _query.trim().isNotEmpty || _submittedQuery.isNotEmpty;
+
+  bool get _showTypeahead =>
+      _searchFocus.hasFocus ||
+      (_query.trim().isNotEmpty && _submittedQuery != _query.trim());
 
   void _closeSearch() {
+    _searchDebounce?.cancel();
+    _searchCancelToken?.cancel('search_closed');
     _searchController.clear();
     _searchFocus.unfocus();
-    setState(() => _query = '');
+    final hadSubmitted = _submittedQuery.isNotEmpty ||
+        ref.read(spotDiscoveryProvider).activeQuery.isNotEmpty;
+    setState(() {
+      _query = '';
+      _submittedQuery = '';
+      _remoteSearchHits = const [];
+      _visibleCount = 10;
+    });
+    if (hadSubmitted) {
+      unawaited(ref.read(spotDiscoveryProvider.notifier).load(refresh: true));
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchCancelToken?.cancel('query_changed');
+    setState(() {
+      _query = value;
+      _submittedQuery = '';
+      if (value.trim().length < 2) {
+        _remoteSearchHits = const [];
+      }
+    });
+    final trimmed = value.trim();
+    if (trimmed.length < 2) return;
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      unawaited(_runTypeahead(trimmed));
+    });
+  }
+
+  Future<void> _runTypeahead(String q) async {
+    final token = CancelToken();
+    _searchCancelToken = token;
+    try {
+      final hits = await ref
+          .read(spotDiscoveryProvider.notifier)
+          .searchTypeahead(q, limit: 15, cancelToken: token);
+      if (!mounted || token.isCancelled || _query.trim() != q) return;
+      setState(() => _remoteSearchHits = hits);
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) return;
+    } catch (_) {}
+  }
+
+  void _submitSearch([String? value]) {
+    final submitted = (value ?? _query).trim();
+    _searchDebounce?.cancel();
+    _searchCancelToken?.cancel('submitted');
+    _rememberQuery();
+    _searchFocus.unfocus();
+    setState(() {
+      _submittedQuery = submitted;
+      _visibleCount = 10;
+    });
+    if (submitted.isNotEmpty) {
+      unawaited(
+        ref.read(spotDiscoveryProvider.notifier).load(
+              query: submitted,
+              refresh: true,
+            ),
+      );
+    }
   }
 
   void _setQuery(String q) {
@@ -64,7 +137,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
       text: q,
       selection: TextSelection.collapsed(offset: q.length),
     );
-    setState(() => _query = q);
+    _onSearchChanged(q);
   }
 
   void _rememberQuery() =>
@@ -84,6 +157,8 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchCancelToken?.cancel('disposed');
     _searchController.dispose();
     _searchFocus.dispose();
     _scrollController.dispose();
@@ -93,17 +168,27 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
-    if (pos.pixels >= pos.maxScrollExtent - 200 &&
-        _visibleCount < _totalOrdinaryCount) {
-      setState(() {
-        _visibleCount += 10;
-      });
+    if (pos.pixels >= pos.maxScrollExtent - 200) {
+      final discovery = ref.read(spotDiscoveryProvider);
+      if (_visibleCount < _totalOrdinaryCount) {
+        setState(() {
+          _visibleCount += 10;
+        });
+        if (_visibleCount + 10 >= _totalOrdinaryCount &&
+            discovery.nextCursor != null) {
+          unawaited(ref.read(spotDiscoveryProvider.notifier).loadMore());
+        }
+      } else if (discovery.nextCursor != null) {
+        unawaited(ref.read(spotDiscoveryProvider.notifier).loadMore());
+      }
     }
   }
 
   Future<void> _load({bool refresh = false}) async {
     await Future.wait([
-      ref.read(spotDiscoveryProvider.notifier).load(refresh: refresh),
+      ref
+          .read(spotDiscoveryProvider.notifier)
+          .load(query: _submittedQuery, refresh: refresh),
       if (refresh) ref.refresh(choiceSpotlightProvider.future),
       if (refresh)
         ref.refresh(hiddenGemProvider.future).then((_) {}, onError: (_) {}),
@@ -153,7 +238,9 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               .toList();
           _totalOrdinaryCount = ordinarySpots.length;
           final pagedSpots = ordinarySpots.take(_visibleCount).toList();
-          final hasMore = _visibleCount < ordinarySpots.length;
+          final hasMore = _visibleCount < ordinarySpots.length ||
+              state.nextCursor != null ||
+              state.isLoadingMore;
 
           final winnerSpots = spotlight == null
               ? const <SpotModel>[]
@@ -236,18 +323,16 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                         controller: _searchController,
                         focusNode: _searchFocus,
                         active: _searching,
-                        onChanged: (v) => setState(() => _query = v),
-                        onSubmitted: (_) {
-                          _rememberQuery();
-                          _searchFocus.unfocus();
-                        },
+                        onChanged: _onSearchChanged,
+                        onSubmitted: _submitSearch,
                         onClose: _closeSearch,
                       ),
                       SizedBox(height: grid.px(3)),
-                      if (_searching)
+                      if (_showTypeahead)
                         ExploreSearchResults(
                           query: _query,
                           spots: state.spots,
+                          remoteHits: _remoteSearchHits,
                           recent: ref.watch(recentSearchesProvider),
                           onPickRecent: _setQuery,
                           onRemoveRecent: (q) => ref
@@ -545,8 +630,14 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                 variant: PixelButtonVariant.secondary,
                 style: PixelBoxStyle.parchment,
                 onPressed: () {
+                  _searchDebounce?.cancel();
+                  _searchCancelToken?.cancel('reset');
+                  _searchController.clear();
                   setState(() {
                     _filterState = _filterState.reset();
+                    _query = '';
+                    _submittedQuery = '';
+                    _remoteSearchHits = const [];
                     _visibleCount = 10;
                   });
                   _load(refresh: true);

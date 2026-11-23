@@ -38,11 +38,12 @@ final companionMessageProvider =
     Provider.family<CompanionMessage?, int>((ref, tabIndex) {
   final preferences = ref.watch(companionControllerProvider);
   if (preferences.muted) return null;
-  final discovery = ref.watch(spotDiscoveryProvider);
+  final busySpots = ref.watch(companionBusySpotsProvider);
   final submissions = ref.watch(submissionProvider);
+  final sampleSpots = busySpots.valueOrNull ?? const [];
 
   CompanionMessage? message;
-  if (discovery.failure != null && discovery.spots.isEmpty && tabIndex == 0) {
+  if (busySpots.hasError && sampleSpots.isEmpty && tabIndex == 0) {
     message = const CompanionMessage(
         id: 'discovery-offline',
         title: 'Juan lost the trail',
@@ -58,7 +59,7 @@ final companionMessageProvider =
         actionLabel: 'View history',
         route: '/history');
   } else if (tabIndex == 0 &&
-      discovery.spots.any((spot) => spot.crowdStatus == 'estimated_busy')) {
+      sampleSpots.any((spot) => spot.crowdStatus == 'estimated_busy')) {
     message = const CompanionMessage(
         id: 'busy-alternatives',
         title: 'Let’s keep the trip comfortable',
