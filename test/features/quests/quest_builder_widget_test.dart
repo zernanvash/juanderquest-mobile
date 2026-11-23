@@ -290,55 +290,90 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
-      // Verify title field is populated with default template
-      expect(find.byKey(const Key('quest_title_input')), findsOneWidget);
-
-      // Task 0 is created by default as Location Geofence. Let's switch Task 0 to AR:
-      await tester.tap(find.text('AR finder').last);
+      // Page 1 / 7: Name
+      expect(find.text('1 / 7'), findsOneWidget);
+      await tester.enterText(
+          find.byKey(const Key('wizard_name_input')), 'Hundred Islands Trio');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
       await tester.pumpAndSettle();
 
-      // Tap "Add Task" to add Task 1: QR Task with host_scans
-      await tester.tap(find.byKey(const Key('builder_add_task_btn')));
+      // Page 2 / 7: About
+      expect(find.text('2 / 7'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('wizard_about_input')),
+          'Explore the islands with AR, QR, and photo tasks.');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('QR code').last);
+      // Page 3 / 7: Task 1 = AR -> Page 4 (Where) -> Page 4 (AR details) -> Page 5 (Task list)
+      expect(find.text('3 / 7'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('wizard_task_type_ar')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+      expect(find.text('4 / 7'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+      expect(find.text('4 / 7'), findsOneWidget); // extra details keeps 4 / 7
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
       await tester.pumpAndSettle();
 
-      // Switch to host scans traveler
-      final hostScansFinder = find.byKey(const Key('qr_mode_host_scans')).last;
-      await tester.tap(hostScansFinder);
+      // Page 5 / 7: Add Task 2 = QR (host_scans_traveler)
+      expect(find.text('5 / 7'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('wizard_add_another_task_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_task_type_qr')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Host scans traveler'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
       await tester.pumpAndSettle();
 
-      // Tap "Add Task" to add Task 2: Photo Task
-      await tester.tap(find.byKey(const Key('builder_add_task_btn')));
+      // Page 5 / 7: Add Task 3 = Photo
+      await tester.tap(find.byKey(const Key('wizard_add_another_task_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_task_type_photo')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Photo').last);
+      // Page 5 / 7 -> Page 6 / 7 (Reward) -> Page 7 / 7 (Review)
+      expect(find.text('5 / 7'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
       await tester.pumpAndSettle();
+      expect(find.text('6 / 7'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+      expect(find.text('7 / 7'), findsOneWidget);
 
-      // Verify Save Draft button has minimumSize 48 and sits in bottom bar
-      final draftBtnFinder = find.byKey(const Key('builder_save_draft_btn'));
+      final draftBtnFinder = find.byKey(const Key('wizard_save_draft_btn'));
       expect(draftBtnFinder, findsOneWidget);
 
-      final publishBtnFinder = find.byKey(const Key('builder_publish_btn'));
+      final publishBtnFinder = find.byKey(const Key('wizard_publish_btn'));
       expect(publishBtnFinder, findsOneWidget);
 
-      // Tap Publish
+      // Tap Publish (auto-save created draft, so publish patches it with 3 tasks)
       await tester.tap(publishBtnFinder);
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(fakeRepo.lastCreatedPayload, isNotNull);
+      final payload = fakeRepo.lastPatchedPayload ?? fakeRepo.lastCreatedPayload!;
       expect(fakeRepo.lastCreatedSpotSlug, 'hundred-islands');
-      final payload = fakeRepo.lastCreatedPayload!;
       expect(payload['status'], 'published');
       final tasks = payload['tasks'] as List;
       expect(tasks.length, 3);
       expect(tasks[0]['verification']['type'], 'ar');
       expect(tasks[1]['verification']['type'], 'qr');
       expect(tasks[2]['verification']['type'], 'photo');
-      // Changing a task's type keeps it at the destination: a 0,0 fence fails
-      // the server's Philippines bounds check (found on the phone, 2026-11-01).
       expect(tasks[0]['verification']['fence'],
           {'lat': 16.2044, 'lng': 120.0406, 'radius_meters': 50});
       expect(tasks[1]['verification']['fence'],
@@ -378,11 +413,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
-      // Verify existing title is loaded
+      // Verify existing title is loaded on page 7
+      expect(find.text('7 / 7'), findsOneWidget);
       expect(find.text('Existing Edit Quest'), findsWidgets);
 
       // Tap Publish to save changes via PATCH
-      final publishBtnFinder = find.byKey(const Key('builder_publish_btn'));
+      final publishBtnFinder = find.byKey(const Key('wizard_publish_btn'));
       expect(publishBtnFinder, findsOneWidget);
       await tester.tap(publishBtnFinder);
       await tester.pumpAndSettle();
@@ -423,7 +459,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final draftBtn = find.byKey(const Key('builder_save_draft_btn'));
+      final draftBtn = find.byKey(const Key('wizard_save_draft_btn'));
       await tester.tap(draftBtn);
       await tester.pumpAndSettle();
       expect(fakeRepo.lastPatchedPayload!['expected_version'], 3);

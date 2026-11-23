@@ -43,6 +43,7 @@ class SpotDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
+  late SpotModel _spot;
   late final ScrollController _scrollController;
   List<SpotModel> _alternatives = [];
   bool _loadingAlternatives = true;
@@ -65,9 +66,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _isSaved = widget.spot.saved;
-    _isLiked = widget.spot.liked;
-    _likeCount = widget.spot.likeCount;
+    _spot = widget.spot;
+    _isSaved = _spot.saved;
+    _isLiked = _spot.liked;
+    _likeCount = _spot.likeCount;
     _scrollController = ScrollController()..addListener(_onScroll);
 
     Future.microtask(() {
@@ -79,6 +81,18 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
         ref.read(questProvider.notifier).fetchQuests();
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant SpotDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.spot != widget.spot) {
+      _spot = widget.spot;
+      _isSaved = _spot.saved;
+      _isLiked = _spot.liked;
+      _likeCount = _spot.likeCount;
+      _photoUrl.value = SpotStillPhoto.urlFor(_spot);
+    }
   }
 
   @override
@@ -245,9 +259,15 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   }
 
   void _openQuestPicker(List<SpotQuestMatch> matches) {
-    final spot = widget.spot;
-    final signedIn = ref.read(authProvider).user != null;
-    final canCreateQuest = signedIn && spot.slug.isNotEmpty;
+    final spot = _spot;
+    final user = ref.read(authProvider).user;
+    final isPoster =
+        user != null && spot.createdBy != null && spot.createdBy == user.id;
+    final isAdmin =
+        user != null && (user.role == 'admin' || user.role == 'area_admin');
+    final isPosterless = spot.createdBy == null || spot.createdBy!.isEmpty;
+    final canCreateQuest =
+        spot.slug.isNotEmpty && (isPoster || (isAdmin && isPosterless));
     TheaterQuestPickerSheet.show(
       context,
       spot: spot,
@@ -260,6 +280,18 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
         } catch (_) {}
       },
     );
+  }
+
+  Future<void> _openEditSpot() async {
+    try {
+      final updated = await context.push<SpotModel>(
+        '/explore/${_spot.slug}/edit',
+        extra: _spot,
+      );
+      if (updated != null && mounted) {
+        setState(() => _spot = updated);
+      }
+    } catch (_) {}
   }
 
   Future<void> _openReportSheet() async {
@@ -295,7 +327,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final spot = widget.spot;
+    final spot = _spot;
+    final me = ref.watch(authProvider).user;
+    final isAuthor =
+        me != null && spot.createdBy != null && spot.createdBy == me.id;
     final hasAlternatives = _alternatives.isNotEmpty;
     final quests = ref.watch(questProvider).quests;
     final showTest = ref.watch(showTestContentProvider);
@@ -438,6 +473,13 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final actions = <Widget>[
+                    if (isAuthor)
+                      PixelButton(
+                        key: const Key('theater_edit_btn'),
+                        label: '✎ EDIT',
+                        variant: PixelButtonVariant.secondary,
+                        onPressed: _openEditSpot,
+                      ),
                     SpotLikeBarButton(
                       key: const Key('theater_like_btn'),
                       liked: _isLiked,

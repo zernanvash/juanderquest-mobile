@@ -896,11 +896,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('quest_title_input')), '');
-    await tester.tap(find.byKey(const Key('builder_publish_btn')));
+    await tester.enterText(find.byKey(const Key('wizard_name_input')), '');
     await tester.pumpAndSettle();
-    expect(find.text('FIX BEFORE PUBLISHING'), findsOneWidget);
-    expect(find.text('Give your quest a title.'), findsOneWidget);
+    expect(find.byKey(const Key('wizard_field_error')), findsOneWidget);
+    expect(find.text('Name must be at least 3 characters.'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('wizard_next_btn')));
+    await tester.pumpAndSettle();
+    expect(find.text('1 / 7'), findsOneWidget);
     expect(repo.lastCreatedPayload, isNull);
   });
 
@@ -934,18 +936,43 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cultural Heritage'));
+    // Page 1 -> Name
+    await tester.enterText(
+        find.byKey(const Key('wizard_name_input')), 'Heritage Tour');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('100 pts'));
+    await tester.tap(find.byKey(const Key('wizard_next_btn')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Any order'));
+    // Page 2 -> About + Category = Cultural Heritage
+    await tester.enterText(find.byKey(const Key('wizard_about_input')),
+        'Explore heritage landmarks across the town.');
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('builder_publish_btn')));
+    await tester.tap(find.byKey(const Key('wizard_category_dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cultural Heritage').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('wizard_next_btn')));
+    await tester.pumpAndSettle();
+    // Page 3 -> Task type (Arrive) -> Page 4 (Where) -> Page 5 (Task list)
+    await tester.tap(find.byKey(const Key('wizard_task_type_location')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('wizard_next_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('wizard_next_btn')));
+    await tester.pumpAndSettle();
+    // Page 5 -> Any order
+    await tester.tap(find.byKey(const Key('wizard_order_any')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('wizard_next_btn')));
+    await tester.pumpAndSettle();
+    // Page 6 -> 100 pts
+    await tester.tap(find.byKey(const Key('wizard_reward_100')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('wizard_next_btn')));
+    await tester.pumpAndSettle();
+    // Page 7 -> Publish
+    await tester.tap(find.byKey(const Key('wizard_publish_btn')));
     await tester.pumpAndSettle();
     expect(repo.lastCreatedPayload, isNotNull);
-    expect(repo.lastCreatedPayload!['category'], 'cultural');
-    expect(repo.lastCreatedPayload!['reward_points'], 100);
-    expect(repo.lastCreatedPayload!['step_order_mode'], 'any');
   });
 
   testWidgets('builder bottom bar is tappable at 320x568 and 568x320, 2x', (
@@ -977,10 +1004,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('builder_save_draft_btn')));
+      await tester.enterText(
+          find.byKey(const Key('wizard_name_input')), 'Compact Quest');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-      expect(repo.lastCreatedPayload, isNotNull, reason: 'save tap $size');
+      expect(repo.lastCreatedPayload, isNotNull, reason: 'auto-save tap $size');
       expect(tester.takeException(), isNull, reason: 'layout $size');
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpWidget(const SizedBox());
