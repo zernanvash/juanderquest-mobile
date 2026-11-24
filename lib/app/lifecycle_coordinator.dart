@@ -140,7 +140,8 @@ class _LifecycleCoordinatorState extends State<LifecycleCoordinator> with Widget
       final auth = container.read(authProvider);
       final now = DateTime.now();
 
-      if (auth.isAuthenticated) {
+      if (auth.isAuthenticated &&
+          container.read(apiClientProvider).isAuthenticated) {
         if (_lastResumeNetworkRefresh == null ||
             now.difference(_lastResumeNetworkRefresh!) > _resumeNetworkRefreshThrottle) {
           _lastResumeNetworkRefresh = now;

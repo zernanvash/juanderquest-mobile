@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -97,6 +98,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     };
     _nativeMap.onCameraIdle = () {
       _scheduleAreaRefresh();
+      _scheduleMapSpotsRefresh();
       _updateAimCenter();
       _rememberCenter();
       if (mounted) setState(() {});
@@ -183,6 +185,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
   Timer? _centerTimer;
   LatLng? _aimCenter;
   Timer? _clusterRefreshTimer;
+  CancelToken? _mapSpotsCancelToken;
+  int _mapSpotsRequest = 0;
+  List<SpotMapMarker> _mapMarkers = const [];
+  List<SpotMapCluster> _mapClusters = const [];
+  bool _hasViewportMapData = false;
+  final Map<String, SpotModel> _spotDetailCache = {};
 
   late final AdminAreaApi _areaApi = AdminAreaApi(
     ref.read(apiClientProvider).dio,
@@ -237,10 +245,124 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     _quizRadarGps?.cancel();
     _nativeMap.dispose();
     _clusterRefreshTimer?.cancel();
+    _mapSpotsCancelToken?.cancel('disposed');
     _areaRefreshTimer?.cancel();
     _aimTimer?.cancel();
     _centerTimer?.cancel();
     super.dispose();
+  }
+
+  void _scheduleMapSpotsRefresh() {
+    _clusterRefreshTimer?.cancel();
+    _mapSpotsCancelToken?.cancel('camera_moved');
+    _clusterRefreshTimer =
+        Timer(const Duration(milliseconds: 300), _refreshMapSpots);
+  }
+
+  Future<void> _refreshMapSpots() async {
+    if (!mounted) return;
+    final JdqCamera camera;
+    try {
+      camera = _camera;
+    } catch (_) {
+      return;
+    }
+    var west = camera.southWest.longitude.clamp(-180.0, 180.0).toDouble();
+    var south = camera.southWest.latitude.clamp(-90.0, 90.0).toDouble();
+    var east = camera.northEast.longitude.clamp(-180.0, 180.0).toDouble();
+    var north = camera.northEast.latitude.clamp(-90.0, 90.0).toDouble();
+    if (west >= east) {
+      west = (camera.center.longitude - 0.05).clamp(-180.0, 179.9).toDouble();
+      east = (camera.center.longitude + 0.05).clamp(-179.9, 180.0).toDouble();
+    }
+    if (south >= north) {
+      south = (camera.center.latitude - 0.05).clamp(-90.0, 89.9).toDouble();
+      north = (camera.center.latitude + 0.05).clamp(-89.9, 90.0).toDouble();
+    }
+    final request = ++_mapSpotsRequest;
+    _mapSpotsCancelToken?.cancel('superseded');
+    final token = CancelToken();
+    _mapSpotsCancelToken = token;
+    try {
+      final response = await ref.read(apiClientProvider).dio.get(
+        '/spots/map',
+        queryParameters: <String, dynamic>{
+          'bbox':
+              '${west.toStringAsFixed(5)},${south.toStringAsFixed(5)},${east.toStringAsFixed(5)},${north.toStringAsFixed(5)}',
+          'zoom': camera.zoom.floor().clamp(0, 22),
+        },
+        cancelToken: token,
+      );
+      if (!mounted || token.isCancelled || request != _mapSpotsRequest) return;
+      final body = response.data;
+      if (body is! Map || body['data'] is! Map) return;
+      final parsed = SpotMapViewResponse.fromEnvelope(
+        Map<String, dynamic>.from(body),
+      );
+      setState(() {
+        _mapMarkers = parsed.markers;
+        _mapClusters = parsed.clusters;
+        _hasViewportMapData = true;
+      });
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) return;
+    } catch (_) {
+      // Preserve currently visible map pins on transient failures.
+    } finally {
+      if (identical(_mapSpotsCancelToken, token)) {
+        _mapSpotsCancelToken = null;
+      }
+    }
+  }
+
+  Future<void> _hydrateMarkerSpot(SpotMapMarker marker) async {
+    final cached = _spotDetailCache[marker.id];
+    if (cached != null && cached.municipality.isNotEmpty) return;
+    try {
+      final response = await ref
+          .read(apiClientProvider)
+          .dio
+          .get('/spots/${Uri.encodeComponent(marker.slug)}');
+      final raw = response.data is Map ? response.data['data'] : null;
+      if (raw is! Map) return;
+      final full = SpotModel.fromJson(Map<String, dynamic>.from(raw));
+      _spotDetailCache[full.id] = full;
+      if (!mounted || _selectedSpot?.id != marker.id) return;
+      setState(() => _selectedSpot = full);
+    } catch (_) {}
+  }
+
+  void _zoomToCluster(SpotMapCluster cluster) {
+    setState(() {
+      _selectedSpot = null;
+      _selectedQuest = null;
+    });
+    if (cluster.bbox.length == 4) {
+      final west = cluster.bbox[0];
+      final south = cluster.bbox[1];
+      final east = cluster.bbox[2];
+      final north = cluster.bbox[3];
+      if ((east - west).abs() >= 0.0005 || (north - south).abs() >= 0.0005) {
+        final minLat = math.min(south, north);
+        final maxLat = math.max(south, north);
+        final minLng = math.min(west, east);
+        final maxLng = math.max(west, east);
+        final padLat = (maxLat - minLat) < 0.0005 ? 0.002 : 0.0;
+        final padLng = (maxLng - minLng) < 0.0005 ? 0.002 : 0.0;
+        unawaited(
+          _nativeMap.fitBounds(
+            LatLng(minLat - padLat, minLng - padLng),
+            LatLng(maxLat + padLat, maxLng + padLng),
+            const EdgeInsets.all(48),
+          ),
+        );
+        return;
+      }
+    }
+    _move(
+      LatLng(cluster.lat, cluster.lng),
+      math.max(_camera.zoom + 2.0, 13.5),
+    );
   }
 
   void _scheduleAreaRefresh() {
@@ -345,6 +467,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
   void _initSelection() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshAreas();
+      _refreshMapSpots();
       _handleDeepLink();
     });
   }
@@ -376,17 +499,51 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     }
 
     if (spotId != null && spotId.isNotEmpty) {
-      final spots = ref.read(spotDiscoveryProvider).spots;
-      final match = spots.where((s) => s.id == spotId).firstOrNull;
-      if (match != null) {
+      final cachedMatch = _spotDetailCache[spotId] ??
+          ref
+              .read(spotDiscoveryProvider)
+              .spots
+              .where((s) => s.id == spotId || s.slug == spotId)
+              .firstOrNull;
+      if (cachedMatch != null) {
         _deepLinkHandled = true;
         setState(() {
-          _selectedSpot = match;
+          _selectedSpot = cachedMatch;
           _selectedQuest = null;
         });
-        _focusPlace(match.gpsLat, match.gpsLng, 16.0);
+        _focusPlace(cachedMatch.gpsLat, cachedMatch.gpsLng, 16.0);
         return;
       }
+      final markerMatch =
+          _mapMarkers.where((m) => m.id == spotId || m.slug == spotId).firstOrNull;
+      if (markerMatch != null) {
+        _deepLinkHandled = true;
+        setState(() {
+          _selectedSpot = markerMatch.toSpotModel();
+          _selectedQuest = null;
+        });
+        _focusPlace(markerMatch.lat, markerMatch.lng, 16.0);
+        unawaited(_hydrateMarkerSpot(markerMatch));
+        return;
+      }
+      _deepLinkHandled = true;
+      unawaited(
+        ref
+            .read(apiClientProvider)
+            .dio
+            .get('/spots/${Uri.encodeComponent(spotId)}')
+            .then((res) {
+          final raw = res.data is Map ? res.data['data'] : null;
+          if (!mounted || raw is! Map) return;
+          final fetched = SpotModel.fromJson(Map<String, dynamic>.from(raw));
+          _spotDetailCache[fetched.id] = fetched;
+          setState(() {
+            _selectedSpot = fetched;
+            _selectedQuest = null;
+          });
+          _focusPlace(fetched.gpsLat, fetched.gpsLng, 16.0);
+        }).catchError((_) {}),
+      );
     }
   }
 
@@ -405,7 +562,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
 
     final points = <LatLng>[
       for (final q in quests) LatLng(q.gpsLat, q.gpsLng),
-      for (final s in spots) LatLng(s.gpsLat, s.gpsLng),
+      if (_hasViewportMapData) ...[
+        for (final m in _mapMarkers) LatLng(m.lat, m.lng),
+        for (final c in _mapClusters) LatLng(c.lat, c.lng),
+      ] else
+        for (final s in spots) LatLng(s.gpsLat, s.gpsLng),
     ];
 
     if (points.isEmpty) {
@@ -477,11 +638,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       extra: recognition,
     );
     if (!mounted || result is! SpotModel) return;
+    _spotDetailCache[result.id] = result;
     setState(() {
       _selectedSpot = result;
       _selectedQuest = null;
     });
-    ref.invalidate(spotDiscoveryProvider);
+    unawaited(_refreshMapSpots());
     _focusPlace(result.gpsLat, result.gpsLng, 14.0);
   }
 
@@ -553,7 +715,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     try {
       await Future.wait([
         ref.read(questProvider.notifier).fetchQuests(),
-        ref.read(spotDiscoveryProvider.notifier).load(),
+        _refreshMapSpots(),
         ref.refresh(choiceSpotlightProvider.future),
         // Plan 100 WP-9: which quests are done (throttled by the provider).
         ref.read(submissionProvider.notifier).fetchSubmissions(),
@@ -613,15 +775,28 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     final isTownFocused = _focusedArea != null;
 
     List<QuestModel> visibleQuests;
-    final List<SpotModel> visibleSpots;
+    List<SpotModel> visibleSpots = const [];
+    List<SpotMapMarker> visibleMapMarkers = const [];
+    List<SpotMapCluster> visibleMapClusters = const [];
 
     if (isTownFocused) {
       visibleQuests =
           quests.where((q) => _inFocusedArea(q.gpsLat, q.gpsLng)).toList();
-      visibleSpots = <SpotModel>[
-        ...plannedSpots.ordinary,
-        ...plannedSpots.winners,
-      ].where((s) => _inFocusedArea(s.gpsLat, s.gpsLng)).toList();
+      if (_hasViewportMapData) {
+        visibleMapMarkers = _mapMarkers
+            .where((m) => _inFocusedArea(m.lat, m.lng))
+            .toList();
+      } else {
+        visibleSpots = <SpotModel>[
+          ...plannedSpots.ordinary,
+          ...plannedSpots.winners,
+        ].where((s) => _inFocusedArea(s.gpsLat, s.gpsLng)).toList();
+      }
+    } else if (_hasViewportMapData) {
+      visibleQuests =
+          currentZoom >= kQuestPinsMinZoom ? quests : const <QuestModel>[];
+      visibleMapMarkers = _mapMarkers;
+      visibleMapClusters = _mapClusters;
     } else if (currentZoom >= kSpotPinsMinZoom) {
       visibleQuests = quests;
       visibleSpots = <SpotModel>[
@@ -647,6 +822,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     );
 
     final pins = <JdqPin>[
+      for (var i = 0; i < visibleMapClusters.length; i++)
+        JdqPin(
+          'cluster:$i',
+          LatLng(visibleMapClusters[i].lat, visibleMapClusters[i].lng),
+          '${visibleMapClusters[i].count}',
+          clusterCount: visibleMapClusters[i].count,
+        ),
       for (final q in visibleQuests)
         JdqPin(
           'quest:${q.id}',
@@ -655,10 +837,21 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
           quest: true,
           done: questDone(q),
         ),
-      for (final s in visibleSpots)
-        JdqPin('spot:${s.id}', LatLng(s.gpsLat, s.gpsLng), s.name),
+      if (_hasViewportMapData)
+        for (final m in visibleMapMarkers)
+          JdqPin('spot:${m.id}', LatLng(m.lat, m.lng), m.name)
+      else
+        for (final s in visibleSpots)
+          JdqPin('spot:${s.id}', LatLng(s.gpsLat, s.gpsLng), s.name),
     ];
     _nativeMap.onTapPin = (id) {
+      if (id.startsWith('cluster:')) {
+        final idx = int.tryParse(id.substring('cluster:'.length));
+        if (idx != null && idx >= 0 && idx < visibleMapClusters.length) {
+          _zoomToCluster(visibleMapClusters[idx]);
+          return;
+        }
+      }
       for (final q in visibleQuests) {
         if ('quest:${q.id}' == id) {
           setState(() {
@@ -666,6 +859,18 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
             _selectedSpot = null;
           });
           _focusPlace(q.gpsLat, q.gpsLng, 14);
+          return;
+        }
+      }
+      for (final m in visibleMapMarkers) {
+        if ('spot:${m.id}' == id) {
+          final resolved = _spotDetailCache[m.id] ?? m.toSpotModel();
+          setState(() {
+            _selectedSpot = resolved;
+            _selectedQuest = null;
+          });
+          _focusPlace(m.lat, m.lng, 14);
+          unawaited(_hydrateMarkerSpot(m));
           return;
         }
       }
@@ -680,8 +885,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
         }
       }
     };
-    final signature =
-        pins.map((p) => '${p.id}:${p.point}:${p.label}:${p.done}').join('|');
+    final signature = pins
+        .map((p) => '${p.id}:${p.point}:${p.label}:${p.done}:${p.clusterCount}')
+        .join('|');
     if (signature != _pinSignature) {
       _pinSignature = signature;
       WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
@@ -23,13 +25,57 @@ class SubmissionState {
 
 class SubmissionNotifier extends StateNotifier<SubmissionState> {
   final ApiClient _apiClient;
+  final DateTime Function() _clock;
   final _uuid = const Uuid();
 
   Future<void>? _inFlightFetch;
   DateTime? _lastFetchTime;
+  int _consecutiveFailures = 0;
+  bool _unauthorizedLocked = false;
+  String? _lastSeenToken;
   static const Duration minAutoRefetchInterval = Duration(seconds: 30);
+  static const Duration maxBackoffInterval = Duration(minutes: 5);
 
-  SubmissionNotifier(this._apiClient) : super(SubmissionState());
+  SubmissionNotifier(
+    this._apiClient, {
+    DateTime Function()? clock,
+  })  : _clock = clock ?? DateTime.now,
+        _lastSeenToken = _apiClient.authToken,
+        super(SubmissionState());
+
+  Duration get _currentBackoff {
+    if (_consecutiveFailures <= 1) return minAutoRefetchInterval;
+    final seconds = math.min(
+      maxBackoffInterval.inSeconds,
+      minAutoRefetchInterval.inSeconds * (1 << (_consecutiveFailures - 1)),
+    );
+    return Duration(seconds: seconds);
+  }
+
+  /// Syncs auth token changes: clears locked 401 state when a new token arrives,
+  /// and resets/clears submissions on sign-out.
+  void onAuthTokenChanged(String? token) {
+    final normalized = (token == null || token.isEmpty) ? null : token;
+    if (normalized == _lastSeenToken) return;
+    _lastSeenToken = normalized;
+    if (normalized == null) {
+      _inFlightFetch = null;
+      if (_unauthorizedLocked || state.errorCode == 'UNAUTHORIZED') {
+        // Keep the single 401 error state on token drop until re-authentication.
+        return;
+      }
+      _consecutiveFailures = 0;
+      _lastFetchTime = null;
+      state = SubmissionState();
+      return;
+    }
+    _unauthorizedLocked = false;
+    _consecutiveFailures = 0;
+    _lastFetchTime = null;
+    if (state.error != null) {
+      state = SubmissionState(submissions: state.submissions);
+    }
+  }
 
   Future<bool> submitProof({
     required String questId,
@@ -97,43 +143,101 @@ class SubmissionNotifier extends StateNotifier<SubmissionState> {
   /// Fetches the user's submissions.
   ///
   /// Deduplicates concurrent in-flight requests.
-  /// Throttles automatic triggers (e.g. app lifecycle resume, screen mount)
-  /// with a 30-second cooldown unless [force] is true (e.g. pull-to-refresh or post-submit).
+  /// Throttles automatic triggers with exponential backoff (30 s, 60 s, 120 s,
+  /// capped at 5 min) on failures, blocks requests when signed out, and stops
+  /// retrying after 401 until the auth token changes.
   Future<void> fetchSubmissions({bool force = false}) {
+    final currentToken = _apiClient.authToken;
+    if (currentToken != null &&
+        currentToken.isNotEmpty &&
+        currentToken != _lastSeenToken) {
+      onAuthTokenChanged(currentToken);
+    }
+
+    if (currentToken == null || currentToken.isEmpty) {
+      _lastSeenToken = null;
+      return Future.value();
+    }
+
+    if (_unauthorizedLocked) {
+      return Future.value();
+    }
+
     if (_inFlightFetch != null) {
       return _inFlightFetch!;
     }
 
-    final now = DateTime.now();
-    if (!force && _lastFetchTime != null && now.difference(_lastFetchTime!) < minAutoRefetchInterval) {
+    if (force) {
+      _consecutiveFailures = 0;
+    }
+
+    final now = _clock();
+    if (!force &&
+        _lastFetchTime != null &&
+        now.difference(_lastFetchTime!) < _currentBackoff) {
       return Future.value();
     }
 
-    final future = _executeFetch();
+    final future = _executeFetch(now);
     _inFlightFetch = future;
     return future.whenComplete(() {
       _inFlightFetch = null;
     });
   }
 
-  Future<void> _executeFetch() async {
+  Future<void> _executeFetch(DateTime startedAt) async {
+    _lastFetchTime = startedAt;
     state = SubmissionState(submissions: state.submissions, isLoading: true);
     try {
       final response = await _apiClient.dio.get('/submissions');
+      _lastFetchTime = _clock();
       if (response.statusCode == 200 && response.data['success'] == true) {
         final list = (response.data['data'] as List)
             .map((s) => SubmissionModel.fromJson(s))
             .toList();
-        _lastFetchTime = DateTime.now();
+        _consecutiveFailures = 0;
+        _unauthorizedLocked = false;
         state = SubmissionState(submissions: list);
+      } else {
+        _recordFailure(statusCode: response.statusCode);
       }
-    } catch (e) {
-      state = SubmissionState(submissions: state.submissions, error: 'Failed to fetch submissions.');
+    } on DioException catch (e) {
+      _lastFetchTime = _clock();
+      _recordFailure(statusCode: e.response?.statusCode);
+    } catch (_) {
+      _lastFetchTime = _clock();
+      _recordFailure();
     }
+  }
+
+  void _recordFailure({int? statusCode}) {
+    _consecutiveFailures += 1;
+    if (statusCode == 401) {
+      _unauthorizedLocked = true;
+      state = SubmissionState(
+        submissions: state.submissions,
+        error: 'Session expired. Please sign in again.',
+        errorCode: 'UNAUTHORIZED',
+      );
+      return;
+    }
+    state = SubmissionState(
+      submissions: state.submissions,
+      error: 'Failed to fetch submissions.',
+      errorCode: 'FETCH_FAILED',
+    );
   }
 }
 
 final submissionProvider = StateNotifierProvider<SubmissionNotifier, SubmissionState>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return SubmissionNotifier(apiClient);
+  final notifier = SubmissionNotifier(apiClient);
+  final currentToken = ref.read(authProvider).token ?? apiClient.authToken;
+  notifier.onAuthTokenChanged(currentToken);
+  ref.listen<AuthState>(authProvider, (prev, next) {
+    if (prev?.token != next.token) {
+      notifier.onAuthTokenChanged(next.token);
+    }
+  });
+  return notifier;
 });

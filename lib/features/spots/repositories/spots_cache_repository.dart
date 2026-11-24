@@ -44,6 +44,25 @@ class SpotsCacheRepository {
   static const String publicPartition = 'public_spots';
   static const String cacheFileName = 'spots_cache_v1.json';
 
+  /// Cache partition key scoped to the active Explore filter set so first
+  /// pages of distinct queries/categories are cached independently without
+  /// pretending to cache the whole national catalog.
+  static String partitionForFilter({
+    String query = '',
+    String category = '',
+    String intent = '',
+    String municipality = '',
+  }) {
+    final q = query.trim().toLowerCase();
+    final c = category.trim();
+    final i = intent.trim();
+    final m = municipality.trim().toLowerCase();
+    if (q.isEmpty && c.isEmpty && i.isEmpty && m.isEmpty) {
+      return publicPartition;
+    }
+    return '$publicPartition::q=$q|c=$c|i=$i|m=$m';
+  }
+
   final Directory? _overrideDirectory;
   final Map<String, String>? _memoryFallback;
 

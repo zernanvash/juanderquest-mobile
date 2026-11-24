@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,6 +42,8 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   Timer? _debounce;
+  CancelToken? _searchCancelToken;
+  List<SpotSearchHit> _remoteHits = const [];
 
   String _selectedCategory = 'all';
   String _selectedMunicipality = 'All Municipalities';
@@ -70,23 +73,60 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
     }
 
     Future.microtask(() {
-      ref.read(spotDiscoveryProvider.notifier).initialize();
+      if (!mounted) return;
+      final discovery = ref.read(spotDiscoveryProvider);
+      if (discovery.spots.isEmpty) {
+        unawaited(
+          ref.read(spotDiscoveryProvider.notifier).loadFiltered(
+                query: widget.initialQuery ?? '',
+                category: _selectedCategory == 'all' ? '' : _selectedCategory,
+              ),
+        );
+      }
+      final q = _searchController.text.trim();
+      if (q.length >= 2) {
+        unawaited(_runTypeahead(q));
+      }
     });
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _searchCancelToken?.cancel('disposed');
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged(String _) {
+  void _onSearchChanged(String raw) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
+    _searchCancelToken?.cancel('query_changed');
+    final trimmed = raw.trim();
+    if (trimmed.length < 2) {
+      setState(() => _remoteHits = const []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 250), () {
       setState(() {});
+      unawaited(_runTypeahead(trimmed));
     });
+  }
+
+  Future<void> _runTypeahead(String q) async {
+    final token = CancelToken();
+    _searchCancelToken = token;
+    try {
+      final hits = await ref
+          .read(spotDiscoveryProvider.notifier)
+          .searchTypeahead(q, limit: 20, cancelToken: token);
+      if (!mounted || token.isCancelled || _searchController.text.trim() != q) {
+        return;
+      }
+      setState(() => _remoteHits = hits);
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) return;
+    } catch (_) {}
   }
 
   void _launchDirections(SpotModel spot) {
@@ -96,8 +136,11 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
   }
 
   void _clearFilters() {
+    _debounce?.cancel();
+    _searchCancelToken?.cancel('cleared');
     setState(() {
       _searchController.clear();
+      _remoteHits = const [];
       _selectedCategory = 'all';
       _selectedMunicipality = 'All Municipalities';
       _quietOnly = false;
@@ -144,8 +187,18 @@ class _SpotSearchScreenState extends ConsumerState<SpotSearchScreen> {
       _questsOnly,
     ].where((on) => on).length;
 
-    final filteredSpots = spots.where((spot) {
+    final mergedSource = <SpotModel>[
+      ...spots,
+      if (_remoteHits.isNotEmpty) ...[
+        for (final hit in _remoteHits)
+          if (!spots.any((s) => s.id == hit.id)) hit.toSpotModel(),
+      ],
+    ];
+    final remoteIds = <String>{for (final hit in _remoteHits) hit.id};
+
+    final filteredSpots = mergedSource.where((spot) {
       final matchesQuery = query.isEmpty ||
+          remoteIds.contains(spot.id) ||
           spot.name.toLowerCase().contains(query) ||
           spot.description.toLowerCase().contains(query) ||
           spot.municipality.toLowerCase().contains(query) ||

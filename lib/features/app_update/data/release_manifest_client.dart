@@ -42,6 +42,7 @@ class ReleaseManifestClient {
     AppVersionInfo? newest;
     int? maxMinSupportedBuild;
     AppAnnouncement? activeAnnouncement;
+    HomePromoPanelConfig? activePromoPanel;
     for (final candidate in _manifestUrls) {
       try {
         final uri = Uri.tryParse(candidate);
@@ -68,6 +69,7 @@ class ReleaseManifestClient {
           maxMinSupportedBuild = release.minSupportedBuild;
         }
         activeAnnouncement ??= release.announcement;
+        activePromoPanel ??= release.promoPanel;
         if (newest == null || release.versionCode > newest.versionCode) {
           newest = release;
         }
@@ -77,10 +79,13 @@ class ReleaseManifestClient {
       }
     }
     if (newest != null &&
-        (maxMinSupportedBuild != null || activeAnnouncement != null)) {
+        (maxMinSupportedBuild != null ||
+            activeAnnouncement != null ||
+            activePromoPanel != null)) {
       return newest.withControlMetadata(
         minSupportedBuild: maxMinSupportedBuild,
         announcement: activeAnnouncement,
+        promoPanel: activePromoPanel,
       );
     }
     return newest;

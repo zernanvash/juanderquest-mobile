@@ -99,10 +99,8 @@ class CompanionCard extends ConsumerWidget {
                                     variant: PixelButtonVariant.secondary,
                                     onPressed: () {
                                       if (message.id == 'discovery-offline') {
-                                        ref
-                                            .read(
-                                                spotDiscoveryProvider.notifier)
-                                            .load(refresh: true);
+                                        ref.invalidate(
+                                            companionBusySpotsProvider);
                                       } else if (message.route != null) {
                                         context.push(message.route!);
                                       }

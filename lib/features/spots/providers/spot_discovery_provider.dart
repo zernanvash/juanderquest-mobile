@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_failure.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../dashboard/providers/home_recommended_quest_provider.dart';
 import '../models/spot_model.dart';
 import '../repositories/spots_cache_repository.dart';
 
@@ -13,11 +15,18 @@ class SpotDiscoveryState {
   final List<String> intents;
   final bool isInitialLoading;
   final bool isRefreshing;
+  final bool isLoadingMore;
   final bool isOfflineFallback;
   final DateTime? lastCachedAt;
   final Set<String> savingIds;
   final ApiFailure? failure;
   final int count;
+  final int total;
+  final String? nextCursor;
+  final String activeQuery;
+  final String activeCategory;
+  final String activeIntent;
+  final String activeMunicipality;
 
   const SpotDiscoveryState({
     this.spots = const [],
@@ -26,11 +35,18 @@ class SpotDiscoveryState {
     this.intents = const [],
     this.isInitialLoading = true,
     this.isRefreshing = false,
+    this.isLoadingMore = false,
     this.isOfflineFallback = false,
     this.lastCachedAt,
     this.savingIds = const {},
     this.failure,
     this.count = 0,
+    this.total = 0,
+    this.nextCursor,
+    this.activeQuery = '',
+    this.activeCategory = '',
+    this.activeIntent = '',
+    this.activeMunicipality = '',
   });
 
   SpotDiscoveryState copyWith({
@@ -40,6 +56,7 @@ class SpotDiscoveryState {
     List<String>? intents,
     bool? isInitialLoading,
     bool? isRefreshing,
+    bool? isLoadingMore,
     bool? isOfflineFallback,
     DateTime? lastCachedAt,
     bool clearLastCachedAt = false,
@@ -47,6 +64,13 @@ class SpotDiscoveryState {
     ApiFailure? failure,
     bool clearFailure = false,
     int? count,
+    int? total,
+    String? nextCursor,
+    bool clearNextCursor = false,
+    String? activeQuery,
+    String? activeCategory,
+    String? activeIntent,
+    String? activeMunicipality,
   }) =>
       SpotDiscoveryState(
         spots: spots ?? this.spots,
@@ -55,15 +79,24 @@ class SpotDiscoveryState {
         intents: intents ?? this.intents,
         isInitialLoading: isInitialLoading ?? this.isInitialLoading,
         isRefreshing: isRefreshing ?? this.isRefreshing,
+        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
         isOfflineFallback: isOfflineFallback ?? this.isOfflineFallback,
-        lastCachedAt: clearLastCachedAt ? null : lastCachedAt ?? this.lastCachedAt,
+        lastCachedAt:
+            clearLastCachedAt ? null : lastCachedAt ?? this.lastCachedAt,
         savingIds: savingIds ?? this.savingIds,
         failure: clearFailure ? null : failure ?? this.failure,
         count: count ?? this.count,
+        total: total ?? this.total,
+        nextCursor: clearNextCursor ? null : nextCursor ?? this.nextCursor,
+        activeQuery: activeQuery ?? this.activeQuery,
+        activeCategory: activeCategory ?? this.activeCategory,
+        activeIntent: activeIntent ?? this.activeIntent,
+        activeMunicipality: activeMunicipality ?? this.activeMunicipality,
       );
 }
 
 class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
+  static const int defaultPageSize = 30;
   final Ref _ref;
   final SpotsCacheRepository _cacheRepo;
   int _requestVersion = 0;
@@ -73,13 +106,16 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
         super(const SpotDiscoveryState());
 
   Future<void> initialize() async {
-    // 1. Stale-while-revalidate: hydrate immediately from local cache
+    // 1. Stale-while-revalidate: hydrate first page from local cache
     try {
-      final cachedSpots = await _cacheRepo.loadSpots();
+      final cachedSpots = await _cacheRepo.loadSpots(
+        partition: SpotsCacheRepository.partitionForFilter(),
+      );
       if (cachedSpots != null && cachedSpots.spots.isNotEmpty) {
         state = state.copyWith(
           spots: cachedSpots.spots,
           count: cachedSpots.spots.length,
+          total: cachedSpots.spots.length,
           isInitialLoading: false,
           isOfflineFallback: false,
           lastCachedAt: cachedSpots.cachedAt,
@@ -94,72 +130,127 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
       }
     } catch (_) {}
 
-    // 2. Fetch fresh data from network in foreground/background
+    // 2. Fetch fresh first page from network in foreground/background
     await Future.wait([load(), _loadTaxonomy(), _loadTrending()]);
   }
 
+  /// Preserves the legacy override signature for existing widget test stubs
+  /// while enforcing bounded `limit=30` first-page loading via [loadFiltered].
   Future<void> load({
     String query = '',
     String category = '',
     String intent = '',
     bool refresh = false,
+  }) =>
+      loadFiltered(
+        query: query,
+        category: category,
+        intent: intent,
+        refresh: refresh,
+      );
+
+  /// Loads page 1 (`cursor = null`, bounded by [limit]) for the requested
+  /// filter set, resetting the Explore list when filters or search change.
+  Future<void> loadFiltered({
+    String query = '',
+    String category = '',
+    String intent = '',
+    String municipality = '',
+    int limit = defaultPageSize,
+    bool refresh = false,
   }) async {
+    final qClean = query.trim();
+    final cClean = category.trim();
+    final iClean = intent.trim();
+    final mClean = municipality.trim();
+    final pageLimit = limit.clamp(1, 100);
+    final filterChanged = qClean != state.activeQuery ||
+        cClean != state.activeCategory ||
+        iClean != state.activeIntent ||
+        mClean != state.activeMunicipality;
+    final partition = SpotsCacheRepository.partitionForFilter(
+      query: qClean,
+      category: cClean,
+      intent: iClean,
+      municipality: mClean,
+    );
+
     final version = ++_requestVersion;
     state = state.copyWith(
-      isInitialLoading: state.spots.isEmpty,
-      isRefreshing: state.spots.isNotEmpty,
+      spots: filterChanged ? const <SpotModel>[] : state.spots,
+      isInitialLoading: filterChanged || state.spots.isEmpty,
+      isRefreshing: !filterChanged && state.spots.isNotEmpty,
+      isLoadingMore: false,
+      clearNextCursor: filterChanged,
+      activeQuery: qClean,
+      activeCategory: cClean,
+      activeIntent: iClean,
+      activeMunicipality: mClean,
       clearFailure: true,
     );
     try {
-      final response = await _ref
-          .read(apiClientProvider)
-          .dio
-          .get('/spots', queryParameters: {
-        if (query.trim().isNotEmpty) 'q': query.trim(),
-        if (category.isNotEmpty) 'categories': category,
-        if (intent.isNotEmpty) 'intent': intent
-      });
+      final response = await _ref.read(apiClientProvider).dio.get(
+        '/spots',
+        queryParameters: <String, dynamic>{
+          'limit': pageLimit,
+          if (qClean.isNotEmpty) 'q': qClean,
+          if (cClean.isNotEmpty) 'categories': cClean,
+          if (iClean.isNotEmpty) 'intent': iClean,
+          if (mClean.isNotEmpty) 'municipality': mClean,
+        },
+      );
       if (version != _requestVersion) return;
-      final items = (response.data['data'] as List)
+      final items = (response.data['data'] as List? ?? const [])
+          .whereType<Map>()
           .map((item) => SpotModel.fromJson(Map<String, dynamic>.from(item)))
           .toList();
       final meta = response.data['meta'];
+      final nextCursor = meta is Map ? meta['next_cursor']?.toString() : null;
+      final total = meta is Map
+          ? ((meta['total'] as num?)?.toInt() ?? items.length)
+          : items.length;
+      final count = meta is Map
+          ? ((meta['count'] as num?)?.toInt() ?? items.length)
+          : items.length;
 
-      // Cache fresh catalog if this was an unfiltered base query
-      if (query.isEmpty && category.isEmpty && intent.isEmpty) {
-        await _cacheRepo.saveSpots(items);
-      }
+      // Cache ONLY the first page per filter set (never the full national catalog).
+      await _cacheRepo.saveSpots(items, partition: partition);
 
       state = state.copyWith(
         spots: items,
-        count: meta is Map
-            ? (meta['count'] as num?)?.toInt() ?? items.length
-            : items.length,
+        count: count,
+        total: total,
+        nextCursor: nextCursor != null && nextCursor.isNotEmpty ? nextCursor : null,
+        clearNextCursor: nextCursor == null || nextCursor.isEmpty,
         isInitialLoading: false,
         isRefreshing: false,
+        isLoadingMore: false,
         isOfflineFallback: false,
         lastCachedAt: DateTime.now(),
         clearFailure: true,
       );
     } catch (error) {
       if (version != _requestVersion) return;
-      // If we already have spots in memory, keep them and activate offline fallback banner
-      if (state.spots.isNotEmpty) {
+      if (!filterChanged && state.spots.isNotEmpty) {
         state = state.copyWith(
           isInitialLoading: false,
           isRefreshing: false,
+          isLoadingMore: false,
           isOfflineFallback: true,
           clearFailure: true,
         );
       } else {
-        // Try fallback to disk cache if memory was empty
-        final cached = await _cacheRepo.loadSpots();
+        final cached = await _cacheRepo.loadSpots(partition: partition);
+        if (version != _requestVersion) return;
         if (cached != null && cached.spots.isNotEmpty) {
           state = state.copyWith(
             spots: cached.spots,
             count: cached.spots.length,
+            total: cached.spots.length,
+            clearNextCursor: true,
             isInitialLoading: false,
             isRefreshing: false,
+            isLoadingMore: false,
             isOfflineFallback: true,
             lastCachedAt: cached.cachedAt,
             clearFailure: true,
@@ -168,12 +259,105 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
           state = state.copyWith(
             isInitialLoading: false,
             isRefreshing: false,
+            isLoadingMore: false,
+            clearNextCursor: true,
             failure:
                 ApiFailure.from(error, fallback: 'Could not load destinations.'),
           );
         }
       }
     }
+  }
+
+  /// Appends the next server page using `meta.next_cursor` until null,
+  /// deduplicating by spot ID.
+  Future<void> loadMore({int limit = defaultPageSize}) async {
+    final cursor = state.nextCursor;
+    if (cursor == null ||
+        cursor.isEmpty ||
+        state.isLoadingMore ||
+        state.isInitialLoading) {
+      return;
+    }
+    final version = _requestVersion;
+    state = state.copyWith(isLoadingMore: true, clearFailure: true);
+    try {
+      final response = await _ref.read(apiClientProvider).dio.get(
+        '/spots',
+        queryParameters: <String, dynamic>{
+          'limit': limit.clamp(1, 100),
+          'cursor': cursor,
+          if (state.activeQuery.isNotEmpty) 'q': state.activeQuery,
+          if (state.activeCategory.isNotEmpty)
+            'categories': state.activeCategory,
+          if (state.activeIntent.isNotEmpty) 'intent': state.activeIntent,
+          if (state.activeMunicipality.isNotEmpty)
+            'municipality': state.activeMunicipality,
+        },
+      );
+      if (version != _requestVersion) return;
+      final incoming = (response.data['data'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => SpotModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+      final meta = response.data['meta'];
+      final nextCursor = meta is Map ? meta['next_cursor']?.toString() : null;
+      final total = meta is Map
+          ? ((meta['total'] as num?)?.toInt() ?? state.total)
+          : state.total;
+
+      final seenIds = <String>{for (final s in state.spots) s.id};
+      final merged = <SpotModel>[
+        ...state.spots,
+        for (final s in incoming)
+          if (seenIds.add(s.id)) s,
+      ];
+
+      state = state.copyWith(
+        spots: merged,
+        count: merged.length,
+        total: math.max(total, merged.length),
+        nextCursor: nextCursor != null && nextCursor.isNotEmpty ? nextCursor : null,
+        clearNextCursor: nextCursor == null || nextCursor.isEmpty,
+        isLoadingMore: false,
+        clearFailure: true,
+      );
+    } catch (error) {
+      if (version != _requestVersion) return;
+      state = state.copyWith(
+        isLoadingMore: false,
+        failure: ApiFailure.from(
+          error,
+          fallback: 'Could not load more destinations.',
+        ),
+      );
+    }
+  }
+
+  /// Server-backed typeahead using `GET /spots/search` (q 2..80 chars, limit <= 20).
+  Future<List<SpotSearchHit>> searchTypeahead(
+    String query, {
+    int limit = 15,
+    CancelToken? cancelToken,
+  }) async {
+    final trimmed = query.trim();
+    if (trimmed.length < 2) return const <SpotSearchHit>[];
+    final capped = trimmed.length > 80 ? trimmed.substring(0, 80) : trimmed;
+    final response = await _ref.read(apiClientProvider).dio.get(
+      '/spots/search',
+      queryParameters: <String, dynamic>{
+        'q': capped,
+        'limit': limit.clamp(1, 20),
+      },
+      cancelToken: cancelToken,
+    );
+    final raw = response.data is Map ? response.data['data'] : null;
+    if (raw is! List) return const <SpotSearchHit>[];
+    return raw
+        .whereType<Map>()
+        .map((item) => SpotSearchHit.fromJson(Map<String, dynamic>.from(item)))
+        .where((hit) => hit.id.isNotEmpty)
+        .toList();
   }
 
   Future<void> _loadTaxonomy() async {
@@ -311,3 +495,92 @@ final spotDiscoveryProvider =
     return SpotDiscoveryNotifier(ref, cacheRepo);
   },
 );
+
+/// Plan 116b Part 2 Step 4: bounded caller for Home's Nearby panel
+/// (`GET /spots?lat=&lng=&radius_km=25&limit=10&sort=nearest`). Returns empty
+/// without making any network call if [homeLastKnownLocationProvider] is null.
+final homeNearbySpotsProvider = FutureProvider<List<SpotModel>>((ref) async {
+  final loc = ref.watch(homeLastKnownLocationProvider).valueOrNull;
+  if (loc == null) return const <SpotModel>[];
+  try {
+    final response = await ref.read(apiClientProvider).dio.get(
+      '/spots',
+      queryParameters: <String, dynamic>{
+        'lat': loc.lat,
+        'lng': loc.lng,
+        'radius_km': 25,
+        'limit': 10,
+        'sort': 'nearest',
+      },
+    );
+    final raw = response.data is Map ? response.data['data'] : null;
+    if (raw is! List) return const <SpotModel>[];
+    return raw
+        .whereType<Map>()
+        .map((item) => SpotModel.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  } catch (_) {
+    return const <SpotModel>[];
+  }
+});
+
+/// Plan 116b Part 2 Step 4: bounded caller for Companion busy-spot guidance
+/// (`GET /spots?limit=10`).
+final companionBusySpotsProvider = FutureProvider<List<SpotModel>>((ref) async {
+  final client = ref.read(apiClientProvider);
+  if (!client.isAuthenticated) return const <SpotModel>[];
+  try {
+    final response = await client.dio.get(
+      '/spots',
+      queryParameters: const <String, dynamic>{'limit': 10},
+    );
+    final raw = response.data is Map ? response.data['data'] : null;
+    if (raw is! List) return const <SpotModel>[];
+    return raw
+        .whereType<Map>()
+        .map((item) => SpotModel.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  } catch (_) {
+    return const <SpotModel>[];
+  }
+});
+
+/// Plan 116b Part 2 Step 4: bounded caller for Profile saved count & favorite
+/// picker (`GET /spots?limit=50`).
+final boundedSavedSpotsProvider = FutureProvider<List<SpotModel>>((ref) async {
+  final client = ref.read(apiClientProvider);
+  if (!client.isAuthenticated) return const <SpotModel>[];
+  try {
+    final response = await client.dio.get(
+      '/spots',
+      queryParameters: const <String, dynamic>{'limit': 50},
+    );
+    final raw = response.data is Map ? response.data['data'] : null;
+    if (raw is! List) return const <SpotModel>[];
+    return raw
+        .whereType<Map>()
+        .map((item) => SpotModel.fromJson(Map<String, dynamic>.from(item)))
+        .where((spot) => spot.saved)
+        .toList();
+  } catch (_) {
+    return const <SpotModel>[];
+  }
+});
+
+/// Plan 116b Part 2 Step 4: bounded single-spot caller for Pixel Lab backdrop
+/// preview (`GET /spots?limit=1`).
+final pixelLabSampleSpotProvider = FutureProvider<SpotModel?>((ref) async {
+  final client = ref.read(apiClientProvider);
+  if (!client.isAuthenticated) return null;
+  try {
+    final response = await client.dio.get(
+      '/spots',
+      queryParameters: const <String, dynamic>{'limit': 1},
+    );
+    final raw = response.data is Map ? response.data['data'] : null;
+    if (raw is! List || raw.isEmpty || raw.first is! Map) return null;
+    return SpotModel.fromJson(Map<String, dynamic>.from(raw.first as Map));
+  } catch (_) {
+    return null;
+  }
+});

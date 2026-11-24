@@ -291,6 +291,19 @@ class QuizRadarNotifier extends StateNotifier<QuizRadarState> {
   final DateTime Function() _clock;
   final LastKnownPositionReader _lastKnownPositionReader;
   final void Function()? _onUnlockSfx;
+  int _consecutiveFailures = 0;
+
+  static const Duration _baseCooldown = Duration(seconds: 30);
+  static const Duration _maxBackoff = Duration(minutes: 5);
+
+  Duration get _currentBackoff {
+    if (_consecutiveFailures <= 1) return _baseCooldown;
+    final seconds = math.min(
+      _maxBackoff.inSeconds,
+      _baseCooldown.inSeconds * (1 << (_consecutiveFailures - 1)),
+    );
+    return Duration(seconds: seconds);
+  }
 
   static double _haversineMeters(
     double lat1,
@@ -334,7 +347,8 @@ class QuizRadarNotifier extends StateNotifier<QuizRadarState> {
   }
 
   /// Queries `/quizzes/nearby` with `include_approaching: true`, throttled to
-  /// >= 50 m moved AND >= 30 s elapsed since the last call unless [force].
+  /// >= 50 m moved AND >= 30 s elapsed since the last call unless [force],
+  /// with exponential backoff (30 s, 60 s, 120 s, max 5 min) on failures.
   Future<void> checkWithLocation({
     required double lat,
     required double lng,
@@ -342,8 +356,9 @@ class QuizRadarNotifier extends StateNotifier<QuizRadarState> {
     bool force = false,
   }) async {
     final now = _clock();
-    if (!force &&
-        state.lastQueryAt != null &&
+    if (force) {
+      _consecutiveFailures = 0;
+    } else if (state.lastQueryAt != null &&
         state.lastQueryLat != null &&
         state.lastQueryLng != null) {
       final elapsed = now.difference(state.lastQueryAt!);
@@ -353,12 +368,20 @@ class QuizRadarNotifier extends StateNotifier<QuizRadarState> {
         lat,
         lng,
       );
-      if (movedMeters < 50.0 || elapsed < const Duration(seconds: 30)) {
+      if (elapsed < _currentBackoff ||
+          (_consecutiveFailures == 0 && movedMeters < 50.0)) {
         return;
       }
     }
 
-    state = state.copyWith(loading: true, clearError: true, origin: origin);
+    state = state.copyWith(
+      loading: true,
+      clearError: true,
+      origin: origin,
+      lastQueryLat: lat,
+      lastQueryLng: lng,
+      lastQueryAt: now,
+    );
 
     try {
       final client = _ref.read(culturalQuizApiClientProvider);
@@ -370,6 +393,7 @@ class QuizRadarNotifier extends StateNotifier<QuizRadarState> {
           'include_approaching': true,
         },
       );
+      _consecutiveFailures = 0;
       final body = response.data;
       final raw = body is Map ? body['data'] : null;
       if (raw is! List) {
@@ -421,9 +445,13 @@ class QuizRadarNotifier extends StateNotifier<QuizRadarState> {
         lastQueryAt: now,
       );
     } catch (e) {
+      _consecutiveFailures += 1;
       state = state.copyWith(
         loading: false,
         error: 'Could not check nearby quizzes.',
+        lastQueryLat: lat,
+        lastQueryLng: lng,
+        lastQueryAt: now,
       );
     }
   }

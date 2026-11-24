@@ -536,11 +536,22 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // The Category Wrap should display full labels
-      expect(find.byKey(const ValueKey('builder_category_segmented')), findsOneWidget);
+      // Plan 118: 7-page wizard renders category on page 2 and task chips inside Wrap on page 3 without overflow at 320px
+      await tester.enterText(
+          find.byKey(const Key('wizard_name_input')), 'Lingayen Walk');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('wizard_category_dropdown')), findsOneWidget);
       expect(find.text('Eco-Tourism & Nature'), findsOneWidget);
 
-      // Verify Wrap is used for categories
+      await tester.enterText(find.byKey(const Key('wizard_about_input')),
+          'Walk along the historic gulf beachfront.');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard_next_btn')));
+      await tester.pumpAndSettle();
+
+      // Verify Wrap is used for the 5 task type chips
       expect(find.byType(Wrap), findsWidgets);
       expect(tester.takeException(), isNull);
     });

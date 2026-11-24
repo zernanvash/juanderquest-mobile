@@ -46,12 +46,14 @@ import '../features/cultural_quizzes/screens/nearby_quizzes_screen.dart';
 import '../features/spots/screens/spot_explore_screen.dart';
 import '../features/spots/screens/spot_search_screen.dart';
 import '../features/spots/screens/spot_detail_screen.dart';
+import '../features/spots/screens/spot_edit_screen.dart';
 import '../features/spots/screens/spot_discovery_studio_screen.dart';
 import '../features/spots/utils/spot_location_handoff.dart';
 import '../features/spots/utils/spot_posting.dart';
 import '../features/spots/screens/saved_spots_screen.dart';
 import '../features/suki/screens/suki_card_screen.dart';
 import '../features/suki/screens/suki_cards_screen.dart';
+import '../features/suki/screens/suki_points_history_screen.dart';
 import '../features/quests/screens/quest_list_screen.dart';
 import '../features/quests/screens/campaign_detail_screen.dart';
 import '../features/quests/models/campaign_model.dart';
@@ -204,6 +206,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: ':programId',
                     builder: (context, state) => SukiCardScreen(
                         programId: state.pathParameters['programId']!),
+                    routes: [
+                      GoRoute(
+                        path: 'points',
+                        builder: (context, state) => SukiPointsHistoryScreen(
+                          programId: state.pathParameters['programId']!,
+                          cardId: state.uri.queryParameters['cardId'],
+                          shopName: state.uri.queryParameters['title'],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -304,6 +316,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                           : null,
                     ),
                     routes: [
+                      GoRoute(
+                        path: 'edit',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) {
+                          final extra = state.extra;
+                          if (extra is SpotModel) {
+                            return SpotEditScreen(spot: extra);
+                          }
+                          return SpotDetailRouteScreen(
+                            slug: state.pathParameters['slug']!,
+                          );
+                        },
+                      ),
                       GoRoute(
                         path: 'quests/new',
                         parentNavigatorKey: rootNavigatorKey,

@@ -75,13 +75,78 @@ Future<String?> promptCounterCode(BuildContext context) async {
   return code;
 }
 
-/// v0.3.10: the counter loop. Scans (or asks for) a code, confirms it with
+/// Plan 111: optional spend-amount prompt when scanning a customer Suki pass.
+Future<({bool cancelled, double? amount})> promptAmountSpent(
+    BuildContext context) async {
+  final controller = TextEditingController();
+  String? problem;
+  final result = await showPixelDialog<({bool cancelled, double? amount})>(
+    context: context,
+    title: tr(context, en: 'Purchase amount (optional)', tl: 'Halaga ng binili'),
+    content: StatefulBuilder(
+      builder: (ctx, setState) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PixelTextField(
+            key: const ValueKey('merchant_counter_amount_spent'),
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            label: tr(ctx, en: 'Amount spent (₱)', tl: 'Halaga (₱)'),
+            hint: '250',
+          ),
+          if (problem != null) ...[
+            const SizedBox(height: 6),
+            Text(problem!,
+                style: PixelType.small(ctx, color: PixelPalette.redDeep)),
+          ],
+          const SizedBox(height: 8),
+          PixelButton(
+            key: const ValueKey('merchant_counter_amount_confirm'),
+            label: tr(ctx, en: 'Record visit', tl: 'Itala ang bisita'),
+            expand: true,
+            onPressed: () {
+              final raw = controller.text.trim();
+              if (raw.isEmpty) {
+                Navigator.of(ctx).pop((cancelled: false, amount: null));
+                return;
+              }
+              final parsed = double.tryParse(raw);
+              if (parsed == null || parsed < 0 || parsed > 100000) {
+                setState(() => problem = tr(ctx,
+                    en: 'Enter an amount between 0 and 100000.',
+                    tl: 'Maglagay ng halagang 0 hanggang 100000.'));
+                return;
+              }
+              Navigator.of(ctx).pop((cancelled: false, amount: parsed));
+            },
+          ),
+          const SizedBox(height: 6),
+          PixelButton(
+            key: const ValueKey('merchant_counter_amount_skip'),
+            label: tr(ctx, en: 'Skip amount', tl: 'Laktawan'),
+            variant: PixelButtonVariant.secondary,
+            expand: true,
+            onPressed: () =>
+                Navigator.of(ctx).pop((cancelled: false, amount: null)),
+          ),
+        ],
+      ),
+    ),
+    actions: const [],
+  );
+  controller.dispose();
+  return result ?? (cancelled: true, amount: null);
+}
+
+/// v0.3.10 / Plan 111: the counter loop. Scans (or asks for) a code, confirms it with
 /// `POST /merchant/suki/scan`, shows the result, and repeats on "Scan next".
 /// Voucher codes work even while Suki Cards are switched off.
 Future<void> runMerchantCounter(
   BuildContext context,
   WidgetRef ref, {
   bool manual = false,
+  bool askAmountSpent = false,
 }) async {
   final api = ref.read(merchantApiProvider);
   final scan = ref.read(merchantSukiScannerProvider);
@@ -92,8 +157,14 @@ Future<void> runMerchantCounter(
     final code =
         manual ? await promptCounterCode(context) : await scan(context);
     if (code == null || !context.mounted) return;
+    double? amountSpent;
+    if (askAmountSpent && code.trim().toUpperCase().startsWith('JDQSUKIPASS:')) {
+      final res = await promptAmountSpent(context);
+      if (res.cancelled || !context.mounted) return;
+      amountSpent = res.amount;
+    }
     try {
-      final result = await api.sukiScan(code);
+      final result = await api.sukiScan(code, amountSpent: amountSpent);
       if (!context.mounted) return;
       again = await showSukiScanResult(context, result);
     } catch (error) {

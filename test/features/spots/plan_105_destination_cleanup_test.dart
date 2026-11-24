@@ -208,8 +208,9 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Island Hopping Trail'), findsOneWidget);
+      // Plan 118: non-poster on a poster-less spot does not see Create quest.
       expect(find.byKey(const ValueKey('spot_create_quest_button')),
-          findsOneWidget);
+          findsNothing);
 
       // Tapping PLAY navigates to /quests/quest-105
       await tester.tap(find.byKey(const ValueKey('spot_quest_play_quest-105')));

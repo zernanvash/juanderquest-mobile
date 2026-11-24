@@ -61,6 +61,39 @@ class SpotPhoto {
   int get hashCode => url.hashCode;
 }
 
+class SpotAuthor {
+  final String id;
+  final String? handle;
+  final String displayName;
+  final String avatarUrl;
+
+  const SpotAuthor({
+    required this.id,
+    this.handle,
+    required this.displayName,
+    this.avatarUrl = '',
+  });
+
+  String get formattedHandle {
+    final clean = (handle ?? '').trim().replaceFirst(RegExp(r'^@+'), '');
+    return clean.isNotEmpty ? '@$clean' : displayName;
+  }
+
+  factory SpotAuthor.fromJson(Map<String, dynamic> j) => SpotAuthor(
+        id: j['id']?.toString() ?? '',
+        handle: j['handle']?.toString(),
+        displayName: j['display_name']?.toString() ?? 'Traveler',
+        avatarUrl: j['avatar_url']?.toString() ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        if (handle != null) 'handle': handle,
+        'display_name': displayName,
+        'avatar_url': avatarUrl,
+      };
+}
+
 class SpotSponsor {
   final String name;
   final String? logo;
@@ -132,6 +165,8 @@ class SpotModel {
   final String? questId;
   final String? imageUrl;
   final String? createdBy;
+  final SpotAuthor? author;
+  final int? priceLevel;
   final bool saved;
 
   /// Plan 93b WP-13: the server's like state and real like count.
@@ -174,6 +209,8 @@ class SpotModel {
     this.questId,
     this.imageUrl,
     this.createdBy,
+    this.author,
+    this.priceLevel,
     this.saved = false,
     this.liked = false,
     this.likeCount = 0,
@@ -411,6 +448,10 @@ class SpotModel {
       likeCount: (j['like_count'] as num?)?.toInt() ?? 0,
       imageUrl: primaryImg,
       createdBy: j['created_by']?.toString() ?? j['createdBy']?.toString(),
+      author: j['author'] is Map
+          ? SpotAuthor.fromJson(Map<String, dynamic>.from(j['author'] as Map))
+          : null,
+      priceLevel: (j['price_level'] as num?)?.toInt(),
       tags: List<String>.from(j['tags'] ?? []),
       reasons: List<String>.from(j['recommendation_reasons'] ?? []),
       goodFor: goodFor,
@@ -465,6 +506,8 @@ class SpotModel {
     String? questId,
     String? imageUrl,
     String? createdBy,
+    SpotAuthor? author,
+    int? priceLevel,
     bool? saved,
     bool? liked,
     int? likeCount,
@@ -505,6 +548,8 @@ class SpotModel {
         questId: questId ?? this.questId,
         imageUrl: imageUrl ?? this.imageUrl,
         createdBy: createdBy ?? this.createdBy,
+        author: author ?? this.author,
+        priceLevel: priceLevel ?? this.priceLevel,
         saved: saved ?? this.saved,
         liked: liked ?? this.liked,
         likeCount: likeCount ?? this.likeCount,
@@ -542,6 +587,8 @@ class SpotModel {
         if (questId != null) 'quest_id': questId,
         if (imageUrl != null) 'image_url': imageUrl,
         if (createdBy != null) 'created_by': createdBy,
+        if (author != null) 'author': author!.toJson(),
+        if (priceLevel != null) 'price_level': priceLevel,
         'saved': saved,
         'liked': liked,
         'like_count': likeCount,
@@ -562,5 +609,190 @@ class SpotModel {
       return (photos.first as Map)['url']?.toString();
     }
     return null;
+  }
+}
+
+/// Lightweight destination search hit returned by `GET /spots/search`.
+class SpotSearchHit {
+  final String id;
+  final String slug;
+  final String name;
+  final String municipality;
+  final String category;
+  final String? tier;
+  final String? thumb;
+
+  const SpotSearchHit({
+    required this.id,
+    required this.slug,
+    required this.name,
+    required this.municipality,
+    required this.category,
+    this.tier,
+    this.thumb,
+  });
+
+  factory SpotSearchHit.fromJson(Map<String, dynamic> json) {
+    final rawThumb = json['thumb']?.toString();
+    return SpotSearchHit(
+      id: json['id']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      municipality: json['municipality']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      tier: json['tier']?.toString(),
+      thumb: rawThumb != null && rawThumb.trim().isNotEmpty
+          ? SpotModel.resolveImageUrl(rawThumb)
+          : null,
+    );
+  }
+
+  SpotModel toSpotModel() => SpotModel(
+        id: id,
+        slug: slug,
+        name: name,
+        description: '',
+        category: category,
+        subcategory: '',
+        municipality: municipality,
+        address: '',
+        sourceName: 'Verified Catalog',
+        trustLevel: 'lgu_verified',
+        gpsLat: 0,
+        gpsLng: 0,
+        imageUrl: thumb,
+        tags: const [],
+        reasons: const [],
+      );
+}
+
+/// Lightweight pin returned inside `GET /spots/map` (`data.markers`).
+class SpotMapMarker {
+  final String id;
+  final String slug;
+  final String name;
+  final double lat;
+  final double lng;
+  final String category;
+  final String? tier;
+  final String? thumb;
+
+  const SpotMapMarker({
+    required this.id,
+    required this.slug,
+    required this.name,
+    required this.lat,
+    required this.lng,
+    required this.category,
+    this.tier,
+    this.thumb,
+  });
+
+  factory SpotMapMarker.fromJson(Map<String, dynamic> json) {
+    final rawThumb = json['thumb']?.toString();
+    return SpotMapMarker(
+      id: json['id']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
+      lng: (json['lng'] as num?)?.toDouble() ?? 0.0,
+      category: json['category']?.toString() ?? '',
+      tier: json['tier']?.toString(),
+      thumb: rawThumb != null && rawThumb.trim().isNotEmpty
+          ? SpotModel.resolveImageUrl(rawThumb)
+          : null,
+    );
+  }
+
+  SpotModel toSpotModel() => SpotModel(
+        id: id,
+        slug: slug,
+        name: name,
+        description: '',
+        category: category,
+        subcategory: '',
+        municipality: '',
+        address: '',
+        sourceName: 'Verified Catalog',
+        trustLevel: 'lgu_verified',
+        gpsLat: lat,
+        gpsLng: lng,
+        imageUrl: thumb,
+        tags: const [],
+        reasons: const [],
+      );
+}
+
+/// Cluster bubble returned inside `GET /spots/map` (`data.clusters`).
+class SpotMapCluster {
+  final double lat;
+  final double lng;
+  final int count;
+
+  /// `[west, south, east, north]` bounds to zoom into on tap.
+  final List<double> bbox;
+
+  const SpotMapCluster({
+    required this.lat,
+    required this.lng,
+    required this.count,
+    required this.bbox,
+  });
+
+  factory SpotMapCluster.fromJson(Map<String, dynamic> json) {
+    final rawBbox = json['bbox'];
+    final bboxList = rawBbox is List
+        ? rawBbox
+            .map((e) => (e as num?)?.toDouble() ?? 0.0)
+            .toList(growable: false)
+        : const <double>[];
+    final lat = (json['lat'] as num?)?.toDouble() ?? 0.0;
+    final lng = (json['lng'] as num?)?.toDouble() ?? 0.0;
+    return SpotMapCluster(
+      lat: lat,
+      lng: lng,
+      count: (json['count'] as num?)?.toInt() ?? 0,
+      bbox: bboxList.length == 4 ? bboxList : <double>[lng, lat, lng, lat],
+    );
+  }
+}
+
+/// Parsed response for `GET /spots/map`.
+class SpotMapViewResponse {
+  final List<SpotMapMarker> markers;
+  final List<SpotMapCluster> clusters;
+  final int total;
+
+  const SpotMapViewResponse({
+    required this.markers,
+    required this.clusters,
+    required this.total,
+  });
+
+  factory SpotMapViewResponse.fromEnvelope(Map<String, dynamic> body) {
+    final rawData = body['data'];
+    if (rawData is! Map) {
+      throw const FormatException('Expected map payload from /spots/map');
+    }
+    final data = Map<String, dynamic>.from(rawData);
+    final markers = (data['markers'] as List? ?? const [])
+        .whereType<Map>()
+        .map((m) => SpotMapMarker.fromJson(Map<String, dynamic>.from(m)))
+        .where((m) => m.id.isNotEmpty)
+        .toList();
+    final clusters = (data['clusters'] as List? ?? const [])
+        .whereType<Map>()
+        .map((c) => SpotMapCluster.fromJson(Map<String, dynamic>.from(c)))
+        .where((c) => c.count > 0)
+        .toList();
+    final meta = body['meta'];
+    final total = meta is Map
+        ? ((meta['total'] as num?)?.toInt() ?? markers.length)
+        : markers.length;
+    return SpotMapViewResponse(
+      markers: markers,
+      clusters: clusters,
+      total: total,
+    );
   }
 }
