@@ -83,6 +83,12 @@ android {
             }
         }
         release {
+            // Public AR sandbox (-PjdqArSandbox=true, lib/main_ar_lab.dart): its own ID and name so it
+            // installs beside the released app and the .arlab test build (owner 2026-11-24).
+            if (project.findProperty("jdqArSandbox") == "true") {
+                applicationIdSuffix = ".arsandbox"
+                resValue("string", "app_name", "JDQ AR Sandbox")
+            }
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("protectedRelease") else signingConfigs.getByName("debug")
         }
     }

@@ -7,7 +7,7 @@ import 'features/ar_lab/ar_lab_home.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MaterialApp(
-    title: 'JDQ AR Lab',
+    title: 'JDQ AR Sandbox',
     debugShowCheckedModeBanner: false,
     home: ArLabHome(),
   ));

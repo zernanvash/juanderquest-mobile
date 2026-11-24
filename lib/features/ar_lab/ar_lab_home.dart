@@ -39,7 +39,7 @@ class _ArLabHomeState extends State<ArLabHome> {
       ('lab_sipa', 'Sipa Rally', 'Keep the sipa up: 5 kicks in a row.', () => SipaGame(rangeScale: scale)),
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('JDQ AR Lab')),
+      appBar: AppBar(title: const Text('JDQ AR Sandbox')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         SwitchListTile(
           key: const ValueKey('lab_short_range'),
