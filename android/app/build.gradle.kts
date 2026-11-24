@@ -121,8 +121,8 @@ dependencies {
     implementation("com.google.ar:core:1.56.0")
 }
 
-// The AR Lab and AR Test apps have no registered Firebase client (main.dart initialises Firebase
+// The AR Lab, AR Sandbox and AR Test apps have no registered Firebase client (main.dart initialises Firebase
 // from code options and carries on if it fails), so skip the google-services step for them.
-if (project.findProperty("jdqArLab") == "true" || project.findProperty("jdqArTest") == "true") {
+if (listOf("jdqArLab", "jdqArSandbox", "jdqArTest").any { project.findProperty(it) == "true" }) {
     tasks.matching { it.name.contains("GoogleServices") }.configureEach { enabled = false }
 }
