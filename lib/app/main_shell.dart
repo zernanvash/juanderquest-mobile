@@ -17,7 +17,6 @@ import '../features/juanchoice/providers/juanchoice_provider.dart';
 import '../features/quests/providers/campaign_provider.dart';
 import '../features/quests/providers/quest_provider.dart';
 import '../features/shop/providers/shop_nav_provider.dart';
-import '../features/spots/providers/spot_discovery_provider.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -68,9 +67,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
-    // Preload tourism spots, quest markers, and active event campaigns in background
+    // Preload quest markers and active event campaigns in background.
+    // Explore /spots paging and /spots/map viewport pins load on demand.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(spotDiscoveryProvider.notifier).load();
       ref.read(questProvider.notifier).fetchQuests();
       ref.read(campaignProvider.notifier).fetchCampaigns();
       ref.read(choiceSpotlightProvider.future);

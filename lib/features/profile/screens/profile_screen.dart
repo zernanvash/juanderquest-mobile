@@ -138,7 +138,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authProvider).user;
     final stats = ref.watch(profileStatsProvider);
-    final spotsState = ref.watch(spotDiscoveryProvider);
+    final savedSpotsList =
+        ref.watch(boundedSavedSpotsProvider).valueOrNull ?? const <SpotModel>[];
+    final memorySavedCount = ref.watch(
+      spotDiscoveryProvider.select(
+        (s) => s.spots.where((x) => x.saved).length,
+      ),
+    );
 
     final isMine = widget.username == null ||
         widget.username == currentUser?.id ||
@@ -184,7 +190,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final showcase = ref.watch(showcaseProvider(showcaseKey)).valueOrNull;
     final earnedBadges = showcase?.badgesEarned ?? 0;
 
-    final savedSpots = spotsState.spots.where((s) => s.saved).length;
+    final savedSpots =
+        savedSpotsList.isNotEmpty ? savedSpotsList.length : memorySavedCount;
 
     // Plan 100 WP-1: your own spots by account id (a wallet account's seed id
     // `wallet:0x…` matched no account, so the list failed to load).

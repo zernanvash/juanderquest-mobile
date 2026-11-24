@@ -585,8 +585,8 @@ Future<void> showBadgePicker(
 
 /// Pick the favourite destination from your saved places.
 Future<void> showFavoritePicker(BuildContext context, WidgetRef ref) async {
-  final saved =
-      ref.read(spotDiscoveryProvider).spots.where((s) => s.saved).toList();
+  final saved = await ref.read(boundedSavedSpotsProvider.future);
+  if (!context.mounted) return;
   // '' = no favourite.
   final picked = await showPixelDialog<String>(
     context: context,

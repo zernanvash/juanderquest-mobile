@@ -16,6 +16,7 @@ class ExploreSearchResults extends StatelessWidget {
     super.key,
     required this.query,
     required this.spots,
+    this.remoteHits = const [],
     required this.recent,
     required this.onPickRecent,
     required this.onRemoveRecent,
@@ -26,6 +27,7 @@ class ExploreSearchResults extends StatelessWidget {
 
   final String query;
   final List<SpotModel> spots;
+  final List<SpotSearchHit> remoteHits;
   final List<String> recent;
   final ValueChanged<String> onPickRecent;
   final ValueChanged<String> onRemoveRecent;
@@ -35,12 +37,29 @@ class ExploreSearchResults extends StatelessWidget {
 
   static const maxResults = 30;
 
-  static List<SpotModel> match(List<SpotModel> spots, String query) =>
-      FuzzySearch.filter(
-        spots,
-        query,
-        (s) => [s.name, s.municipality, s.category, ...s.tags],
-      );
+  static List<SpotModel> match(
+    List<SpotModel> spots,
+    String query, {
+    List<SpotSearchHit> remoteHits = const [],
+  }) {
+    final localMatches = FuzzySearch.filter(
+      spots,
+      query,
+      (s) => [s.name, s.municipality, s.category, ...s.tags],
+    );
+    if (remoteHits.isEmpty) return localMatches;
+    final byId = <String, SpotModel>{for (final s in spots) s.id: s};
+    final seen = <String>{};
+    final merged = <SpotModel>[];
+    for (final hit in remoteHits) {
+      if (hit.id.isEmpty || !seen.add(hit.id)) continue;
+      merged.add(byId[hit.id] ?? hit.toSpotModel());
+    }
+    for (final local in localMatches) {
+      if (seen.add(local.id)) merged.add(local);
+    }
+    return merged;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +156,7 @@ class ExploreSearchResults extends StatelessWidget {
   }
 
   Widget _matches(BuildContext context, PixelGrid grid) {
-    final found = match(spots, query);
+    final found = match(spots, query, remoteHits: remoteHits);
     final shown = found.take(maxResults).toList();
     final countLabel = found.isEmpty
         ? 'NO MATCHES'

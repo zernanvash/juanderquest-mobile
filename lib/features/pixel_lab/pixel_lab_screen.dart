@@ -158,14 +158,13 @@ class _PixelLabScreenState extends ConsumerState<PixelLabScreen> {
 
   Widget _spotBackdrop(BuildContext context, PixelGrid grid) {
     final current = ref.watch(theaterBackdropProvider);
-    final spots = ref.watch(spotDiscoveryProvider).spots;
+    final sampleSpot = ref.watch(pixelLabSampleSpotProvider).valueOrNull;
     ImageProvider image =
         const AssetImage('assets/images/pangasinan_banner.png');
-    for (final spot in spots) {
-      final photo = TheaterBackdropTreatment.imageFor(spot);
+    if (sampleSpot != null) {
+      final photo = TheaterBackdropTreatment.imageFor(sampleSpot);
       if (photo != null) {
         image = photo;
-        break;
       }
     }
     return _section(
