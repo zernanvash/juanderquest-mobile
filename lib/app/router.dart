@@ -46,6 +46,7 @@ import '../features/cultural_quizzes/screens/nearby_quizzes_screen.dart';
 import '../features/spots/screens/spot_explore_screen.dart';
 import '../features/spots/screens/spot_search_screen.dart';
 import '../features/spots/screens/spot_detail_screen.dart';
+import '../features/spots/screens/spot_edit_screen.dart';
 import '../features/spots/screens/spot_discovery_studio_screen.dart';
 import '../features/spots/utils/spot_location_handoff.dart';
 import '../features/spots/utils/spot_posting.dart';
@@ -304,6 +305,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                           : null,
                     ),
                     routes: [
+                      GoRoute(
+                        path: 'edit',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) {
+                          final extra = state.extra;
+                          if (extra is SpotModel) {
+                            return SpotEditScreen(spot: extra);
+                          }
+                          return SpotDetailRouteScreen(
+                            slug: state.pathParameters['slug']!,
+                          );
+                        },
+                      ),
                       GoRoute(
                         path: 'quests/new',
                         parentNavigatorKey: rootNavigatorKey,

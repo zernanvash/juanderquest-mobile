@@ -39,6 +39,7 @@ import 'package:juanderquest_app/features/profile/screens/badges_screen.dart';
 import 'package:juanderquest_app/features/vote/screens/vote_screen.dart';
 import 'package:juanderquest_app/features/map/screens/map_view_screen.dart';
 import 'package:juanderquest_app/features/spots/screens/spot_detail_screen.dart';
+import 'package:juanderquest_app/features/spots/screens/spot_edit_screen.dart';
 import 'package:juanderquest_app/features/cultural_quizzes/screens/nearby_quizzes_screen.dart';
 import 'package:juanderquest_app/core/widgets/in_app_banner.dart';
 import 'package:juanderquest_app/core/widgets/town_picker.dart';
@@ -1733,7 +1734,18 @@ void main() {
           tester,
           const QuestBuilderScreen(initialSpot: dummySpot),
           size,
-          1.4,
+          2.0,
+        );
+      });
+
+      testWidgets(
+          'SpotEditScreen does not overflow at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        await testScreenOverflow(
+          tester,
+          const SpotEditScreen(spot: dummySpot),
+          size,
+          2.0,
         );
       });
 

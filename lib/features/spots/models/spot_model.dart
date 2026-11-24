@@ -61,6 +61,39 @@ class SpotPhoto {
   int get hashCode => url.hashCode;
 }
 
+class SpotAuthor {
+  final String id;
+  final String? handle;
+  final String displayName;
+  final String avatarUrl;
+
+  const SpotAuthor({
+    required this.id,
+    this.handle,
+    required this.displayName,
+    this.avatarUrl = '',
+  });
+
+  String get formattedHandle {
+    final clean = (handle ?? '').trim().replaceFirst(RegExp(r'^@+'), '');
+    return clean.isNotEmpty ? '@$clean' : displayName;
+  }
+
+  factory SpotAuthor.fromJson(Map<String, dynamic> j) => SpotAuthor(
+        id: j['id']?.toString() ?? '',
+        handle: j['handle']?.toString(),
+        displayName: j['display_name']?.toString() ?? 'Traveler',
+        avatarUrl: j['avatar_url']?.toString() ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        if (handle != null) 'handle': handle,
+        'display_name': displayName,
+        'avatar_url': avatarUrl,
+      };
+}
+
 class SpotSponsor {
   final String name;
   final String? logo;
@@ -132,6 +165,8 @@ class SpotModel {
   final String? questId;
   final String? imageUrl;
   final String? createdBy;
+  final SpotAuthor? author;
+  final int? priceLevel;
   final bool saved;
 
   /// Plan 93b WP-13: the server's like state and real like count.
@@ -174,6 +209,8 @@ class SpotModel {
     this.questId,
     this.imageUrl,
     this.createdBy,
+    this.author,
+    this.priceLevel,
     this.saved = false,
     this.liked = false,
     this.likeCount = 0,
@@ -411,6 +448,10 @@ class SpotModel {
       likeCount: (j['like_count'] as num?)?.toInt() ?? 0,
       imageUrl: primaryImg,
       createdBy: j['created_by']?.toString() ?? j['createdBy']?.toString(),
+      author: j['author'] is Map
+          ? SpotAuthor.fromJson(Map<String, dynamic>.from(j['author'] as Map))
+          : null,
+      priceLevel: (j['price_level'] as num?)?.toInt(),
       tags: List<String>.from(j['tags'] ?? []),
       reasons: List<String>.from(j['recommendation_reasons'] ?? []),
       goodFor: goodFor,
@@ -465,6 +506,8 @@ class SpotModel {
     String? questId,
     String? imageUrl,
     String? createdBy,
+    SpotAuthor? author,
+    int? priceLevel,
     bool? saved,
     bool? liked,
     int? likeCount,
@@ -505,6 +548,8 @@ class SpotModel {
         questId: questId ?? this.questId,
         imageUrl: imageUrl ?? this.imageUrl,
         createdBy: createdBy ?? this.createdBy,
+        author: author ?? this.author,
+        priceLevel: priceLevel ?? this.priceLevel,
         saved: saved ?? this.saved,
         liked: liked ?? this.liked,
         likeCount: likeCount ?? this.likeCount,
@@ -542,6 +587,8 @@ class SpotModel {
         if (questId != null) 'quest_id': questId,
         if (imageUrl != null) 'image_url': imageUrl,
         if (createdBy != null) 'created_by': createdBy,
+        if (author != null) 'author': author!.toJson(),
+        if (priceLevel != null) 'price_level': priceLevel,
         'saved': saved,
         'liked': liked,
         'like_count': likeCount,

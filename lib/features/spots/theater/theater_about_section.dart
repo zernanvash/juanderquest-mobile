@@ -1,5 +1,7 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_language.dart';
 import '../../../core/pixel/pixel_text_3d.dart';
 import '../../../core/pixel/generated/pixel_palette.g.dart';
 import '../../../core/pixel/pixel_box.dart';
@@ -44,6 +46,12 @@ class TheaterAboutSection extends StatelessWidget {
               height: 1.4,
             ),
           ),
+
+          // Plan 118: "Posted by @handle" author line (hidden when author is null).
+          if (spot.author != null) ...[
+            SizedBox(height: grid.px(2.5)),
+            _SpotAuthorRow(author: spot.author!),
+          ],
 
           // GOOD FOR Sub-block
           if (spot.goodFor.isNotEmpty) ...[
@@ -174,6 +182,94 @@ class TheaterAboutSection extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _SpotAuthorRow extends StatelessWidget {
+  const _SpotAuthorRow({required this.author});
+
+  final SpotAuthor author;
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = PixelGrid.of(context);
+    final handleClean =
+        (author.handle ?? '').trim().replaceFirst(RegExp(r'^@+'), '');
+    final target = handleClean.isNotEmpty ? handleClean : author.id;
+    final initial = author.displayName.trim().isNotEmpty
+        ? author.displayName.trim().substring(0, 1).toUpperCase()
+        : 'T';
+
+    return InkWell(
+      key: const Key('spot_author_line'),
+      onTap: () {
+        if (target.isEmpty) return;
+        try {
+          context.push('/profile/${Uri.encodeComponent(target)}');
+        } catch (_) {}
+      },
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: grid.px(0.5)),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: PixelPalette.parchment,
+                border: Border.all(color: PixelPalette.ink, width: 2),
+              ),
+              alignment: Alignment.center,
+              child: author.avatarUrl.trim().isNotEmpty
+                  ? Image.network(
+                      SpotModel.resolveImageUrl(author.avatarUrl),
+                      width: 24,
+                      height: 24,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Text(
+                        initial,
+                        style: PixelType.small(context, color: PixelPalette.ink)
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    )
+                  : Text(
+                      initial,
+                      style: PixelType.small(context, color: PixelPalette.ink)
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
+            ),
+            SizedBox(width: grid.px(1.5)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tr(
+                      context,
+                      en: 'Posted by ${author.formattedHandle}',
+                      tl: 'Ni-post ni ${author.formattedHandle}',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PixelType.small(context, color: PixelPalette.sun)
+                        .copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  if (author.displayName.trim().isNotEmpty &&
+                      author.displayName.trim() != author.formattedHandle)
+                    Text(
+                      author.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          PixelType.small(context, color: PixelPalette.paperDim),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
