@@ -42,6 +42,72 @@ class AppAnnouncement {
   int get hashCode => Object.hash(text, severity, until);
 }
 
+class HomePromoPanelConfig {
+  final String campaignId;
+  final String title;
+  final String body;
+  final String ctaLabel;
+  final String url;
+  final DateTime? until;
+
+  const HomePromoPanelConfig({
+    required this.campaignId,
+    required this.title,
+    this.body = '',
+    this.ctaLabel = 'Open Form',
+    required this.url,
+    this.until,
+  });
+
+  bool get hasValidHttpsUrl {
+    final uri = Uri.tryParse(url);
+    return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty;
+  }
+
+  bool isExpiredAt(DateTime now) => until != null && !until!.isAfter(now);
+
+  static HomePromoPanelConfig? tryFromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final title = (raw['title'] as String? ?? '').trim();
+    final url = (raw['url'] as String? ?? '').trim();
+    final uri = Uri.tryParse(url);
+    if (title.isEmpty || uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      return null;
+    }
+    final rawCampaignId = (raw['campaign_id'] as String? ?? '').trim();
+    final campaignId = rawCampaignId.isNotEmpty ? rawCampaignId : '$title|$url';
+    final body = (raw['body'] as String? ?? '').trim();
+    final rawCta = (raw['cta_label'] as String? ?? '').trim();
+    final ctaLabel = rawCta.isNotEmpty ? rawCta : 'Open Form';
+    final untilRaw = raw['until'];
+    final until = untilRaw is String && untilRaw.trim().isNotEmpty
+        ? DateTime.tryParse(untilRaw.trim())
+        : null;
+    return HomePromoPanelConfig(
+      campaignId: campaignId,
+      title: title,
+      body: body,
+      ctaLabel: ctaLabel,
+      url: url,
+      until: until,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HomePromoPanelConfig &&
+          other.campaignId == campaignId &&
+          other.title == title &&
+          other.body == body &&
+          other.ctaLabel == ctaLabel &&
+          other.url == url &&
+          other.until == until;
+
+  @override
+  int get hashCode => Object.hash(campaignId, title, body, ctaLabel, url, until);
+}
+
 class ContentManifestMetadata {
   final String version;
   final String manifestUrl;
@@ -97,6 +163,7 @@ class AppVersionInfo {
   /// Plan 109 WP-5 server-controlled fields on GET /api/v1/app/version.
   final int? minSupportedBuild;
   final AppAnnouncement? announcement;
+  final HomePromoPanelConfig? promoPanel;
 
   const AppVersionInfo({
     required this.versionCode,
@@ -120,6 +187,7 @@ class AppVersionInfo {
     this.signingKeyGeneration,
     this.minSupportedBuild,
     this.announcement,
+    this.promoPanel,
   });
 
   int get effectiveMinSupportedBuild => [
@@ -132,6 +200,7 @@ class AppVersionInfo {
   AppVersionInfo withControlMetadata({
     int? minSupportedBuild,
     AppAnnouncement? announcement,
+    HomePromoPanelConfig? promoPanel,
   }) {
     final mergedMin = minSupportedBuild == null
         ? this.minSupportedBuild
@@ -158,6 +227,7 @@ class AppVersionInfo {
       signingKeyGeneration: signingKeyGeneration,
       minSupportedBuild: mergedMin,
       announcement: announcement ?? this.announcement,
+      promoPanel: promoPanel ?? this.promoPanel,
     );
   }
 
@@ -199,6 +269,7 @@ class AppVersionInfo {
       signingKeyGeneration: json['signingKeyGeneration'] as int?,
       minSupportedBuild: (json['min_supported_build'] as num?)?.toInt(),
       announcement: AppAnnouncement.tryFromJson(json['announcement']),
+      promoPanel: HomePromoPanelConfig.tryFromJson(json['promo_panel']),
     );
   }
 }

@@ -456,3 +456,60 @@ final activeAnnouncementProvider = Provider<AppAnnouncement?>((ref) {
   if (dismissed.contains(announcement.dismissalKey)) return null;
   return announcement;
 });
+
+class HomePromoDismissNotifier extends StateNotifier<String?> {
+  static const storageKey = 'home_promo_dismissed_campaign_id';
+
+  final FlutterSecureStorage? _storage;
+
+  HomePromoDismissNotifier([FlutterSecureStorage? storage])
+      : _storage = storage,
+        super(null) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final storage = _storage;
+    if (storage == null) return;
+    try {
+      final raw = await storage.read(key: storageKey);
+      if (raw != null && raw.trim().isNotEmpty) {
+        state = raw.trim();
+      }
+    } catch (_) {
+      // Ignore storage errors (e.g. missing plugin in widget tests).
+    }
+  }
+
+  bool isDismissed(String campaignId) =>
+      campaignId.isNotEmpty && state == campaignId;
+
+  Future<void> dismiss(String campaignId) async {
+    final clean = campaignId.trim();
+    if (clean.isEmpty || state == clean) return;
+    state = clean;
+    final storage = _storage;
+    if (storage == null) return;
+    try {
+      await storage.write(key: storageKey, value: clean);
+    } catch (_) {
+      // Ignore storage errors.
+    }
+  }
+}
+
+final homePromoDismissProvider =
+    StateNotifierProvider<HomePromoDismissNotifier, String?>((ref) {
+  return HomePromoDismissNotifier(const FlutterSecureStorage());
+});
+
+final activeHomePromoProvider = Provider<HomePromoPanelConfig?>((ref) {
+  final updateLatest = ref.watch(appUpdateProvider).latestVersion;
+  final startupLatest = ref.watch(startupUpdateControllerProvider).latestVersion;
+  final promo = updateLatest?.promoPanel ?? startupLatest?.promoPanel;
+  if (promo == null) return null;
+  if (!promo.hasValidHttpsUrl || promo.isExpiredAt(DateTime.now())) return null;
+  final dismissedCampaignId = ref.watch(homePromoDismissProvider);
+  if (dismissedCampaignId == promo.campaignId) return null;
+  return promo;
+});

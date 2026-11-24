@@ -14,6 +14,7 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/designer_guide.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../app_update/providers/app_update_provider.dart';
 import '../../cultural_quizzes/providers/cultural_quiz_provider.dart';
 import '../../notifications/providers/local_notifications_provider.dart';
 import '../../juanchoice/providers/juanchoice_provider.dart';
@@ -34,6 +35,7 @@ import '../widgets/home_qotd_panel.dart';
 import '../widgets/home_around_panels.dart';
 import '../widgets/home_dual_bento_row.dart';
 import '../widgets/home_hero.dart';
+import '../widgets/home_promo_panel.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -73,6 +75,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(questProvider.notifier).fetchQuests(),
       ref.read(campaignProvider.notifier).fetchCampaigns(forceRefresh: true),
       ref.read(quizRadarProvider.notifier).refreshFromHome(force: true),
+      ref.read(appUpdateProvider.notifier).checkForUpdates(silent: true),
     ]);
     ref.invalidate(homeQotdProvider);
     ref.invalidate(homeNearbyQuizProvider);
@@ -242,6 +245,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ),
                               ),
                               SizedBox(height: grid.px(5)),
+
+                              const HomePromoPanel(),
 
                               // Plan 100 WP-4: today's tasks (they earn the stamps); owner
                               // 2026-11-16: right under the player card.
