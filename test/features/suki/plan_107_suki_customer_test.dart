@@ -16,7 +16,7 @@ import 'package:juanderquest_app/features/suki/screens/suki_card_screen.dart';
 import 'package:juanderquest_app/features/suki/screens/suki_cards_screen.dart';
 import 'package:juanderquest_app/features/suki/suki_codes.dart';
 import 'package:juanderquest_app/features/suki/suki_scan_flow.dart';
-import 'package:juanderquest_app/features/suki/widgets/suki_card_grid.dart';
+import 'package:juanderquest_app/features/suki/widgets/suki_card_view.dart';
 import 'package:juanderquest_app/features/suki/widgets/suki_pass_sheet.dart';
 
 const _standee =
@@ -273,34 +273,48 @@ void main() {
     });
   });
 
-  group('card grid', () {
-    Future<void> pumpGrid(WidgetTester tester, int visits, int required) =>
-        tester.pumpWidget(_host(Scaffold(
-          body: SukiCardGrid(
-              visits: visits,
-              required: required,
-              rewardTag: 'FREE',
-              rewardText: 'Free iced coffee'),
-        )));
+  group('card view', () {
+    Future<void> pumpCard(WidgetTester tester, int visits, int required) {
+      final p = SukiProgram.fromJson({
+        ..._programJson(),
+        'reward_kind': 'free_item',
+        'reward_value': null,
+        'reward_tag': 'FREE',
+        'reward_text': 'Free iced coffee',
+        'visits_required': required,
+      });
+      final c = SukiCardProgress(
+        cardId: 'c1',
+        cycle: 1,
+        visits: visits,
+        required: required,
+        totalVisits: visits,
+        visitedToday: false,
+      );
+      return tester.pumpWidget(_host(Scaffold(
+        body: SingleChildScrollView(
+          child: SukiCardView(program: p, card: c, tiers: p.effectiveTiers),
+        ),
+      )));
+    }
 
     testWidgets('an empty card shows every slot and the reward slot',
         (tester) async {
-      await pumpGrid(tester, 0, 10);
+      await pumpCard(tester, 0, 10);
       expect(find.byKey(const ValueKey('suki_slot_9')), findsOneWidget);
       expect(find.byKey(const ValueKey('suki_reward_slot')), findsOneWidget);
-      expect(find.text('FREE'), findsOneWidget);
       expect(find.text('10 more visits for: Free iced coffee'), findsOneWidget);
     });
 
     testWidgets('a partial card counts the visits left', (tester) async {
-      await pumpGrid(tester, 3, 10);
+      await pumpCard(tester, 3, 10);
       expect(find.text('7 more visits for: Free iced coffee'), findsOneWidget);
-      await pumpGrid(tester, 9, 10);
+      await pumpCard(tester, 9, 10);
       expect(find.text('1 more visit for: Free iced coffee'), findsOneWidget);
     });
 
     testWidgets('a full card says the reward is ready', (tester) async {
-      await pumpGrid(tester, 5, 5);
+      await pumpCard(tester, 5, 5);
       expect(find.text('Reward ready: Free iced coffee'), findsOneWidget);
       expect(find.byKey(const ValueKey('suki_reward_slot')), findsNothing);
     });

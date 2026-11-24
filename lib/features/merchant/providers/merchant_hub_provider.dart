@@ -216,12 +216,53 @@ class MerchantApi {
         _data((await _api.dio.post('/merchant/suki/standee/rotate')).data),
       );
 
-  Future<MerchantSukiScanResult> sukiScan(String code) async =>
+  Future<MerchantSukiScanResult> sukiScan(
+    String code, {
+    double? amountSpent,
+  }) async =>
       MerchantSukiScanResult.fromJson(_data((await _api.dio.post(
         '/merchant/suki/scan',
-        data: {'code': code},
+        data: {
+          'code': code,
+          if (amountSpent != null) 'amount_spent': amountSpent,
+        },
       ))
           .data));
+
+  Future<List<MerchantSukiPointsMenuItem>> sukiPointsMenu() async => _rows(
+        _data((await _api.dio.get('/merchant/suki/points-menu')).data)['items'],
+      ).map(MerchantSukiPointsMenuItem.fromJson).toList();
+
+  Future<MerchantSukiPointsMenuItem> createSukiPointsMenuItem({
+    required String title,
+    required int pointsCost,
+    String iconKey = 'gift',
+    int sortOrder = 0,
+  }) async =>
+      MerchantSukiPointsMenuItem.fromJson(_data((await _api.dio.post(
+        '/merchant/suki/points-menu',
+        data: {
+          'title': title.trim(),
+          'points_cost': pointsCost,
+          'icon_key': iconKey,
+          'sort_order': sortOrder,
+        },
+      ))
+          .data)['item']);
+
+  Future<MerchantSukiPointsMenuItem> updateSukiPointsMenuItem(
+    String itemId,
+    Map<String, dynamic> fields,
+  ) async =>
+      MerchantSukiPointsMenuItem.fromJson(_data((await _api.dio.patch(
+        '/merchant/suki/points-menu/${Uri.encodeComponent(itemId)}',
+        data: fields,
+      ))
+          .data)['item']);
+
+  Future<void> deleteSukiPointsMenuItem(String itemId) =>
+      _api.dio.delete(
+          '/merchant/suki/points-menu/${Uri.encodeComponent(itemId)}');
 
   Future<MerchantSukiStats> sukiStats({int days = 30}) async =>
       MerchantSukiStats.fromJson(_data((await _api.dio.get(

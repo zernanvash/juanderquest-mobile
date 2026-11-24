@@ -19,6 +19,8 @@ import '../widgets/merchant_counter.dart';
 import 'merchant_suki_codes.dart';
 import 'merchant_suki_models.dart';
 import 'merchant_suki_widgets.dart';
+import 'suki_ladder_editor.dart';
+import 'suki_points_settings.dart';
 import 'suki_standee_screen.dart';
 
 /// The counter phone's GPS fix for "Pin shop location". Overridden in tests.
@@ -57,17 +59,9 @@ final merchantSukiScannerProvider =
       ),
 );
 
-const _kindLabels = ['FREE ITEM', '% OFF', '₱ OFF', 'PROMO'];
-const _examples = [
-  'Free iced coffee',
-  'Free halo-halo',
-  '10% off your order',
-  'Buy 1 Take 1 halo-halo',
-];
-
-/// Plan 107 §7.4: the merchant hub's Loyalty tab (`/merchant?tab=loyalty`).
+/// Plan 107 / Plan 111: the merchant hub's Loyalty tab (`/merchant?tab=loyalty`).
 /// States: no program (setup form), draft (checklist + Activate), active
-/// (SCAN, Print standee, stats, Pause), paused by admin.
+/// (SCAN, Print standee, stats, points menu, Pause), paused by admin.
 class MerchantLoyaltyTab extends ConsumerStatefulWidget {
   const MerchantLoyaltyTab({super.key});
 
@@ -84,11 +78,12 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
   bool _editing = false;
 
   final _title = TextEditingController(text: 'Suki Card');
-  final _rewardText = TextEditingController();
-  final _rewardValue = TextEditingController();
-  int _kind = 0;
-  int _visits = 10;
+  final List<SukiTierDraft> _tiers = [SukiTierDraft(visitNumber: 10)];
   bool _staffScan = false;
+  bool _pointsEnabled = false;
+  final _pointsPerVisit = TextEditingController(text: '10');
+  final _pesosPerPoint = TextEditingController();
+  final _maxPointsPerVisit = TextEditingController(text: '200');
   String? _formError;
 
   MerchantApi get _api => ref.read(merchantApiProvider);
@@ -102,9 +97,22 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
   @override
   void dispose() {
     _title.dispose();
-    _rewardText.dispose();
-    _rewardValue.dispose();
+    for (final t in _tiers) {
+      t.dispose();
+    }
+    _pointsPerVisit.dispose();
+    _pesosPerPoint.dispose();
+    _maxPointsPerVisit.dispose();
     super.dispose();
+  }
+
+  void _replaceTiers(List<SukiTierDraft> next) {
+    for (final t in _tiers) {
+      t.dispose();
+    }
+    _tiers
+      ..clear()
+      ..addAll(next);
   }
 
   Future<void> _load() async {
@@ -139,12 +147,58 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
   void _fillForm(MerchantSukiProgram? p) {
     if (p == null) return;
     _title.text = p.title;
-    _rewardText.text = p.rewardText;
-    _rewardValue.text =
-        p.rewardValue == null ? '' : '${p.rewardValue!.round()}';
-    _kind = sukiRewardKinds.indexOf(p.rewardKind).clamp(0, 3);
-    _visits = p.visitsRequired;
     _staffScan = p.staffScan;
+    _pointsEnabled = p.points.programEnabled;
+    _pointsPerVisit.text = '${p.points.perVisit}';
+    _pesosPerPoint.text = p.points.pesosPerPoint == null
+        ? ''
+        : '${p.points.pesosPerPoint!.round()}';
+    _maxPointsPerVisit.text = '${p.points.maxPerVisit}';
+    final source = p.effectiveTiers;
+    _replaceTiers([
+      for (final t in source)
+        SukiTierDraft(
+          visitNumber: t.visitNumber,
+          kindIndex: sukiRewardKinds.indexOf(t.rewardKind).clamp(0, 3),
+          rewardValue: t.rewardValue == null ? '' : '${t.rewardValue!.round()}',
+          rewardText: t.rewardText,
+          iconKey: t.iconKey,
+        ),
+    ]);
+  }
+
+  void _addTier() {
+    if (_tiers.length >= 4) return;
+    setState(() {
+      final last = _tiers.last;
+      final mid = (last.visitNumber / 2).floor().clamp(1, last.visitNumber - 1);
+      var candidate = mid;
+      final used = {for (final t in _tiers) t.visitNumber};
+      while (used.contains(candidate) && candidate > 1) {
+        candidate--;
+      }
+      if (used.contains(candidate)) {
+        final nextVisit = (last.visitNumber + 2).clamp(3, 20);
+        if (!used.contains(nextVisit)) {
+          _tiers.add(SukiTierDraft(visitNumber: nextVisit));
+          return;
+        }
+        return;
+      }
+      _tiers.insert(_tiers.length - 1, SukiTierDraft(visitNumber: candidate));
+      _tiers.sort((a, b) => a.visitNumber.compareTo(b.visitNumber));
+    });
+  }
+
+  void _removeTier(int index) {
+    if (_tiers.length <= 1 || index < 0 || index >= _tiers.length) return;
+    setState(() {
+      final removed = _tiers.removeAt(index);
+      removed.dispose();
+      if (_tiers.last.visitNumber < 3) {
+        _tiers.last.visitNumber = 3;
+      }
+    });
   }
 
   Future<void> _run(Future<MerchantSukiView> Function() work) async {
@@ -167,35 +221,93 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
   }
 
   Future<void> _save() async {
-    final valued = _kind == 1 || _kind == 2;
-    final value = int.tryParse(_rewardValue.text.trim());
     final title = _title.text.trim();
-    final reward = _rewardText.text.trim();
     String? problem;
     if (title.length < 3 || title.length > 60) {
       problem = tr(context,
           en: 'The card name needs 3 to 60 letters.',
           tl: '3 hanggang 60 titik ang pangalan.');
-    } else if (reward.length < 3 || reward.length > 120) {
+    } else if (_tiers.isEmpty || _tiers.length > 4) {
       problem = tr(context,
-          en: 'Write the reward, e.g. "Free iced coffee".',
-          tl: 'Isulat ang reward, hal. "Free iced coffee".');
-    } else if (valued &&
-        (value == null || value < 1 || value > (_kind == 1 ? 100 : 5000))) {
-      problem = _kind == 1
-          ? tr(context,
-              en: 'Percent off must be 1 to 100.', tl: '1 hanggang 100 lang.')
-          : tr(context,
-              en: 'Peso off must be 1 to 5000.', tl: '1 hanggang 5000 lang.');
+          en: 'Add 1 to 4 reward milestones.',
+          tl: 'Maglagay ng 1 hanggang 4 na milestone.');
+    } else {
+      for (var i = 0; i < _tiers.length; i++) {
+        final t = _tiers[i];
+        final reward = t.rewardTextController.text.trim();
+        final value = t.parsedValue;
+        if (i > 0 && t.visitNumber <= _tiers[i - 1].visitNumber) {
+          problem = tr(context,
+              en: 'Milestone visit numbers must strictly increase.',
+              tl: 'Dapat pataas ang bilang ng bisita sa bawat milestone.');
+          break;
+        }
+        if (reward.length < 3 || reward.length > 120) {
+          problem = tr(context,
+              en: 'Write the reward, e.g. "Free iced coffee".',
+              tl: 'Isulat ang reward, hal. "Free iced coffee".');
+          break;
+        }
+        if (t.kindIndex == 1 && (value == null || value < 5 || value > 50)) {
+          problem = tr(context,
+              en: 'Percent off must be 5 to 50.', tl: '5 hanggang 50 lang.');
+          break;
+        }
+        if (t.kindIndex == 2 && (value == null || value < 10 || value > 500)) {
+          problem = tr(context,
+              en: 'Peso off must be 10 to 500.', tl: '10 hanggang 500 lang.');
+          break;
+        }
+      }
+      if (problem == null &&
+          (_tiers.last.visitNumber < 3 || _tiers.last.visitNumber > 20)) {
+        problem = tr(context,
+            en: 'Final reward must be between 3 and 20 visits.',
+            tl: '3 hanggang 20 bisita ang huling reward.');
+      }
     }
+
+    final ptsPerVisit = int.tryParse(_pointsPerVisit.text.trim());
+    final pesosRaw = _pesosPerPoint.text.trim();
+    final pesosPerPoint = pesosRaw.isEmpty ? null : double.tryParse(pesosRaw);
+    final maxPtsPerVisit = int.tryParse(_maxPointsPerVisit.text.trim());
+    if (problem == null && _pointsEnabled) {
+      if (ptsPerVisit == null || ptsPerVisit < 0 || ptsPerVisit > 100) {
+        problem = tr(context,
+            en: 'Points per visit must be 0 to 100.',
+            tl: '0 hanggang 100 points lang bawat bisita.');
+      } else if (pesosRaw.isNotEmpty &&
+          (pesosPerPoint == null || pesosPerPoint < 1 || pesosPerPoint > 1000)) {
+        problem = tr(context,
+            en: 'Pesos per bonus point must be 1 to 1000.',
+            tl: '1 hanggang 1000 piso bawat point.');
+      } else if (maxPtsPerVisit == null ||
+          maxPtsPerVisit < 1 ||
+          maxPtsPerVisit > 2000) {
+        problem = tr(context,
+            en: 'Max spend points must be 1 to 2000.',
+            tl: '1 hanggang 2000 max spend points.');
+      }
+    }
+
     setState(() => _formError = problem);
     if (problem != null) return;
+
+    final last = _tiers.last;
     await _run(() => _api.saveSuki({
           'title': title,
-          'reward_kind': sukiRewardKinds[_kind],
-          'reward_value': valued ? value : null,
-          'reward_text': reward,
-          'visits_required': _visits,
+          'reward_kind': last.rewardKind,
+          'reward_value': last.valued ? last.parsedValue : null,
+          'reward_text': last.rewardTextController.text.trim(),
+          'visits_required': last.visitNumber,
+          'tiers': [for (final t in _tiers) t.toPayload()],
+          'points_enabled': _pointsEnabled,
+          if (_pointsEnabled) ...{
+            'points_per_visit': ptsPerVisit ?? 10,
+            'pesos_per_point': pesosPerPoint,
+            'max_points_per_visit': maxPtsPerVisit ?? 200,
+          },
+          'skin_key': _view?.program?.skinKey ?? 'jdq_classic',
           'mode': _staffScan ? 'staff_scan' : 'standee',
           'radius_m': _view?.program?.radiusM ?? 75,
         }));
@@ -219,7 +331,12 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
   }
 
   Future<void> _counterScan() async {
-    await runMerchantCounter(context, ref);
+    final p = _view?.program;
+    final askSpent = p != null &&
+        p.points.programEnabled &&
+        p.points.pesosPerPoint != null &&
+        p.points.pesosPerPoint! > 0;
+    await runMerchantCounter(context, ref, askAmountSpent: askSpent);
     if (mounted) _load();
   }
 
@@ -382,8 +499,19 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
           visitsRequired: p.visitsRequired,
           rewardTag: p.rewardTag,
           rewardText: p.rewardText,
+          tiers: p.effectiveTiers,
         ),
         if (!p.isActive) ...[gap, _checklist(context, grid, view)],
+        if (view.isOwner &&
+            !p.adminPaused &&
+            (p.points.programEnabled || view.globalPointsEnabled)) ...[
+          gap,
+          SukiPointsMenuEditor(
+            api: _api,
+            items: view.pointsMenu,
+            onRefresh: _load,
+          ),
+        ],
         if (p.isActive && _stats != null) ...[
           gap,
           SukiStatsPanel(stats: _stats!),
@@ -541,8 +669,7 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
         ),
       );
     }
-    final valued = _kind == 1 || _kind == 2;
-    final value = num.tryParse(_rewardValue.text.trim());
+    final lastTier = _tiers.last;
     final gap = SizedBox(height: grid.px(2));
     return Column(
       key: const ValueKey('loyalty_form'),
@@ -565,8 +692,8 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
                 SizedBox(height: grid.px(1)),
                 Text(
                   tr(context,
-                      en: 'Customers collect one visit a day at your counter. On the last visit they get your reward, which you give in kind. No points or money change hands.',
-                      tl: 'Isang bisita bawat araw sa counter mo. Sa huling bisita, makukuha nila ang reward mo. Walang points o perang kailangan.'),
+                      en: 'Customers collect one visit a day at your counter. Set 1 to 4 milestone rewards and optional Suki Points.',
+                      tl: 'Isang bisita bawat araw sa counter mo. Maglagay ng 1 hanggang 4 na milestone rewards at opsyonal na Suki Points.'),
                   style: PixelType.body(context, color: PixelPalette.slate),
                 ),
               ],
@@ -581,74 +708,11 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
           onChanged: (_) => setState(() {}),
         ),
         gap,
-        Text(tr(context, en: 'Reward type', tl: 'Uri ng reward'),
-            style: PixelType.small(context)),
-        SizedBox(height: grid.px(1)),
-        PixelSegmented(
-          key: const ValueKey('loyalty_kind'),
-          items: _kindLabels,
-          selectedIndex: _kind,
-          onChanged: (i) => setState(() => _kind = i),
-        ),
-        if (valued) ...[
-          gap,
-          PixelTextField(
-            key: const ValueKey('loyalty_value'),
-            controller: _rewardValue,
-            keyboardType: TextInputType.number,
-            label: _kind == 1
-                ? tr(context,
-                    en: 'Percent off (1 to 100)',
-                    tl: 'Porsyento (1 hanggang 100)')
-                : tr(context,
-                    en: 'Pesos off (1 to 5000)', tl: 'Piso (1 hanggang 5000)'),
-            onChanged: (_) => setState(() {}),
-          ),
-        ],
-        gap,
-        PixelTextField(
-          key: const ValueKey('loyalty_reward_text'),
-          controller: _rewardText,
-          label: tr(context, en: 'Reward line', tl: 'Reward'),
-          hint: 'Free iced coffee',
-          onChanged: (_) => setState(() {}),
-        ),
-        SizedBox(height: grid.px(1)),
-        Wrap(
-          spacing: grid.px(1),
-          runSpacing: grid.px(1),
-          children: [
-            for (final example in _examples)
-              PixelChip(example,
-                  style: PixelBoxStyle.slot,
-                  onTap: () => setState(() => _rewardText.text = example)),
-          ],
-        ),
-        gap,
-        Text(tr(context, en: 'Visits needed', tl: 'Bilang ng bisita'),
-            style: PixelType.small(context)),
-        SizedBox(height: grid.px(1)),
-        Row(
-          children: [
-            PixelButton(
-              key: const ValueKey('loyalty_visits_minus'),
-              label: '-',
-              variant: PixelButtonVariant.secondary,
-              onPressed: _visits > 3 ? () => setState(() => _visits--) : null,
-            ),
-            Expanded(
-              child: Text('$_visits',
-                  key: const ValueKey('loyalty_visits'),
-                  textAlign: TextAlign.center,
-                  style: PixelType.numbers(context)),
-            ),
-            PixelButton(
-              key: const ValueKey('loyalty_visits_plus'),
-              label: '+',
-              variant: PixelButtonVariant.secondary,
-              onPressed: _visits < 20 ? () => setState(() => _visits++) : null,
-            ),
-          ],
+        SukiLadderEditor(
+          tiers: _tiers,
+          onChanged: () => setState(() {}),
+          onAddTier: _addTier,
+          onRemoveTier: _removeTier,
         ),
         gap,
         Text(tr(context, en: 'How visits are recorded', tl: 'Paano itatala'),
@@ -674,17 +738,28 @@ class _MerchantLoyaltyTabState extends ConsumerState<MerchantLoyaltyTab> {
                   tl: 'Ini-scan ng customer ang QR sa counter mo.'),
           style: PixelType.small(context, color: PixelPalette.slate),
         ),
+        gap,
+        SukiPointsSettingsPanel(
+          globalEnabled: view.globalPointsEnabled,
+          pointsEnabled: _pointsEnabled,
+          onTogglePoints: (on) => setState(() => _pointsEnabled = on),
+          pointsPerVisitController: _pointsPerVisit,
+          pesosPerPointController: _pesosPerPoint,
+          maxPointsPerVisitController: _maxPointsPerVisit,
+          onChanged: () => setState(() {}),
+        ),
         SizedBox(height: grid.px(3)),
         Text(tr(context, en: 'Preview', tl: 'Silip'),
             style: PixelType.small(context)),
         SizedBox(height: grid.px(1)),
         SukiCardPreview(
           title: _title.text.trim().isEmpty ? 'Suki Card' : _title.text.trim(),
-          visitsRequired: _visits,
-          rewardTag:
-              sukiRewardTag(sukiRewardKinds[_kind], valued ? value : null),
-          rewardText:
-              _rewardText.text.trim().isEmpty ? '…' : _rewardText.text.trim(),
+          visitsRequired: lastTier.visitNumber,
+          rewardTag: lastTier.rewardTag,
+          rewardText: lastTier.rewardTextController.text.trim().isEmpty
+              ? '…'
+              : lastTier.rewardTextController.text.trim(),
+          tiers: [for (final t in _tiers) t.toPreviewTier()],
         ),
         if (_formError != null) ...[
           gap,

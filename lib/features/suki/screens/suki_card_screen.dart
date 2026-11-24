@@ -18,8 +18,10 @@ import '../../merchant/screens/merchant_page_screen.dart';
 import '../models/suki_models.dart';
 import '../providers/suki_provider.dart';
 import '../suki_scan_flow.dart';
-import '../widgets/suki_card_grid.dart';
+import '../widgets/suki_card_view.dart';
 import '../widgets/suki_pass_sheet.dart';
+import '../widgets/suki_points_menu.dart';
+import '../widgets/suki_reward_ladder.dart';
 import 'suki_cards_screen.dart' show SukiComingSoonPanel, SukiErrorPanel;
 
 /// Plan 107 (`/suki/:programId`): one shop's card, its rewards and the pass.
@@ -148,64 +150,52 @@ class SukiCardScreen extends ConsumerWidget {
             _reward(context, grid, reward),
             SizedBox(height: grid.px(3)),
           ],
-          PixelPanel(
-            style: PixelBoxStyle.parchment,
-            padding: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // v0.3.10: the shop name opens its public page.
-                GestureDetector(
-                  key: const ValueKey('suki_card_shop_page'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: p.merchant.id.isEmpty
-                      ? null
-                      : () => openMerchantPage(context, p.merchant.id),
-                  child: Text(
-                      p.merchant.id.isEmpty
-                          ? p.merchant.name
-                          : '${p.merchant.name} >',
-                      style: PixelType.title(context)),
-                ),
-                SizedBox(height: grid.px(1)),
-                Text(
-                  [
-                    if (p.merchant.municipality != null)
-                      p.merchant.municipality!,
-                    p.title
-                  ].join(' · '),
-                  style: PixelType.small(context, color: PixelPalette.slate),
-                ),
-                SizedBox(height: grid.px(3)),
-                SukiCardGrid(
-                  visits: card?.visits ?? 0,
-                  required: card?.required ?? p.visitsRequired,
-                  rewardTag: p.rewardTag,
-                  rewardText: p.rewardText,
-                ),
-                if (card?.visitedToday == true) ...[
-                  SizedBox(height: grid.px(2)),
-                  Text(
-                    tr(context,
-                        en: 'Visited today. Come back tomorrow!',
-                        tl: 'Bumisita ka na ngayon. Balik bukas!'),
-                    key: const ValueKey('suki_visited_today'),
-                    style:
-                        PixelType.small(context, color: PixelPalette.greenDark),
-                  ),
-                ],
-                if (p.staffScan) ...[
-                  SizedBox(height: grid.px(2)),
-                  Text(
-                    tr(context,
-                        en: 'This shop scans your pass at the counter.',
-                        tl: 'Sa counter i-scan ng staff ang pass mo.'),
-                    style: PixelType.small(context, color: PixelPalette.slate),
-                  ),
-                ],
-              ],
-            ),
+          SukiCardView(
+            program: p,
+            card: card,
+            tiers: data.effectiveTiers,
+            points: card?.points ?? p.points,
+            onShowPass: () => _showPass(context, ref, p),
+            onShopTap: p.merchant.id.isEmpty
+                ? null
+                : () => openMerchantPage(context, p.merchant.id),
           ),
+          if (card?.visitedToday == true) ...[
+            SizedBox(height: grid.px(2)),
+            Text(
+              tr(context,
+                  en: 'Visited today. Come back tomorrow!',
+                  tl: 'Bumisita ka na ngayon. Balik bukas!'),
+              key: const ValueKey('suki_visited_today'),
+              style: PixelType.small(context, color: PixelPalette.greenDark),
+            ),
+          ],
+          if (p.staffScan) ...[
+            SizedBox(height: grid.px(2)),
+            Text(
+              tr(context,
+                  en: 'This shop scans your pass at the counter.',
+                  tl: 'Sa counter i-scan ng staff ang pass mo.'),
+              style: PixelType.small(context, color: PixelPalette.slate),
+            ),
+          ],
+          if (data.effectiveTiers.length > 1 ||
+              (card?.tiers.isNotEmpty ?? false)) ...[
+            SizedBox(height: grid.px(3)),
+            SukiRewardLadder(
+              tiers: data.effectiveTiers,
+              visits: card?.visits ?? 0,
+            ),
+          ],
+          if (p.points.enabled) ...[
+            SizedBox(height: grid.px(3)),
+            SukiPointsMenu(
+              program: p,
+              points: card?.points ?? p.points,
+              menu: data.pointsMenu,
+              cardId: card?.cardId,
+            ),
+          ],
           SizedBox(height: grid.px(3)),
           if (p.staffScan)
             passButton

@@ -1,4 +1,4 @@
-/// Plan 107 — Suki Card models (customer side of merchant loyalty cards).
+/// Plan 107 / Plan 111 — Suki Card models (customer side of merchant loyalty cards).
 library;
 
 /// Postgres BIGINT/NUMERIC can arrive as strings: accept num or a parsable string.
@@ -9,6 +9,21 @@ DateTime? _date(Object? v) => v == null ? null : DateTime.tryParse('$v');
 String? _str(Object? v) => v == null ? null : '$v';
 Map<String, dynamic> _map(Object? v) =>
     v is Map ? Map<String, dynamic>.from(v) : const {};
+List<Map<String, dynamic>> _rows(Object? v) => [
+      for (final r in (v is List ? v : const []))
+        if (r is Map) Map<String, dynamic>.from(r),
+    ];
+
+const sukiIconKeys = [
+  'gift',
+  'coffee',
+  'meal',
+  'snack',
+  'dessert',
+  'drink',
+  'discount',
+  'promo',
+];
 
 /// The tag on the reward slot: FREE / 10% OFF / ₱20 OFF / PROMO.
 String sukiRewardTag(String kind, double? value) {
@@ -46,6 +61,175 @@ class SukiMerchant {
       );
 }
 
+class SukiHolder {
+  const SukiHolder({
+    required this.displayName,
+    this.handle,
+    this.memberSince,
+  });
+
+  final String displayName;
+  final String? handle;
+  final DateTime? memberSince;
+
+  factory SukiHolder.fromJson(Map<String, dynamic> j) => SukiHolder(
+        displayName: '${j['display_name'] ?? 'Traveler'}',
+        handle: _str(j['handle']),
+        memberSince: _date(j['member_since']),
+      );
+}
+
+class SukiTier {
+  const SukiTier({
+    required this.visitNumber,
+    required this.rewardKind,
+    required this.rewardText,
+    required this.rewardTag,
+    this.rewardValue,
+    this.iconKey = 'gift',
+    this.state = 'locked',
+  });
+
+  final int visitNumber;
+  final String rewardKind;
+  final double? rewardValue;
+  final String rewardText;
+  final String rewardTag;
+  final String iconKey;
+  final String state; // locked | issued | claimed
+
+  bool get unlocked => state == 'issued' || state == 'claimed';
+  bool get claimed => state == 'claimed';
+
+  factory SukiTier.fromJson(Map<String, dynamic> j) {
+    final kind = '${j['reward_kind'] ?? 'free_item'}';
+    final value = _double(j['reward_value']);
+    return SukiTier(
+      visitNumber: _int(j['visit_number'], 10),
+      rewardKind: kind,
+      rewardValue: value,
+      rewardText: '${j['reward_text'] ?? ''}',
+      rewardTag: _str(j['reward_tag']) ?? sukiRewardTag(kind, value),
+      iconKey: '${j['icon_key'] ?? 'gift'}',
+      state: '${j['state'] ?? 'locked'}',
+    );
+  }
+}
+
+class SukiPointsState {
+  const SukiPointsState({
+    this.enabled = false,
+    this.balance = 0,
+    this.lifetime = 0,
+    this.perVisit = 0,
+    this.pesosPerPoint,
+    this.maxPerVisit = 200,
+  });
+
+  final bool enabled;
+  final int balance;
+  final int lifetime;
+  final int perVisit;
+  final double? pesosPerPoint;
+  final int maxPerVisit;
+
+  factory SukiPointsState.fromJson(Map<String, dynamic> j) => SukiPointsState(
+        enabled: j['enabled'] == true,
+        balance: _int(j['balance']),
+        lifetime: _int(j['lifetime']),
+        perVisit: _int(j['per_visit']),
+        pesosPerPoint: _double(j['pesos_per_point']),
+        maxPerVisit: _int(j['max_per_visit'], 200),
+      );
+}
+
+class SukiPointsMenuItem {
+  const SukiPointsMenuItem({
+    required this.id,
+    required this.programId,
+    required this.title,
+    required this.pointsCost,
+    this.iconKey = 'gift',
+    this.isActive = true,
+    this.sortOrder = 0,
+  });
+
+  final String id;
+  final String programId;
+  final String title;
+  final int pointsCost;
+  final String iconKey;
+  final bool isActive;
+  final int sortOrder;
+
+  factory SukiPointsMenuItem.fromJson(Map<String, dynamic> j) =>
+      SukiPointsMenuItem(
+        id: '${j['id'] ?? ''}',
+        programId: '${j['program_id'] ?? ''}',
+        title: '${j['title'] ?? ''}',
+        pointsCost: _int(j['points_cost']),
+        iconKey: '${j['icon_key'] ?? 'gift'}',
+        isActive: j['is_active'] != false,
+        sortOrder: _int(j['sort_order']),
+      );
+}
+
+class SukiPointsLedgerEntry {
+  const SukiPointsLedgerEntry({
+    required this.id,
+    required this.delta,
+    required this.reason,
+    required this.createdAt,
+    this.visitId,
+    this.rewardId,
+    this.amountSpent,
+  });
+
+  final String id;
+  final int delta;
+  final String reason; // visit | spend | redeem | expire | admin_adjust
+  final DateTime? createdAt;
+  final String? visitId;
+  final String? rewardId;
+  final double? amountSpent;
+
+  factory SukiPointsLedgerEntry.fromJson(Map<String, dynamic> j) =>
+      SukiPointsLedgerEntry(
+        id: '${j['id'] ?? ''}',
+        delta: _int(j['delta']),
+        reason: '${j['reason'] ?? 'visit'}',
+        createdAt: _date(j['created_at']),
+        visitId: _str(j['visit_id']),
+        rewardId: _str(j['reward_id']),
+        amountSpent: _double(j['amount_spent']),
+      );
+}
+
+class SukiPointsLedgerPage {
+  const SukiPointsLedgerPage({
+    required this.cardId,
+    required this.balance,
+    required this.lifetime,
+    this.items = const [],
+    this.nextCursor,
+  });
+
+  final String cardId;
+  final int balance;
+  final int lifetime;
+  final List<SukiPointsLedgerEntry> items;
+  final String? nextCursor;
+
+  factory SukiPointsLedgerPage.fromJson(Map<String, dynamic> j) =>
+      SukiPointsLedgerPage(
+        cardId: '${j['card_id'] ?? ''}',
+        balance: _int(j['balance']),
+        lifetime: _int(j['lifetime']),
+        items: _rows(j['items']).map(SukiPointsLedgerEntry.fromJson).toList(),
+        nextCursor: _str(j['next_cursor']),
+      );
+}
+
 class SukiProgram {
   const SukiProgram({
     required this.id,
@@ -59,6 +243,9 @@ class SukiProgram {
     required this.merchant,
     this.rewardValue,
     this.distanceM,
+    this.skinKey = 'jdq_classic',
+    this.tiers = const [],
+    this.points = const SukiPointsState(),
   });
 
   final String id;
@@ -72,24 +259,58 @@ class SukiProgram {
   final String status;
   final SukiMerchant merchant;
   final int? distanceM;
+  final String skinKey;
+  final List<SukiTier> tiers;
+  final SukiPointsState points;
 
   bool get staffScan => mode == 'staff_scan';
+
+  List<SukiTier> get effectiveTiers => tiers.isNotEmpty
+      ? tiers
+      : [
+          SukiTier(
+            visitNumber: visitsRequired,
+            rewardKind: rewardKind,
+            rewardValue: rewardValue,
+            rewardText: rewardText,
+            rewardTag: rewardTag,
+          ),
+        ];
 
   factory SukiProgram.fromJson(Map<String, dynamic> j) {
     final kind = '${j['reward_kind'] ?? 'free_item'}';
     final value = _double(j['reward_value']);
+    final visits = _int(j['visits_required'], 10);
+    final rewardText = '${j['reward_text'] ?? ''}';
+    final rewardTag = _str(j['reward_tag']) ?? sukiRewardTag(kind, value);
+    final rawTiers = _rows(j['tiers']).map(SukiTier.fromJson).toList();
     return SukiProgram(
       id: '${j['id'] ?? ''}',
       title: '${j['title'] ?? 'Suki Card'}',
       rewardKind: kind,
       rewardValue: value,
-      rewardText: '${j['reward_text'] ?? ''}',
-      rewardTag: _str(j['reward_tag']) ?? sukiRewardTag(kind, value),
-      visitsRequired: _int(j['visits_required'], 10),
+      rewardText: rewardText,
+      rewardTag: rewardTag,
+      visitsRequired: visits,
       mode: '${j['mode'] ?? 'standee'}',
       status: '${j['status'] ?? 'active'}',
       merchant: SukiMerchant.fromJson(_map(j['merchant'])),
       distanceM: _num(j['distance_m'])?.round(),
+      skinKey: '${j['skin_key'] ?? 'jdq_classic'}',
+      tiers: rawTiers.isNotEmpty
+          ? rawTiers
+          : [
+              SukiTier(
+                visitNumber: visits,
+                rewardKind: kind,
+                rewardValue: value,
+                rewardText: rewardText,
+                rewardTag: rewardTag,
+              ),
+            ],
+      points: j['points'] is Map
+          ? SukiPointsState.fromJson(_map(j['points']))
+          : const SukiPointsState(),
     );
   }
 }
@@ -103,6 +324,9 @@ class SukiReward {
     required this.status,
     required this.expiresAt,
     required this.expired,
+    this.tierVisit,
+    this.source = 'visits',
+    this.pointsCost,
   });
 
   final String id;
@@ -112,6 +336,9 @@ class SukiReward {
   final String status; // issued | claimed
   final DateTime? expiresAt;
   final bool expired;
+  final int? tierVisit;
+  final String source; // visits | points
+  final int? pointsCost;
 
   bool get claimable => status == 'issued' && !expired && code.isNotEmpty;
 
@@ -126,6 +353,9 @@ class SukiReward {
       status: '${j['status'] ?? 'issued'}',
       expiresAt: _date(j['expires_at']),
       expired: j['expired'] == true,
+      tierVisit: j['tier_visit'] == null ? null : _int(j['tier_visit']),
+      source: '${j['source'] ?? 'visits'}',
+      pointsCost: j['points_cost'] == null ? null : _int(j['points_cost']),
     );
   }
 }
@@ -139,6 +369,9 @@ class SukiCardProgress {
     required this.required,
     required this.totalVisits,
     required this.visitedToday,
+    this.cardNo = '',
+    this.points = const SukiPointsState(),
+    this.tiers = const [],
   });
 
   final String cardId;
@@ -147,16 +380,25 @@ class SukiCardProgress {
   final int required;
   final int totalVisits;
   final bool visitedToday;
+  final String cardNo;
+  final SukiPointsState points;
+  final List<SukiTier> tiers;
 
   int get remaining => (required - visits).clamp(0, required);
 
-  factory SukiCardProgress.fromJson(Map<String, dynamic> j) => SukiCardProgress(
+  factory SukiCardProgress.fromJson(Map<String, dynamic> j) =>
+      SukiCardProgress(
         cardId: '${j['card_id'] ?? ''}',
         cycle: _int(j['cycle'], 1),
         visits: _int(j['visits']),
         required: _int(j['required'], 10),
         totalVisits: _int(j['total_visits']),
         visitedToday: j['visited_today'] == true,
+        cardNo: '${j['card_no'] ?? ''}',
+        points: j['points'] is Map
+            ? SukiPointsState.fromJson(_map(j['points']))
+            : const SukiPointsState(),
+        tiers: _rows(j['tiers']).map(SukiTier.fromJson).toList(),
       );
 }
 
@@ -168,37 +410,71 @@ List<SukiReward> _rewards(Map<String, dynamic> j) => [
         SukiReward.fromJson(_map(j['reward'])),
     ];
 
-/// A card in "my cards": progress, its program and open rewards.
+/// A card in "my cards": progress, its program, tier ladder, points and open rewards.
 class SukiCard {
   const SukiCard({
     required this.progress,
     required this.program,
     this.rewards = const [],
+    this.holder,
+    this.skinKey = 'jdq_classic',
+    this.tiers = const [],
+    this.points = const SukiPointsState(),
+    this.pointsMenu = const [],
   });
 
   final SukiCardProgress progress;
   final SukiProgram program;
   final List<SukiReward> rewards;
+  final SukiHolder? holder;
+  final String skinKey;
+  final List<SukiTier> tiers;
+  final SukiPointsState points;
+  final List<SukiPointsMenuItem> pointsMenu;
 
-  factory SukiCard.fromJson(Map<String, dynamic> j) => SukiCard(
-        progress: SukiCardProgress.fromJson(j),
-        program: SukiProgram.fromJson(_map(j['program'])),
-        rewards: _rewards(j),
-      );
+  List<SukiTier> get effectiveTiers =>
+      tiers.isNotEmpty ? tiers : program.effectiveTiers;
+
+  factory SukiCard.fromJson(Map<String, dynamic> j) {
+    final program = SukiProgram.fromJson(_map(j['program']));
+    final progress = SukiCardProgress.fromJson(j);
+    final rawTiers = _rows(j['tiers']).map(SukiTier.fromJson).toList();
+    return SukiCard(
+      progress: progress,
+      program: program,
+      rewards: _rewards(j),
+      holder: j['holder'] is Map ? SukiHolder.fromJson(_map(j['holder'])) : null,
+      skinKey: '${j['skin_key'] ?? program.skinKey}',
+      tiers: rawTiers.isNotEmpty ? rawTiers : program.effectiveTiers,
+      points: j['points'] is Map
+          ? SukiPointsState.fromJson(_map(j['points']))
+          : progress.points,
+      pointsMenu: _rows(j['points_menu'])
+          .map(SukiPointsMenuItem.fromJson)
+          .toList(),
+    );
+  }
 }
 
-/// One program page (`GET /suki/programs/:id`): the program, my card, rewards.
+/// One program page (`GET /suki/programs/:id`): the program, my card, points menu, rewards.
 class SukiProgramDetail {
   const SukiProgramDetail({
     required this.program,
     this.card,
     this.rewards = const [],
     this.isComingSoon = false,
+    this.pointsMenu = const [],
   });
 
   final SukiProgram program;
   final SukiCardProgress? card;
   final List<SukiReward> rewards;
+  final List<SukiPointsMenuItem> pointsMenu;
+
+  List<SukiTier> get effectiveTiers =>
+      card != null && card!.tiers.isNotEmpty
+          ? card!.tiers
+          : program.effectiveTiers;
   final bool isComingSoon;
 
   factory SukiProgramDetail.comingSoon() => SukiProgramDetail(
@@ -213,6 +489,9 @@ class SukiProgramDetail {
             ? SukiCardProgress.fromJson(_map(j['my_card']))
             : null,
         rewards: _rewards(j),
+        pointsMenu: _rows(j['points_menu'])
+            .map(SukiPointsMenuItem.fromJson)
+            .toList(),
       );
 }
 
@@ -225,6 +504,8 @@ class SukiVisitResult {
     required this.badges,
     required this.missionCompleted,
     this.rewardIssued,
+    this.rewardsIssued = const [],
+    this.pointsAwarded = 0,
   });
 
   final SukiProgram program;
@@ -234,24 +515,51 @@ class SukiVisitResult {
   final List<String> badges;
   final bool missionCompleted;
   final SukiReward? rewardIssued;
+  final List<SukiReward> rewardsIssued;
+  final int pointsAwarded;
 
-  /// The visit number just recorded: a completed card resets to 0.
-  int get visitNumber => rewardIssued != null ? card.required : card.visits;
+  /// The visit number just recorded: a completed cycle resets to 0.
+  int get visitNumber =>
+      card.visits == 0 && rewardIssued != null ? card.required : card.visits;
 
-  factory SukiVisitResult.fromJson(Map<String, dynamic> j) => SukiVisitResult(
-        program: SukiProgram.fromJson(_map(j['program'])),
-        card: SukiCardProgress.fromJson(_map(j['card'])),
+  factory SukiVisitResult.fromJson(Map<String, dynamic> j) {
+    final single = j['reward_issued'] is Map
+        ? SukiReward.fromJson(_map(j['reward_issued']))
+        : null;
+    final list = _rows(j['rewards_issued']).map(SukiReward.fromJson).toList();
+    return SukiVisitResult(
+      program: SukiProgram.fromJson(_map(j['program'])),
+      card: SukiCardProgress.fromJson(_map(j['card'])),
+      replayed: j['replayed'] == true,
+      xpAwarded: _int(j['xp_awarded']),
+      badges: [
+        for (final b in (j['badges'] is List ? j['badges'] as List : const []))
+          '$b'
+      ],
+      missionCompleted: j['mission_completed'] == true,
+      rewardIssued: single ?? (list.isNotEmpty ? list.first : null),
+      rewardsIssued: list.isNotEmpty ? list : (single != null ? [single] : const []),
+      pointsAwarded: _int(j['points_awarded']),
+    );
+  }
+}
+
+class SukiPointsRedeemResult {
+  const SukiPointsRedeemResult({
+    required this.replayed,
+    required this.reward,
+    required this.card,
+  });
+
+  final bool replayed;
+  final SukiReward reward;
+  final SukiCardProgress card;
+
+  factory SukiPointsRedeemResult.fromJson(Map<String, dynamic> j) =>
+      SukiPointsRedeemResult(
         replayed: j['replayed'] == true,
-        xpAwarded: _int(j['xp_awarded']),
-        badges: [
-          for (final b
-              in (j['badges'] is List ? j['badges'] as List : const []))
-            '$b'
-        ],
-        missionCompleted: j['mission_completed'] == true,
-        rewardIssued: j['reward_issued'] is Map
-            ? SukiReward.fromJson(_map(j['reward_issued']))
-            : null,
+        reward: SukiReward.fromJson(_map(j['reward'])),
+        card: SukiCardProgress.fromJson(_map(j['card'])),
       );
 }
 
