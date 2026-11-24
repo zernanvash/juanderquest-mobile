@@ -117,6 +117,14 @@ Future<void> celebrateSukiVisit(
     ),
   );
   if (!context.mounted) return;
+  if (result.pointsAwarded > 0) {
+    showPixelToast(
+      context,
+      tr(context,
+          en: '+${result.pointsAwarded} Suki Points earned!',
+          tl: '+${result.pointsAwarded} Suki Points ang nakuha!'),
+    );
+  }
   for (final badge in result.badges) {
     showPixelToast(
         context,

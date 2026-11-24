@@ -1,5 +1,4 @@
-/// Plan 107 §6.5–6.7: the merchant side of Suki Cards (own models, so the
-/// customer track's `features/suki` models can change independently).
+/// Plan 107 / Plan 111 §6: merchant side of Suki Cards (tiers, points & stats).
 library;
 
 // Postgres BIGINT/NUMERIC can arrive as strings; accept both.
@@ -26,8 +25,18 @@ List<Map<String, dynamic>> _rows(Object? v) => [
     ];
 
 const sukiRewardKinds = ['free_item', 'percent_off', 'amount_off', 'promo'];
+const merchantSukiIconKeys = [
+  'gift',
+  'coffee',
+  'meal',
+  'snack',
+  'dessert',
+  'drink',
+  'discount',
+  'promo',
+];
 
-/// The tag on the card's last slot: FREE / 10% OFF / ₱20 OFF / PROMO.
+/// The tag on a reward slot: FREE / 10% OFF / ₱20 OFF / PROMO.
 String sukiRewardTag(String kind, num? value) {
   final v = value == null
       ? 'N'
@@ -38,6 +47,97 @@ String sukiRewardTag(String kind, num? value) {
     'promo' => 'PROMO',
     _ => 'FREE',
   };
+}
+
+class MerchantSukiTier {
+  const MerchantSukiTier({
+    required this.visitNumber,
+    required this.rewardKind,
+    required this.rewardText,
+    required this.rewardTag,
+    this.rewardValue,
+    this.iconKey = 'gift',
+  });
+
+  final int visitNumber;
+  final String rewardKind;
+  final double? rewardValue;
+  final String rewardText;
+  final String rewardTag;
+  final String iconKey;
+
+  factory MerchantSukiTier.fromJson(Map<String, dynamic> j) {
+    final kind = '${j['reward_kind'] ?? 'free_item'}';
+    final value = _double(j['reward_value']);
+    return MerchantSukiTier(
+      visitNumber: _int(j['visit_number'], 10),
+      rewardKind: kind,
+      rewardValue: value,
+      rewardText: '${j['reward_text'] ?? ''}',
+      rewardTag: _str(j['reward_tag']) ?? sukiRewardTag(kind, value),
+      iconKey: '${j['icon_key'] ?? 'gift'}',
+    );
+  }
+}
+
+class MerchantSukiPointsConfig {
+  const MerchantSukiPointsConfig({
+    this.enabled = false,
+    this.programEnabled = false,
+    this.perVisit = 10,
+    this.pesosPerPoint,
+    this.maxPerVisit = 200,
+    this.expireDays,
+  });
+
+  final bool enabled;
+  final bool programEnabled;
+  final int perVisit;
+  final double? pesosPerPoint;
+  final int maxPerVisit;
+  final int? expireDays;
+
+  factory MerchantSukiPointsConfig.fromJson(Map<String, dynamic> j) =>
+      MerchantSukiPointsConfig(
+        enabled: j['enabled'] == true,
+        programEnabled: j['program_enabled'] == true || j['enabled'] == true,
+        perVisit: _int(j['per_visit'], 10),
+        pesosPerPoint: _double(j['pesos_per_point']),
+        maxPerVisit: _int(j['max_per_visit'], 200),
+        expireDays:
+            j['expire_days'] == null ? null : _int(j['expire_days']),
+      );
+}
+
+class MerchantSukiPointsMenuItem {
+  const MerchantSukiPointsMenuItem({
+    required this.id,
+    required this.programId,
+    required this.title,
+    required this.pointsCost,
+    this.iconKey = 'gift',
+    this.isActive = true,
+    this.sortOrder = 0,
+  });
+
+  final String id;
+  final String programId;
+  final String title;
+  final int pointsCost;
+  final String iconKey;
+  final bool isActive;
+  final int sortOrder;
+
+  factory MerchantSukiPointsMenuItem.fromJson(Map<String, dynamic> j) =>
+      MerchantSukiPointsMenuItem(
+        id: '${j['id'] ?? ''}',
+        programId: '${j['program_id'] ?? ''}',
+        title: '${j['title'] ?? ''}',
+        pointsCost: _int(j['points_cost']),
+        iconKey: '${j['icon_key'] ?? 'gift'}',
+        isActive: j['is_active'] != false,
+        sortOrder: _int(j['sort_order']),
+      );
 }
 
 class MerchantSukiProgram {
@@ -54,6 +154,9 @@ class MerchantSukiProgram {
     this.standeeVersion = 1,
     this.pausedBy,
     this.pauseReason,
+    this.skinKey = 'jdq_classic',
+    this.tiers = const [],
+    this.points = const MerchantSukiPointsConfig(),
   });
 
   final String id;
@@ -68,44 +171,82 @@ class MerchantSukiProgram {
   final int standeeVersion;
   final String? pausedBy; // merchant | admin
   final String? pauseReason;
+  final String skinKey;
+  final List<MerchantSukiTier> tiers;
+  final MerchantSukiPointsConfig points;
 
   bool get staffScan => mode == 'staff_scan';
   bool get isActive => status == 'active';
   bool get adminPaused => status == 'paused' && pausedBy == 'admin';
   String get rewardTag => sukiRewardTag(rewardKind, rewardValue);
 
-  factory MerchantSukiProgram.fromJson(Map<String, dynamic> j) =>
-      MerchantSukiProgram(
-        id: '${j['id'] ?? ''}',
-        title: '${j['title'] ?? 'Suki Card'}',
-        rewardKind: '${j['reward_kind'] ?? 'free_item'}',
-        rewardValue: _double(j['reward_value']),
-        rewardText: '${j['reward_text'] ?? ''}',
-        visitsRequired: _int(j['visits_required'], 10),
-        mode: '${j['mode'] ?? 'standee'}',
-        status: '${j['status'] ?? 'draft'}',
-        radiusM: _int(j['radius_m'], 75),
-        standeeVersion: _int(j['standee_version'], 1),
-        pausedBy: _str(j['paused_by']),
-        pauseReason: _str(j['pause_reason']),
-      );
+  List<MerchantSukiTier> get effectiveTiers => tiers.isNotEmpty
+      ? tiers
+      : [
+          MerchantSukiTier(
+            visitNumber: visitsRequired,
+            rewardKind: rewardKind,
+            rewardValue: rewardValue,
+            rewardText: rewardText,
+            rewardTag: rewardTag,
+          ),
+        ];
+
+  factory MerchantSukiProgram.fromJson(Map<String, dynamic> j) {
+    final kind = '${j['reward_kind'] ?? 'free_item'}';
+    final value = _double(j['reward_value']);
+    final visits = _int(j['visits_required'], 10);
+    final rewardText = '${j['reward_text'] ?? ''}';
+    final rawTiers = _rows(j['tiers']).map(MerchantSukiTier.fromJson).toList();
+    return MerchantSukiProgram(
+      id: '${j['id'] ?? ''}',
+      title: '${j['title'] ?? 'Suki Card'}',
+      rewardKind: kind,
+      rewardValue: value,
+      rewardText: rewardText,
+      visitsRequired: visits,
+      mode: '${j['mode'] ?? 'standee'}',
+      status: '${j['status'] ?? 'draft'}',
+      radiusM: _int(j['radius_m'], 75),
+      standeeVersion: _int(j['standee_version'], 1),
+      pausedBy: _str(j['paused_by']),
+      pauseReason: _str(j['pause_reason']),
+      skinKey: '${j['skin_key'] ?? 'jdq_classic'}',
+      tiers: rawTiers.isNotEmpty
+          ? rawTiers
+          : [
+              MerchantSukiTier(
+                visitNumber: visits,
+                rewardKind: kind,
+                rewardValue: value,
+                rewardText: rewardText,
+                rewardTag: sukiRewardTag(kind, value),
+              ),
+            ],
+      points: j['points'] is Map
+          ? MerchantSukiPointsConfig.fromJson(_map(j['points']))
+          : const MerchantSukiPointsConfig(),
+    );
+  }
 }
 
-/// `GET /merchant/suki`: the shop's program (or none) plus the checklist.
+/// `GET /merchant/suki`: the shop's program (or none), points menu & checklist.
 class MerchantSukiView {
   const MerchantSukiView({
     required this.hasLocation,
     required this.isPublished,
     this.role = 'owner',
     this.program,
+    this.globalPointsEnabled = false,
+    this.pointsMenu = const [],
   });
 
-  /// `role` is an additive field from the backend; when it is missing the
-  /// owner controls show and the server still enforces owner-only routes.
   final String role;
   final MerchantSukiProgram? program;
   final bool hasLocation;
   final bool isPublished;
+  final bool globalPointsEnabled;
+  final List<MerchantSukiPointsMenuItem> pointsMenu;
 
   bool get isOwner => role == 'owner';
 
@@ -118,6 +259,10 @@ class MerchantSukiView {
       hasLocation:
           checklist['has_location'] == true || j['shop_location'] is Map,
       isPublished: checklist['is_published'] == true,
+      globalPointsEnabled: j['global_points_enabled'] == true,
+      pointsMenu: _rows(j['points_menu'])
+          .map(MerchantSukiPointsMenuItem.fromJson)
+          .toList(),
     );
   }
 }
@@ -162,12 +307,14 @@ class MerchantSukiScanResult {
     required this.customer,
     required this.title,
     required this.detail,
+    this.pointsAwarded = 0,
   });
 
   final String kind; // visit | reward | voucher
   final String customer; // pseudonym, e.g. "Suki #A3F"
   final String title;
   final String detail;
+  final int pointsAwarded;
 
   factory MerchantSukiScanResult.fromJson(Map<String, dynamic> j) =>
       MerchantSukiScanResult(
@@ -175,6 +322,7 @@ class MerchantSukiScanResult {
         customer: '${j['customer'] ?? ''}',
         title: '${j['title'] ?? ''}',
         detail: '${j['detail'] ?? ''}',
+        pointsAwarded: _int(j['points_awarded']),
       );
 }
 
@@ -190,6 +338,9 @@ class MerchantSukiStats {
     required this.rewardsClaimed,
     required this.vouchersConfirmed,
     required this.topRegulars,
+    this.pointsIssued = 0,
+    this.pointsRedeemed = 0,
+    this.rewardsByTier = const [],
   });
 
   final int days;
@@ -201,6 +352,10 @@ class MerchantSukiStats {
   final int rewardsClaimed;
   final int vouchersConfirmed;
   final List<({String label, int visits})> topRegulars;
+  final int pointsIssued;
+  final int pointsRedeemed;
+  final List<({int? tierVisit, String source, int issued, int claimed})>
+      rewardsByTier;
 
   int get totalVisits => visitsByDay.values.fold(0, (sum, v) => sum + v);
 
@@ -220,6 +375,18 @@ class MerchantSukiStats {
         rewardsIssued: _int(j['rewards_issued']),
         rewardsClaimed: _int(j['rewards_claimed']),
         vouchersConfirmed: _int(j['vouchers_confirmed']),
+        pointsIssued: _int(j['points_issued']),
+        pointsRedeemed: _int(j['points_redeemed']),
+        rewardsByTier: [
+          for (final t in _rows(j['rewards_by_tier']))
+            (
+              tierVisit:
+                  t['tier_visit'] == null ? null : _int(t['tier_visit']),
+              source: '${t['source'] ?? 'visits'}',
+              issued: _int(t['issued']),
+              claimed: _int(t['claimed']),
+            ),
+        ],
         topRegulars: [
           for (final r in _rows(j['top_regulars']))
             (label: '${r['label'] ?? ''}', visits: _int(r['visits'])),

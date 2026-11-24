@@ -52,6 +52,7 @@ import '../features/spots/utils/spot_posting.dart';
 import '../features/spots/screens/saved_spots_screen.dart';
 import '../features/suki/screens/suki_card_screen.dart';
 import '../features/suki/screens/suki_cards_screen.dart';
+import '../features/suki/screens/suki_points_history_screen.dart';
 import '../features/quests/screens/quest_list_screen.dart';
 import '../features/quests/screens/campaign_detail_screen.dart';
 import '../features/quests/models/campaign_model.dart';
@@ -204,6 +205,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: ':programId',
                     builder: (context, state) => SukiCardScreen(
                         programId: state.pathParameters['programId']!),
+                    routes: [
+                      GoRoute(
+                        path: 'points',
+                        builder: (context, state) => SukiPointsHistoryScreen(
+                          programId: state.pathParameters['programId']!,
+                          cardId: state.uri.queryParameters['cardId'],
+                          shopName: state.uri.queryParameters['title'],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

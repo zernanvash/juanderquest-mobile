@@ -9,10 +9,11 @@ import '../../../core/pixel/pixel_feedback.dart';
 import '../../../core/pixel/pixel_grid.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../dashboard/pixel/home_pixel_art.dart';
+import '../../suki/widgets/suki_card_skin.dart';
 import 'merchant_suki_models.dart';
 import 'suki_badge_art.dart';
 
-/// Plan 107 §7.4: the live preview of what customers see (an empty card).
+/// Plan 107 / Plan 111: the live preview of what customers see (an empty card).
 class SukiCardPreview extends StatelessWidget {
   const SukiCardPreview({
     super.key,
@@ -20,17 +21,22 @@ class SukiCardPreview extends StatelessWidget {
     required this.visitsRequired,
     required this.rewardTag,
     required this.rewardText,
+    this.tiers = const [],
   });
 
   final String title;
   final int visitsRequired;
   final String rewardTag;
   final String rewardText;
+  final List<MerchantSukiTier> tiers;
 
   @override
   Widget build(BuildContext context) {
     final grid = PixelGrid.of(context);
     final slot = grid.px(11);
+    final byVisit = <int, MerchantSukiTier>{
+      for (final t in tiers) t.visitNumber: t,
+    };
     return PixelPanel(
       key: const ValueKey('suki_card_preview'),
       style: PixelBoxStyle.parchment,
@@ -48,14 +54,16 @@ class SukiCardPreview extends StatelessWidget {
                 SizedBox.square(
                   dimension: slot,
                   child: PixelPanel(
-                    style: i == visitsRequired
+                    style: i == visitsRequired || byVisit.containsKey(i)
                         ? PixelBoxStyle.gold
                         : PixelBoxStyle.slot,
-                    sunken: i != visitsRequired,
+                    sunken: i != visitsRequired && !byVisit.containsKey(i),
                     padding: 0,
                     child: Center(
-                      child: i == visitsRequired
-                          ? const PixelSprite(SukiBadgeArt.gift, scale: 2)
+                      child: i == visitsRequired || byVisit.containsKey(i)
+                          ? PixelSprite(
+                              SukiTierArt.byKey(byVisit[i]?.iconKey ?? 'gift'),
+                              scale: 2)
                           : Text('$i',
                               textScaler: TextScaler.noScaling,
                               style: PixelType.small(context,
@@ -166,6 +174,13 @@ class SukiStatsPanel extends StatelessWidget {
               tr(context,
                   en: 'Vouchers confirmed', tl: 'Voucher na nakumpirma'),
               s.vouchersConfirmed),
+          if (s.pointsIssued > 0 || s.pointsRedeemed > 0) ...[
+            stat(tr(context, en: 'Points issued', tl: 'Naibigay na points'),
+                s.pointsIssued),
+            stat(
+                tr(context, en: 'Points redeemed', tl: 'Nagamit na points'),
+                s.pointsRedeemed),
+          ],
           SizedBox(height: grid.px(2)),
           Text(
             tr(context,
@@ -237,6 +252,12 @@ Future<bool> showSukiScanResult(
         const SizedBox(height: 4),
         Text(result.detail,
             textAlign: TextAlign.center, style: PixelType.body(context)),
+        if (result.pointsAwarded > 0) ...[
+          const SizedBox(height: 6),
+          PixelChip('+${result.pointsAwarded} Suki Points',
+              key: const ValueKey('loyalty_scan_points'),
+              style: PixelBoxStyle.gold),
+        ],
       ],
     ),
     actions: [

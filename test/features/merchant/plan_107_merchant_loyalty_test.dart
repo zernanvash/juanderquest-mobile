@@ -299,7 +299,7 @@ void main() {
     await _settle(tester);
     expect(find.text('150% OFF'), findsOneWidget); // live preview tag
     await _tap(tester, const ValueKey('loyalty_save'));
-    expect(find.text('Percent off must be 1 to 100.'), findsOneWidget);
+    expect(find.text('Percent off must be 5 to 50.'), findsOneWidget);
     expect(calls.where((c) => c.method == 'PUT'), isEmpty);
 
     await tester.enterText(find.byKey(const ValueKey('loyalty_value')), '10');

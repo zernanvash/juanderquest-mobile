@@ -296,6 +296,9 @@ class SukiCardTile extends StatelessWidget {
                   PixelChip(tr(context, en: 'Reward ready', tl: 'May reward'),
                       style: PixelBoxStyle.green,
                       textColor: PixelPalette.white),
+                if (card.points.enabled)
+                  PixelChip('${card.points.balance} pts',
+                      style: PixelBoxStyle.slot),
                 if (progress.visitedToday)
                   Text(tr(context, en: 'Visited today', tl: 'Bumisita ngayon'),
                       style: PixelType.small(context,
@@ -348,6 +351,9 @@ class SukiProgramTile extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 PixelChip(p.rewardTag, style: PixelBoxStyle.gold),
+                if (p.points.enabled)
+                  PixelChip('+${p.points.perVisit} pts',
+                      style: PixelBoxStyle.slot),
                 Text(
                   tr(context,
                       en: '${p.visitsRequired} visits: ${p.rewardText}',

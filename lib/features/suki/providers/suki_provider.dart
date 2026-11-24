@@ -90,6 +90,32 @@ class SukiApi {
         .map(SukiRedemption.fromJson)
         .toList();
   }
+
+  /// Plan 111: exchange Suki Points for an active points-menu reward item.
+  Future<SukiPointsRedeemResult> redeemPoints({required String itemId}) async =>
+      SukiPointsRedeemResult.fromJson(_data((await _api.dio.post(
+        '/suki/points/redeem',
+        data: {
+          'item_id': itemId,
+          'idempotency_key': _uuid.v4(),
+        },
+      ))
+          .data));
+
+  /// Plan 111: cursor-paginated points ledger for one Suki Card.
+  Future<SukiPointsLedgerPage> cardPoints(
+    String cardId, {
+    String? cursor,
+    int limit = 25,
+  }) async =>
+      SukiPointsLedgerPage.fromJson(_data((await _api.dio.get(
+        '/suki/cards/${Uri.encodeComponent(cardId)}/points',
+        queryParameters: {
+          'limit': limit,
+          if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        },
+      ))
+          .data));
 }
 
 final sukiApiProvider =
@@ -174,6 +200,22 @@ String sukiErrorText(BuildContext context, Object error) {
           tl: 'Hindi aktibo ang Suki Card na ito ngayon.');
     case 'SUKI_DISABLED':
       return sukiComingSoonText(context);
+    case 'POINTS_DISABLED':
+      return tr(context,
+          en: 'Suki Points are not enabled right now.',
+          tl: 'Hindi naka-on ang Suki Points ngayon.');
+    case 'POINTS_INSUFFICIENT':
+      return tr(context,
+          en: 'You do not have enough Suki Points yet.',
+          tl: 'Kulang pa ang Suki Points mo.');
+    case 'POINTS_ITEM_NOT_FOUND':
+      return tr(context,
+          en: 'That reward is no longer on the points menu.',
+          tl: 'Wala na sa menu ang reward na iyan.');
+    case 'POINTS_MENU_LIMIT':
+      return tr(context,
+          en: 'Maximum of 12 active points rewards reached.',
+          tl: 'Hanggang 12 lang ang puwedeng points reward.');
   }
   if (error is DioException) {
     final body = error.response?.data;
