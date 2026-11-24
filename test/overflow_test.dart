@@ -541,6 +541,7 @@ void main() {
     Size size,
     double textScale, {
     bool clampScale = true,
+    List<Override> extraOverrides = const [],
   }) async {
     final affiliateApi = ApiClient();
     affiliateApi.dio.interceptors.insert(0, InterceptorsWrapper(
@@ -948,6 +949,7 @@ void main() {
           questBuilderRepositoryProvider.overrideWithValue(
             _MockQuestBuilderRepo(ApiClient(enableRetries: false)),
           ),
+          ...extraOverrides,
         ],
         child: MaterialApp(
           home: child,
@@ -1030,6 +1032,45 @@ void main() {
       await testScreenOverflow(
           tester, const DashboardScreen(), const Size(568, 320), 1.4);
     });
+
+    for (final size in [const Size(320, 568), const Size(568, 320)]) {
+      testWidgets(
+          'DashboardScreen with active HomePromoPanel does not overflow at ${size.width}x${size.height} 2x text',
+          (tester) async {
+        const versionWithPromo = AppVersionInfo(
+          versionCode: 227,
+          versionName: '0.4.0',
+          downloadUrl: 'https://example.test/app.apk',
+          changelog: 'Beta promo test',
+          promoPanel: HomePromoPanelConfig(
+            campaignId: 'overflow-wave-1',
+            title: 'Share Your Beta Feedback With the Pangasinan Team!',
+            body:
+                'Take our short 2-minute traveler survey and help us improve quests and maps.',
+            ctaLabel: 'Open Feedback Form',
+            url: 'https://forms.gle/overflowTest123',
+          ),
+        );
+        await testScreenOverflow(
+          tester,
+          const DashboardScreen(),
+          size,
+          2.0,
+          clampScale: false,
+          extraOverrides: [
+            startupUpdateControllerProvider.overrideWith(
+              (ref) => InertStartupUpdateController(
+                InertUpdateRepository(versionInfo: versionWithPromo),
+                const StartupGateState(
+                  phase: GatePhase.ready,
+                  latestVersion: versionWithPromo,
+                ),
+              ),
+            ),
+          ],
+        );
+      });
+    }
 
     for (final size in [const Size(320, 568), const Size(568, 320)]) {
       testWidgets(
@@ -3514,7 +3555,8 @@ void main() {
           {
             'id': 'v1',
             'title': 'Unlimited Pancit & Halo-Halo Family Bundle',
-            'description': 'Show your redeemed code at the Bonuan Waterfront counter daily.',
+            'description':
+                'Show your redeemed code at the Bonuan Waterfront counter daily.',
             'cost_points': 250,
             'availability': 'live',
             'is_active': true,
@@ -3609,7 +3651,8 @@ void main() {
             'name': longShop,
             'category': 'dining',
             'municipality': 'Dagupan City',
-            'description': 'Freshly grilled Bonuan bangus and halo-halo by the waterfront.',
+            'description':
+                'Freshly grilled Bonuan bangus and halo-halo by the waterfront.',
             'distance_m': 1450,
             'active_voucher_count': 4,
             'has_active_suki': true,
