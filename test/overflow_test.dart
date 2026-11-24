@@ -1036,7 +1036,7 @@ void main() {
       testWidgets(
           'DashboardScreen with active HomePromoPanel does not overflow at ${size.width}x${size.height} 2x text',
           (tester) async {
-        final versionWithPromo = AppVersionInfo(
+        const versionWithPromo = AppVersionInfo(
           versionCode: 227,
           versionName: '0.4.0',
           downloadUrl: 'https://example.test/app.apk',
@@ -1060,7 +1060,7 @@ void main() {
             startupUpdateControllerProvider.overrideWith(
               (ref) => InertStartupUpdateController(
                 InertUpdateRepository(versionInfo: versionWithPromo),
-                StartupGateState(
+                const StartupGateState(
                   phase: GatePhase.ready,
                   latestVersion: versionWithPromo,
                 ),
@@ -3543,7 +3543,8 @@ void main() {
           {
             'id': 'v1',
             'title': 'Unlimited Pancit & Halo-Halo Family Bundle',
-            'description': 'Show your redeemed code at the Bonuan Waterfront counter daily.',
+            'description':
+                'Show your redeemed code at the Bonuan Waterfront counter daily.',
             'cost_points': 250,
             'availability': 'live',
             'is_active': true,
@@ -3638,7 +3639,8 @@ void main() {
             'name': longShop,
             'category': 'dining',
             'municipality': 'Dagupan City',
-            'description': 'Freshly grilled Bonuan bangus and halo-halo by the waterfront.',
+            'description':
+                'Freshly grilled Bonuan bangus and halo-halo by the waterfront.',
             'distance_m': 1450,
             'active_voucher_count': 4,
             'has_active_suki': true,

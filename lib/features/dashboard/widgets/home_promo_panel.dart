@@ -108,7 +108,7 @@ class _HomePromoCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox.square(
+              const SizedBox.square(
                 dimension: 20,
                 child: FittedBox(
                   fit: BoxFit.contain,
