@@ -438,6 +438,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  void applyUpdatedSession({
+    required String token,
+    required Map<String, dynamic> userJson,
+  }) {
+    final updatedUser = UserModel.fromJson(userJson);
+    state = AuthState(user: updatedUser, token: token);
+    unawaited(_sessionStore.write(
+      StoredAuthSession(token: token, user: updatedUser.toJson()),
+    ));
+    _refreshNotifier.notify();
+  }
+
   Future<bool> unbindWallet() async {
     if (state.token == null) return false;
     try {
@@ -452,14 +464,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _refreshNotifier.notify();
         return true;
       } else {
-        final msg =
-            response.data['error']?['message'] ?? 'Wallet unbinding failed.';
+        final err = response.data is Map ? response.data['error'] : null;
+        final msg = (err is Map ? err['message'] as String? : null) ??
+            'Wallet unbinding failed.';
         state = AuthState(user: state.user, token: state.token, error: msg);
         return false;
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['error']?['message'] ??
-          'Failed to unlink wallet: ${e.message}';
+      final data = e.response?.data;
+      final err = data is Map ? data['error'] : null;
+      final code = err is Map ? err['code'] as String? : null;
+      final msg = code == 'OTHER_SIGNIN_REQUIRED_BEFORE_WALLET_UNBIND'
+          ? ((err as Map)['message'] as String? ??
+              "Verify your email and keep a password or Google sign-in linked before unlinking your wallet so you don't lose access to your account.")
+          : ((err is Map ? err['message'] as String? : null) ??
+              'Could not unlink wallet right now. Please try again.');
       state = AuthState(user: state.user, token: state.token, error: msg);
       return false;
     } catch (e) {
