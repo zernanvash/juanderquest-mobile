@@ -101,6 +101,18 @@ class SettingsScreen extends ConsumerWidget {
                                       context.push('/onboarding/interests'),
                                 ),
                                 _SettingsTile(
+                                  key: const ValueKey('settings_email'),
+                                  pixelIcon: DesignerArt.navProfile,
+                                  title: tr(context, en: 'Email', tl: 'Email'),
+                                  value: (user != null &&
+                                          user.email.trim().isNotEmpty)
+                                      ? user.email
+                                      : tr(context,
+                                          en: 'Not set', tl: 'Hindi nakatakda'),
+                                  onTap: () =>
+                                      context.push('/settings/change-email'),
+                                ),
+                                _SettingsTile(
                                   key: const ValueKey('settings_wallet'),
                                   pixelIcon: DesignerArt.gem,
                                   title: tr(context,

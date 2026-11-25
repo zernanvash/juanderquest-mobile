@@ -22,6 +22,7 @@ import '../features/profile/screens/badges_screen.dart';
 import '../features/profile/screens/affiliate_application_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
+import '../features/settings/screens/change_email_screen.dart';
 import '../features/settings/screens/settings_notifications_screen.dart';
 import '../features/settings/screens/settings_updates_screen.dart';
 import '../features/settings/screens/settings_developer_screen.dart';
@@ -451,6 +452,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: 'appearance',
               builder: (context, state) => const AppearanceScreen()),
+          GoRoute(
+              path: 'change-email',
+              builder: (context, state) => const ChangeEmailScreen()),
           GoRoute(
               path: 'notifications',
               builder: (context, state) => const SettingsNotificationsScreen()),

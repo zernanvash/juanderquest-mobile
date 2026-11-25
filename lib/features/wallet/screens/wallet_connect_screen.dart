@@ -143,6 +143,25 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
     }
   }
 
+  Future<void> _unbind() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final ok = await ref.read(authProvider.notifier).unbindWallet();
+      if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _error = ref.read(authProvider).error ??
+              'Could not unlink wallet right now. Please try again.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
@@ -230,7 +249,7 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
                             ),
                           ),
                         SizedBox(height: grid.px(3)),
-                        if (user?.hasBoundWallet == true)
+                        if (user?.hasBoundWallet == true) ...[
                           PixelPanel(
                             key: const ValueKey('wallet_connect_already'),
                             style: PixelBoxStyle.green,
@@ -242,8 +261,17 @@ class _WalletConnectScreenState extends ConsumerState<WalletConnectScreen> {
                                 color: PixelPalette.white,
                               ),
                             ),
-                          )
-                        else ...[
+                          ),
+                          SizedBox(height: grid.px(2)),
+                          PixelButton(
+                            key: const ValueKey('wallet_connect_unbind'),
+                            label: 'Unlink wallet',
+                            variant: PixelButtonVariant.ghost,
+                            expand: true,
+                            loading: _busy,
+                            onPressed: _busy ? null : _unbind,
+                          ),
+                        ] else ...[
                           if (_modal != null)
                             PixelPanel(
                               style: PixelBoxStyle.parchment,
