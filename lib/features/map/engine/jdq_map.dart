@@ -3,14 +3,15 @@ import 'package:latlong2/latlong.dart';
 import '../utils/admin_areas.dart';
 
 class JdqCamera {
-  const JdqCamera(
-      {required this.center,
-      required this.zoom,
-      required this.southWest,
-      required this.northEast,
-      this.bearing = 0,
-      this.tilt = 0,
-      this.size = Size.zero});
+  const JdqCamera({
+    required this.center,
+    required this.zoom,
+    required this.southWest,
+    required this.northEast,
+    this.bearing = 0,
+    this.tilt = 0,
+    this.size = Size.zero,
+  });
   final LatLng center, southWest, northEast;
   final double zoom;
   final double bearing;
@@ -18,22 +19,24 @@ class JdqCamera {
   final Size size;
 
   /// Copies keep bearing and tilt unless a caller replaces them explicitly.
-  JdqCamera copyWith(
-          {LatLng? center,
-          double? zoom,
-          LatLng? southWest,
-          LatLng? northEast,
-          double? bearing,
-          double? tilt,
-          Size? size}) =>
+  JdqCamera copyWith({
+    LatLng? center,
+    double? zoom,
+    LatLng? southWest,
+    LatLng? northEast,
+    double? bearing,
+    double? tilt,
+    Size? size,
+  }) =>
       JdqCamera(
-          center: center ?? this.center,
-          zoom: zoom ?? this.zoom,
-          southWest: southWest ?? this.southWest,
-          northEast: northEast ?? this.northEast,
-          bearing: bearing ?? this.bearing,
-          tilt: tilt ?? this.tilt,
-          size: size ?? this.size);
+        center: center ?? this.center,
+        zoom: zoom ?? this.zoom,
+        southWest: southWest ?? this.southWest,
+        northEast: northEast ?? this.northEast,
+        bearing: bearing ?? this.bearing,
+        tilt: tilt ?? this.tilt,
+        size: size ?? this.size,
+      );
 }
 
 enum JdqRoutePointKind { start, end, stop, detour, done, puck }
@@ -68,9 +71,22 @@ class JdqRouteOverlay {
   final bool fitBounds;
 }
 
+/// Plan 122a: 3-tier unified map marker kind.
+enum JdqPinKind { spot, merchant, quest, questDone }
+
 class JdqPin {
-  const JdqPin(this.id, this.point, this.label,
-      {this.quest = false, this.done = false, this.clusterCount});
+  const JdqPin(
+    this.id,
+    this.point,
+    this.label, {
+    this.quest = false,
+    this.done = false,
+    this.clusterCount,
+    JdqPinKind? kind,
+  }) : kind = kind ??
+            (quest
+                ? (done ? JdqPinKind.questDone : JdqPinKind.quest)
+                : JdqPinKind.spot);
   final String id, label;
   final LatLng point;
   final bool quest;
@@ -80,34 +96,62 @@ class JdqPin {
 
   /// Plan 116b Part 2: aggregated spot count for `/spots/map` cluster bubbles.
   final int? clusterCount;
+
+  /// Plan 122a: unified 3-tier pin kind (`spot`, `merchant`, `quest`, `questDone`).
+  final JdqPinKind kind;
+
+  String get kindWire {
+    switch (kind) {
+      case JdqPinKind.questDone:
+        return 'quest_done';
+      case JdqPinKind.quest:
+        return 'quest';
+      case JdqPinKind.merchant:
+        return 'merchant';
+      case JdqPinKind.spot:
+        return 'spot';
+    }
+  }
 }
 
 /// No platform controller escapes into screen logic or widget tests.
 abstract class JdqMap {
   JdqCamera camera = const JdqCamera(
-      center: LatLng(16.035, 120.333),
-      zoom: 10.5,
-      southWest: LatLng(15.5, 119.5),
-      northEast: LatLng(16.6, 121));
+    center: LatLng(16.035, 120.333),
+    zoom: 10.5,
+    southWest: LatLng(15.5, 119.5),
+    northEast: LatLng(16.6, 121),
+  );
   void Function(String id)? onTapPlace, onTapPin;
   void Function(LatLng point)? onTapEmpty;
   VoidCallback? onCameraIdle;
   Future<void> setStyle(String style);
-  Future<void> easeTo(LatLng point, double zoom,
-      {double? bearing, double? tilt, bool reducedMotion = false});
+  Future<void> easeTo(
+    LatLng point,
+    double zoom, {
+    double? bearing,
+    double? tilt,
+    bool reducedMotion = false,
+  });
   Future<void> resetOrientation();
   Future<void> fitBounds(
-      LatLng southWest, LatLng northEast, EdgeInsets padding);
+    LatLng southWest,
+    LatLng northEast,
+    EdgeInsets padding,
+  );
   Future<void> setPins(List<JdqPin> pins);
   Future<void> setPlaces(List<AdminArea> places);
   Future<void> setFocusArea(AreaShape shape);
   Future<void> clearFocus();
   Future<void> setRouteOverlay(JdqRouteOverlay? overlay);
+
   /// Draws satellite imagery under the labels and pins (no-op without an imagery key).
   Future<void> setSatellite(bool on);
   void setMyLocation(bool enabled);
-  Widget build(
-      {required VoidCallback onReady, required VoidCallback onFailure});
+  Widget build({
+    required VoidCallback onReady,
+    required VoidCallback onFailure,
+  });
   void dispose();
 }
 
@@ -128,40 +172,53 @@ class FakeJdqMap extends JdqMap {
   }
 
   @override
-  Future<void> easeTo(LatLng point, double zoom,
-      {double? bearing, double? tilt, bool reducedMotion = false}) async {
+  Future<void> easeTo(
+    LatLng point,
+    double zoom, {
+    double? bearing,
+    double? tilt,
+    bool reducedMotion = false,
+  }) async {
     easeToCallCount++;
     camera = JdqCamera(
-        center: point,
-        zoom: zoom,
-        bearing: bearing ?? camera.bearing,
-        tilt: tilt ?? camera.tilt,
-        southWest: camera.southWest,
-        northEast: camera.northEast,
-        size: camera.size);
+      center: point,
+      zoom: zoom,
+      bearing: bearing ?? camera.bearing,
+      tilt: tilt ?? camera.tilt,
+      southWest: camera.southWest,
+      northEast: camera.northEast,
+      size: camera.size,
+    );
     onCameraIdle?.call();
   }
 
   @override
   Future<void> resetOrientation() async {
     camera = JdqCamera(
-        center: camera.center,
-        zoom: camera.zoom,
-        southWest: camera.southWest,
-        northEast: camera.northEast,
-        size: camera.size);
+      center: camera.center,
+      zoom: camera.zoom,
+      southWest: camera.southWest,
+      northEast: camera.northEast,
+      size: camera.size,
+    );
     onCameraIdle?.call();
   }
 
   @override
   Future<void> fitBounds(
-      LatLng southWest, LatLng northEast, EdgeInsets padding) async {
+    LatLng southWest,
+    LatLng northEast,
+    EdgeInsets padding,
+  ) async {
     fitBoundsCallCount++;
     camera = camera.copyWith(
-        center: LatLng((southWest.latitude + northEast.latitude) / 2,
-            (southWest.longitude + northEast.longitude) / 2),
-        southWest: southWest,
-        northEast: northEast);
+      center: LatLng(
+        (southWest.latitude + northEast.latitude) / 2,
+        (southWest.longitude + northEast.longitude) / 2,
+      ),
+      southWest: southWest,
+      northEast: northEast,
+    );
     onCameraIdle?.call();
   }
 
@@ -201,8 +258,10 @@ class FakeJdqMap extends JdqMap {
   }
 
   @override
-  Widget build(
-      {required VoidCallback onReady, required VoidCallback onFailure}) {
+  Widget build({
+    required VoidCallback onReady,
+    required VoidCallback onFailure,
+  }) {
     return _FakeSurface(onReady: onReady);
   }
 

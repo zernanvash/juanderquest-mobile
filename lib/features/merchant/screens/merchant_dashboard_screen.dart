@@ -28,6 +28,7 @@ import '../widgets/merchant_counter.dart';
 import '../widgets/merchant_pixel_art.dart';
 import 'merchant_analytics_screen.dart';
 import 'merchant_counter_history_screen.dart';
+import 'merchant_location_screen.dart';
 import 'merchant_page_screen.dart';
 import 'merchant_staff_screen.dart';
 import 'merchant_vouchers_screen.dart';
@@ -172,92 +173,95 @@ class _MerchantDashboardScreenState
                         TutorialHelpButton(page: TutorialPage.merchantHub),
                       ],
                     ),
-                  Expanded(
-                    child: _loading && data == null
-                        ? const Center(
-                            child: PixelLoader(label: 'Loading workspace'),
-                          )
-                        : data == null
-                            ? PixelEmptyState(
-                                icon: DesignerArt.salakot,
-                                title: 'Workspace unavailable',
-                                message: _errorText(
-                                  _error ?? '',
-                                  'Check your connection and try again.',
-                                ),
-                                action: PixelButton(
-                                  key: const ValueKey('merchant_retry'),
-                                  label: 'Retry',
-                                  onPressed: _load,
-                                ),
-                              )
-                            : ListView(
-                                padding: EdgeInsets.fromLTRB(
-                                  grid.gutter,
-                                  grid.px(4),
-                                  grid.gutter,
-                                  grid.px(8) +
-                                      MediaQuery.paddingOf(context).bottom,
-                                ),
-                                children: [
-                                  _identity(context, grid, data),
-                                  SizedBox(height: grid.px(3)),
-                                  // v0.3.10: confirm vouchers, Suki on or off.
-                                  const MerchantCounterPanel(),
-                                  SizedBox(height: grid.px(4)),
-                                  MerchantTabbedPanel(
-                                    selected: _tab,
-                                    onSelect: (i) {
-                                      pixelTick(context);
-                                      setState(() => _tab = i);
-                                    },
-                                    tabs: [
-                                      const MerchantTab(
-                                        key: ValueKey('merchant_tab_overview'),
-                                        icon: DesignerArt.navShop,
-                                        label: 'Overview',
-                                      ),
-                                      const MerchantTab(
-                                        key: ValueKey('merchant_tab_profile'),
-                                        icon: DesignerArt.navProfile,
-                                        label: 'Profile',
-                                      ),
-                                      MerchantTab(
-                                        key: const ValueKey(
-                                            'merchant_tab_catalog'),
-                                        icon: merchantCatalogList,
-                                        label: 'Catalog',
-                                        badge: data.activeProducts > 0
-                                            ? '${data.activeProducts}'
-                                            : null,
-                                      ),
-                                      const MerchantTab(
-                                        key: ValueKey(
-                                            'merchant_tab_sponsorships'),
-                                        icon: DesignerArt.handshake,
-                                        label: 'Sponsorships & Points',
-                                      ),
-                                      // Plan 107: Suki Card setup + counter.
-                                      const MerchantTab(
-                                        key: ValueKey('merchant_tab_loyalty'),
-                                        icon: SukiBadgeArt.sukiCard,
-                                        label: 'Loyalty',
-                                      ),
-                                    ],
-                                    child: switch (_tab) {
-                                      1 => _ProfileTab(onSaved: _load),
-                                      2 => _CatalogTab(onChanged: _load),
-                                      3 => const _SponsorshipsTab(),
-                                      4 => const MerchantLoyaltyTab(),
-                                      _ => _overview(context, grid, data),
-                                    },
+                    Expanded(
+                      child: _loading && data == null
+                          ? const Center(
+                              child: PixelLoader(label: 'Loading workspace'),
+                            )
+                          : data == null
+                              ? PixelEmptyState(
+                                  icon: DesignerArt.salakot,
+                                  title: 'Workspace unavailable',
+                                  message: _errorText(
+                                    _error ?? '',
+                                    'Check your connection and try again.',
                                   ),
-                                ],
-                              ),
-                  ),
-                ],
+                                  action: PixelButton(
+                                    key: const ValueKey('merchant_retry'),
+                                    label: 'Retry',
+                                    onPressed: _load,
+                                  ),
+                                )
+                              : ListView(
+                                  padding: EdgeInsets.fromLTRB(
+                                    grid.gutter,
+                                    grid.px(4),
+                                    grid.gutter,
+                                    grid.px(8) +
+                                        MediaQuery.paddingOf(context).bottom,
+                                  ),
+                                  children: [
+                                    _identity(context, grid, data),
+                                    SizedBox(height: grid.px(3)),
+                                    // v0.3.10: confirm vouchers, Suki on or off.
+                                    const MerchantCounterPanel(),
+                                    SizedBox(height: grid.px(4)),
+                                    MerchantTabbedPanel(
+                                      selected: _tab,
+                                      onSelect: (i) {
+                                        pixelTick(context);
+                                        setState(() => _tab = i);
+                                      },
+                                      tabs: [
+                                        const MerchantTab(
+                                          key:
+                                              ValueKey('merchant_tab_overview'),
+                                          icon: DesignerArt.navShop,
+                                          label: 'Overview',
+                                        ),
+                                        const MerchantTab(
+                                          key: ValueKey('merchant_tab_profile'),
+                                          icon: DesignerArt.navProfile,
+                                          label: 'Profile',
+                                        ),
+                                        MerchantTab(
+                                          key: const ValueKey(
+                                            'merchant_tab_catalog',
+                                          ),
+                                          icon: merchantCatalogList,
+                                          label: 'Catalog',
+                                          badge: data.activeProducts > 0
+                                              ? '${data.activeProducts}'
+                                              : null,
+                                        ),
+                                        const MerchantTab(
+                                          key: ValueKey(
+                                            'merchant_tab_sponsorships',
+                                          ),
+                                          icon: DesignerArt.handshake,
+                                          label: 'Sponsorships & Points',
+                                        ),
+                                        // Plan 107: Suki Card setup + counter.
+                                        const MerchantTab(
+                                          key: ValueKey('merchant_tab_loyalty'),
+                                          icon: SukiBadgeArt.sukiCard,
+                                          label: 'Loyalty',
+                                        ),
+                                      ],
+                                      child: switch (_tab) {
+                                        1 => _ProfileTab(onSaved: _load),
+                                        2 => _CatalogTab(onChanged: _load),
+                                        3 => const _SponsorshipsTab(),
+                                        4 => const MerchantLoyaltyTab(),
+                                        _ => _overview(context, grid, data),
+                                      },
+                                    ),
+                                  ],
+                                ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             ),
           );
         },
@@ -313,8 +317,11 @@ class _MerchantDashboardScreenState
               if (data.id.isNotEmpty)
                 PixelButton(
                   key: const ValueKey('merchant_view_page'),
-                  label:
-                      tr(context, en: 'View my page', tl: 'Tingnan ang page'),
+                  label: tr(
+                    context,
+                    en: 'View my page',
+                    tl: 'Tingnan ang page',
+                  ),
                   variant: PixelButtonVariant.secondary,
                   onPressed: () => openMerchantPage(context, data.id),
                 ),
@@ -352,10 +359,7 @@ class _MerchantDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const PixelSectionTitle(
-          'Storefront status',
-          icon: DesignerArt.navShop,
-        ),
+        const PixelSectionTitle('Storefront status', icon: DesignerArt.navShop),
         SizedBox(height: grid.px(2)),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,8 +396,10 @@ class _MerchantDashboardScreenState
                 ),
                 SizedBox(width: grid.px(2)),
                 Expanded(
-                  child: Text(data.checklist[i].title,
-                      style: PixelType.body(context)),
+                  child: Text(
+                    data.checklist[i].title,
+                    style: PixelType.body(context),
+                  ),
                 ),
                 if (!data.checklist[i].completed)
                   PixelButton(
@@ -457,6 +463,16 @@ class _MerchantDashboardScreenState
                 const MerchantCounterHistoryScreen(),
               ),
             ),
+            PixelButton(
+              key: const ValueKey('merchant_open_location'),
+              label: tr(context, en: 'Store Location', tl: 'Lokasyon'),
+              variant: PixelButtonVariant.secondary,
+              onPressed: () => _openTool(
+                context,
+                '/merchant/location',
+                const MerchantLocationScreen(),
+              ),
+            ),
           ],
         ),
         if (data.notice.isNotEmpty) ...[
@@ -477,9 +493,9 @@ class _MerchantDashboardScreenState
     if (router != null) {
       router.push(path);
     } else {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => screen),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => screen));
     }
   }
 }
@@ -573,10 +589,13 @@ class _ProfileTabState extends ConsumerState<_ProfileTab> {
     if (picked == null || !mounted) return;
     if (picked.bytes.length > 8 * 1024 * 1024) {
       showPixelToast(
+        context,
+        tr(
           context,
-          tr(context,
-              en: 'Photo exceeds the 8 MB limit.',
-              tl: 'Lampas 8 MB ang litrato.'));
+          en: 'Photo exceeds the 8 MB limit.',
+          tl: 'Lampas 8 MB ang litrato.',
+        ),
+      );
       return;
     }
     setState(() => _uploading = field);
@@ -588,16 +607,22 @@ class _ProfileTabState extends ConsumerState<_ProfileTab> {
       _controllers[field]!.text = url;
       if (!mounted) return;
       showPixelToast(
-          context,
-          field == 'banner_url'
-              ? tr(context,
-                  en: 'Cover photo saved.', tl: 'Na-save ang cover photo.')
-              : tr(context, en: 'Logo saved.', tl: 'Na-save ang logo.'));
+        context,
+        field == 'banner_url'
+            ? tr(
+                context,
+                en: 'Cover photo saved.',
+                tl: 'Na-save ang cover photo.',
+              )
+            : tr(context, en: 'Logo saved.', tl: 'Na-save ang logo.'),
+      );
       widget.onSaved();
     } catch (error) {
       if (mounted) {
         showPixelToast(
-            context, _errorText(error, 'Could not upload the photo.'));
+          context,
+          _errorText(error, 'Could not upload the photo.'),
+        );
       }
     } finally {
       if (mounted) setState(() => _uploading = null);
@@ -619,11 +644,15 @@ class _ProfileTabState extends ConsumerState<_ProfileTab> {
             child: cover.isEmpty
                 ? Center(
                     child: Text(
-                      tr(context,
-                          en: 'No cover photo yet',
-                          tl: 'Wala pang cover photo'),
-                      style:
-                          PixelType.small(context, color: PixelPalette.slate),
+                      tr(
+                        context,
+                        en: 'No cover photo yet',
+                        tl: 'Wala pang cover photo',
+                      ),
+                      style: PixelType.small(
+                        context,
+                        color: PixelPalette.slate,
+                      ),
                     ),
                   )
                 : Image.network(
@@ -640,8 +669,11 @@ class _ProfileTabState extends ConsumerState<_ProfileTab> {
           children: [
             PixelButton(
               key: const ValueKey('merchant_upload_cover'),
-              label: tr(context,
-                  en: 'Upload cover photo', tl: 'Mag-upload ng cover'),
+              label: tr(
+                context,
+                en: 'Upload cover photo',
+                tl: 'Mag-upload ng cover',
+              ),
               loading: _uploading == 'banner_url',
               onPressed:
                   _uploading == null ? () => _upload('banner_url') : null,
@@ -802,16 +834,21 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
       await _load();
       if (!mounted) return;
       showPixelToast(
-          context,
-          item.isSpecialty
-              ? tr(context, en: 'Unpinned.', tl: 'Tinanggal ang pin.')
-              : tr(context,
-                  en: 'Pinned as your specialty.',
-                  tl: 'Naka-pin bilang espesyalidad.'));
+        context,
+        item.isSpecialty
+            ? tr(context, en: 'Unpinned.', tl: 'Tinanggal ang pin.')
+            : tr(
+                context,
+                en: 'Pinned as your specialty.',
+                tl: 'Naka-pin bilang espesyalidad.',
+              ),
+      );
     } catch (error) {
       if (mounted) {
         showPixelToast(
-            context, _errorText(error, 'Could not change the specialty.'));
+          context,
+          _errorText(error, 'Could not change the specialty.'),
+        );
       }
     }
   }
@@ -865,9 +902,11 @@ class _CatalogTabState extends ConsumerState<_CatalogTab> {
         ),
         SizedBox(height: grid.px(1)),
         Text(
-          tr(context,
-              en: 'Pin up to 3 products as your specialty. They show first on your shop page.',
-              tl: 'Mag-pin ng hanggang 3 produkto bilang espesyalidad.'),
+          tr(
+            context,
+            en: 'Pin up to 3 products as your specialty. They show first on your shop page.',
+            tl: 'Mag-pin ng hanggang 3 produkto bilang espesyalidad.',
+          ),
           style: PixelType.small(context, color: PixelPalette.slate),
         ),
         SizedBox(height: grid.px(2)),
@@ -1004,8 +1043,10 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
 
   Future<void> _setConditions(MerchantSponsorshipItem item) async {
     final api = ref.read(merchantApiProvider);
-    final selected =
-        await showSetConditionsSheet(context, initial: item.conditions);
+    final selected = await showSetConditionsSheet(
+      context,
+      initial: item.conditions,
+    );
     if (selected == null || !mounted) return;
     await _run(
       () => api.setConditions(item, selected),
@@ -1306,134 +1347,140 @@ class _SponsorshipsTabState extends ConsumerState<_SponsorshipsTab> {
             i < (items ?? const <MerchantSponsorshipItem>[]).length;
             i++) ...[
           if (i > 0) Container(height: grid.unit, color: PixelPalette.paperDim),
-          Builder(builder: (context) {
-            final item = items![i];
-            return KeyedSubtree(
-              key: ValueKey('merchant_sponsorship_${item.id}'),
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: grid.px(2)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item.questTitle, style: PixelType.title(context)),
-                    if (item.spotName.isNotEmpty)
-                      Text(
-                        item.spotName,
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
-                        ),
-                      ),
-                    SizedBox(height: grid.px(1)),
-                    Wrap(
-                      spacing: grid.px(1),
-                      runSpacing: grid.px(1),
-                      children: [
-                        PixelChip(
-                          item.status.toUpperCase(),
-                          style: PixelBoxStyle.parchment,
-                        ),
-                        if (item.points > 0) PixelChip('${item.points} PTS'),
-                        if (item.voucherQty > 0)
-                          PixelChip('${item.voucherQty} VOUCHERS'),
-                        if (item.promo) const PixelChip('PROMO'),
-                      ],
-                    ),
-                    if (item.conditions.isNotEmpty ||
-                        item.status == 'requested' ||
-                        item.status == 'countered') ...[
-                      SizedBox(height: grid.px(1.5)),
-                      Text(
-                        tr(
-                          context,
-                          en: 'DEAL CONDITIONS',
-                          tl: 'MGA KONDISYON',
-                        ),
-                        style: PixelType.small(
-                          context,
-                          color: PixelPalette.slate,
-                        ).copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      SizedBox(height: grid.px(0.5)),
-                      if (item.conditions.isNotEmpty)
-                        SponsorshipConditionsList(conditions: item.conditions)
-                      else
+          Builder(
+            builder: (context) {
+              final item = items![i];
+              return KeyedSubtree(
+                key: ValueKey('merchant_sponsorship_${item.id}'),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: grid.px(2)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.questTitle, style: PixelType.title(context)),
+                      if (item.spotName.isNotEmpty)
                         Text(
-                          tr(
-                            context,
-                            en: 'No deal conditions set.',
-                            tl: 'Walang kondisyon.',
-                          ),
+                          item.spotName,
                           style: PixelType.small(
                             context,
                             color: PixelPalette.slate,
                           ),
                         ),
-                    ],
-                    if (item.status == 'requested' ||
-                        item.status == 'countered') ...[
                       SizedBox(height: grid.px(1)),
                       Wrap(
-                        spacing: grid.px(2),
+                        spacing: grid.px(1),
                         runSpacing: grid.px(1),
                         children: [
-                          PixelButton(
-                            key: ValueKey('merchant_set_conditions_${item.id}'),
-                            label: tr(context,
-                                en: 'SET CONDITIONS',
-                                tl: 'ITAKDA ANG KONDISYON'),
-                            variant: PixelButtonVariant.secondary,
-                            onPressed:
-                                _busy ? null : () => _setConditions(item),
+                          PixelChip(
+                            item.status.toUpperCase(),
+                            style: PixelBoxStyle.parchment,
                           ),
-                          if (item.status == 'requested') ...[
-                            PixelButton(
-                              key: ValueKey('merchant_accept_${item.id}'),
-                              label: 'Accept',
-                              onPressed: _busy ? null : () => _accept(item),
-                            ),
-                            PixelButton(
-                              key: ValueKey('merchant_decline_${item.id}'),
-                              label: 'Decline',
-                              variant: PixelButtonVariant.danger,
-                              onPressed: _busy
-                                  ? null
-                                  : () => _run(
-                                        () => api.decline(item),
-                                        'Sponsorship declined.',
-                                      ),
-                            ),
-                            PixelButton(
-                              key: ValueKey('merchant_counter_${item.id}'),
-                              label: 'Counter',
-                              variant: PixelButtonVariant.secondary,
-                              onPressed: _busy ? null : () => _counter(item),
-                            ),
-                          ],
+                          if (item.points > 0) PixelChip('${item.points} PTS'),
+                          if (item.voucherQty > 0)
+                            PixelChip('${item.voucherQty} VOUCHERS'),
+                          if (item.promo) const PixelChip('PROMO'),
                         ],
                       ),
+                      if (item.conditions.isNotEmpty ||
+                          item.status == 'requested' ||
+                          item.status == 'countered') ...[
+                        SizedBox(height: grid.px(1.5)),
+                        Text(
+                          tr(
+                            context,
+                            en: 'DEAL CONDITIONS',
+                            tl: 'MGA KONDISYON',
+                          ),
+                          style: PixelType.small(
+                            context,
+                            color: PixelPalette.slate,
+                          ).copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        SizedBox(height: grid.px(0.5)),
+                        if (item.conditions.isNotEmpty)
+                          SponsorshipConditionsList(conditions: item.conditions)
+                        else
+                          Text(
+                            tr(
+                              context,
+                              en: 'No deal conditions set.',
+                              tl: 'Walang kondisyon.',
+                            ),
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.slate,
+                            ),
+                          ),
+                      ],
+                      if (item.status == 'requested' ||
+                          item.status == 'countered') ...[
+                        SizedBox(height: grid.px(1)),
+                        Wrap(
+                          spacing: grid.px(2),
+                          runSpacing: grid.px(1),
+                          children: [
+                            PixelButton(
+                              key: ValueKey(
+                                'merchant_set_conditions_${item.id}',
+                              ),
+                              label: tr(
+                                context,
+                                en: 'SET CONDITIONS',
+                                tl: 'ITAKDA ANG KONDISYON',
+                              ),
+                              variant: PixelButtonVariant.secondary,
+                              onPressed:
+                                  _busy ? null : () => _setConditions(item),
+                            ),
+                            if (item.status == 'requested') ...[
+                              PixelButton(
+                                key: ValueKey('merchant_accept_${item.id}'),
+                                label: 'Accept',
+                                onPressed: _busy ? null : () => _accept(item),
+                              ),
+                              PixelButton(
+                                key: ValueKey('merchant_decline_${item.id}'),
+                                label: 'Decline',
+                                variant: PixelButtonVariant.danger,
+                                onPressed: _busy
+                                    ? null
+                                    : () => _run(
+                                          () => api.decline(item),
+                                          'Sponsorship declined.',
+                                        ),
+                              ),
+                              PixelButton(
+                                key: ValueKey('merchant_counter_${item.id}'),
+                                label: 'Counter',
+                                variant: PixelButtonVariant.secondary,
+                                onPressed: _busy ? null : () => _counter(item),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                      if (item.status == 'accepted' &&
+                          item.planStatus == 'active' &&
+                          item.planId.isNotEmpty) ...[
+                        SizedBox(height: grid.px(1)),
+                        PixelButton(
+                          key: ValueKey('merchant_topup_${item.id}'),
+                          label: 'Top up active round (+500)',
+                          variant: PixelButtonVariant.secondary,
+                          onPressed: _busy
+                              ? null
+                              : () => _run(
+                                    () => api.topUp(item.planId, 500),
+                                    'Added 500 points to the round.',
+                                  ),
+                        ),
+                      ],
                     ],
-                    if (item.status == 'accepted' &&
-                        item.planStatus == 'active' &&
-                        item.planId.isNotEmpty) ...[
-                      SizedBox(height: grid.px(1)),
-                      PixelButton(
-                        key: ValueKey('merchant_topup_${item.id}'),
-                        label: 'Top up active round (+500)',
-                        variant: PixelButtonVariant.secondary,
-                        onPressed: _busy
-                            ? null
-                            : () => _run(
-                                  () => api.topUp(item.planId, 500),
-                                  'Added 500 points to the round.',
-                                ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
         ],
       ],
     );

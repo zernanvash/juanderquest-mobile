@@ -11,6 +11,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' as gl;
 import '../../../core/config/map_config.dart';
 import '../../../core/pixel/generated/designer_art.g.dart';
 import '../../../core/pixel/pixel_art.dart';
+import '../pixel/map_marker_art.dart';
 import '../utils/admin_areas.dart';
 import 'building_layer_style.dart';
 import 'jdq_map.dart';
@@ -83,7 +84,10 @@ TownLabelMetrics computeTownLabelMetrics({
   // Long names shrink to fit 180 dp, down to 9 dp.
   const maxWidthDp = 180.0;
   final tp = TextPainter(
-    text: TextSpan(text: text.toUpperCase(), style: _labelStyle(size, weight, spacing, color)),
+    text: TextSpan(
+      text: text.toUpperCase(),
+      style: _labelStyle(size, weight, spacing, color),
+    ),
     textDirection: TextDirection.ltr,
   )..layout();
   var effective = size;
@@ -100,7 +104,14 @@ TownLabelMetrics computeTownLabelMetrics({
   );
 }
 
-TextStyle _labelStyle(double size, FontWeight weight, double spacing, Color color, {Paint? foreground}) => TextStyle(
+TextStyle _labelStyle(
+  double size,
+  FontWeight weight,
+  double spacing,
+  Color color, {
+  Paint? foreground,
+}) =>
+    TextStyle(
       fontFamily: 'Silkscreen',
       fontFamilyFallback: const ['Monocraft'],
       fontSize: size,
@@ -124,16 +135,27 @@ Future<Uint8List?> rasterizeTownLabel(
     final halo = math.max(1.0, (m.haloDp * dpr).roundToDouble());
     final upper = text.toUpperCase();
 
-    TextPainter painter(TextStyle style) =>
-        TextPainter(text: TextSpan(text: upper, style: style), textDirection: TextDirection.ltr)..layout();
+    TextPainter painter(TextStyle style) => TextPainter(
+          text: TextSpan(text: upper, style: style),
+          textDirection: TextDirection.ltr,
+        )..layout();
 
     final haloPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = halo * 2
       ..strokeJoin = StrokeJoin.miter
       ..color = isFocused ? _labelFocusHalo : _labelHalo;
-    final back = painter(_labelStyle(size, m.fontWeight, spacing, m.color, foreground: haloPaint));
-    final front = painter(_labelStyle(size, m.fontWeight, spacing, isFocused ? _labelFocus : m.color));
+    final back = painter(
+      _labelStyle(size, m.fontWeight, spacing, m.color, foreground: haloPaint),
+    );
+    final front = painter(
+      _labelStyle(
+        size,
+        m.fontWeight,
+        spacing,
+        isFocused ? _labelFocus : m.color,
+      ),
+    );
 
     final w = (front.width + halo * 2).ceil();
     final h = (front.height + halo * 2).ceil();
@@ -230,8 +252,10 @@ Future<Uint8List?> rasterizeRoutePointMarker({
         ..lineTo(pad + 3.0 * dpr, side - pad - 2.0 * dpr)
         ..close();
       canvas.drawPath(inner, Paint()..color = bg);
-      final img =
-          await recorder.endRecording().toImage(side.round(), side.round());
+      final img = await recorder.endRecording().toImage(
+            side.round(),
+            side.round(),
+          );
       final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
       return bytes?.buffer.asUint8List();
     }
@@ -256,7 +280,10 @@ Future<Uint8List?> rasterizeRoutePointMarker({
       canvas.drawRect(Rect.fromLTWH(p * 3, p * 8, w - 6 * p, p * 2), redPaint);
       canvas.drawRect(Rect.fromLTWH(p * 4, p * 10, w - 8 * p, p), redPaint);
       // Cream center dot
-      canvas.drawRect(Rect.fromLTWH(p * 3.5, p * 2.5, p * 3, p * 3), creamPaint);
+      canvas.drawRect(
+        Rect.fromLTWH(p * 3.5, p * 2.5, p * 3, p * 3),
+        creamPaint,
+      );
       final img = await recorder.endRecording().toImage(w.round(), h.round());
       final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
       return bytes?.buffer.asUint8List();
@@ -265,9 +292,18 @@ Future<Uint8List?> rasterizeRoutePointMarker({
     if (kind == JdqRoutePointKind.start) {
       final side = ((isPulsed ? 16.0 : 12.0) * dpr).roundToDouble();
       final edge = math.max(1.0, (2.0 * dpr).roundToDouble());
-      canvas.drawRect(Rect.fromLTWH(0, 0, side, side), Paint()..color = const Color(0xFFFFF8E1));
-      canvas.drawRect(Rect.fromLTWH(edge, edge, side - edge * 2, side - edge * 2), Paint()..color = bg);
-      final img = await recorder.endRecording().toImage(side.round(), side.round());
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, side, side),
+        Paint()..color = const Color(0xFFFFF8E1),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(edge, edge, side - edge * 2, side - edge * 2),
+        Paint()..color = bg,
+      );
+      final img = await recorder.endRecording().toImage(
+            side.round(),
+            side.round(),
+          );
       final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
       return bytes?.buffer.asUint8List();
     }
@@ -317,7 +353,10 @@ Future<Uint8List?> rasterizeRoutePointMarker({
     );
     textPainter.paint(canvas, textOffset);
 
-    final img = await recorder.endRecording().toImage(sizePx.round(), sizePx.round());
+    final img = await recorder.endRecording().toImage(
+          sizePx.round(),
+          sizePx.round(),
+        );
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     return byteData?.buffer.asUint8List();
   } catch (_) {
@@ -342,7 +381,10 @@ class MapLibreJdqMap extends JdqMap {
   static final Map<String, Uint8List> _clusterBitmapCache = {};
   final Set<String> _registeredClusterIcons = {};
 
-  static Future<Uint8List?> _rasterizeClusterBadge(int count, double dpr) async {
+  static Future<Uint8List?> _rasterizeClusterBadge(
+    int count,
+    double dpr,
+  ) async {
     final label = count > 999 ? '999+' : '$count';
     final cacheKey = '$label|${dpr.toStringAsFixed(1)}';
     final cached = _clusterBitmapCache[cacheKey];
@@ -383,9 +425,10 @@ class MapLibreJdqMap extends JdqMap {
         Paint()..color = const Color(0xFFF2C14E),
       );
       tp.paint(canvas, Offset((sideW - tp.width) / 2, (sideH - tp.height) / 2));
-      final img = await recorder
-          .endRecording()
-          .toImage(sideW.ceil(), sideH.ceil());
+      final img = await recorder.endRecording().toImage(
+            sideW.ceil(),
+            sideH.ceil(),
+          );
       final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
       final png = bytes?.buffer.asUint8List();
       if (png != null) _clusterBitmapCache[cacheKey] = png;
@@ -394,6 +437,7 @@ class MapLibreJdqMap extends JdqMap {
       return null;
     }
   }
+
   gl.LatLng _ll(LatLng point) => gl.LatLng(point.latitude, point.longitude);
   Future<void> _safe(Future<void> Function() action) async {
     if (_disposed || !_ready) return;
@@ -416,63 +460,68 @@ class MapLibreJdqMap extends JdqMap {
     double? bearing,
     double? tilt,
     bool reducedMotion = false,
-  }) => _safe(() async {
-    final pos = _controller!.cameraPosition;
-    final update = bearing == null && tilt == null
-        ? gl.CameraUpdate.newLatLngZoom(_ll(point), zoom)
-        : gl.CameraUpdate.newCameraPosition(gl.CameraPosition(
-            target: _ll(point),
-            zoom: zoom,
-            bearing: bearing ?? pos?.bearing ?? 0,
-            tilt: tilt ?? pos?.tilt ?? 0,
-          ));
-    if (reducedMotion) {
-      await _controller!.moveCamera(update);
-    } else {
-      await _controller!.animateCamera(
-        update,
-        duration: const Duration(milliseconds: 700),
-      );
-    }
-  });
+  }) =>
+      _safe(() async {
+        final pos = _controller!.cameraPosition;
+        final update = bearing == null && tilt == null
+            ? gl.CameraUpdate.newLatLngZoom(_ll(point), zoom)
+            : gl.CameraUpdate.newCameraPosition(
+                gl.CameraPosition(
+                  target: _ll(point),
+                  zoom: zoom,
+                  bearing: bearing ?? pos?.bearing ?? 0,
+                  tilt: tilt ?? pos?.tilt ?? 0,
+                ),
+              );
+        if (reducedMotion) {
+          await _controller!.moveCamera(update);
+        } else {
+          await _controller!.animateCamera(
+            update,
+            duration: const Duration(milliseconds: 700),
+          );
+        }
+      });
 
   @override
   Future<void> resetOrientation() => _safe(() async {
-    final position = _controller!.cameraPosition;
-    if (position == null) return;
-    await _controller!.animateCamera(
-      gl.CameraUpdate.newCameraPosition(
-        gl.CameraPosition(
-          target: position.target,
-          zoom: position.zoom,
-          bearing: 0,
-          tilt: 0,
-        ),
-      ),
-      duration: const Duration(milliseconds: 350),
-    );
-  });
+        final position = _controller!.cameraPosition;
+        if (position == null) return;
+        await _controller!.animateCamera(
+          gl.CameraUpdate.newCameraPosition(
+            gl.CameraPosition(
+              target: position.target,
+              zoom: position.zoom,
+              bearing: 0,
+              tilt: 0,
+            ),
+          ),
+          duration: const Duration(milliseconds: 350),
+        );
+      });
   @override
   Future<void> fitBounds(
     LatLng southWest,
     LatLng northEast,
     EdgeInsets padding,
-  ) => _safe(() async {
-    await _controller!.animateCamera(
-      gl.CameraUpdate.newLatLngBounds(
-        gl.LatLngBounds(southwest: _ll(southWest), northeast: _ll(northEast)),
-        left: padding.left,
-        top: padding.top,
-        right: padding.right,
-        bottom: padding.bottom,
-      ),
-      duration: const Duration(milliseconds: 700),
-    );
-  });
+  ) =>
+      _safe(() async {
+        await _controller!.animateCamera(
+          gl.CameraUpdate.newLatLngBounds(
+            gl.LatLngBounds(
+                southwest: _ll(southWest), northeast: _ll(northEast)),
+            left: padding.left,
+            top: padding.top,
+            right: padding.right,
+            bottom: padding.bottom,
+          ),
+          duration: const Duration(milliseconds: 700),
+        );
+      });
   Map<String, dynamic> _collection(List<Map<String, dynamic>> features) => {
-    'type': 'FeatureCollection',
-    'features': features,
-  };
+        'type': 'FeatureCollection',
+        'features': features,
+      };
   Map<String, dynamic> _point(LatLng point, Map<String, dynamic> properties) =>
       {
         'type': 'Feature',
@@ -490,11 +539,13 @@ class MapLibreJdqMap extends JdqMap {
         return (parsed['layers'] as List)
             .whereType<Map>()
             .map((l) => l['id'] as String?)
-            .where((id) =>
-                id != null &&
-                (id.startsWith('place_') ||
-                    id.contains('place-label') ||
-                    id.contains('place_label')))
+            .where(
+              (id) =>
+                  id != null &&
+                  (id.startsWith('place_') ||
+                      id.contains('place-label') ||
+                      id.contains('place_label')),
+            )
             .cast<String>()
             .toList();
       }
@@ -563,8 +614,8 @@ class MapLibreJdqMap extends JdqMap {
     _pins = pins;
     await _safe(() async {
       final c = _controller!;
-      final dpr = WidgetsBinding
-              .instance.platformDispatcher.views.firstOrNull?.devicePixelRatio ??
+      final dpr = WidgetsBinding.instance.platformDispatcher.views.firstOrNull
+              ?.devicePixelRatio ??
           2.0;
       for (final p in pins) {
         final count = p.clusterCount;
@@ -584,8 +635,11 @@ class MapLibreJdqMap extends JdqMap {
             _point(p.point, {
               'id': p.id,
               'name': p.label,
-              'quest': p.quest,
-              'done': p.done,
+              'kind': p.kindWire,
+              'quest': p.quest ||
+                  p.kind == JdqPinKind.quest ||
+                  p.kind == JdqPinKind.questDone,
+              'done': p.done || p.kind == JdqPinKind.questDone,
               'cluster': p.clusterCount != null,
               if (p.clusterCount != null)
                 'cluster_icon': 'jdq-cluster-${p.clusterCount}',
@@ -638,7 +692,9 @@ class MapLibreJdqMap extends JdqMap {
           return;
         }
 
-        final dpr = WidgetsBinding.instance.platformDispatcher.views.firstOrNull?.devicePixelRatio ?? 2.0;
+        final dpr = WidgetsBinding.instance.platformDispatcher.views.firstOrNull
+                ?.devicePixelRatio ??
+            2.0;
 
         for (final pt in overlay.points) {
           final key =
@@ -665,7 +721,8 @@ class MapLibreJdqMap extends JdqMap {
             : (overlay.degraded ? '#6F6352' : '#0284C7');
 
         final orderedPoints = List<JdqRoutePoint>.from(overlay.points)
-          ..sort((a, b) => _pointZOrder(a.kind).compareTo(_pointZOrder(b.kind)));
+          ..sort(
+              (a, b) => _pointZOrder(a.kind).compareTo(_pointZOrder(b.kind)));
 
         final features = <Map<String, dynamic>>[
           {
@@ -729,8 +786,8 @@ class MapLibreJdqMap extends JdqMap {
 
   Map<String, dynamic> _areaShapeToGeoJson(AreaShape shape) {
     List<List<double>> ring(List<LatLng> points) => [
-      for (final p in points) [p.longitude, p.latitude],
-    ];
+          for (final p in points) [p.longitude, p.latitude],
+        ];
 
     if (shape.polygons.length == 1) {
       return {
@@ -745,92 +802,107 @@ class MapLibreJdqMap extends JdqMap {
       'type': 'MultiPolygon',
       'coordinates': [
         for (final p in shape.polygons)
-          [
-            ring(p.outer),
-            for (final h in p.holes) ring(h),
-          ],
+          [ring(p.outer), for (final h in p.holes) ring(h)],
       ],
     };
   }
 
+  static const List<Object> _pinIconImageExpression = [
+    'case',
+    [
+      '==',
+      ['get', 'kind'],
+      'quest_done',
+    ],
+    'jdq-pin-quest-done',
+    [
+      '==',
+      ['get', 'kind'],
+      'quest',
+    ],
+    'jdq-pin-quest',
+    [
+      '==',
+      ['get', 'kind'],
+      'merchant',
+    ],
+    'jdq-pin-merchant',
+    'jdq-pin-spot',
+  ];
+
   Future<void> _updatePinOverlap() => _safe(() async {
-    final c = _controller;
-    if (c == null) return;
-    final allow = _focus != null || camera.zoom >= 13.0;
-    if (_lastOverlap == allow) return;
-    _lastOverlap = allow;
-    try {
-      await c.setLayerProperties(
-        'jdq-pin-symbols',
-        gl.SymbolLayerProperties(
-          iconImage: const [
-            'case',
-            ['get', 'quest'],
-            'jdq-pin-quest',
-            'jdq-pin-spot',
-          ],
-          iconSize: 1.0,
-          iconAllowOverlap: allow,
-          iconAnchor: 'bottom',
-          iconOpacity: _doneOpacity,
-        ),
-      );
-    } catch (_) {}
-  });
+        final c = _controller;
+        if (c == null) return;
+        final allow = _focus != null || camera.zoom >= 13.0;
+        if (_lastOverlap == allow) return;
+        _lastOverlap = allow;
+        try {
+          await c.setLayerProperties(
+            'jdq-pin-symbols',
+            gl.SymbolLayerProperties(
+              iconImage: _pinIconImageExpression,
+              iconSize: 1.0,
+              iconAllowOverlap: allow,
+              iconAnchor: 'bottom',
+              iconOpacity: _doneOpacity,
+            ),
+          );
+        } catch (_) {}
+      });
 
   Future<void> _updateFocus() => _safe(() async {
-    final c = _controller!;
-    if (_focus == null) {
-      await c.setGeoJsonSource('jdq-focus', _collection([]));
-      await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
-      await _updatePinOverlap();
-      await setPlaces(_places);
-      return;
-    }
+        final c = _controller!;
+        if (_focus == null) {
+          await c.setGeoJsonSource('jdq-focus', _collection([]));
+          await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
+          await _updatePinOverlap();
+          await setPlaces(_places);
+          return;
+        }
 
-    final shapeGeoJson = _areaShapeToGeoJson(_focus!);
-    final maskGeometry = buildInvertedMask(shapeGeoJson);
+        final shapeGeoJson = _areaShapeToGeoJson(_focus!);
+        final maskGeometry = buildInvertedMask(shapeGeoJson);
 
-    if (maskGeometry != null) {
-      await c.setGeoJsonSource(
-        'jdq-focus-mask',
-        _collection([
-          {
-            'type': 'Feature',
-            'properties': <String, dynamic>{},
-            'geometry': maskGeometry,
-          },
-        ]),
-      );
-    } else {
-      await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
-    }
+        if (maskGeometry != null) {
+          await c.setGeoJsonSource(
+            'jdq-focus-mask',
+            _collection([
+              {
+                'type': 'Feature',
+                'properties': <String, dynamic>{},
+                'geometry': maskGeometry,
+              },
+            ]),
+          );
+        } else {
+          await c.setGeoJsonSource('jdq-focus-mask', _collection([]));
+        }
 
-    List<List<double>> ring(List<LatLng> points) => [
-      for (final p in points) [p.longitude, p.latitude],
-    ];
+        List<List<double>> ring(List<LatLng> points) => [
+              for (final p in points) [p.longitude, p.latitude],
+            ];
 
-    await c.setGeoJsonSource(
-      'jdq-focus',
-      _collection([
-        for (final p in _focus!.polygons)
-          {
-            'type': 'Feature',
-            'properties': <String, dynamic>{},
-            'geometry': {
-              'type': 'Polygon',
-              'coordinates': [
-                ring(p.outer),
-                for (final h in p.holes) ring(h),
-              ],
-            },
-          },
-      ]),
-    );
+        await c.setGeoJsonSource(
+          'jdq-focus',
+          _collection([
+            for (final p in _focus!.polygons)
+              {
+                'type': 'Feature',
+                'properties': <String, dynamic>{},
+                'geometry': {
+                  'type': 'Polygon',
+                  'coordinates': [
+                    ring(p.outer),
+                    for (final h in p.holes) ring(h)
+                  ],
+                },
+              },
+          ]),
+        );
 
-    await _updatePinOverlap();
-    await setPlaces(_places);
-  });
+        await _updatePinOverlap();
+        await setPlaces(_places);
+      });
   @override
   Future<void> setSatellite(bool on) async {
     _satellite = on;
@@ -889,7 +961,11 @@ class MapLibreJdqMap extends JdqMap {
   /// Finished quests show greyed out (owner 2026-11-18), slightly faded.
   static const _doneOpacity = [
     'case',
-    ['==', ['get', 'done'], true],
+    [
+      '==',
+      ['get', 'done'],
+      true,
+    ],
     0.75,
     1.0,
   ];
@@ -910,8 +986,11 @@ class MapLibreJdqMap extends JdqMap {
   static double pinScale(double targetDp, double dpr, int artHeight) =>
       _wholeScale(targetDp * dpr / artHeight);
 
-  Future<Uint8List?> _rasterizeToPng(PixelArt art,
-      {double scale = 2, ColorFilter? filter}) async {
+  Future<Uint8List?> _rasterizeToPng(
+    PixelArt art, {
+    double scale = 2,
+    ColorFilter? filter,
+  }) async {
     try {
       final img = art.image();
       final recorder = ui.PictureRecorder();
@@ -951,34 +1030,22 @@ class MapLibreJdqMap extends JdqMap {
       await c.addFillLayer(
         'jdq-focus-mask',
         'jdq-focus-mask-layer',
-        const gl.FillLayerProperties(
-          fillColor: '#0D1B2A',
-          fillOpacity: 0.32,
-        ),
+        const gl.FillLayerProperties(fillColor: '#0D1B2A', fillOpacity: 0.32),
       );
       await c.addFillLayer(
         'jdq-focus',
         'jdq-focus-fill',
-        const gl.FillLayerProperties(
-          fillColor: '#FFF8E1',
-          fillOpacity: 0.08,
-        ),
+        const gl.FillLayerProperties(fillColor: '#FFF8E1', fillOpacity: 0.08),
       );
       await c.addLineLayer(
         'jdq-focus',
         'jdq-focus-casing',
-        const gl.LineLayerProperties(
-          lineColor: '#3E1F0A',
-          lineWidth: 4.5,
-        ),
+        const gl.LineLayerProperties(lineColor: '#3E1F0A', lineWidth: 4.5),
       );
       await c.addLineLayer(
         'jdq-focus',
         'jdq-focus-line',
-        const gl.LineLayerProperties(
-          lineColor: '#FFB703',
-          lineWidth: 2.5,
-        ),
+        const gl.LineLayerProperties(lineColor: '#FFB703', lineWidth: 2.5),
       );
 
       await c.addLineLayer(
@@ -1075,8 +1142,8 @@ class MapLibreJdqMap extends JdqMap {
         // Plan 100 WP-8: MapLibre on Android shows these PNGs at device
         // density, so size them in dp x pixel ratio (they were ~25 dp and
         // ~16 dp on a 3x phone; owner: "maps markers is super small").
-        final dpr = WidgetsBinding
-                .instance.platformDispatcher.views.firstOrNull?.devicePixelRatio ??
+        final dpr = WidgetsBinding.instance.platformDispatcher.views.firstOrNull
+                ?.devicePixelRatio ??
             2.0;
         final questBytes = await _rasterizeToPng(
           DesignerArt.questMarker,
@@ -1085,6 +1152,12 @@ class MapLibreJdqMap extends JdqMap {
         final spotBytes = await _rasterizeToPng(
           DesignerArt.spotMarker,
           scale: _wholeScale(spotPinDp * dpr / DesignerArt.spotMarker.height),
+        );
+        final merchantBytes = await _rasterizeToPng(
+          MapMarkerArt.localPartnerPin,
+          scale: _wholeScale(
+            spotPinDp * dpr / MapMarkerArt.localPartnerPin.height,
+          ),
         );
         // Owner 2026-11-18: "Once a Quest is done, it should be grey out".
         final questDoneBytes = await _rasterizeToPng(
@@ -1100,6 +1173,7 @@ class MapLibreJdqMap extends JdqMap {
         if (questBytes != null && spotBytes != null) {
           await c.addImage('jdq-pin-quest', questBytes);
           await c.addImage('jdq-pin-quest-done', questDoneBytes ?? questBytes);
+          await c.addImage('jdq-pin-merchant', merchantBytes ?? spotBytes);
           await c.addImage('jdq-pin-spot', spotBytes);
           final allowOverlap = _focus != null || camera.zoom >= 13.0;
           _lastOverlap = allowOverlap;
@@ -1107,24 +1181,17 @@ class MapLibreJdqMap extends JdqMap {
             'jdq-pins',
             'jdq-pin-symbols',
             gl.SymbolLayerProperties(
-              iconImage: const [
-                'case',
-                [
-                  'all',
-                  ['get', 'quest'],
-                  ['==', ['get', 'done'], true],
-                ],
-                'jdq-pin-quest-done',
-                ['get', 'quest'],
-                'jdq-pin-quest',
-                'jdq-pin-spot',
-              ],
+              iconImage: _pinIconImageExpression,
               iconSize: 1.0,
               iconAllowOverlap: allowOverlap,
               iconAnchor: 'bottom',
               iconOpacity: _doneOpacity,
             ),
-            filter: const ['!=', ['get', 'cluster'], true],
+            filter: const [
+              '!=',
+              ['get', 'cluster'],
+              true,
+            ],
           );
           await c.addSymbolLayer(
             'jdq-pins',
@@ -1136,7 +1203,11 @@ class MapLibreJdqMap extends JdqMap {
               iconIgnorePlacement: true,
               iconAnchor: 'center',
             ),
-            filter: const ['==', ['get', 'cluster'], true],
+            filter: const [
+              '==',
+              ['get', 'cluster'],
+              true,
+            ],
           );
           symbolsAdded = true;
         }
@@ -1155,7 +1226,11 @@ class MapLibreJdqMap extends JdqMap {
             circleStrokeColor: '#FFFFFF',
             circleStrokeWidth: 2,
           ),
-          filter: const ['!=', ['get', 'cluster'], true],
+          filter: const [
+            '!=',
+            ['get', 'cluster'],
+            true,
+          ],
         );
         await c.addCircleLayer(
           'jdq-pins',
@@ -1166,7 +1241,11 @@ class MapLibreJdqMap extends JdqMap {
             circleStrokeColor: '#3E1F0A',
             circleStrokeWidth: 2,
           ),
-          filter: const ['==', ['get', 'cluster'], true],
+          filter: const [
+            '==',
+            ['get', 'cluster'],
+            true,
+          ],
         );
       }
 
@@ -1228,13 +1307,16 @@ class MapLibreJdqMap extends JdqMap {
     if (!_ready || _disposed) return;
     try {
       final c = _controller!;
-      final hits = await c.queryRenderedFeatures(point, [
-        'jdq-pin-clusters',
-        'jdq-pin-cluster-dots',
-        'jdq-pin-symbols',
-        'jdq-pin-dots',
-        'admin-place-labels',
-      ], null);
+      final hits = await c.queryRenderedFeatures(
+          point,
+          [
+            'jdq-pin-clusters',
+            'jdq-pin-cluster-dots',
+            'jdq-pin-symbols',
+            'jdq-pin-dots',
+            'admin-place-labels',
+          ],
+          null);
       if (_disposed) return;
       for (final hit in hits) {
         if (hit is! Map) continue;
