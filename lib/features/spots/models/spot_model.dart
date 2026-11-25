@@ -99,11 +99,7 @@ class SpotSponsor {
   final String? logo;
   final String questId;
 
-  const SpotSponsor({
-    required this.name,
-    this.logo,
-    required this.questId,
-  });
+  const SpotSponsor({required this.name, this.logo, required this.questId});
 
   factory SpotSponsor.fromJson(Map<String, dynamic> j) => SpotSponsor(
         name: j['name']?.toString() ?? '',
@@ -147,6 +143,44 @@ class SpotDuplicateHint {
       };
 }
 
+/// Plan 122a: Local Partner merchant linked to a published destination (only present when MARKETPLACE_ENABLED=true).
+class SpotLocalPartner {
+  final String merchantId;
+  final String name;
+  final String category;
+  final String? logoUrl;
+  final bool isPublished;
+
+  const SpotLocalPartner({
+    required this.merchantId,
+    required this.name,
+    required this.category,
+    this.logoUrl,
+    this.isPublished = true,
+  });
+
+  factory SpotLocalPartner.fromJson(Map<String, dynamic> j) {
+    final rawLogo = j['logo_url']?.toString().trim();
+    return SpotLocalPartner(
+      merchantId: j['merchant_id']?.toString() ?? '',
+      name: j['name']?.toString() ?? '',
+      category: j['category']?.toString() ?? 'Local Business',
+      logoUrl: rawLogo != null && rawLogo.isNotEmpty
+          ? SpotModel.resolveImageUrl(rawLogo)
+          : null,
+      isPublished: j['is_published'] != false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'merchant_id': merchantId,
+        'name': name,
+        'category': category,
+        if (logoUrl != null) 'logo_url': logoUrl,
+        'is_published': isPublished,
+      };
+}
+
 class SpotModel {
   final String id,
       slug,
@@ -187,6 +221,10 @@ class SpotModel {
   final SpotDuplicateHint? duplicateSpot;
   final bool appealSubmitted;
   final List<SpotSponsor> sponsors;
+  final String markerKind;
+  final SpotLocalPartner? localPartner;
+  final int activeQuestCount;
+  final List<String> activeQuestIds;
 
   const SpotModel({
     required this.id,
@@ -227,6 +265,10 @@ class SpotModel {
     this.duplicateSpot,
     this.appealSubmitted = false,
     this.sponsors = const [],
+    this.markerKind = 'spot',
+    this.localPartner,
+    this.activeQuestCount = 0,
+    this.activeQuestIds = const [],
   });
 
   List<SpotPhoto> get photos => media.isNotEmpty
@@ -303,14 +345,19 @@ class SpotModel {
       final resolved = resolveImageUrl(trimmed);
       if (seenUrls.contains(resolved)) return;
       seenUrls.add(resolved);
-      final isVid =
-          isVideoMedia(resolved, mimeType: mimeType, mediaType: mediaType);
-      mediaList.add(SpotPhoto(
-        url: resolved,
-        isVideo: isVid,
-        sourceName: srcName ?? j['source_name']?.toString(),
-        sourceUrl: srcUrl ?? j['source_url']?.toString(),
-      ));
+      final isVid = isVideoMedia(
+        resolved,
+        mimeType: mimeType,
+        mediaType: mediaType,
+      );
+      mediaList.add(
+        SpotPhoto(
+          url: resolved,
+          isVideo: isVid,
+          sourceName: srcName ?? j['source_name']?.toString(),
+          sourceUrl: srcUrl ?? j['source_url']?.toString(),
+        ),
+      );
     }
 
     if (primaryImg != null && primaryImg.trim().isNotEmpty) {
@@ -467,6 +514,19 @@ class SpotModel {
       duplicateSpot: dupHint,
       appealSubmitted: j['appeal_submitted'] == true,
       sponsors: sponsors,
+      markerKind: j['marker_kind']?.toString() ?? 'spot',
+      localPartner: j['local_partner'] is Map
+          ? SpotLocalPartner.fromJson(
+              Map<String, dynamic>.from(j['local_partner'] as Map),
+            )
+          : null,
+      activeQuestCount: (j['active_quest_count'] as num?)?.toInt() ?? 0,
+      activeQuestIds: j['active_quest_ids'] is List
+          ? (j['active_quest_ids'] as List)
+              .map((e) => e.toString())
+              .where((e) => e.isNotEmpty)
+              .toList(growable: false)
+          : const [],
     );
   }
 
@@ -525,6 +585,10 @@ class SpotModel {
     SpotDuplicateHint? duplicateSpot,
     bool? appealSubmitted,
     List<SpotSponsor>? sponsors,
+    String? markerKind,
+    SpotLocalPartner? localPartner,
+    int? activeQuestCount,
+    List<String>? activeQuestIds,
   }) =>
       SpotModel(
         id: id ?? this.id,
@@ -565,6 +629,10 @@ class SpotModel {
         duplicateSpot: duplicateSpot ?? this.duplicateSpot,
         appealSubmitted: appealSubmitted ?? this.appealSubmitted,
         sponsors: sponsors ?? this.sponsors,
+        markerKind: markerKind ?? this.markerKind,
+        localPartner: localPartner ?? this.localPartner,
+        activeQuestCount: activeQuestCount ?? this.activeQuestCount,
+        activeQuestIds: activeQuestIds ?? this.activeQuestIds,
       );
 
   Map<String, dynamic> toJson() => {
@@ -676,6 +744,12 @@ class SpotMapMarker {
   final String category;
   final String? tier;
   final String? thumb;
+  final String markerKind;
+  final bool isLocalPartner;
+  final String? merchantId;
+  final String? merchantName;
+  final int activeQuestCount;
+  final List<String> activeQuestIds;
 
   const SpotMapMarker({
     required this.id,
@@ -686,10 +760,23 @@ class SpotMapMarker {
     required this.category,
     this.tier,
     this.thumb,
+    this.markerKind = 'spot',
+    this.isLocalPartner = false,
+    this.merchantId,
+    this.merchantName,
+    this.activeQuestCount = 0,
+    this.activeQuestIds = const [],
   });
 
   factory SpotMapMarker.fromJson(Map<String, dynamic> json) {
     final rawThumb = json['thumb']?.toString();
+    final rawQuestIds = json['active_quest_ids'];
+    final questIds = rawQuestIds is List
+        ? rawQuestIds
+            .map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .toList(growable: false)
+        : const <String>[];
     return SpotMapMarker(
       id: json['id']?.toString() ?? '',
       slug: json['slug']?.toString() ?? json['id']?.toString() ?? '',
@@ -701,6 +788,13 @@ class SpotMapMarker {
       thumb: rawThumb != null && rawThumb.trim().isNotEmpty
           ? SpotModel.resolveImageUrl(rawThumb)
           : null,
+      markerKind: json['marker_kind']?.toString() ?? 'spot',
+      isLocalPartner: json['is_local_partner'] == true,
+      merchantId: json['merchant_id']?.toString(),
+      merchantName: json['merchant_name']?.toString(),
+      activeQuestCount:
+          (json['active_quest_count'] as num?)?.toInt() ?? questIds.length,
+      activeQuestIds: questIds,
     );
   }
 
@@ -718,6 +812,17 @@ class SpotMapMarker {
         gpsLat: lat,
         gpsLng: lng,
         imageUrl: thumb,
+        questId: activeQuestIds.isNotEmpty ? activeQuestIds.first : null,
+        markerKind: markerKind,
+        localPartner: isLocalPartner && merchantId != null
+            ? SpotLocalPartner(
+                merchantId: merchantId!,
+                name: merchantName ?? name,
+                category: category.isNotEmpty ? category : 'Local Business',
+              )
+            : null,
+        activeQuestCount: activeQuestCount,
+        activeQuestIds: activeQuestIds,
         tags: const [],
         reasons: const [],
       );

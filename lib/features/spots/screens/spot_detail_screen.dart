@@ -13,6 +13,8 @@ import '../../../core/pixel/pixel_nav.dart';
 import '../../../core/pixel/pixel_text.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../merchant/models/merchant_models.dart';
+import '../../merchant/providers/merchant_hub_provider.dart';
 import '../../quests/providers/quest_provider.dart';
 import '../../suki/widgets/spot_suki_row.dart';
 import '../models/spot_model.dart';
@@ -60,8 +62,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
   /// Plan 98: the photo the page settled on after skipping broken ones; null
   /// when none loaded (shorter header + "no photo" badge).
-  late final ValueNotifier<String?> _photoUrl =
-      ValueNotifier(SpotStillPhoto.urlFor(widget.spot));
+  late final ValueNotifier<String?> _photoUrl = ValueNotifier(
+    SpotStillPhoto.urlFor(widget.spot),
+  );
 
   @override
   void initState() {
@@ -240,13 +243,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     if (ref.read(authProvider).user == null) {
       // Review 2026-11-17: /login does not exist; sign in, then come back.
       context.go(
-          '/?redirect=${Uri.encodeComponent(GoRouterState.of(context).uri.toString())}');
+        '/?redirect=${Uri.encodeComponent(GoRouterState.of(context).uri.toString())}',
+      );
       return;
     }
-    final sent = await SpotAddPhotoSheet.show(
-      context,
-      spot: widget.spot,
-    );
+    final sent = await SpotAddPhotoSheet.show(context, spot: widget.spot);
     if (sent == true && mounted) {
       showPixelToast(context, 'Sent for review');
     }
@@ -331,6 +332,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     final me = ref.watch(authProvider).user;
     final isAuthor =
         me != null && spot.createdBy != null && spot.createdBy == me.id;
+    final merchantStatus =
+        isAuthor ? ref.watch(merchantHubStatusProvider).valueOrNull : null;
+    final canLinkAsMerchant = isAuthor &&
+        spot.localPartner == null &&
+        merchantStatus?.state == MerchantHubState.approvedMerchant;
     final hasAlternatives = _alternatives.isNotEmpty;
     final quests = ref.watch(questProvider).quests;
     final showTest = ref.watch(showTestContentProvider);
@@ -435,6 +441,29 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           onDirections: _openDirections,
                         ),
 
+                        // Plan 122a: Local Partner storefront badge & link card
+                        if (spot.localPartner != null) ...[
+                          const SizedBox(height: 20),
+                          _buildLocalPartnerCard(context, spot.localPartner!),
+                        ] else if (canLinkAsMerchant) ...[
+                          const SizedBox(height: 16),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: PixelButton(
+                              key: const ValueKey(
+                                'spot_detail_link_merchant_btn',
+                              ),
+                              label: 'Link as my Merchant Hub location',
+                              variant: PixelButtonVariant.secondary,
+                              onPressed: () {
+                                try {
+                                  context.push('/merchant/location');
+                                } catch (_) {}
+                              },
+                            ),
+                          ),
+                        ],
+
                         // Plan 107: Suki shops at this destination.
                         SpotSukiRow(lat: spot.gpsLat, lng: spot.gpsLng),
 
@@ -534,6 +563,64 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLocalPartnerCard(
+    BuildContext context,
+    SpotLocalPartner partner,
+  ) {
+    return PixelPanel(
+      key: const ValueKey('spot_detail_local_partner_card'),
+      style: PixelBoxStyle.parchment,
+      padding: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              PixelPanel(
+                key: const ValueKey('spot_detail_local_partner_badge'),
+                style: PixelBoxStyle.gold,
+                padding: 1,
+                child: Text(
+                  'LOCAL PARTNER',
+                  style: PixelType.small(
+                    context,
+                    color: PixelPalette.ink,
+                  ).copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                partner.category,
+                style: PixelType.small(context, color: PixelPalette.slate),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            partner.name,
+            style: PixelType.title(context, color: PixelPalette.ink),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: PixelButton(
+              key: const ValueKey('spot_detail_view_partner_btn'),
+              label: 'VIEW PARTNER',
+              variant: PixelButtonVariant.primary,
+              onPressed: () {
+                try {
+                  context.push('/merchants/${partner.merchantId}');
+                } catch (_) {}
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

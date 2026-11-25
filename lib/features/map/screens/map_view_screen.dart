@@ -43,6 +43,7 @@ import '../engine/maplibre_jdq_map.dart';
 import '../pixel/map_marker_art.dart';
 import '../utils/admin_areas.dart';
 import '../utils/map_focus.dart';
+import '../utils/map_marker_hierarchy.dart';
 import '../widgets/map_orientation_button.dart';
 
 class MapViewScreen extends ConsumerStatefulWidget {
@@ -255,8 +256,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
   void _scheduleMapSpotsRefresh() {
     _clusterRefreshTimer?.cancel();
     _mapSpotsCancelToken?.cancel('camera_moved');
-    _clusterRefreshTimer =
-        Timer(const Duration(milliseconds: 300), _refreshMapSpots);
+    _clusterRefreshTimer = Timer(
+      const Duration(milliseconds: 300),
+      _refreshMapSpots,
+    );
   }
 
   Future<void> _refreshMapSpots() async {
@@ -285,14 +288,14 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     _mapSpotsCancelToken = token;
     try {
       final response = await ref.read(apiClientProvider).dio.get(
-        '/spots/map',
-        queryParameters: <String, dynamic>{
-          'bbox':
-              '${west.toStringAsFixed(5)},${south.toStringAsFixed(5)},${east.toStringAsFixed(5)},${north.toStringAsFixed(5)}',
-          'zoom': camera.zoom.floor().clamp(0, 22),
-        },
-        cancelToken: token,
-      );
+            '/spots/map',
+            queryParameters: <String, dynamic>{
+              'bbox':
+                  '${west.toStringAsFixed(5)},${south.toStringAsFixed(5)},${east.toStringAsFixed(5)},${north.toStringAsFixed(5)}',
+              'zoom': camera.zoom.floor().clamp(0, 22),
+            },
+            cancelToken: token,
+          );
       if (!mounted || token.isCancelled || request != _mapSpotsRequest) return;
       final body = response.data;
       if (body is! Map || body['data'] is! Map) return;
@@ -359,10 +362,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
         return;
       }
     }
-    _move(
-      LatLng(cluster.lat, cluster.lng),
-      math.max(_camera.zoom + 2.0, 13.5),
-    );
+    _move(LatLng(cluster.lat, cluster.lng), math.max(_camera.zoom + 2.0, 13.5));
   }
 
   void _scheduleAreaRefresh() {
@@ -405,7 +405,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     if (!mounted) return;
     if (shape == null) {
       showPixelToast(
-          context, 'The boundary of ${area.name} is not available yet.');
+        context,
+        'The boundary of ${area.name} is not available yet.',
+      );
       return;
     }
     final camera = _camera;
@@ -420,10 +422,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       _selectedSpot = null;
     });
     await _nativeMap.setFocusArea(shape);
-    _fit(
-      shape.outlinePoints,
-      const EdgeInsets.fromLTRB(32, 140, 32, 120),
-    );
+    _fit(shape.outlinePoints, const EdgeInsets.fromLTRB(32, 140, 32, 120));
   }
 
   void _clearArea() {
@@ -514,8 +513,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
         _focusPlace(cachedMatch.gpsLat, cachedMatch.gpsLng, 16.0);
         return;
       }
-      final markerMatch =
-          _mapMarkers.where((m) => m.id == spotId || m.slug == spotId).firstOrNull;
+      final markerMatch = _mapMarkers
+          .where((m) => m.id == spotId || m.slug == spotId)
+          .firstOrNull;
       if (markerMatch != null) {
         _deepLinkHandled = true;
         setState(() {
@@ -535,7 +535,9 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
             .then((res) {
           final raw = res.data is Map ? res.data['data'] : null;
           if (!mounted || raw is! Map) return;
-          final fetched = SpotModel.fromJson(Map<String, dynamic>.from(raw));
+          final fetched = SpotModel.fromJson(
+            Map<String, dynamic>.from(raw),
+          );
           _spotDetailCache[fetched.id] = fetched;
           setState(() {
             _selectedSpot = fetched;
@@ -654,9 +656,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        showPixelToastOn(messenger,
-            'Location services are turned off. Turn them on, or search and pan the map instead.',
-            duration: const Duration(seconds: 4));
+        showPixelToastOn(
+          messenger,
+          'Location services are turned off. Turn them on, or search and pan the map instead.',
+          duration: const Duration(seconds: 4),
+        );
         return;
       }
 
@@ -666,9 +670,11 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        showPixelToastOn(messenger,
-            'Location permission was denied. Search or pan the map instead.',
-            duration: const Duration(seconds: 4));
+        showPixelToastOn(
+          messenger,
+          'Location permission was denied. Search or pan the map instead.',
+          duration: const Duration(seconds: 4),
+        );
         return;
       }
 
@@ -697,14 +703,18 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
             : (camera.zoom < 14 ? 14.0 : camera.zoom),
       );
       if (position.accuracy > 2000) {
-        showPixelToastOn(messenger,
-            'Approximate location shown (±${position.accuracy.round()} m). Move to an open area for a better fix.',
-            duration: const Duration(seconds: 4));
+        showPixelToastOn(
+          messenger,
+          'Approximate location shown (±${position.accuracy.round()} m). Move to an open area for a better fix.',
+          duration: const Duration(seconds: 4),
+        );
       }
     } catch (_) {
-      showPixelToastOn(messenger,
-          'Finding your location timed out or failed. Try again, or search and pan the map instead.',
-          duration: const Duration(seconds: 4));
+      showPixelToastOn(
+        messenger,
+        'Finding your location timed out or failed. Try again, or search and pan the map instead.',
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       if (mounted) setState(() => _locating = false);
     }
@@ -783,9 +793,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       visibleQuests =
           quests.where((q) => _inFocusedArea(q.gpsLat, q.gpsLng)).toList();
       if (_hasViewportMapData) {
-        visibleMapMarkers = _mapMarkers
-            .where((m) => _inFocusedArea(m.lat, m.lng))
-            .toList();
+        visibleMapMarkers =
+            _mapMarkers.where((m) => _inFocusedArea(m.lat, m.lng)).toList();
       } else {
         visibleSpots = <SpotModel>[
           ...plannedSpots.ordinary,
@@ -813,37 +822,34 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
 
     // Owner 2026-11-18: "Once a Quest is done, it should be grey out and
     // there should be an option to hide it" (replaces Plan 100's hide-by-default).
-    final questDone = mapQuestDone(ref.watch(submissionProvider).submissions);
-    final hasDoneQuests = visibleQuests.any(questDone);
+    final submissions = ref.watch(submissionProvider).submissions;
+    final questDone = mapQuestDone(submissions);
+    final completedQuestIds = <String>{
+      for (final q in quests)
+        if (questDone(q)) q.id,
+    };
+    final hasDoneQuests = visibleQuests.any(questDone) ||
+        visibleMapMarkers.any(
+          (m) =>
+              m.markerKind == 'quest' &&
+              m.activeQuestIds.isNotEmpty &&
+              m.activeQuestIds.every(completedQuestIds.contains),
+        );
     visibleQuests = mapVisibleQuests(
       visibleQuests,
       questDone,
       showDone: _showDoneQuests,
     );
 
-    final pins = <JdqPin>[
-      for (var i = 0; i < visibleMapClusters.length; i++)
-        JdqPin(
-          'cluster:$i',
-          LatLng(visibleMapClusters[i].lat, visibleMapClusters[i].lng),
-          '${visibleMapClusters[i].count}',
-          clusterCount: visibleMapClusters[i].count,
-        ),
-      for (final q in visibleQuests)
-        JdqPin(
-          'quest:${q.id}',
-          LatLng(q.gpsLat, q.gpsLng),
-          q.title,
-          quest: true,
-          done: questDone(q),
-        ),
-      if (_hasViewportMapData)
-        for (final m in visibleMapMarkers)
-          JdqPin('spot:${m.id}', LatLng(m.lat, m.lng), m.name)
-      else
-        for (final s in visibleSpots)
-          JdqPin('spot:${s.id}', LatLng(s.gpsLat, s.gpsLng), s.name),
-    ];
+    final pins = buildUnifiedMapPins(
+      clusters: visibleMapClusters,
+      viewportMarkers: visibleMapMarkers,
+      fallbackSpots: visibleSpots,
+      hasViewportMapData: _hasViewportMapData,
+      visibleQuests: visibleQuests,
+      completedQuestIds: completedQuestIds,
+      showDoneQuests: _showDoneQuests,
+    );
     _nativeMap.onTapPin = (id) {
       if (id.startsWith('cluster:')) {
         final idx = int.tryParse(id.substring('cluster:'.length));
@@ -886,7 +892,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       }
     };
     final signature = pins
-        .map((p) => '${p.id}:${p.point}:${p.label}:${p.done}:${p.clusterCount}')
+        .map(
+          (p) =>
+              '${p.id}:${p.point}:${p.label}:${p.kindWire}:${p.done}:${p.clusterCount}',
+        )
         .join('|');
     if (signature != _pinSignature) {
       _pinSignature = signature;
@@ -920,280 +929,302 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
               ],
             ),
           ),
-        body: Stack(
-          children: [
-            _canvas(satellite: satellite),
+          body: Stack(
+            children: [
+              _canvas(satellite: satellite),
 
-            // Top posting banner
-            if (_pinPlacementActive)
-              Positioned(
-                top: 12,
-                left: 12,
-                right: 12,
-                child: PixelPanel(
-                  key: const ValueKey('map_post_spot_banner'),
-                  style: PixelBoxStyle.gold,
-                  padding: 8,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            PixelText(
-                              'POST A DESTINATION SPOT',
-                              style: PixelType.body(
-                                context,
-                                color: PixelPalette.woodDeep,
-                              ).copyWith(fontWeight: FontWeight.bold),
-                            ),
-                          ],
+              // Top posting banner
+              if (_pinPlacementActive)
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  right: 12,
+                  child: PixelPanel(
+                    key: const ValueKey('map_post_spot_banner'),
+                    style: PixelBoxStyle.gold,
+                    padding: 8,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              PixelText(
+                                'POST A DESTINATION SPOT',
+                                style: PixelType.body(
+                                  context,
+                                  color: PixelPalette.woodDeep,
+                                ).copyWith(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      PixelIconButton(
-                        icon: MapMarkerArt.iconClose,
-                        iconHeight: 24, // Plan 100 WP-8
-                        semanticLabel: 'Cancel',
-                        style: PixelBoxStyle.parchment,
-                        onPressed: _cancelPinPlacement,
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        PixelIconButton(
+                          icon: MapMarkerArt.iconClose,
+                          iconHeight: 24, // Plan 100 WP-8
+                          semanticLabel: 'Cancel',
+                          style: PixelBoxStyle.parchment,
+                          onPressed: _cancelPinPlacement,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-            // Owner 2026-11-17: no quiz prompt on the map; nearby quizzes
-            // reach travelers as notifications and the in-app banner.
+              // Owner 2026-11-17: no quiz prompt on the map; nearby quizzes
+              // reach travelers as notifications and the in-app banner.
 
-            // Top-Right Floating Map Tool Controls
-            Positioned(
-              top: _pinPlacementActive ? 84 : 12,
-              right: 12,
-              child: Column(
-                children: [
-                  // Orientation reset button
-                  if (mapNeedsOrientationReset(
-                    _nativeMap.camera.bearing,
-                    _nativeMap.camera.tilt,
-                  )) ...[
-                    MapOrientationButton(
-                      bearing: _nativeMap.camera.bearing,
-                      tilt: _nativeMap.camera.tilt,
-                      onPressed: () => unawaited(_nativeMap.resetOrientation()),
-                    ),
-                    const SizedBox(height: 4),
-                  ],
+              // Top-Right Floating Map Tool Controls
+              Positioned(
+                top: _pinPlacementActive ? 84 : 12,
+                right: 12,
+                child: Column(
+                  children: [
+                    // Orientation reset button
+                    if (mapNeedsOrientationReset(
+                      _nativeMap.camera.bearing,
+                      _nativeMap.camera.tilt,
+                    )) ...[
+                      MapOrientationButton(
+                        bearing: _nativeMap.camera.bearing,
+                        tilt: _nativeMap.camera.tilt,
+                        onPressed: () =>
+                            unawaited(_nativeMap.resetOrientation()),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
 
-                  // Plan 100 WP-9: bring back finished quests as shadows.
-                  if (hasDoneQuests) ...[
-                    Tooltip(
-                      message: _showDoneQuests
-                          ? tr(context,
-                              en: 'Hide done quests',
-                              tl: 'Itago ang tapos na quest')
-                          : tr(context,
-                              en: 'Show done quests',
-                              tl: 'Ipakita ang tapos na quest'),
-                      child: Semantics(
-                        button: true,
-                        toggled: _showDoneQuests,
-                        label: _showDoneQuests
-                            ? tr(context,
+                    // Plan 100 WP-9: bring back finished quests as shadows.
+                    if (hasDoneQuests) ...[
+                      Tooltip(
+                        message: _showDoneQuests
+                            ? tr(
+                                context,
                                 en: 'Hide done quests',
-                                tl: 'Itago ang tapos na quest')
-                            : tr(context,
+                                tl: 'Itago ang tapos na quest',
+                              )
+                            : tr(
+                                context,
                                 en: 'Show done quests',
-                                tl: 'Ipakita ang tapos na quest'),
-                        child: ExcludeSemantics(
-                          child: PixelChip(
-                            tr(context, en: 'DONE', tl: 'TAPOS'),
-                            key: const ValueKey('map_show_done_quests'),
-                            style: _showDoneQuests
-                                ? PixelBoxStyle.gold
-                                : PixelBoxStyle.parchment,
-                            onTap: () => setState(
-                              () => _showDoneQuests = !_showDoneQuests,
+                                tl: 'Ipakita ang tapos na quest',
+                              ),
+                        child: Semantics(
+                          button: true,
+                          toggled: _showDoneQuests,
+                          label: _showDoneQuests
+                              ? tr(
+                                  context,
+                                  en: 'Hide done quests',
+                                  tl: 'Itago ang tapos na quest',
+                                )
+                              : tr(
+                                  context,
+                                  en: 'Show done quests',
+                                  tl: 'Ipakita ang tapos na quest',
+                                ),
+                          child: ExcludeSemantics(
+                            child: PixelChip(
+                              tr(context, en: 'DONE', tl: 'TAPOS'),
+                              key: const ValueKey('map_show_done_quests'),
+                              style: _showDoneQuests
+                                  ? PixelBoxStyle.gold
+                                  : PixelBoxStyle.parchment,
+                              onTap: () => setState(
+                                () => _showDoneQuests = !_showDoneQuests,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                  ],
+                      const SizedBox(height: 4),
+                    ],
 
-                  // Satellite toggle
-                  if (MapConfig.satelliteAvailable()) ...[
+                    // Satellite toggle
+                    if (MapConfig.satelliteAvailable()) ...[
+                      Tooltip(
+                        message: satellite ? 'Show map' : 'Show satellite',
+                        child: PixelIconButton(
+                          icon: MapMarkerArt.iconSatellite,
+                          iconHeight: 24, // Plan 100 WP-8
+                          semanticLabel:
+                              satellite ? 'Show map' : 'Show satellite',
+                          style: satellite
+                              ? PixelBoxStyle.gold
+                              : PixelBoxStyle.parchment,
+                          onPressed: () {
+                            ref.read(satelliteModeProvider.notifier).state =
+                                !satellite;
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+
+                    // Use My Location
                     Tooltip(
-                      message: satellite ? 'Show map' : 'Show satellite',
-                      child: PixelIconButton(
-                        icon: MapMarkerArt.iconSatellite,
-                        iconHeight: 24, // Plan 100 WP-8
-                        semanticLabel:
-                            satellite ? 'Show map' : 'Show satellite',
-                        style: satellite
-                            ? PixelBoxStyle.gold
-                            : PixelBoxStyle.parchment,
-                        onPressed: () {
-                          ref.read(satelliteModeProvider.notifier).state =
-                              !satellite;
-                        },
+                      message: 'Use My Location',
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        child: _locating
+                            ? const PixelPanel(
+                                style: PixelBoxStyle.parchment,
+                                padding: 2,
+                                child: Center(
+                                  widthFactor: 1,
+                                  heightFactor: 1,
+                                  child: PixelLoader(artPx: 4, label: ''),
+                                ),
+                              )
+                            : PixelIconButton(
+                                icon: MapMarkerArt.iconLocateMe,
+                                iconHeight: 24, // Plan 100 WP-8
+                                semanticLabel: 'Use My Location',
+                                style: PixelBoxStyle.parchment,
+                                onPressed: _useMyLocation,
+                              ),
                       ),
                     ),
                     const SizedBox(height: 4),
+
+                    // Fit All Bounds / Recenter
+                    Tooltip(
+                      message: 'Fit All Markers',
+                      child: PixelIconButton(
+                        icon: MapMarkerArt.iconFitBounds,
+                        iconHeight: 24, // Plan 100 WP-8
+                        semanticLabel: 'Fit All Markers',
+                        style: PixelBoxStyle.parchment,
+                        onPressed: _fitAllBounds,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // Reload Coordinates
+                    Tooltip(
+                      message: 'Reload Coordinates',
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        child: _isRefreshing
+                            ? const PixelPanel(
+                                style: PixelBoxStyle.parchment,
+                                padding: 2,
+                                child: Center(
+                                  widthFactor: 1,
+                                  heightFactor: 1,
+                                  child: PixelLoader(artPx: 4, label: ''),
+                                ),
+                              )
+                            : PixelIconButton(
+                                icon: MapMarkerArt.iconRefresh,
+                                iconHeight: 24, // Plan 100 WP-8
+                                semanticLabel: 'Reload Coordinates',
+                                style: PixelBoxStyle.parchment,
+                                onPressed: _refreshData,
+                              ),
+                      ),
+                    ),
+                    // Map Marker Legend (Plan 122a)
+                    const SizedBox(height: 4),
+                    Tooltip(
+                      message: 'Map Legend',
+                      child: PixelIconButton(
+                        key: const ValueKey('map_legend_btn'),
+                        icon: MapMarkerArt.localPartnerPin,
+                        iconHeight: 24,
+                        semanticLabel: 'Map Legend',
+                        style: PixelBoxStyle.parchment,
+                        onPressed: _showMapLegendSheet,
+                      ),
+                    ),
                   ],
+                ),
+              ),
 
-                  // Use My Location
-                  Tooltip(
-                    message: 'Use My Location',
+              // Pin crosshair reticle when placing a pin
+              if (_pinPlacementActive)
+                const Positioned.fill(child: PixelCrosshairReticle()),
+
+              // Pin aim card
+              if (_pinPlacementActive)
+                Positioned(
+                  left: 12,
+                  right: 64,
+                  bottom: 28,
+                  child: PinAimCard(
+                    lat: _aimCenter?.latitude,
+                    lng: _aimCenter?.longitude,
+                    locating: _locating,
+                    onUseMyLocation: _useMyLocation,
+                    onCancel: _cancelPinPlacement,
+                    onContinue: _continueWithPlace,
+                  ),
+                ),
+
+              // Focused area banner
+              if (_focusedArea != null &&
+                  _selectedQuest == null &&
+                  _selectedSpot == null)
+                Positioned(
+                  bottom: 28,
+                  left: 12,
+                  right: 12,
+                  child: MapAreaBanner(
+                    area: _focusedArea!,
+                    questsCount: visibleQuests.length,
+                    spotsCount: visibleSpots.length,
+                    onClear: _clearArea,
+                    onPinSpot: _startPinPlacement,
+                  ),
+                ),
+
+              // Marker Inspector Overlay Card
+              if (_selectedQuest != null || _selectedSpot != null)
+                Positioned(
+                  bottom: 28,
+                  left: 12,
+                  right: 12,
+                  child: _buildMarkerInspectorCard(),
+                ),
+
+              // Standalone Bottom-Right Post Spot Button (Plan 82b)
+              if (!_pinPlacementActive &&
+                  _selectedQuest == null &&
+                  _selectedSpot == null &&
+                  _focusedArea == null)
+                Positioned(
+                  right: 12,
+                  bottom: 28,
+                  child: Semantics(
+                    label: 'Post a destination spot',
+                    button: true,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(
-                        minWidth: 48,
                         minHeight: 48,
-                      ),
-                      child: _locating
-                          ? const PixelPanel(
-                              style: PixelBoxStyle.parchment,
-                              padding: 2,
-                              child: Center(
-                                widthFactor: 1,
-                                heightFactor: 1,
-                                child: PixelLoader(artPx: 4, label: ''),
-                              ),
-                            )
-                          : PixelIconButton(
-                              icon: MapMarkerArt.iconLocateMe,
-                              iconHeight: 24, // Plan 100 WP-8
-                              semanticLabel: 'Use My Location',
-                              style: PixelBoxStyle.parchment,
-                              onPressed: _useMyLocation,
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                  // Fit All Bounds / Recenter
-                  Tooltip(
-                    message: 'Fit All Markers',
-                    child: PixelIconButton(
-                      icon: MapMarkerArt.iconFitBounds,
-                      iconHeight: 24, // Plan 100 WP-8
-                      semanticLabel: 'Fit All Markers',
-                      style: PixelBoxStyle.parchment,
-                      onPressed: _fitAllBounds,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                  // Reload Coordinates
-                  Tooltip(
-                    message: 'Reload Coordinates',
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
                         minWidth: 48,
-                        minHeight: 48,
                       ),
-                      child: _isRefreshing
-                          ? const PixelPanel(
-                              style: PixelBoxStyle.parchment,
-                              padding: 2,
-                              child: Center(
-                                widthFactor: 1,
-                                heightFactor: 1,
-                                child: PixelLoader(artPx: 4, label: ''),
-                              ),
-                            )
-                          : PixelIconButton(
-                              icon: MapMarkerArt.iconRefresh,
-                              iconHeight: 24, // Plan 100 WP-8
-                              semanticLabel: 'Reload Coordinates',
-                              style: PixelBoxStyle.parchment,
-                              onPressed: _refreshData,
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Pin crosshair reticle when placing a pin
-            if (_pinPlacementActive)
-              const Positioned.fill(child: PixelCrosshairReticle()),
-
-            // Pin aim card
-            if (_pinPlacementActive)
-              Positioned(
-                left: 12,
-                right: 64,
-                bottom: 28,
-                child: PinAimCard(
-                  lat: _aimCenter?.latitude,
-                  lng: _aimCenter?.longitude,
-                  locating: _locating,
-                  onUseMyLocation: _useMyLocation,
-                  onCancel: _cancelPinPlacement,
-                  onContinue: _continueWithPlace,
-                ),
-              ),
-
-            // Focused area banner
-            if (_focusedArea != null &&
-                _selectedQuest == null &&
-                _selectedSpot == null)
-              Positioned(
-                bottom: 28,
-                left: 12,
-                right: 12,
-                child: MapAreaBanner(
-                  area: _focusedArea!,
-                  questsCount: visibleQuests.length,
-                  spotsCount: visibleSpots.length,
-                  onClear: _clearArea,
-                  onPinSpot: _startPinPlacement,
-                ),
-              ),
-
-            // Marker Inspector Overlay Card
-            if (_selectedQuest != null || _selectedSpot != null)
-              Positioned(
-                bottom: 28,
-                left: 12,
-                right: 12,
-                child: _buildMarkerInspectorCard(),
-              ),
-
-            // Standalone Bottom-Right Post Spot Button (Plan 82b)
-            if (!_pinPlacementActive &&
-                _selectedQuest == null &&
-                _selectedSpot == null &&
-                _focusedArea == null)
-              Positioned(
-                right: 12,
-                bottom: 28,
-                child: Semantics(
-                  label: 'Post a destination spot',
-                  button: true,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      minHeight: 48,
-                      minWidth: 48,
-                    ),
-                    child: PixelButton(
-                      key: const ValueKey('map_post_spot_fab'),
-                      label: MediaQuery.sizeOf(context).width >
-                              MediaQuery.sizeOf(context).height
-                          ? '+'
-                          : '+ POST SPOT',
-                      style: PixelBoxStyle.gold,
-                      onPressed: _startPinPlacement,
+                      child: PixelButton(
+                        key: const ValueKey('map_post_spot_fab'),
+                        label: MediaQuery.sizeOf(context).width >
+                                MediaQuery.sizeOf(context).height
+                            ? '+'
+                            : '+ POST SPOT',
+                        style: PixelBoxStyle.gold,
+                        onPressed: _startPinPlacement,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -1294,6 +1325,12 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
       townAndDistance = '$town · $distanceStr';
     }
 
+    final localPartner = isQuest ? null : _selectedSpot!.localPartner;
+    final spotActiveQuestId = !isQuest
+        ? (_selectedSpot!.activeQuestIds.isNotEmpty
+            ? _selectedSpot!.activeQuestIds.first
+            : _selectedSpot!.questId)
+        : null;
     final modeBadge = isQuest
         ? _questGameBadge(_selectedQuest!)
         : (_selectedSpot!.category.trim().isNotEmpty
@@ -1301,7 +1338,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
             : 'DESTINATION SPOT');
     final bountyOrStatus = isQuest
         ? '+${_selectedQuest!.rewardPoints} mJDQ'
-        : (_selectedSpot!.questId != null ? '★ QUEST HERE' : null);
+        : (spotActiveQuestId != null ? '★ QUEST HERE' : null);
 
     final imageUrl =
         isQuest ? _selectedQuest!.markerImageUrl : _selectedSpot!.imageUrl;
@@ -1346,70 +1383,81 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PixelPanel(
-                  style: isQuest ? PixelBoxStyle.gold : PixelBoxStyle.green,
-                  padding: 1,
-                  child: Text(
-                    modeBadge,
-                    style: PixelType.small(
-                      context,
-                      color: isQuest ? PixelPalette.ink : PixelPalette.white,
-                    ).copyWith(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                if (isQuest) ...[
-                  SizedBox(width: grid.px(0.5)),
-                  PixelPanel(
-                    style: PixelBoxStyle.slot,
-                    padding: 1,
-                    child: MjdqAmount(
-                      _selectedQuest!.rewardPoints,
-                      sign: true,
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.woodDeep,
-                      ).copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ] else if (bountyOrStatus != null) ...[
-                  SizedBox(width: grid.px(0.5)),
-                  PixelPanel(
-                    style: PixelBoxStyle.slot,
-                    padding: 1,
-                    child: isQuest
-                        ? MjdqAmount(
+                Expanded(
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      PixelPanel(
+                        style:
+                            isQuest ? PixelBoxStyle.gold : PixelBoxStyle.green,
+                        padding: 1,
+                        child: Text(
+                          modeBadge,
+                          style: PixelType.small(
+                            context,
+                            color:
+                                isQuest ? PixelPalette.ink : PixelPalette.white,
+                          ).copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      if (localPartner != null)
+                        PixelPanel(
+                          key: const ValueKey('inspector_local_partner_badge'),
+                          style: PixelBoxStyle.gold,
+                          padding: 1,
+                          child: Text(
+                            'LOCAL PARTNER',
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.ink,
+                            ).copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      if (isQuest)
+                        PixelPanel(
+                          style: PixelBoxStyle.slot,
+                          padding: 1,
+                          child: MjdqAmount(
                             _selectedQuest!.rewardPoints,
                             sign: true,
                             style: PixelType.small(
                               context,
                               color: PixelPalette.woodDeep,
                             ).copyWith(fontWeight: FontWeight.w700),
-                          )
-                        : Text(
+                          ),
+                        )
+                      else if (bountyOrStatus != null)
+                        PixelPanel(
+                          style: PixelBoxStyle.slot,
+                          padding: 1,
+                          child: Text(
                             bountyOrStatus,
                             style: PixelType.small(
                               context,
                               color: PixelPalette.woodDeep,
                             ).copyWith(fontWeight: FontWeight.w700),
                           ),
+                        ),
+                      if (isTest)
+                        PixelPanel(
+                          style: PixelBoxStyle.slot,
+                          padding: 1,
+                          child: Text(
+                            'TEST',
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.amber,
+                            ).copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-                if (isTest) ...[
-                  SizedBox(width: grid.px(0.5)),
-                  PixelPanel(
-                    style: PixelBoxStyle.slot,
-                    padding: 1,
-                    child: Text(
-                      'TEST',
-                      style: PixelType.small(
-                        context,
-                        color: PixelPalette.amber,
-                      ).copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
-                const Spacer(),
+                ),
+                SizedBox(width: grid.px(0.5)),
                 PixelIconButton(
                   icon: MapMarkerArt.iconClose,
                   iconHeight: 24, // Plan 100 WP-8
@@ -1523,6 +1571,36 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
                 ),
               ),
             ),
+            if (localPartner != null || spotActiveQuestId != null) ...[
+              SizedBox(height: grid.px(0.75)),
+              Row(
+                children: [
+                  if (spotActiveQuestId != null)
+                    Expanded(
+                      child: PixelButton(
+                        key: const ValueKey('inspector_open_quest_btn'),
+                        label: 'OPEN QUEST',
+                        style: PixelBoxStyle.gold,
+                        onPressed: () =>
+                            context.push('/quests/$spotActiveQuestId'),
+                      ),
+                    ),
+                  if (spotActiveQuestId != null && localPartner != null)
+                    SizedBox(width: grid.px(1)),
+                  if (localPartner != null)
+                    Expanded(
+                      child: PixelButton(
+                        key: const ValueKey('inspector_view_partner_btn'),
+                        label: 'VIEW PARTNER',
+                        variant: PixelButtonVariant.secondary,
+                        onPressed: () => context.push(
+                          '/merchants/${localPartner.merchantId}',
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
             SizedBox(height: grid.px(1)),
             Row(
               children: [
@@ -1561,6 +1639,94 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen>
           ],
         ),
       ),
+    );
+  }
+
+  void _showMapLegendSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(12),
+        child: PixelPanel(
+          key: const ValueKey('map_legend_sheet'),
+          style: PixelBoxStyle.parchment,
+          padding: 3,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'MAP PIN LEGEND',
+                  style: PixelType.body(
+                    ctx,
+                    color: PixelPalette.ink,
+                  ).copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                _legendRow(
+                  ctx,
+                  const PixelSprite(DesignerArt.spotMarker, scale: 1),
+                  'Destination',
+                  'Published place to explore on the map.',
+                ),
+                const SizedBox(height: 8),
+                _legendRow(
+                  ctx,
+                  const PixelSprite(MapMarkerArt.localPartnerPin, scale: 2),
+                  'Local Partner',
+                  'Destination linked to a verified Merchant Hub.',
+                ),
+                const SizedBox(height: 8),
+                _legendRow(
+                  ctx,
+                  const PixelSprite(DesignerArt.questMarker, scale: 2),
+                  'Quest Available',
+                  'Upgraded pin with an active published quest.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _legendRow(
+    BuildContext ctx,
+    Widget icon,
+    String title,
+    String subtitle,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox.square(
+          dimension: 32,
+          child: FittedBox(fit: BoxFit.contain, child: icon),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: PixelType.body(
+                  ctx,
+                  color: PixelPalette.ink,
+                ).copyWith(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                subtitle,
+                style: PixelType.small(ctx, color: PixelPalette.woodDeep),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

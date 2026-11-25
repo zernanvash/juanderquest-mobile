@@ -36,6 +36,7 @@ import '../features/merchant/screens/merchant_vouchers_screen.dart';
 import '../features/merchant/screens/merchant_staff_screen.dart';
 import '../features/merchant/screens/merchant_counter_history_screen.dart';
 import '../features/merchant/screens/merchant_analytics_screen.dart';
+import '../features/merchant/screens/merchant_location_screen.dart';
 import '../features/merchant/screens/merchant_directory_screen.dart';
 import '../features/merchant/suki/suki_standee_screen.dart';
 import '../features/vote/screens/vote_screen.dart';
@@ -96,15 +97,14 @@ CustomTransitionPage buildDirectionalSlidePage<T>({
         curve: Curves.easeOutCubic,
         reverseCurve: Curves.easeInCubic,
       );
-      final tween = Tween(begin: begin, end: end)
-          .chain(CurveTween(curve: Curves.easeOutCubic));
+      final tween = Tween(
+        begin: begin,
+        end: end,
+      ).chain(CurveTween(curve: Curves.easeOutCubic));
 
       return SlideTransition(
         position: animation.drive(tween),
-        child: FadeTransition(
-          opacity: curve,
-          child: child,
-        ),
+        child: FadeTransition(opacity: curve, child: child),
       );
     },
   );
@@ -147,7 +147,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => MainShell(
-            navigationShell: navigationShell, location: state.uri.path),
+          navigationShell: navigationShell,
+          location: state.uri.path,
+        ),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -159,11 +161,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/spots/new',
                 redirect: (context, state) => Uri(
-                        path: '/map/add-spot',
-                        queryParameters: state.uri.queryParameters.isEmpty
-                            ? null
-                            : state.uri.queryParameters)
-                    .toString(),
+                  path: '/map/add-spot',
+                  queryParameters: state.uri.queryParameters.isEmpty
+                      ? null
+                      : state.uri.queryParameters,
+                ).toString(),
               ),
               // Full-screen pages that open spots or quests live in this branch: go_router 14
               // asserts (duplicate page key) when a root-navigator page pushes a shell route.
@@ -194,18 +196,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ),
               ),
               GoRoute(
-                  path: '/saved',
-                  builder: (context, state) => const SavedSpotsScreen()),
+                path: '/saved',
+                builder: (context, state) => const SavedSpotsScreen(),
+              ),
               // Plan 107: Suki Cards (merchant loyalty), customer side.
               GoRoute(
                 path: '/suki',
                 builder: (context, state) => SukiCardsScreen(
-                    autoScan: state.uri.queryParameters['scan'] == '1'),
+                  autoScan: state.uri.queryParameters['scan'] == '1',
+                ),
                 routes: [
                   GoRoute(
                     path: ':programId',
                     builder: (context, state) => SukiCardScreen(
-                        programId: state.pathParameters['programId']!),
+                      programId: state.pathParameters['programId']!,
+                    ),
                     routes: [
                       GoRoute(
                         path: 'points',
@@ -221,8 +226,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               // Owner 2026-11-16: the Almanac opens from the main menu.
               GoRoute(
-                  path: '/almanac',
-                  builder: (context, state) => const AlmanacScreen()),
+                path: '/almanac',
+                builder: (context, state) => const AlmanacScreen(),
+              ),
               GoRoute(
                 path: '/quests',
                 builder: (context, state) => const QuestListScreen(),
@@ -241,7 +247,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: ':id',
                     builder: (context, state) => QuestDetailScreen(
-                        questId: state.pathParameters['id'] ?? ''),
+                      questId: state.pathParameters['id'] ?? '',
+                    ),
                     routes: [
                       GoRoute(
                         path: 'funding',
@@ -255,7 +262,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                         builder: (context, state) => ArQuestScreen(
                           questId: state.pathParameters['id'] ?? '',
                           stepOrder: int.tryParse(
-                              state.uri.queryParameters['step'] ?? ''),
+                            state.uri.queryParameters['step'] ?? '',
+                          ),
                           quest: state.extra is QuestModel
                               ? state.extra as QuestModel
                               : null,
@@ -286,7 +294,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: ':id',
                     builder: (context, state) => JuanChoiceDetailScreen(
-                        campaignId: state.pathParameters['id']!),
+                      campaignId: state.pathParameters['id']!,
+                    ),
                     routes: [
                       GoRoute(
                         path: 'candidates/:candidateId',
@@ -365,9 +374,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/profile',
-                builder: (context, state) => ProfileScreen(
-                  initialTab: state.uri.queryParameters['tab'],
-                ),
+                builder: (context, state) =>
+                    ProfileScreen(initialTab: state.uri.queryParameters['tab']),
                 routes: [
                   GoRoute(
                     path: 'badges',
@@ -395,51 +403,69 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const VoteScreen(),
         routes: [
           GoRoute(
-              path: 'proposals',
-              builder: (context, state) => const ProposalListScreen()),
+            path: 'proposals',
+            builder: (context, state) => const ProposalListScreen(),
+          ),
         ],
       ),
       // Plan 67: link a wallet when a purchase needs one.
       GoRoute(
-          path: '/wallet/connect',
-          builder: (context, state) => const WalletConnectScreen()),
+        path: '/wallet/connect',
+        builder: (context, state) => const WalletConnectScreen(),
+      ),
       GoRoute(
-          path: '/affiliate',
-          builder: (context, state) => AffiliateApplicationScreen(
-              edit: state.uri.queryParameters['edit'] == '1')),
+        path: '/affiliate',
+        builder: (context, state) => AffiliateApplicationScreen(
+          edit: state.uri.queryParameters['edit'] == '1',
+        ),
+      ),
       // Plan 95: application status and the approved merchant workspace.
       GoRoute(
-          path: '/affiliate/pending',
-          builder: (context, state) => const AffiliatePendingScreen()),
+        path: '/affiliate/pending',
+        builder: (context, state) => const AffiliatePendingScreen(),
+      ),
       GoRoute(
-          path: '/merchant',
-          builder: (context, state) => MerchantDashboardScreen(
-              initialTab: state.uri.queryParameters['tab'] ?? 'overview')),
+        path: '/merchant',
+        builder: (context, state) => MerchantDashboardScreen(
+          initialTab: state.uri.queryParameters['tab'] ?? 'overview',
+        ),
+      ),
       // Plan 110b: Merchant workspace bridges (vouchers CRUD, staff, history, analytics) & public directory.
       GoRoute(
-          path: '/merchant/vouchers',
-          builder: (context, state) => const MerchantVouchersScreen()),
+        path: '/merchant/vouchers',
+        builder: (context, state) => const MerchantVouchersScreen(),
+      ),
       GoRoute(
-          path: '/merchant/staff',
-          builder: (context, state) => const MerchantStaffScreen()),
+        path: '/merchant/staff',
+        builder: (context, state) => const MerchantStaffScreen(),
+      ),
       GoRoute(
-          path: '/merchant/counter-history',
-          builder: (context, state) => const MerchantCounterHistoryScreen()),
+        path: '/merchant/counter-history',
+        builder: (context, state) => const MerchantCounterHistoryScreen(),
+      ),
       GoRoute(
-          path: '/merchant/analytics',
-          builder: (context, state) => const MerchantAnalyticsScreen()),
+        path: '/merchant/analytics',
+        builder: (context, state) => const MerchantAnalyticsScreen(),
+      ),
       GoRoute(
-          path: '/merchants',
-          builder: (context, state) => const MerchantDirectoryScreen()),
+        path: '/merchant/location',
+        builder: (context, state) => const MerchantLocationScreen(),
+      ),
+      GoRoute(
+        path: '/merchants',
+        builder: (context, state) => const MerchantDirectoryScreen(),
+      ),
       // v0.3.10: a shop's public page (in-app links use openMerchantPage).
       GoRoute(
-          path: '/merchants/:id',
-          builder: (context, state) =>
-              MerchantPageScreen(merchantId: state.pathParameters['id']!)),
+        path: '/merchants/:id',
+        builder: (context, state) =>
+            MerchantPageScreen(merchantId: state.pathParameters['id']!),
+      ),
       // Plan 107: the Suki Card counter standee to print.
       GoRoute(
-          path: '/merchant/suki/standee',
-          builder: (context, state) => const SukiStandeeScreen()),
+        path: '/merchant/suki/standee',
+        builder: (context, state) => const SukiStandeeScreen(),
+      ),
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) => buildDirectionalSlidePage(
@@ -449,24 +475,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
         routes: [
           GoRoute(
-              path: 'appearance',
-              builder: (context, state) => const AppearanceScreen()),
+            path: 'appearance',
+            builder: (context, state) => const AppearanceScreen(),
+          ),
           GoRoute(
-              path: 'notifications',
-              builder: (context, state) => const SettingsNotificationsScreen()),
+            path: 'notifications',
+            builder: (context, state) => const SettingsNotificationsScreen(),
+          ),
           GoRoute(
-              path: 'updates',
-              builder: (context, state) => const SettingsUpdatesScreen()),
+            path: 'updates',
+            builder: (context, state) => const SettingsUpdatesScreen(),
+          ),
           GoRoute(
-              path: 'developer',
-              builder: (context, state) => const SettingsDeveloperScreen()),
+            path: 'developer',
+            builder: (context, state) => const SettingsDeveloperScreen(),
+          ),
           GoRoute(
-              path: 'pixel-lab',
-              builder: (context, state) => const PixelLabScreen()),
+            path: 'pixel-lab',
+            builder: (context, state) => const PixelLabScreen(),
+          ),
           // Plan 101: v0.3 UI preview.
           GoRoute(
-              path: 'pixel-lab-v03',
-              builder: (context, state) => const PixelLabV03Screen()),
+            path: 'pixel-lab-v03',
+            builder: (context, state) => const PixelLabV03Screen(),
+          ),
         ],
       ),
       GoRoute(
@@ -541,15 +573,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      GoRoute(
-        path: '/leaderboard',
-        redirect: (context, state) => '/plaza',
-      ),
+      GoRoute(path: '/leaderboard', redirect: (context, state) => '/plaza'),
       // Plan 77: the AR mini-game ("Laro ng Lahi") weekly boards.
       GoRoute(
         path: '/laro',
         builder: (context, state) => LaroBoardScreen(
-            initialGame: state.uri.queryParameters['game'] ?? 'tumbang_preso'),
+          initialGame: state.uri.queryParameters['game'] ?? 'tumbang_preso',
+        ),
       ),
       GoRoute(
         path: '/about',
@@ -566,8 +596,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final query = state.uri.queryParameters;
           return SpotDiscoveryStudioScreen(
-            routePin:
-                StudioPin.tryParse(query['lat'], query['lng'], query['zoom']),
+            routePin: StudioPin.tryParse(
+              query['lat'],
+              query['lng'],
+              query['zoom'],
+            ),
             routeRecognition: state.extra is SpotRecognitionResult
                 ? state.extra as SpotRecognitionResult
                 : null,
@@ -658,7 +691,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 quizId: state.pathParameters['id'] ?? '',
                 session: state.extra as ({
                   CulturalQuizAttemptModel attempt,
-                  List<CulturalQuizQuestionModel> questions
+                  List<CulturalQuizQuestionModel> questions,
                 }),
               ),
             ),
@@ -697,8 +730,11 @@ class SpotDetailRouteScreen extends ConsumerStatefulWidget {
   final String slug;
   final SpotModel? initialSpot;
 
-  const SpotDetailRouteScreen(
-      {super.key, required this.slug, this.initialSpot});
+  const SpotDetailRouteScreen({
+    super.key,
+    required this.slug,
+    this.initialSpot,
+  });
 
   @override
   ConsumerState<SpotDetailRouteScreen> createState() =>
@@ -743,7 +779,8 @@ class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
         .dio
         .get('/spots/${Uri.encodeComponent(widget.slug)}');
     return SpotModel.fromJson(
-        Map<String, dynamic>.from(response.data['data'] as Map));
+      Map<String, dynamic>.from(response.data['data'] as Map),
+    );
   }
 
   @override
@@ -757,24 +794,30 @@ class _SpotDetailRouteScreenState extends ConsumerState<SpotDetailRouteScreen> {
           return Scaffold(
             appBar: AppBar(title: const Text('Destination')),
             body: Center(
-                child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: snapshot.hasError
-                        ? Column(mainAxisSize: MainAxisSize.min, children: [
-                            Text(
-                                missing
-                                    ? 'Destination not found.'
-                                    : 'Destination unavailable. Check your connection.',
-                                textAlign: TextAlign.center),
-                            if (!missing)
-                              TextButton(
-                                onPressed: () => setState(() {
-                                  _spotFuture = _fetchSpot();
-                                }),
-                                child: const Text('Retry'),
-                              ),
-                          ])
-                        : const CircularProgressIndicator())),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: snapshot.hasError
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            missing
+                                ? 'Destination not found.'
+                                : 'Destination unavailable. Check your connection.',
+                            textAlign: TextAlign.center,
+                          ),
+                          if (!missing)
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _spotFuture = _fetchSpot();
+                              }),
+                              child: const Text('Retry'),
+                            ),
+                        ],
+                      )
+                    : const CircularProgressIndicator(),
+              ),
+            ),
           );
         },
       );

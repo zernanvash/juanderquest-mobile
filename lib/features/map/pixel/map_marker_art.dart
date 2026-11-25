@@ -31,6 +31,26 @@ abstract final class MapMarkerArt {
     '................',
   ]);
 
+  // Plan 122a: Warm amber/terracotta storefront awning pin with cream halo for Local Partners
+  static const localPartnerPin = PixelArt('mapLocalPartnerPin', [
+    '....jjjjjjjj....',
+    '..jj00000000jj..',
+    '.j00h6h6h6h600j.',
+    '.j00hhh66hhh00j.',
+    '.j000000000000j.',
+    '.j00jj0hh0jj00j.',
+    '.j00jj0hh0jj00j.',
+    '.j00jj0000jj00j.',
+    '..j00hhhhhh00j..',
+    '...jj00hh00jj...',
+    '....j00hh00j....',
+    '.....j0000j.....',
+    '......j00j......',
+    '.......jj.......',
+    '................',
+    '................',
+  ]);
+
   /// 8x8 blue "you are here" dot with white outline.
   static const youAreHere = PixelArt('mapYouAreHere', [
     '..6666..',

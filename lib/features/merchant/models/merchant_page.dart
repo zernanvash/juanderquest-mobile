@@ -114,6 +114,37 @@ class MerchantPageSuki {
   }
 }
 
+class MerchantPageLinkedSpot {
+  const MerchantPageLinkedSpot({
+    required this.id,
+    required this.slug,
+    required this.name,
+    required this.municipality,
+    required this.gpsLat,
+    required this.gpsLng,
+    this.imageUrl,
+  });
+
+  final String id;
+  final String slug;
+  final String name;
+  final String municipality;
+  final double gpsLat;
+  final double gpsLng;
+  final String? imageUrl;
+
+  factory MerchantPageLinkedSpot.fromJson(Map<String, dynamic> j) =>
+      MerchantPageLinkedSpot(
+        id: '${j['id'] ?? ''}',
+        slug: _text(j['slug']) ?? '${j['id'] ?? ''}',
+        name: _text(j['name']) ?? 'Destination',
+        municipality: _text(j['municipality']) ?? '',
+        gpsLat: _num(j['gps_lat'])?.toDouble() ?? 0.0,
+        gpsLng: _num(j['gps_lng'])?.toDouble() ?? 0.0,
+        imageUrl: _text(j['image_url']),
+      );
+}
+
 class MerchantPageData {
   const MerchantPageData({
     required this.id,
@@ -134,6 +165,8 @@ class MerchantPageData {
     this.contactPhone,
     this.lat,
     this.lng,
+    this.spotId,
+    this.linkedSpot,
   });
 
   final String id;
@@ -149,6 +182,8 @@ class MerchantPageData {
   final String? contactPhone;
   final double? lat;
   final double? lng;
+  final String? spotId;
+  final MerchantPageLinkedSpot? linkedSpot;
   final List<MerchantPageProduct> specialties;
   final List<MerchantPageProduct> products;
   final List<MerchantPageVoucher> vouchers;
@@ -159,6 +194,7 @@ class MerchantPageData {
 
   factory MerchantPageData.fromJson(Map<String, dynamic> j) {
     final m = _map(j['merchant']);
+    final rawLinked = m['linked_spot'];
     return MerchantPageData(
       id: '${m['id'] ?? ''}',
       name: _text(m['name']) ?? 'Shop',
@@ -173,8 +209,15 @@ class MerchantPageData {
       contactPhone: _text(m['contact_phone']),
       lat: _num(m['gps_lat'])?.toDouble(),
       lng: _num(m['gps_lng'])?.toDouble(),
-      specialties:
-          _rows(j['specialties']).map(MerchantPageProduct.fromJson).toList(),
+      spotId: _text(m['spot_id']),
+      linkedSpot: rawLinked is Map
+          ? MerchantPageLinkedSpot.fromJson(
+              Map<String, dynamic>.from(rawLinked),
+            )
+          : null,
+      specialties: _rows(
+        j['specialties'],
+      ).map(MerchantPageProduct.fromJson).toList(),
       products: _rows(j['products']).map(MerchantPageProduct.fromJson).toList(),
       vouchers: _rows(j['vouchers']).map(MerchantPageVoucher.fromJson).toList(),
       suki: MerchantPageSuki.fromJson(_map(j['suki'])),
