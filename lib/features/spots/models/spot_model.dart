@@ -16,6 +16,48 @@ bool isVideoMedia(String? url, {String? mimeType, String? mediaType}) {
       cleanUrl.contains('spot_video');
 }
 
+/// Plan 124b: an approved photo on the spot that its author may pick as the
+/// cover (`PATCH /spots/:id/cover` with [assetId]). Built from
+/// `attached_assets` (approved uploads) and `photos` (licensed catalog photos).
+class SpotCoverCandidate {
+  final String assetId;
+  final String url;
+
+  const SpotCoverCandidate({required this.assetId, required this.url});
+
+  static List<SpotCoverCandidate> fromSpotJson(Map<String, dynamic> j) {
+    final out = <SpotCoverCandidate>[];
+    final seen = <String>{};
+    void add(Object? raw) {
+      if (raw is! Map) return;
+      final id = raw['id']?.toString() ?? '';
+      final url = raw['url']?.toString() ?? '';
+      if (id.isEmpty || url.trim().isEmpty || !seen.add(id)) return;
+      final status = raw['status']?.toString();
+      if (status != null && status != 'attached' && status != 'approved') {
+        return;
+      }
+      if (isVideoMedia(
+        url,
+        mimeType: raw['mime_type']?.toString(),
+        mediaType: raw['media_type']?.toString(),
+      )) {
+        return;
+      }
+      out.add(SpotCoverCandidate(
+        assetId: id,
+        url: SpotModel.resolveImageUrl(url),
+      ));
+    }
+
+    for (final key in const ['attached_assets', 'photos']) {
+      final list = j[key];
+      if (list is List) list.forEach(add);
+    }
+    return out;
+  }
+}
+
 class SpotPhoto {
   final String url;
   final bool isVideo;
@@ -215,6 +257,7 @@ class SpotModel {
   final String? sourceUrl;
   final bool isTest;
   final List<SpotPhoto> media;
+  final List<SpotCoverCandidate> coverCandidates;
   final String status;
   final List<String> moderationReasons;
   final List<String> moderationMessages;
@@ -259,6 +302,7 @@ class SpotModel {
     this.sourceUrl,
     this.isTest = false,
     this.media = const [],
+    this.coverCandidates = const [],
     this.status = 'published',
     this.moderationReasons = const [],
     this.moderationMessages = const [],
@@ -508,6 +552,7 @@ class SpotModel {
       sourceUrl: sourceUrl,
       isTest: isTest,
       media: mediaList,
+      coverCandidates: SpotCoverCandidate.fromSpotJson(j),
       status: j['status']?.toString() ?? 'published',
       moderationReasons: modReasons,
       moderationMessages: modMessages,
@@ -579,6 +624,7 @@ class SpotModel {
     List<String>? amenities,
     bool? isTest,
     List<SpotPhoto>? media,
+    List<SpotCoverCandidate>? coverCandidates,
     String? status,
     List<String>? moderationReasons,
     List<String>? moderationMessages,
@@ -623,6 +669,7 @@ class SpotModel {
         amenities: amenities ?? this.amenities,
         isTest: isTest ?? this.isTest,
         media: media ?? this.media,
+        coverCandidates: coverCandidates ?? this.coverCandidates,
         status: status ?? this.status,
         moderationReasons: moderationReasons ?? this.moderationReasons,
         moderationMessages: moderationMessages ?? this.moderationMessages,

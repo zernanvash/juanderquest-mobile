@@ -29,6 +29,9 @@ typedef SpotPhotoPickerFn = Future<PickedSpotPhoto?> Function(
 );
 
 /// Photo-only submission sheet for an existing destination (Plan 102).
+/// Plan 124b: several photos per send (gallery multi-select), up to
+/// [SpotAddPhotoSheet.maxPhotos], the server's pending limit per traveler and
+/// destination. Each photo still goes through moderator review.
 class SpotAddPhotoSheet extends ConsumerStatefulWidget {
   const SpotAddPhotoSheet({
     super.key,
@@ -38,6 +41,9 @@ class SpotAddPhotoSheet extends ConsumerStatefulWidget {
 
   final SpotModel spot;
   final SpotPhotoPickerFn? pickPhotoOverride;
+
+  /// Matches the backend MAX_PENDING_PHOTOS_PER_USER_SPOT.
+  static const int maxPhotos = 3;
 
   static Future<bool?> show(
     BuildContext context, {
@@ -64,7 +70,7 @@ class _SpotAddPhotoSheetState extends ConsumerState<SpotAddPhotoSheet> {
   final _picker = ImagePicker();
   final _caption = TextEditingController();
 
-  PickedSpotPhoto? _photo;
+  final List<PickedSpotPhoto> _photos = [];
   bool _picking = false;
   bool _submitting = false;
   String? _error;
@@ -75,46 +81,60 @@ class _SpotAddPhotoSheetState extends ConsumerState<SpotAddPhotoSheet> {
     super.dispose();
   }
 
+  int get _room => SpotAddPhotoSheet.maxPhotos - _photos.length;
+
   Future<void> _pick(ImageSource source) async {
-    if (_picking || _submitting) return;
+    if (_picking || _submitting || _room <= 0) return;
     setState(() {
       _picking = true;
       _error = null;
     });
     try {
-      PickedSpotPhoto? result;
+      final picked = <PickedSpotPhoto>[];
       if (widget.pickPhotoOverride != null) {
-        result = await widget.pickPhotoOverride!(source);
+        final one = await widget.pickPhotoOverride!(source);
+        if (one != null) picked.add(one);
       } else {
-        final file = await _picker.pickImage(
-          source: source,
-          maxWidth: 1920,
-          maxHeight: 1920,
-          imageQuality: 85,
-        );
-        if (file != null) {
-          result = PickedSpotPhoto(
+        final List<XFile> files;
+        if (source == ImageSource.gallery) {
+          files = await _picker.pickMultiImage(
+            maxWidth: 1920,
+            maxHeight: 1920,
+            imageQuality: 85,
+            limit: _room > 1 ? _room : null,
+          );
+        } else {
+          final file = await _picker.pickImage(
+            source: source,
+            maxWidth: 1920,
+            maxHeight: 1920,
+            imageQuality: 85,
+          );
+          files = file == null ? const [] : [file];
+        }
+        for (final file in files) {
+          picked.add(PickedSpotPhoto(
             bytes: await file.readAsBytes(),
             filename: file.name,
-          );
+          ));
         }
       }
       if (!mounted) return;
-      if (result == null) {
-        setState(() => _picking = false);
-        return;
-      }
-      if (result.bytes.lengthInBytes > _maxBytes) {
-        setState(() {
-          _picking = false;
-          _error = 'Photo exceeds the 8 MB limit.';
-        });
-        return;
-      }
+      final tooBig =
+          picked.where((p) => p.bytes.lengthInBytes > _maxBytes).length;
+      final fits = picked
+          .where((p) => p.bytes.lengthInBytes <= _maxBytes)
+          .take(_room)
+          .toList();
+      final dropped = picked.length - tooBig - fits.length;
       setState(() {
-        _photo = result;
+        _photos.addAll(fits);
         _picking = false;
-        _error = null;
+        _error = tooBig > 0
+            ? 'Photo exceeds the 8 MB limit.'
+            : dropped > 0
+                ? 'Up to ${SpotAddPhotoSheet.maxPhotos} photos per send.'
+                : null;
       });
     } catch (_) {
       if (mounted) {
@@ -127,36 +147,41 @@ class _SpotAddPhotoSheetState extends ConsumerState<SpotAddPhotoSheet> {
   }
 
   Future<void> _submit() async {
-    final photo = _photo;
-    if (photo == null || _submitting) return;
+    if (_photos.isEmpty || _submitting) return;
     setState(() {
       _submitting = true;
       _error = null;
     });
+    final dio = ref.read(apiClientProvider).dio;
+    final caption = _caption.text.trim();
     try {
-      final dio = ref.read(apiClientProvider).dio;
-      final formData = FormData.fromMap({
-        'media': MultipartFile.fromBytes(
-          photo.bytes,
-          filename: photo.filename,
-        ),
-      });
-      final uploadRes = await dio.post('/spot-media', data: formData);
-      final uploadData = uploadRes.data is Map ? uploadRes.data['data'] : null;
-      final assetId =
-          uploadData is Map ? uploadData['asset_id'] as String? : null;
-      if (assetId == null || assetId.isEmpty) {
-        throw Exception('Upload did not return an asset id.');
+      // One at a time, so a failure leaves only the unsent photos in the list.
+      while (_photos.isNotEmpty) {
+        final photo = _photos.first;
+        final formData = FormData.fromMap({
+          'media': MultipartFile.fromBytes(
+            photo.bytes,
+            filename: photo.filename,
+          ),
+        });
+        final uploadRes = await dio.post('/spot-media', data: formData);
+        final uploadData =
+            uploadRes.data is Map ? uploadRes.data['data'] : null;
+        final assetId =
+            uploadData is Map ? uploadData['asset_id'] as String? : null;
+        if (assetId == null || assetId.isEmpty) {
+          throw Exception('Upload did not return an asset id.');
+        }
+        await dio.post(
+          '/spots/${widget.spot.id}/photos',
+          data: {
+            'asset_id': assetId,
+            if (caption.isNotEmpty) 'caption': caption,
+          },
+        );
+        if (!mounted) return;
+        setState(() => _photos.removeAt(0));
       }
-
-      final caption = _caption.text.trim();
-      await dio.post(
-        '/spots/${widget.spot.id}/photos',
-        data: {
-          'asset_id': assetId,
-          if (caption.isNotEmpty) 'caption': caption,
-        },
-      );
       if (mounted) Navigator.of(context).pop(true);
     } on DioException catch (e) {
       if (!mounted) return;
@@ -241,8 +266,9 @@ class _SpotAddPhotoSheetState extends ConsumerState<SpotAddPhotoSheet> {
                       label: 'CAMERA',
                       variant: PixelButtonVariant.secondary,
                       expand: true,
-                      onPressed:
-                          _submitting ? null : () => _pick(ImageSource.camera),
+                      onPressed: (_submitting || _room <= 0)
+                          ? null
+                          : () => _pick(ImageSource.camera),
                     ),
                   ),
                   SizedBox(width: grid.px(2)),
@@ -252,63 +278,64 @@ class _SpotAddPhotoSheetState extends ConsumerState<SpotAddPhotoSheet> {
                       label: 'GALLERY',
                       variant: PixelButtonVariant.secondary,
                       expand: true,
-                      onPressed:
-                          _submitting ? null : () => _pick(ImageSource.gallery),
+                      onPressed: (_submitting || _room <= 0)
+                          ? null
+                          : () => _pick(ImageSource.gallery),
                     ),
                   ),
                 ],
               ),
-              if (_photo != null) ...[
+              if (_photos.isNotEmpty) ...[
                 SizedBox(height: grid.px(2)),
-                PixelPanel(
-                  style: PixelBoxStyle.stone,
-                  padding: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        height: 140,
-                        child: Image.memory(
-                          _photo!.bytes,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Center(
-                            child: Text(
-                              _photo!.filename,
-                              style: PixelType.small(
-                                context,
-                                color: PixelPalette.paper,
-                              ),
+                Text(
+                  '${_photos.length}/${SpotAddPhotoSheet.maxPhotos} photos',
+                  key: const ValueKey('spot_add_photo_count'),
+                  style: PixelType.small(context, color: PixelPalette.mist),
+                ),
+                for (var i = 0; i < _photos.length; i++) ...[
+                  SizedBox(height: grid.px(1)),
+                  PixelPanel(
+                    key: ValueKey('spot_add_photo_tile_$i'),
+                    style: PixelBoxStyle.stone,
+                    padding: 1,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 64,
+                          height: 64,
+                          child: Image.memory(
+                            _photos[i].bytes,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const ColoredBox(color: PixelPalette.ink),
+                          ),
+                        ),
+                        SizedBox(width: grid.px(1)),
+                        Expanded(
+                          child: Text(
+                            _photos[i].filename,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: PixelType.small(
+                              context,
+                              color: PixelPalette.paperDim,
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: grid.px(1)),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _photo!.filename,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: PixelType.small(
-                                context,
-                                color: PixelPalette.paperDim,
-                              ),
-                            ),
-                          ),
-                          PixelButton(
-                            key: const ValueKey('spot_add_photo_remove'),
-                            label: 'REMOVE',
-                            variant: PixelButtonVariant.ghost,
-                            onPressed: _submitting
-                                ? null
-                                : () => setState(() => _photo = null),
-                          ),
-                        ],
-                      ),
-                    ],
+                        PixelButton(
+                          key: ValueKey(i == 0
+                              ? 'spot_add_photo_remove'
+                              : 'spot_add_photo_remove_$i'),
+                          label: 'REMOVE',
+                          variant: PixelButtonVariant.ghost,
+                          onPressed: _submitting
+                              ? null
+                              : () => setState(() => _photos.removeAt(i)),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
                 SizedBox(height: grid.px(2)),
                 TextField(
                   key: const ValueKey('spot_add_photo_caption'),
@@ -353,10 +380,14 @@ class _SpotAddPhotoSheetState extends ConsumerState<SpotAddPhotoSheet> {
               SizedBox(height: grid.px(2)),
               PixelButton(
                 key: const ValueKey('spot_add_photo_submit'),
-                label: _submitting ? 'SENDING…' : 'SEND FOR REVIEW',
+                label: _submitting
+                    ? 'SENDING…'
+                    : _photos.length > 1
+                        ? 'SEND ${_photos.length} FOR REVIEW'
+                        : 'SEND FOR REVIEW',
                 variant: PixelButtonVariant.primary,
                 expand: true,
-                onPressed: (_photo == null || _submitting) ? null : _submit,
+                onPressed: (_photos.isEmpty || _submitting) ? null : _submit,
               ),
             ],
           ),

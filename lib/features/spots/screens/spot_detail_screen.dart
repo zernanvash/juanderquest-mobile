@@ -33,6 +33,7 @@ import '../studio/pixel/studio_icons.dart';
 import '../theater/theater_title_block.dart';
 import '../theater/theater_venue_section.dart';
 import '../widgets/spot_add_photo_sheet.dart';
+import '../widgets/spot_cover_picker_sheet.dart';
 import '../widgets/spot_community_section.dart';
 import '../widgets/spot_like_heart.dart';
 
@@ -253,6 +254,44 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     }
   }
 
+  /// Plan 124b: the author (or a platform admin) has an approved photo that
+  /// isn't the cover yet.
+  bool _canChooseCover(SpotModel spot, String? myId, String? myRole) {
+    if (myId == null) return false;
+    if (spot.createdBy != myId && myRole != 'admin') return false;
+    return spot.coverCandidates.any((c) => c.url != spot.imageUrl);
+  }
+
+  Future<void> _chooseCover() async {
+    final spot = _spot;
+    final url = await SpotCoverPickerSheet.show(
+      context,
+      candidates: spot.coverCandidates,
+      currentUrl: spot.imageUrl,
+      onPick: (assetId) async {
+        final res = await ref
+            .read(apiClientProvider)
+            .dio
+            .patch('/spots/${spot.id}/cover', data: {'asset_id': assetId});
+        final data = res.data is Map ? res.data['data'] : null;
+        final raw = data is Map ? data['image_url']?.toString() : null;
+        if (raw == null || raw.isEmpty) {
+          throw Exception('No cover url returned.');
+        }
+        return SpotModel.resolveImageUrl(raw);
+      },
+    );
+    if (url == null || !mounted) return;
+    // The new cover leads the photos, like the server orders them.
+    final media = [
+      ...spot.media.where((p) => p.url == url),
+      ...spot.media.where((p) => p.url != url),
+    ];
+    setState(() => _spot = spot.copyWith(imageUrl: url, media: media));
+    ref.read(spotDiscoveryProvider.notifier).applyCover(spot.id, url);
+    showPixelToast(context, 'Cover photo updated');
+  }
+
   void _playQuest(String questId) {
     try {
       context.push('/quests/$questId');
@@ -425,6 +464,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         TheaterPhotosSection(
                           media: spot.media,
                           onAddPhoto: _addPhoto,
+                          onChooseCover: _canChooseCover(spot, me?.id, me?.role)
+                              ? _chooseCover
+                              : null,
                         ),
                         const SizedBox(height: 28),
 

@@ -586,6 +586,16 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
     }
   }
 
+  /// Plan 124b: the author picked a new cover; Explore cards show it at once.
+  void applyCover(String spotId, String imageUrl) {
+    SpotModel swap(SpotModel item) =>
+        item.id == spotId ? item.copyWith(imageUrl: imageUrl) : item;
+    state = state.copyWith(
+      spots: state.spots.map(swap).toList(),
+      trending: state.trending.map(swap).toList(),
+    );
+  }
+
   void _replaceSpot(SpotModel next) {
     SpotModel swap(SpotModel item) => item.id == next.id
         ? item.copyWith(liked: next.liked, likeCount: next.likeCount)
