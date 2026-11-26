@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/open_route.dart';
 import '../../app/router.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/navigation/providers/active_trail_session_provider.dart';
+import '../../features/navigation/services/trail_notification_bridge.dart';
 import '../../features/notifications/providers/local_notifications_provider.dart';
 import '../../features/onboarding/page_tutorials.dart';
 import '../widgets/in_app_banner.dart';
@@ -47,6 +49,12 @@ class _PushListenerState extends ConsumerState<PushListener> {
     } catch (e) {
       debugPrint('[Push] Listener note: $e');
     }
+    // Plan 124d: local trail stop-arrival notification taps.
+    unawaited(ref.read(trailNotificationBridgeProvider).listenForTaps((tap) {
+      if (!mounted) return;
+      openTrailNotificationTap(
+          ref.read(routerProvider), ref.read(activeTrailSessionProvider), tap);
+    }));
     if (ref.read(authProvider).isAuthenticated) {
       unawaited(ref.read(pushServiceProvider).syncIfPermitted());
     }

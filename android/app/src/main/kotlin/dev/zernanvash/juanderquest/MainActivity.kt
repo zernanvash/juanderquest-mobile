@@ -10,6 +10,7 @@ import java.io.File
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.juanderquest.app/installer"
+    private var trailNotifications: TrailNotificationBridge? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -17,6 +18,7 @@ class MainActivity : FlutterActivity() {
         ArSensorBridge(applicationContext, messenger)
         ArCoreBridge(this, messenger)
         TrailVlogCompilerBridge(applicationContext, messenger)
+        trailNotifications = TrailNotificationBridge(this, messenger).also { it.handleIntent(intent) }
         flutterEngine.platformViewsController.registry
             .registerViewFactory("jdq/arcore_view", ArCoreViewFactory(this, messenger))
 
@@ -55,5 +57,11 @@ class MainActivity : FlutterActivity() {
                 result.notImplemented()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        trailNotifications?.handleIntent(intent)
     }
 }
