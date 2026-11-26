@@ -8,6 +8,7 @@ import '../../../core/search/recent_searches.dart';
 import '../explore/widgets/explore_spotlight_row.dart';
 import '../providers/hidden_gem_provider.dart';
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -41,8 +42,11 @@ class SpotExploreScreen extends ConsumerStatefulWidget {
   ConsumerState<SpotExploreScreen> createState() => _SpotExploreScreenState();
 }
 
-class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
+class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen>
+    with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _cardKeys = <String, GlobalKey>{};
+  final Set<String> _activeCardIds = <String>{};
   SpotFilterState _filterState = const SpotFilterState();
   int _visibleCount = 10;
   int _totalOrdinaryCount = 0;
@@ -146,6 +150,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _searchFocus.addListener(() {
       if (mounted) setState(() {});
     });
@@ -156,7 +161,16 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      ref.read(spotDiscoveryProvider.notifier).flushImpressions();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchDebounce?.cancel();
     _searchCancelToken?.cancel('disposed');
     _searchController.dispose();
@@ -165,7 +179,40 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
     super.dispose();
   }
 
+  GlobalKey _keyForSpot(String spotId) =>
+      _cardKeys.putIfAbsent(spotId, () => GlobalKey());
+
+  void _checkVisibleCards() {
+    if (!mounted) return;
+    final notifier = ref.read(spotDiscoveryProvider.notifier);
+    final mq = MediaQuery.of(context);
+    final viewTop = mq.padding.top;
+    final viewBottom = mq.size.height - mq.padding.bottom;
+
+    final staleIds =
+        _cardKeys.keys.where((id) => !_activeCardIds.contains(id)).toList();
+    for (final id in staleIds) {
+      notifier.reportCardVisibility(id, 0);
+      _cardKeys.remove(id);
+    }
+
+    for (final spotId in _activeCardIds) {
+      final ctx = _cardKeys[spotId]?.currentContext;
+      final ro = ctx?.findRenderObject();
+      if (ro is! RenderBox || !ro.hasSize || ro.size.height <= 0) {
+        notifier.reportCardVisibility(spotId, 0);
+        continue;
+      }
+      final top = ro.localToGlobal(Offset.zero).dy;
+      final bottom = top + ro.size.height;
+      final visiblePx = (math.min(bottom, viewBottom) - math.max(top, viewTop))
+          .clamp(0.0, ro.size.height);
+      notifier.reportCardVisibility(spotId, visiblePx / ro.size.height);
+    }
+  }
+
   void _onScroll() {
+    _checkVisibleCards();
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - 200) {
@@ -238,6 +285,13 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
               .toList();
           _totalOrdinaryCount = ordinarySpots.length;
           final pagedSpots = ordinarySpots.take(_visibleCount).toList();
+          _activeCardIds
+            ..clear()
+            ..addAll([
+              if (topHeroSpot != null) topHeroSpot.id,
+              for (final s in pagedSpots) s.id,
+            ]);
+          WidgetsBinding.instance.addPostFrameCallback((_) => _checkVisibleCards());
           final hasMore = _visibleCount < ordinarySpots.length ||
               state.nextCursor != null ||
               state.isLoadingMore;
@@ -373,7 +427,13 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
 
                         // Hidden gem + featured destination, one row, two columns
                         // (owner 2026-11-16).
-                        ExploreSpotlightRow(featured: topHeroSpot),
+                        if (topHeroSpot != null)
+                          KeyedSubtree(
+                            key: _keyForSpot(topHeroSpot.id),
+                            child: ExploreSpotlightRow(featured: topHeroSpot),
+                          )
+                        else
+                          const ExploreSpotlightRow(featured: null),
 
                         // Loading State
                         if (state.isInitialLoading && state.spots.isEmpty)
@@ -406,6 +466,7 @@ class _SpotExploreScreenState extends ConsumerState<SpotExploreScreen> {
                               SizedBox(height: grid.px(2)),
                             ],
                             ExploreSpotCard(
+                              key: _keyForSpot(pagedSpots[i].id),
                               badges: exploreBadgesFor(
                                 pagedSpots[i],
                                 gemIds: gemIds,

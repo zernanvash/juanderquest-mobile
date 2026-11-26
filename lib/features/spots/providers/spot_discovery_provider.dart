@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/network/api_failure.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../dashboard/providers/home_recommended_quest_provider.dart';
 import '../models/spot_model.dart';
 import '../repositories/spots_cache_repository.dart';
+import 'explore_impression_batcher.dart';
 
 class SpotDiscoveryState {
   final List<SpotModel> spots;
@@ -27,6 +30,7 @@ class SpotDiscoveryState {
   final String activeCategory;
   final String activeIntent;
   final String activeMunicipality;
+  final String? refreshSeed;
 
   const SpotDiscoveryState({
     this.spots = const [],
@@ -47,6 +51,7 @@ class SpotDiscoveryState {
     this.activeCategory = '',
     this.activeIntent = '',
     this.activeMunicipality = '',
+    this.refreshSeed,
   });
 
   SpotDiscoveryState copyWith({
@@ -71,6 +76,7 @@ class SpotDiscoveryState {
     String? activeCategory,
     String? activeIntent,
     String? activeMunicipality,
+    String? refreshSeed,
   }) =>
       SpotDiscoveryState(
         spots: spots ?? this.spots,
@@ -92,18 +98,94 @@ class SpotDiscoveryState {
         activeCategory: activeCategory ?? this.activeCategory,
         activeIntent: activeIntent ?? this.activeIntent,
         activeMunicipality: activeMunicipality ?? this.activeMunicipality,
+        refreshSeed: refreshSeed ?? this.refreshSeed,
       );
 }
+
+typedef PassiveLocationReader = Future<({double lat, double lng})?> Function();
 
 class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
   static const int defaultPageSize = 30;
   final Ref _ref;
   final SpotsCacheRepository _cacheRepo;
+  final PassiveLocationReader? _customPassiveLocationReader;
+  late final ExploreImpressionBatcher _impressionBatcher;
+  ({double lat, double lng})? _cachedPassiveLocation;
   int _requestVersion = 0;
 
-  SpotDiscoveryNotifier(this._ref, [SpotsCacheRepository? cacheRepo])
-      : _cacheRepo = cacheRepo ?? SpotsCacheRepository(memoryFallback: {}),
-        super(const SpotDiscoveryState());
+  SpotDiscoveryNotifier(
+    this._ref, [
+    SpotsCacheRepository? cacheRepo,
+    PassiveLocationReader? passiveLocationReader,
+  ])  : _cacheRepo = cacheRepo ?? SpotsCacheRepository(memoryFallback: {}),
+        _customPassiveLocationReader = passiveLocationReader,
+        super(const SpotDiscoveryState()) {
+    _impressionBatcher = ExploreImpressionBatcher(
+      isAuthenticated: () => _ref.read(authProvider).isAuthenticated,
+      sendBatch: (spotIds) async {
+        await _ref.read(apiClientProvider).dio.post(
+          '/spots/impressions',
+          data: <String, dynamic>{'spot_ids': spotIds},
+        );
+      },
+    );
+  }
+
+  void _warmPassiveLocation() {
+    if (_cachedPassiveLocation != null) return;
+    unawaited(
+      _defaultPassiveLocation().then((loc) {
+        if (loc != null) _cachedPassiveLocation = loc;
+      }),
+    );
+  }
+
+  ({double lat, double lng})? _readSyncPassiveLocation() {
+    if (_cachedPassiveLocation != null) return _cachedPassiveLocation;
+    try {
+      final homeLoc = _ref.read(homeLastKnownLocationProvider).valueOrNull;
+      if (homeLoc != null) {
+        return (
+          lat: double.parse(homeLoc.lat.toStringAsFixed(2)),
+          lng: double.parse(homeLoc.lng.toStringAsFixed(2)),
+        );
+      }
+    } catch (_) {}
+    _warmPassiveLocation();
+    return null;
+  }
+
+  static Future<({double lat, double lng})?> _defaultPassiveLocation() async {
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm != LocationPermission.whileInUse &&
+          perm != LocationPermission.always) {
+        return null;
+      }
+      final pos = await Geolocator.getLastKnownPosition();
+      if (pos == null) return null;
+      return (
+        lat: double.parse(pos.latitude.toStringAsFixed(2)),
+        lng: double.parse(pos.longitude.toStringAsFixed(2)),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _newRefreshSeed() =>
+      'rs_${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+
+  void reportCardVisibility(String spotId, double visibleFraction) =>
+      _impressionBatcher.onVisibilityChanged(spotId, visibleFraction);
+
+  void flushImpressions() => _impressionBatcher.onAppPaused();
+
+  @override
+  void dispose() {
+    _impressionBatcher.dispose();
+    super.dispose();
+  }
 
   Future<void> initialize() async {
     // 1. Stale-while-revalidate: hydrate first page from local cache
@@ -175,6 +257,9 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
       municipality: mClean,
     );
 
+    final seed = refresh || state.refreshSeed == null || state.refreshSeed!.isEmpty
+        ? _newRefreshSeed()
+        : state.refreshSeed!;
     final version = ++_requestVersion;
     state = state.copyWith(
       spots: filterChanged ? const <SpotModel>[] : state.spots,
@@ -186,13 +271,23 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
       activeCategory: cClean,
       activeIntent: iClean,
       activeMunicipality: mClean,
+      refreshSeed: seed,
       clearFailure: true,
     );
     try {
+      final loc = _customPassiveLocationReader != null
+          ? await _customPassiveLocationReader?.call()
+          : _readSyncPassiveLocation();
+      if (version != _requestVersion) return;
       final response = await _ref.read(apiClientProvider).dio.get(
         '/spots',
         queryParameters: <String, dynamic>{
           'limit': pageLimit,
+          'refresh_seed': seed,
+          if (loc != null) ...<String, dynamic>{
+            'lat': double.parse(loc.lat.toStringAsFixed(2)),
+            'lng': double.parse(loc.lng.toStringAsFixed(2)),
+          },
           if (qClean.isNotEmpty) 'q': qClean,
           if (cClean.isNotEmpty) 'categories': cClean,
           if (iClean.isNotEmpty) 'intent': iClean,
@@ -282,11 +377,21 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
     final version = _requestVersion;
     state = state.copyWith(isLoadingMore: true, clearFailure: true);
     try {
+      final loc = _customPassiveLocationReader != null
+          ? await _customPassiveLocationReader?.call()
+          : _readSyncPassiveLocation();
+      if (version != _requestVersion) return;
       final response = await _ref.read(apiClientProvider).dio.get(
         '/spots',
         queryParameters: <String, dynamic>{
           'limit': limit.clamp(1, 100),
           'cursor': cursor,
+          if (state.refreshSeed != null && state.refreshSeed!.isNotEmpty)
+            'refresh_seed': state.refreshSeed,
+          if (loc != null) ...<String, dynamic>{
+            'lat': double.parse(loc.lat.toStringAsFixed(2)),
+            'lng': double.parse(loc.lng.toStringAsFixed(2)),
+          },
           if (state.activeQuery.isNotEmpty) 'q': state.activeQuery,
           if (state.activeCategory.isNotEmpty)
             'categories': state.activeCategory,
