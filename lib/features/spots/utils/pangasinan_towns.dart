@@ -59,6 +59,9 @@ const Map<String, List<String>> spotProvinceTowns = {
 
 const String defaultSpotProvince = 'Pangasinan';
 
+/// Picker choice for any province without a fixed town list: the town is typed in.
+const String otherSpotProvince = 'Other province';
+
 String _townKey(String raw) {
   var s = raw.toLowerCase().replaceAll(RegExp(r'\(.*?\)'), ' ');
   s = s

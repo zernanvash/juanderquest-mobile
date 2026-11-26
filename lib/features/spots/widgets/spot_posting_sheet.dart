@@ -124,6 +124,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
     _draft =
         rec == null ? base : applyRecognition(base, rec, touched: _touched);
     _recognition = rec;
+    _province = _provinceFor(rec, _draft.municipality);
     _categoryPicked = widget.initialDraft != null ||
         (rec != null &&
             spotPostingCategories.any(
@@ -163,6 +164,20 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
 
   void _emitDraft() => widget.onDraftChanged?.call(_currentDraft);
 
+  /// Listed province for the recognized/drafted town, else "Other province" (town typed in).
+  String _provinceFor(SpotRecognitionResult? rec, String municipality) {
+    final recProvince = rec?.province?.trim() ?? '';
+    if (spotProvinceTowns.containsKey(recProvince)) return recProvince;
+    for (final province in spotProvinceTowns.keys) {
+      if (canonicalSpotTown(municipality, province: province) != null) {
+        return province;
+      }
+    }
+    return municipality.trim().isEmpty && recProvince.isEmpty
+        ? defaultSpotProvince
+        : otherSpotProvince;
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -198,6 +213,9 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
       _recognizing = false;
       _recognition = rec;
       _draft = applyRecognition(_draft, rec, touched: _touched);
+      if (!_touched.location) {
+        _province = _provinceFor(rec, _draft.municipality);
+      }
       _categoryPicked = _categoryPicked ||
           spotPostingCategories.any(
             (category) => category['id'] == rec.suggestedCategory,
@@ -649,20 +667,6 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
               ],
             ),
           ),
-          if (_recognition?.outsidePangasinan == true) ...[
-            SizedBox(height: grid.px(1)),
-            PixelPanel(
-              style: PixelBoxStyle.gold,
-              padding: 1,
-              child: Text(
-                'This pin is outside Pangasinan. Double-check the location.',
-                style: PixelType.small(
-                  context,
-                  color: PixelPalette.goldDeep,
-                ),
-              ),
-            ),
-          ],
           if (_editAddress) ...[
             SizedBox(height: grid.px(2)),
             // Team review 2026-11-19: fixed province -> town pickers.
@@ -670,7 +674,7 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
               key: const ValueKey('studio_province'),
               label: tr(context, en: 'Province', tl: 'Probinsya'),
               value: _province,
-              options: spotProvinceTowns.keys.toList(),
+              options: [...spotProvinceTowns.keys, otherSpotProvince],
               onSelected: (province) => setState(() {
                 if (province != _province) _municipalityController.text = '';
                 _province = province;
@@ -678,21 +682,35 @@ class _SpotPostingSheetState extends ConsumerState<SpotPostingSheet> {
               }),
             ),
             SizedBox(height: grid.px(2)),
-            StudioPickerField(
-              key: const ValueKey('studio_municipality'),
-              label:
-                  tr(context, en: 'Municipality / city', tl: 'Bayan / lungsod'),
-              hint: tr(context, en: 'Choose a town', tl: 'Pumili ng bayan'),
-              value: canonicalSpotTown(_municipalityController.text,
-                  province: _province),
-              options: spotProvinceTowns[_province] ?? const [],
-              errorText: _fieldErrors['municipality'],
-              onSelected: (town) => setState(() {
-                _municipalityController.text = town;
-                _touched = _touched.copyWith(location: true);
-                _fieldErrors = Map.of(_fieldErrors)..remove('municipality');
-              }),
-            ),
+            if (_province == otherSpotProvince)
+              StudioTextField(
+                key: const ValueKey('studio_municipality_text'),
+                controller: _municipalityController,
+                label: tr(context,
+                    en: 'Municipality / city', tl: 'Bayan / lungsod'),
+                maxLength: 100,
+                errorText: _fieldErrors['municipality'],
+                onChanged: (_) => setState(() {
+                  _touched = _touched.copyWith(location: true);
+                  _fieldErrors = Map.of(_fieldErrors)..remove('municipality');
+                }),
+              )
+            else
+              StudioPickerField(
+                key: const ValueKey('studio_municipality'),
+                label: tr(context,
+                    en: 'Municipality / city', tl: 'Bayan / lungsod'),
+                hint: tr(context, en: 'Choose a town', tl: 'Pumili ng bayan'),
+                value: canonicalSpotTown(_municipalityController.text,
+                    province: _province),
+                options: spotProvinceTowns[_province] ?? const [],
+                errorText: _fieldErrors['municipality'],
+                onSelected: (town) => setState(() {
+                  _municipalityController.text = town;
+                  _touched = _touched.copyWith(location: true);
+                  _fieldErrors = Map.of(_fieldErrors)..remove('municipality');
+                }),
+              ),
             SizedBox(height: grid.px(2)),
             StudioTextField(
               key: const ValueKey('studio_address'),

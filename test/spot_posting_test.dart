@@ -115,6 +115,21 @@ void main() {
     });
   });
 
+  group('nationwide posting (owner 2026-11-26)', () {
+    test('a town outside the fixed list keeps the recognized name and validates', () {
+      const rec = SpotRecognitionResult(recognized: true, municipality: 'Baguio', province: 'Benguet');
+      final draft = applyRecognition(const SpotPostingDraft(lat: 16.41, lng: 120.59), rec);
+      expect(draft.municipality, 'Baguio');
+      expect(validatePostingDraft(draft).containsKey('municipality'), isFalse);
+      expect(SpotRecognitionResult.fromJson({'province': 'Benguet'}).province, 'Benguet');
+    });
+
+    test('a listed town still uses the list spelling', () {
+      const rec = SpotRecognitionResult(recognized: true, municipality: 'City of Dagupan', province: 'Pangasinan');
+      expect(applyRecognition(const SpotPostingDraft(), rec).municipality, 'Dagupan City');
+    });
+  });
+
   group('payload and media helpers', () {
     const draft = SpotPostingDraft(
       name: 'Tambobong White Beach',

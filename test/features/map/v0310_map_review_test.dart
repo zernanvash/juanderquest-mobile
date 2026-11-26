@@ -174,8 +174,13 @@ void main() {
       expect(canonicalSpotTown('Sta. Barbara'), 'Santa Barbara');
       expect(canonicalSpotTown('Baguio City'), isNull);
       expect(canonicalSpotTown('Bolinao', province: 'Elsewhere'), isNull);
+      // Owner 2026-11-26: spots can be posted anywhere in the Philippines.
       expect(
           validatePostingDraft(const SpotPostingDraft(municipality: 'Baguio'))
+              .containsKey('municipality'),
+          isFalse);
+      expect(
+          validatePostingDraft(const SpotPostingDraft(municipality: ''))
               .containsKey('municipality'),
           isTrue);
       expect(
@@ -219,18 +224,23 @@ void main() {
       expect((posted.single as Map)['municipality'], 'Bolinao');
     });
 
-    testWidgets('an unlisted GPS town leaves the town unpicked',
-        (tester) async {
+    // Owner 2026-11-26: post anywhere in the Philippines. An unlisted GPS town
+    // switches to "Other province" and keeps the recognized name as typed text.
+    testWidgets('an unlisted GPS town is kept as a typed town', (tester) async {
       await tester.pumpWidget(_sheet(_client(_recognition('Baguio City'), [])));
       await tester.pumpAndSettle();
       await _tap(tester, find.byKey(const ValueKey('studio_edit_address')));
+      expect(find.byKey(const ValueKey('studio_municipality')), findsNothing);
+      final field = find.byKey(const ValueKey('studio_municipality_text'));
+      expect(field, findsOneWidget);
+      expect(find.descendant(of: field, matching: find.text('Baguio City')),
+          findsOneWidget);
       expect(
           tester
               .widget<StudioPickerField>(
-                  find.byKey(const ValueKey('studio_municipality')))
+                  find.byKey(const ValueKey('studio_province')))
               .value,
-          isNull);
-      expect(find.text('Choose a town'), findsOneWidget);
+          otherSpotProvince);
     });
 
     for (final size in const [Size(320, 568), Size(568, 320)]) {

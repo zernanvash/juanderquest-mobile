@@ -184,16 +184,6 @@ class _PinAimCardState extends ConsumerState<PinAimCard> {
               style: PixelBoxStyle.slot,
               textColor: PixelPalette.greenDark,
             ),
-            if (current.outsidePangasinan) ...[
-              SizedBox(height: grid.px(1)),
-              Text(
-                'Outside Pangasinan; double-check the pin.',
-                style: PixelType.small(
-                  context,
-                  color: PixelPalette.goldDeep,
-                ),
-              ),
-            ],
           ],
           if (duplicate != null) ...[
             SizedBox(height: grid.px(1)),

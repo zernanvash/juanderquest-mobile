@@ -214,6 +214,7 @@ class SpotRecognitionResult {
   final String formattedAddress;
   final String? municipality;
   final String? barangay;
+  final String? province;
   final bool outsidePangasinan;
   final String suggestedCategory;
   final String suggestedSubcategory;
@@ -231,6 +232,7 @@ class SpotRecognitionResult {
     this.formattedAddress = '',
     this.municipality,
     this.barangay,
+    this.province,
     this.outsidePangasinan = false,
     this.suggestedCategory = 'nature_outdoors',
     this.suggestedSubcategory = 'viewpoint',
@@ -252,6 +254,7 @@ class SpotRecognitionResult {
       formattedAddress: (json['formatted_address'] as String?) ?? '',
       municipality: json['municipality'] as String?,
       barangay: json['barangay'] as String?,
+      province: json['province'] as String?,
       outsidePangasinan: json['outside_pangasinan'] == true,
       suggestedCategory: (json['suggested_category'] as String?) ?? 'nature_outdoors',
       suggestedSubcategory: (json['suggested_subcategory'] as String?) ?? 'viewpoint',
@@ -318,7 +321,9 @@ SpotPostingDraft applyRecognition(
   var next = draft;
   if (!touched.location) {
     next = next.copyWith(
-      municipality: canonicalSpotTown(rec.municipality) ?? next.municipality,
+      // Listed towns use the list spelling; any other Philippine town keeps the recognized name.
+      municipality: canonicalSpotTown(rec.municipality) ??
+          (rec.municipality?.trim().isNotEmpty == true ? rec.municipality!.trim() : next.municipality),
       barangay: rec.barangay ?? '',
       address: rec.formattedAddress.isNotEmpty ? rec.formattedAddress : next.address,
     );
@@ -396,8 +401,6 @@ Map<String, String> validatePostingDraft(SpotPostingDraft draft) {
   final municipality = draft.municipality.trim();
   if (municipality.length < 2 || municipality.length > 100) {
     errors['municipality'] = 'Municipality or city is required.';
-  } else if (canonicalSpotTown(municipality) == null) {
-    errors['municipality'] = 'Choose the town from the list.';
   }
   final address = draft.address.trim();
   if (address.length < 3 || address.length > 300) {
