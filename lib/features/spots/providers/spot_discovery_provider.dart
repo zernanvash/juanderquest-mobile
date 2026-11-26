@@ -258,9 +258,10 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
       municipality: mClean,
     );
 
-    final seed = refresh || state.refreshSeed == null || state.refreshSeed!.isEmpty
-        ? _newRefreshSeed()
-        : state.refreshSeed!;
+    final seed =
+        refresh || state.refreshSeed == null || state.refreshSeed!.isEmpty
+            ? _newRefreshSeed()
+            : state.refreshSeed!;
     final version = ++_requestVersion;
     state = state.copyWith(
       spots: filterChanged ? const <SpotModel>[] : state.spots,
@@ -317,7 +318,8 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
         spots: items,
         count: count,
         total: total,
-        nextCursor: nextCursor != null && nextCursor.isNotEmpty ? nextCursor : null,
+        nextCursor:
+            nextCursor != null && nextCursor.isNotEmpty ? nextCursor : null,
         clearNextCursor: nextCursor == null || nextCursor.isEmpty,
         isInitialLoading: false,
         isRefreshing: false,
@@ -358,8 +360,8 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
             isRefreshing: false,
             isLoadingMore: false,
             clearNextCursor: true,
-            failure:
-                ApiFailure.from(error, fallback: 'Could not load destinations.'),
+            failure: ApiFailure.from(error,
+                fallback: 'Could not load destinations.'),
           );
         }
       }
@@ -423,7 +425,8 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
         spots: merged,
         count: merged.length,
         total: math.max(total, merged.length),
-        nextCursor: nextCursor != null && nextCursor.isNotEmpty ? nextCursor : null,
+        nextCursor:
+            nextCursor != null && nextCursor.isNotEmpty ? nextCursor : null,
         clearNextCursor: nextCursor == null || nextCursor.isEmpty,
         isLoadingMore: false,
         clearFailure: true,
@@ -450,13 +453,13 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
     if (trimmed.length < 2) return const <SpotSearchHit>[];
     final capped = trimmed.length > 80 ? trimmed.substring(0, 80) : trimmed;
     final response = await _ref.read(apiClientProvider).dio.get(
-      '/spots/search',
-      queryParameters: <String, dynamic>{
-        'q': capped,
-        'limit': limit.clamp(1, 20),
-      },
-      cancelToken: cancelToken,
-    );
+          '/spots/search',
+          queryParameters: <String, dynamic>{
+            'q': capped,
+            'limit': limit.clamp(1, 20),
+          },
+          cancelToken: cancelToken,
+        );
     final raw = response.data is Map ? response.data['data'] : null;
     if (raw is! List) return const <SpotSearchHit>[];
     return raw

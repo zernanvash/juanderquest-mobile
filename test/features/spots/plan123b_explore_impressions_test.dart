@@ -8,7 +8,8 @@ import 'package:juanderquest_app/features/spots/providers/explore_impression_bat
 import 'package:juanderquest_app/features/spots/providers/spot_discovery_provider.dart';
 import 'package:juanderquest_app/features/spots/repositories/spots_cache_repository.dart';
 
-class _FakeAuthNotifier extends StateNotifier<AuthState> implements AuthNotifier {
+class _FakeAuthNotifier extends StateNotifier<AuthState>
+    implements AuthNotifier {
   _FakeAuthNotifier(super.state);
 
   @override
@@ -88,7 +89,9 @@ void main() {
   });
 
   group('Plan 123b: SpotDiscoveryNotifier refresh_seed & passive lat/lng', () {
-    test('ProviderContainer verifies refresh_seed stability, rotation, and 2-decimal passive lat/lng', () async {
+    test(
+        'ProviderContainer verifies refresh_seed stability, rotation, and 2-decimal passive lat/lng',
+        () async {
       final recordedParams = <Map<String, dynamic>>[];
       final apiClient = ApiClient(enableRetries: false);
       apiClient.dio.interceptors.insert(
@@ -96,7 +99,8 @@ void main() {
         InterceptorsWrapper(
           onRequest: (options, handler) {
             if (options.path == '/spots') {
-              recordedParams.add(Map<String, dynamic>.from(options.queryParameters));
+              recordedParams
+                  .add(Map<String, dynamic>.from(options.queryParameters));
             }
             handler.resolve(
               Response(
@@ -140,7 +144,8 @@ void main() {
 
       var readerCalls = 0;
       final testProvider =
-          StateNotifierProvider<SpotDiscoveryNotifier, SpotDiscoveryState>((ref) {
+          StateNotifierProvider<SpotDiscoveryNotifier, SpotDiscoveryState>(
+              (ref) {
         return SpotDiscoveryNotifier(
           ref,
           _FakeSpotsCacheRepository(),
