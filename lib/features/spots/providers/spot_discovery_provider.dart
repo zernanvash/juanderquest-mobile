@@ -111,6 +111,7 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
   final PassiveLocationReader? _customPassiveLocationReader;
   late final ExploreImpressionBatcher _impressionBatcher;
   ({double lat, double lng})? _cachedPassiveLocation;
+  ({double lat, double lng})? _pageLocation;
   int _requestVersion = 0;
 
   SpotDiscoveryNotifier(
@@ -279,6 +280,7 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
           ? await _customPassiveLocationReader?.call()
           : _readSyncPassiveLocation();
       if (version != _requestVersion) return;
+      _pageLocation = loc;
       final response = await _ref.read(apiClientProvider).dio.get(
         '/spots',
         queryParameters: <String, dynamic>{
@@ -377,9 +379,8 @@ class SpotDiscoveryNotifier extends StateNotifier<SpotDiscoveryState> {
     final version = _requestVersion;
     state = state.copyWith(isLoadingMore: true, clearFailure: true);
     try {
-      final loc = _customPassiveLocationReader != null
-          ? await _customPassiveLocationReader?.call()
-          : _readSyncPassiveLocation();
+      // Reuse the first page's location so every page ranks the same list.
+      final loc = _pageLocation;
       if (version != _requestVersion) return;
       final response = await _ref.read(apiClientProvider).dio.get(
         '/spots',

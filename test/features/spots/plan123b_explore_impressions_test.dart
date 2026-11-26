@@ -138,12 +138,16 @@ void main() {
         ),
       );
 
+      var readerCalls = 0;
       final testProvider =
           StateNotifierProvider<SpotDiscoveryNotifier, SpotDiscoveryState>((ref) {
         return SpotDiscoveryNotifier(
           ref,
           _FakeSpotsCacheRepository(),
-          () async => (lat: 16.38491, lng: 119.89421),
+          // The device moves between pages; paging must keep page 1's location.
+          () async => (readerCalls++) == 0
+              ? (lat: 16.38491, lng: 119.89421)
+              : (lat: 17.57, lng: 120.38),
         );
       });
 
@@ -170,6 +174,8 @@ void main() {
       expect(recordedParams.length, 2);
       expect(recordedParams[1]['refresh_seed'], initialSeed);
       expect(recordedParams[1]['cursor'], 'cursor-2');
+      expect(recordedParams[1]['lat'], 16.38);
+      expect(recordedParams[1]['lng'], 119.89);
 
       // Pull-to-refresh generates a new refresh_seed
       await Future<void>.delayed(const Duration(milliseconds: 2));
