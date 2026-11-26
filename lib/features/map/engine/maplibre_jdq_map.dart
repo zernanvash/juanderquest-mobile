@@ -368,6 +368,9 @@ class MapLibreJdqMap extends JdqMap {
   gl.MapLibreMapController? _controller;
   final _location = ValueNotifier(false);
   bool _disposed = false, _ready = false;
+  // A camera asked for before the style loaded (e.g. the destination preview's
+  // easeTo in initState); re-applied once the map is ready.
+  bool _pendingCamera = false;
   String _style = '';
   List<AdminArea> _places = [];
   List<JdqPin> _pins = [];
@@ -460,28 +463,41 @@ class MapLibreJdqMap extends JdqMap {
     double? bearing,
     double? tilt,
     bool reducedMotion = false,
-  }) =>
-      _safe(() async {
-        final pos = _controller!.cameraPosition;
-        final update = bearing == null && tilt == null
-            ? gl.CameraUpdate.newLatLngZoom(_ll(point), zoom)
-            : gl.CameraUpdate.newCameraPosition(
-                gl.CameraPosition(
-                  target: _ll(point),
-                  zoom: zoom,
-                  bearing: bearing ?? pos?.bearing ?? 0,
-                  tilt: tilt ?? pos?.tilt ?? 0,
-                ),
-              );
-        if (reducedMotion) {
-          await _controller!.moveCamera(update);
-        } else {
-          await _controller!.animateCamera(
-            update,
-            duration: const Duration(milliseconds: 700),
-          );
-        }
-      });
+  }) {
+    if (!_ready && !_disposed) {
+      // Owner 2026-11-26: "map inaccurate preview on destination details". Dropping
+      // this left the map on the default camera; it now becomes the starting view.
+      camera = camera.copyWith(
+        center: point,
+        zoom: zoom,
+        bearing: bearing,
+        tilt: tilt,
+      );
+      _pendingCamera = true;
+      return Future.value();
+    }
+    return _safe(() async {
+      final pos = _controller!.cameraPosition;
+      final update = bearing == null && tilt == null
+          ? gl.CameraUpdate.newLatLngZoom(_ll(point), zoom)
+          : gl.CameraUpdate.newCameraPosition(
+              gl.CameraPosition(
+                target: _ll(point),
+                zoom: zoom,
+                bearing: bearing ?? pos?.bearing ?? 0,
+                tilt: tilt ?? pos?.tilt ?? 0,
+              ),
+            );
+      if (reducedMotion) {
+        await _controller!.moveCamera(update);
+      } else {
+        await _controller!.animateCamera(
+          update,
+          duration: const Duration(milliseconds: 700),
+        );
+      }
+    });
+  }
 
   @override
   Future<void> resetOrientation() => _safe(() async {
@@ -1258,6 +1274,16 @@ class MapLibreJdqMap extends JdqMap {
       );
       await _addSatellite(c);
       _ready = true;
+      if (_pendingCamera) {
+        _pendingCamera = false;
+        await easeTo(
+          camera.center,
+          camera.zoom,
+          bearing: camera.bearing,
+          tilt: camera.tilt,
+          reducedMotion: true,
+        );
+      }
       await setPlaces(_places);
       await setPins(_pins);
       await _updateFocus();
