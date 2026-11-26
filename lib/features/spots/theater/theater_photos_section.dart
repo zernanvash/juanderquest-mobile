@@ -17,10 +17,14 @@ class TheaterPhotosSection extends StatelessWidget {
     super.key,
     required this.media,
     this.onAddPhoto,
+    this.onChooseCover,
   });
 
   final List<SpotPhoto> media;
   final VoidCallback? onAddPhoto;
+
+  /// Plan 124b: set for the author when there is an approved photo to pick.
+  final VoidCallback? onChooseCover;
 
   /// Thumbnails shown before the last one turns into "+N".
   static const previewCount = 6;
@@ -74,6 +78,18 @@ class TheaterPhotosSection extends StatelessWidget {
                   ),
               ],
             ),
+          if (onChooseCover != null) ...[
+            SizedBox(height: grid.px(2)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: PixelButton(
+                key: const ValueKey('spot_photos_choose_cover'),
+                label: 'Choose cover',
+                variant: PixelButtonVariant.secondary,
+                onPressed: onChooseCover,
+              ),
+            ),
+          ],
         ],
       ),
     );
