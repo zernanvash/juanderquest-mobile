@@ -39,6 +39,37 @@ class VlogCompilerService {
     List<double> routeCoords = const [],
   }) {
     final segments = <VlogCompileSegment>[];
+    if (manifest.isCustom) {
+      // Plan 124d: custom logs play their clips in order, then the outro card.
+      final clips = [...manifest.clips]
+        ..sort((a, b) => a.stopPosition.compareTo(b.stopPosition));
+      for (final clip in clips) {
+        segments.add(
+          VlogCompileSegment(
+            type: 'video',
+            path: clip.filePath,
+            durationMs: clip.durationMs,
+            stopPosition: clip.stopPosition,
+            clipKind: VlogClipKind.custom,
+            label: clip.spotName.isNotEmpty ? clip.spotName : 'Custom Log',
+            subLabel:
+                '${clip.municipality} · ${_formatTime(clip.capturedAtIso)}',
+          ),
+        );
+      }
+      segments.add(
+        VlogCompileSegment(
+          type: 'image_card',
+          path: '',
+          durationMs: 2000,
+          stopPosition: clips.length + 1,
+          label: manifest.trailTitle,
+          subLabel: '${clips.length} CLIPS · CUSTOM JUANLOG',
+          isOutro: true,
+        ),
+      );
+      return segments;
+    }
     final stopCount = manifest.totalStops > 0
         ? manifest.totalStops
         : (stops.isNotEmpty ? stops.length : manifest.clips.length);
@@ -165,9 +196,11 @@ class VlogCompilerService {
       final seg = segments[i];
       if (!context.mounted) break;
       if (seg.type == 'video') {
-        final badge = seg.clipKind == VlogClipKind.road
-            ? 'ROAD'
-            : '${seg.stopPosition}/${manifest.totalStops}';
+        final badge = switch (seg.clipKind) {
+          VlogClipKind.road => 'ROAD',
+          VlogClipKind.custom => 'LOG',
+          _ => '${seg.stopPosition}/${manifest.totalStops}',
+        };
         final overlayFile = File(
           '${renderDir.path}${Platform.pathSeparator}hud_$i.png',
         );

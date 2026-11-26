@@ -20,6 +20,7 @@ import '../models/vlog_manifest.dart';
 import '../services/trail_vlog_vault.dart';
 import '../services/vlog_compiler_service.dart';
 import 'pixel_vlog_hud_overlay.dart';
+import 'pixel_vlog_recorder_sheet.dart';
 
 /// Provider resolving whether the signed-in traveler unlocked premium Trail Vlog
 /// HUD frames via Shop cosmetics or VIP status.
@@ -258,6 +259,69 @@ class _TrailVlogStudioSheetState extends ConsumerState<TrailVlogStudioSheet> {
     }
   }
 
+  /// Plan 124d: records one more 3-second clip into a custom JuanLog.
+  Future<void> _addCustomClip() async {
+    if (_isCompiling) return;
+    final saved = await PixelVlogRecorderSheet.show(
+      context,
+      trailId: _manifest.trailId,
+      trailTitle: _manifest.trailTitle,
+      totalStops: 0,
+      totalKm: 0,
+      kind: VlogClipKind.custom,
+      stopPosition: _manifest.totalClips + 1,
+      spotName: _manifest.trailTitle,
+      municipality: 'Custom JuanLog',
+      isTrailRunning: false,
+      frameStyle: _manifest.frameStyle,
+    );
+    if (saved != true || !mounted) return;
+    await _reloadManifest();
+  }
+
+  Future<void> _reloadManifest() async {
+    final fresh =
+        await ref.read(trailVlogVaultProvider).loadManifest(_manifest.trailId);
+    if (fresh == null || !mounted) return;
+    setState(() {
+      _manifest = fresh;
+      _rebuildSegments();
+    });
+    unawaited(_loadThumbnails());
+  }
+
+  Future<void> _renameCustomVlog() async {
+    final controller = TextEditingController(text: _manifest.trailTitle);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('RENAME JUANLOG'),
+        content: TextField(
+          key: const ValueKey('vlog_studio_rename_field'),
+          controller: controller,
+          maxLength: 60,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            key: const ValueKey('vlog_studio_rename_save'),
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('SAVE'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (title == null || title.trim().isEmpty || !mounted) return;
+    await ref.read(trailVlogVaultProvider).renameVlog(_manifest.trailId, title);
+    ref.read(trailVlogRevisionProvider.notifier).state++;
+    await _reloadManifest();
+  }
+
   Future<void> _shareVlog() async {
     if (_isCompiling) return;
     final path = await _ensureCompiled();
@@ -328,7 +392,9 @@ class _TrailVlogStudioSheetState extends ConsumerState<TrailVlogStudioSheet> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'TRAIL VLOG STUDIO',
+                                _manifest.isCustom
+                                    ? 'JUANLOG STUDIO'
+                                    : 'TRAIL VLOG STUDIO',
                                 style: PixelType.title(
                                   context,
                                   color: PixelPalette.ink,
@@ -360,6 +426,35 @@ class _TrailVlogStudioSheetState extends ConsumerState<TrailVlogStudioSheet> {
                       ],
                     ),
                     SizedBox(height: grid.px(1.5)),
+
+                    if (_manifest.isCustom) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: PixelButton(
+                              key: const ValueKey('vlog_studio_add_clip'),
+                              label: '+ ADD CLIP',
+                              variant: PixelButtonVariant.primary,
+                              onPressed: _isCompiling
+                                  ? null
+                                  : () => unawaited(_addCustomClip()),
+                            ),
+                          ),
+                          SizedBox(width: grid.px(1)),
+                          Expanded(
+                            child: PixelButton(
+                              key: const ValueKey('vlog_studio_rename'),
+                              label: 'RENAME',
+                              variant: PixelButtonVariant.secondary,
+                              onPressed: _isCompiling
+                                  ? null
+                                  : () => unawaited(_renameCustomVlog()),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: grid.px(1.5)),
+                    ],
 
                     // 9:16 Instant Storyboard Preview
                     Center(
@@ -558,9 +653,11 @@ class _TrailVlogStudioSheetState extends ConsumerState<TrailVlogStudioSheet> {
 
   Widget _videoSegmentPreview(BuildContext context, VlogCompileSegment seg) {
     final thumbPath = _thumbs[seg.path];
-    final badge = seg.clipKind == VlogClipKind.road
-        ? 'ROAD'
-        : '${seg.stopPosition}/${_manifest.totalStops}';
+    final badge = switch (seg.clipKind) {
+      VlogClipKind.road => 'ROAD',
+      VlogClipKind.custom => 'LOG',
+      _ => '${seg.stopPosition}/${_manifest.totalStops}',
+    };
     return Stack(
       fit: StackFit.expand,
       children: [

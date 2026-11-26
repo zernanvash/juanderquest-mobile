@@ -117,10 +117,15 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   }) async {
     final trail = navState.selectedTrail;
     if (trail == null) return;
-    if (navState.currentSpeedMs > 3.0) {
-      showPixelToast(context, 'Park first to vlog');
-      return;
-    }
+    // Plan 124d: moving fast / outside the stop range are warnings inside the
+    // recorder (owner: "just warning but they can still use the vlog").
+    final next = navState.nextUncheckedStop;
+    final pos = navState.currentPosition;
+    final distToStop =
+        (kind == VlogClipKind.road && next != null && pos != null)
+            ? Geolocator.distanceBetween(
+                pos.latitude, pos.longitude, next.lat, next.lng)
+            : null;
     _pulseTimer?.cancel();
     _pulseTimer = null;
     await PixelVlogRecorderSheet.show(
@@ -137,6 +142,10 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
       municipality: municipality,
       currentSpeedMs: navState.currentSpeedMs,
       frameStyle: _vlogManifest?.frameStyle ?? VlogFrameStyle.defaultFrame,
+      isTrailRunning: navState.isAdventureActive,
+      isWithinStopTolerance:
+          kind != VlogClipKind.road || navState.isWithinCheckinRadius,
+      distanceToStopMeters: distToStop,
     );
     if (mounted) {
       unawaited(_loadVlogManifest(trail.id));
