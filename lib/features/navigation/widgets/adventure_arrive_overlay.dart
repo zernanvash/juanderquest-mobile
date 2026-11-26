@@ -264,24 +264,18 @@ class _AdventureArriveOverlayState extends State<AdventureArriveOverlay> {
                                 PixelButton(
                                   key: const ValueKey('nav_record_stop_vlog'),
                                   label: widget.isMovingTooFast
-                                      ? 'PARK FIRST TO VLOG'
+                                      ? 'MOVING FAST · RECORD WHEN SAFE'
                                       : (widget.hasStopVlogClip
                                           ? 'CLIP SAVED · RETAKE'
                                           : 'RECORD 3S VLOG CLIP'),
                                   expand: true,
-                                  style: widget.isMovingTooFast
-                                      ? null
-                                      : (widget.hasStopVlogClip
-                                          ? PixelBoxStyle.green
-                                          : PixelBoxStyle.gold),
-                                  textColor: widget.isMovingTooFast
-                                      ? null
-                                      : (widget.hasStopVlogClip
-                                          ? PixelPalette.paper
-                                          : PixelPalette.ink),
-                                  onPressed: widget.isMovingTooFast
-                                      ? null
-                                      : widget.onRecordStopVlog,
+                                  style: widget.hasStopVlogClip
+                                      ? PixelBoxStyle.green
+                                      : PixelBoxStyle.gold,
+                                  textColor: widget.hasStopVlogClip
+                                      ? PixelPalette.paper
+                                      : PixelPalette.ink,
+                                  onPressed: widget.onRecordStopVlog,
                                 ),
                               ],
                               if (widget.nextStop != null) ...[
@@ -329,13 +323,11 @@ class _AdventureArriveOverlayState extends State<AdventureArriveOverlay> {
                                   key: const ValueKey(
                                       'nav_record_final_stop_vlog'),
                                   label: widget.isMovingTooFast
-                                      ? 'PARK FIRST TO VLOG'
+                                      ? 'MOVING FAST · RECORD WHEN SAFE'
                                       : 'RECORD FINAL STOP CLIP',
                                   expand: true,
                                   variant: PixelButtonVariant.secondary,
-                                  onPressed: widget.isMovingTooFast
-                                      ? null
-                                      : widget.onRecordFinalStopVlog,
+                                  onPressed: widget.onRecordFinalStopVlog,
                                 ),
                               ],
                               if (widget.onOpenTrailVlogStudio != null) ...[

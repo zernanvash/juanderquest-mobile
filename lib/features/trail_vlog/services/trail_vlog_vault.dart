@@ -116,6 +116,39 @@ class TrailVlogVault {
     return created;
   }
 
+  /// Plan 124d: starts a custom video log (no trail). Its id starts with
+  /// `custom_`, so it never collides with a trail id.
+  Future<TrailVlogManifest> createCustomSession({String? title}) async {
+    final now = DateTime.now();
+    final id = 'custom_${now.millisecondsSinceEpoch}';
+    final dir = await trailDir(id);
+    final trimmed = title?.trim() ?? '';
+    final created = TrailVlogManifest(
+      trailId: id,
+      trailTitle: trimmed.isNotEmpty ? trimmed : 'My JuanLog',
+      totalStops: 0,
+      totalKm: 0,
+      isCustom: true,
+      updatedAtIso: now.toUtc().toIso8601String(),
+    );
+    await _writeManifestAtomic(dir, created);
+    return created;
+  }
+
+  /// Plan 124d: renames a saved vlog (used for custom logs).
+  Future<TrailVlogManifest?> renameVlog(String trailId, String title) async {
+    final existing = await loadManifest(trailId);
+    final trimmed = title.trim();
+    if (existing == null || trimmed.isEmpty) return existing;
+    final dir = await trailDir(trailId);
+    final updated = existing.copyWith(
+      trailTitle: trimmed,
+      updatedAtIso: DateTime.now().toUtc().toIso8601String(),
+    );
+    await _writeManifestAtomic(dir, updated);
+    return updated;
+  }
+
   /// Copies [sourceFilePath] into the trail vault and updates `vlog_manifest.json`.
   Future<TrailVlogManifest> saveClip({
     required String trailId,
@@ -140,9 +173,11 @@ class TrailVlogVault {
       rewardPoints: rewardPoints,
     );
     final dir = await trailDir(trailId);
-    final destName = kind == VlogClipKind.stop
-        ? 'stop_$stopPosition.mp4'
-        : 'leg_${stopPosition}_road.mp4';
+    final destName = switch (kind) {
+      VlogClipKind.stop => 'stop_$stopPosition.mp4',
+      VlogClipKind.road => 'leg_${stopPosition}_road.mp4',
+      VlogClipKind.custom => 'custom_$stopPosition.mp4',
+    };
     final destFile = File('${dir.path}${Platform.pathSeparator}$destName');
     final source = File(sourceFilePath);
     if (source.path != destFile.path) {

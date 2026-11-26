@@ -36,6 +36,7 @@ import '../widgets/home_around_panels.dart';
 import '../widgets/home_dual_bento_row.dart';
 import '../widgets/home_hero.dart';
 import '../widgets/home_promo_panel.dart';
+import '../widgets/home_vlog_panel.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -266,6 +267,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   _ => context.push('/quests'),
                                 },
                               ),
+                              SizedBox(height: grid.px(5)),
+
+                              // Plan 124d: JuanLog (custom vlogs + a trail
+                              // running in the background).
+                              const HomeVlogPanel(),
                               SizedBox(height: grid.px(5)),
 
                               // BAND 2 (main menu) moved to the MENU button in

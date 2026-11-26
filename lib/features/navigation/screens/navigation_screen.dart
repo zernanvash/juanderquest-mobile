@@ -23,6 +23,7 @@ import '../../trail_vlog/services/trail_vlog_vault.dart';
 import '../../trail_vlog/widgets/pixel_vlog_recorder_sheet.dart';
 import '../../trail_vlog/widgets/trail_vlog_studio_sheet.dart';
 import '../models/route_model.dart';
+import '../providers/active_trail_session_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../services/location_stream_service.dart';
 import '../services/wakelock_service.dart';
@@ -69,7 +70,9 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
         '${c.latitude.toStringAsFixed(3)},${c.longitude.toStringAsFixed(3)}';
     return '${p(r.coordinates.first)}|${p(r.coordinates.last)}|${r.coordinates.length ~/ 20}';
   }
-  StreamSubscription<Position>? _positionSubscription;
+  // Plan 124d: the GPS stream lives in the app-scoped session, so the trail
+  // keeps running when this screen closes or the app goes to the background.
+  late final ActiveTrailSessionNotifier _session;
   JdqRouteOverlay? _lastOverlay;
   WakelockService? _wakelockService;
   Timer? _pulseTimer;
@@ -117,10 +120,15 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   }) async {
     final trail = navState.selectedTrail;
     if (trail == null) return;
-    if (navState.currentSpeedMs > 3.0) {
-      showPixelToast(context, 'Park first to vlog');
-      return;
-    }
+    // Plan 124d: moving fast / outside the stop range are warnings inside the
+    // recorder (owner: "just warning but they can still use the vlog").
+    final next = navState.nextUncheckedStop;
+    final pos = navState.currentPosition;
+    final distToStop =
+        (kind == VlogClipKind.road && next != null && pos != null)
+            ? Geolocator.distanceBetween(
+                pos.latitude, pos.longitude, next.lat, next.lng)
+            : null;
     _pulseTimer?.cancel();
     _pulseTimer = null;
     await PixelVlogRecorderSheet.show(
@@ -137,6 +145,10 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
       municipality: municipality,
       currentSpeedMs: navState.currentSpeedMs,
       frameStyle: _vlogManifest?.frameStyle ?? VlogFrameStyle.defaultFrame,
+      isTrailRunning: navState.isAdventureActive,
+      isWithinStopTolerance:
+          kind != VlogClipKind.road || navState.isWithinCheckinRadius,
+      distanceToStopMeters: distToStop,
     );
     if (mounted) {
       unawaited(_loadVlogManifest(trail.id));
@@ -203,8 +215,16 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     _wakelockService = ref.read(wakelockServiceProvider);
     _nativeMap = ref.read(jdqMapFactoryProvider)();
     _style = ref.read(mapStyleProvider.future);
+    _session = ref.read(activeTrailSessionProvider.notifier);
+    _session.attachScreen();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Re-opened while the trail runs in the background: keep its state.
+      if (ref.read(navigationProvider(widget.destination)).isAdventureActive) {
+        _resumeLiveNavigation();
+        return;
+      }
       _applyInitialParams();
     });
   }
@@ -214,7 +234,8 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
-      _stopLiveNavigation(keepAdventureState: true);
+      // Plan 124d: GPS keeps running in the session; only the screen lock ends.
+      unawaited(_wakelockService?.disable());
     } else if (state == AppLifecycleState.resumed) {
       final navState = ref.read(navigationProvider(widget.destination));
       if (navState.isAdventureActive) {
@@ -263,8 +284,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     WidgetsBinding.instance.removeObserver(this);
     _pulseTimer?.cancel();
     _pulseTimer = null;
-    _positionSubscription?.cancel();
-    _positionSubscription = null;
+    _session.detachScreen();
     _wakelockService?.disable();
     _nativeMap.dispose();
     super.dispose();
@@ -323,22 +343,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
     final startPos = freshState.currentPosition;
     final startPoint = freshState.effectiveOriginPoint;
 
-    await _positionSubscription?.cancel();
-    _positionSubscription = locationService.getPositionStream().listen((pos) {
-      if (!mounted) return;
-      notifier.updatePosition(pos);
-      final current = ref.read(navigationProvider(widget.destination));
-      if (current.isCameraFollowing) {
-        unawaited(_nativeMap.easeTo(
-          LatLng(pos.latitude, pos.longitude),
-          16.5,
-          bearing: pos.speed > 1.0 && pos.heading >= 0 ? pos.heading : null,
-          tilt: 45.0,
-        ));
-      }
-    }, onError: (err) {
-      debugPrint('[Navigation] Location stream error: $err');
-    });
+    _session.start(widget.destination);
 
     unawaited(_nativeMap.easeTo(
       startPoint,
@@ -352,38 +357,33 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
 
   Future<void> _resumeLiveNavigation() async {
     await ref.read(wakelockServiceProvider).enable();
-    final locationService = ref.read(locationStreamServiceProvider);
-    final notifier = ref.read(navigationProvider(widget.destination).notifier);
+    if (!_session.isListening) {
+      _session.start(widget.destination);
+    }
+  }
 
-    await _positionSubscription?.cancel();
-    _positionSubscription = locationService.getPositionStream().listen((pos) {
-      if (!mounted) return;
-      notifier.updatePosition(pos);
-      final current = ref.read(navigationProvider(widget.destination));
-      if (current.isCameraFollowing) {
-        unawaited(_nativeMap.easeTo(
-          LatLng(pos.latitude, pos.longitude),
-          16.5,
-          bearing: pos.speed > 1.0 ? pos.heading : null,
-          tilt: 45.0,
-        ));
-      }
-    }, onError: (err) {
-      debugPrint('[Navigation] Location resume error: $err');
-    });
+  /// Follow the GPS fixes the session forwards (camera only).
+  void _followFix(Position? previous, Position? pos) {
+    if (pos == null || identical(previous, pos)) return;
+    final current = ref.read(navigationProvider(widget.destination));
+    if (!current.isAdventureActive || !current.isCameraFollowing) return;
+    unawaited(_nativeMap.easeTo(
+      LatLng(pos.latitude, pos.longitude),
+      16.5,
+      bearing: pos.speed > 1.0 && pos.heading >= 0 ? pos.heading : null,
+      tilt: 45.0,
+    ));
   }
 
   Future<void> _stopLiveNavigation({required bool keepAdventureState}) async {
-    final sub = _positionSubscription;
-    _positionSubscription = null;
-    unawaited(sub?.cancel());
     try {
       await ref.read(wakelockServiceProvider).disable();
     } catch (_) {
       await _wakelockService?.disable();
     }
     if (!keepAdventureState && mounted) {
-      ref.read(navigationProvider(widget.destination).notifier).endAdventure();
+      // END TRAIL: stops GPS + notifications and ends the adventure.
+      await _session.stop();
     }
   }
 
@@ -500,6 +500,10 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen>
   @override
   Widget build(BuildContext context) {
     final navState = ref.watch(navigationProvider(widget.destination));
+    ref.listen<Position?>(
+      navigationProvider(widget.destination).select((s) => s.currentPosition),
+      _followFix,
+    );
     final vlogRev = ref.watch(trailVlogRevisionProvider);
     _syncVlogManifest(navState, vlogRev);
     _syncPulseTimer(context, navState);

@@ -15,8 +15,12 @@ import '../services/trail_vlog_vault.dart';
 import '../services/vlog_camera_adapter.dart';
 import 'pixel_vlog_hud_overlay.dart';
 
-/// 3-second Setlog-inspired Pixel Viewfinder modal for Stop Check-In clips and
-/// optional parked Road Moment clips. Never keeps CameraController alive when closed.
+/// 3-second Setlog-inspired Pixel Viewfinder modal for Stop Check-In clips,
+/// Road Moment clips and custom clips. Never keeps CameraController alive when closed.
+///
+/// Plan 124d (owner 2026-11-26: "with warning ... just warning but they can still
+/// use the vlog"): no active trail, outside stop tolerance and moving fast only
+/// show the amber `vlog_tolerance_warning` banner; recording is never blocked.
 class PixelVlogRecorderSheet extends ConsumerStatefulWidget {
   final String trailId;
   final String trailTitle;
@@ -30,6 +34,9 @@ class PixelVlogRecorderSheet extends ConsumerStatefulWidget {
   final String municipality;
   final double currentSpeedMs;
   final VlogFrameStyle frameStyle;
+  final bool isTrailRunning;
+  final bool isWithinStopTolerance;
+  final double? distanceToStopMeters;
 
   const PixelVlogRecorderSheet({
     super.key,
@@ -45,6 +52,9 @@ class PixelVlogRecorderSheet extends ConsumerStatefulWidget {
     required this.municipality,
     this.currentSpeedMs = 0.0,
     this.frameStyle = VlogFrameStyle.defaultFrame,
+    this.isTrailRunning = true,
+    this.isWithinStopTolerance = true,
+    this.distanceToStopMeters,
   });
 
   static Future<bool?> show(
@@ -61,6 +71,9 @@ class PixelVlogRecorderSheet extends ConsumerStatefulWidget {
     required String municipality,
     double currentSpeedMs = 0.0,
     VlogFrameStyle frameStyle = VlogFrameStyle.defaultFrame,
+    bool isTrailRunning = true,
+    bool isWithinStopTolerance = true,
+    double? distanceToStopMeters,
   }) {
     return showModalBottomSheet<bool>(
       context: context,
@@ -79,6 +92,9 @@ class PixelVlogRecorderSheet extends ConsumerStatefulWidget {
         municipality: municipality,
         currentSpeedMs: currentSpeedMs,
         frameStyle: frameStyle,
+        isTrailRunning: isTrailRunning,
+        isWithinStopTolerance: isWithinStopTolerance,
+        distanceToStopMeters: distanceToStopMeters,
       ),
     );
   }
@@ -105,6 +121,22 @@ class _PixelVlogRecorderSheetState
   Timer? _recordTimer;
 
   bool get _isMovingTooFast => widget.currentSpeedMs > 3.0;
+
+  /// Warning lines for the amber banner. Never used to block recording.
+  List<String> get _warnings {
+    final dist = widget.distanceToStopMeters;
+    final isCustom = widget.kind == VlogClipKind.custom;
+    return [
+      if (isCustom || !widget.isTrailRunning)
+        'NO ACTIVE TRAIL · SAVING AS CUSTOM VIDEO LOG',
+      if (widget.isTrailRunning && !isCustom && !widget.isWithinStopTolerance)
+        dist != null
+            ? 'OUTSIDE STOP TOLERANCE (~${dist.round()} M AWAY) · WARNING ONLY, YOU CAN STILL RECORD'
+            : 'OUTSIDE STOP TOLERANCE · WARNING ONLY, YOU CAN STILL RECORD',
+      if (_isMovingTooFast)
+        'MOVING FAST · PULL OVER WHEN SAFE. YOU CAN STILL RECORD',
+    ];
+  }
 
   @override
   void initState() {
@@ -141,10 +173,7 @@ class _PixelVlogRecorderSheetState
   }
 
   Future<void> _startRecording() async {
-    if (_isMovingTooFast ||
-        _initializing ||
-        _isRecording ||
-        !_adapter.isInitialized) {
+    if (_initializing || _isRecording || !_adapter.isInitialized) {
       return;
     }
     setState(() {
@@ -270,12 +299,17 @@ class _PixelVlogRecorderSheetState
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final headerLabel = widget.kind == VlogClipKind.stop
-        ? 'STOP ${widget.stopPosition}/${widget.totalStops} · ${widget.spotName}'
-        : 'ROAD CLIP · LEG ${widget.stopPosition}';
-    final badgeText = widget.kind == VlogClipKind.stop
-        ? '${widget.stopPosition}/${widget.totalStops}'
-        : 'ROAD';
+    final headerLabel = switch (widget.kind) {
+      VlogClipKind.stop =>
+        'STOP ${widget.stopPosition}/${widget.totalStops} · ${widget.spotName}',
+      VlogClipKind.road => 'ROAD CLIP · LEG ${widget.stopPosition}',
+      VlogClipKind.custom => 'CUSTOM LOG · CLIP ${widget.stopPosition}',
+    };
+    final badgeText = switch (widget.kind) {
+      VlogClipKind.stop => '${widget.stopPosition}/${widget.totalStops}',
+      VlogClipKind.road => 'ROAD',
+      VlogClipKind.custom => 'LOG',
+    };
     final remainingSec =
         ((_segments - _elapsedSegments) * _tickMs / 1000).clamp(0.0, 3.0);
 
@@ -340,18 +374,24 @@ class _PixelVlogRecorderSheetState
                     ),
                     SizedBox(height: grid.px(1.5)),
 
-                    if (_isMovingTooFast) ...[
+                    if (_warnings.isNotEmpty) ...[
                       PixelPanel(
-                        key: const ValueKey('vlog_speed_warning'),
-                        style: PixelBoxStyle.red,
+                        key: const ValueKey('vlog_tolerance_warning'),
+                        style: PixelBoxStyle.gold,
                         padding: 1,
-                        child: Text(
-                          'PARK FIRST TO VLOG',
-                          textAlign: TextAlign.center,
-                          style: PixelType.small(
-                            context,
-                            color: PixelPalette.white,
-                          ).copyWith(fontWeight: FontWeight.w700),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (final line in _warnings)
+                              Text(
+                                line,
+                                textAlign: TextAlign.center,
+                                style: PixelType.small(
+                                  context,
+                                  color: PixelPalette.ink,
+                                ).copyWith(fontWeight: FontWeight.w700),
+                              ),
+                          ],
                         ),
                       ),
                       SizedBox(height: grid.px(1)),
@@ -531,22 +571,17 @@ class _PixelVlogRecorderSheetState
                           width: 200,
                           child: PixelButton(
                             key: const ValueKey('vlog_shutter_button'),
-                            label: _isMovingTooFast
-                                ? 'PARK FIRST TO VLOG'
-                                : (_isRecording ? 'RECORDING…' : 'REC 3S VLOG'),
+                            label: _isRecording ? 'RECORDING…' : 'REC 3S VLOG',
                             variant: PixelButtonVariant.danger,
-                            style: (_isMovingTooFast || _initializing)
-                                ? null
-                                : PixelBoxStyle.red,
-                            onPressed: (_isMovingTooFast ||
-                                    _initializing ||
-                                    !_adapter.isInitialized)
-                                ? null
-                                : (_isRecording
-                                    ? (_elapsedSegments >= 3
-                                        ? () => unawaited(_stopRecording())
-                                        : null)
-                                    : () => unawaited(_startRecording())),
+                            style: _initializing ? null : PixelBoxStyle.red,
+                            onPressed:
+                                (_initializing || !_adapter.isInitialized)
+                                    ? null
+                                    : (_isRecording
+                                        ? (_elapsedSegments >= 3
+                                            ? () => unawaited(_stopRecording())
+                                            : null)
+                                        : () => unawaited(_startRecording())),
                           ),
                         ),
                       ),

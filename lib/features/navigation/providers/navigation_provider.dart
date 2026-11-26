@@ -351,14 +351,21 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
   List<LatLng> _cachedManeuverWaypoints = const [];
   final Set<String> _spokenCues = {};
 
+  /// Plan 124d: keeps this (autoDispose) state alive while an adventure runs,
+  /// so leaving the navigation screen does not end the trail.
+  final KeepAliveLink Function()? _keepAlive;
+  KeepAliveLink? _aliveLink;
+
   NavigationNotifier({
     required ApiClient apiClient,
     TrailsApi? trailsApi,
     VoiceGuide? voiceGuide,
     required NavTarget initialDestination,
+    KeepAliveLink Function()? keepAlive,
   })  : _apiClient = apiClient,
         _trailsApi = trailsApi ?? TrailsApi(apiClient),
         _voiceGuide = voiceGuide,
+        _keepAlive = keepAlive,
         super(NavigationState(
           origin: NavOrigin.defaultLingayen,
           destination: initialDestination,
@@ -845,6 +852,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
   /// Start active adventure live guidance
   void startAdventure() {
+    _aliveLink ??= _keepAlive?.call();
     _consecutiveOffRouteFixes = 0;
     _lastRerouteTime = null;
     _lastPolylineTrimTime = null;
@@ -870,6 +878,8 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
 
   /// End active adventure live guidance
   void endAdventure() {
+    _aliveLink?.close();
+    _aliveLink = null;
     _consecutiveOffRouteFixes = 0;
     _lastRerouteTime = null;
     _lastPolylineTrimTime = null;
@@ -1184,6 +1194,7 @@ final navigationProvider = StateNotifierProvider.autoDispose
       trailsApi: trailsApi,
       voiceGuide: voiceGuide,
       initialDestination: destination,
+      keepAlive: ref.keepAlive,
     );
   },
 );

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:juanderquest_app/core/network/api_client.dart';
+import 'package:juanderquest_app/core/pixel/pixel_controls.dart';
 import 'package:juanderquest_app/core/theme/app_theme.dart';
 import 'package:juanderquest_app/features/auth/models/user_model.dart';
 import 'package:juanderquest_app/features/auth/providers/auth_provider.dart';
@@ -645,7 +646,7 @@ void main() {
     });
 
     testWidgets(
-        'Speed safety lock disables stop vlog CTA in AdventureArriveOverlay and blocks +CLIP on NavigationScreen above 3 m/s',
+        'Plan 124d: above 3 m/s the stop vlog CTA and +CLIP only warn; recording stays available',
         (tester) async {
       var tapped = false;
       await tester.pumpWidget(
@@ -668,10 +669,10 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('PARK FIRST TO VLOG'), findsOneWidget);
+      expect(find.text('MOVING FAST · RECORD WHEN SAFE'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('nav_record_stop_vlog')));
       await tester.pump();
-      expect(tapped, isFalse);
+      expect(tapped, isTrue);
 
       // NavigationScreen driving +CLIP lock when moving > 3.0 m/s
       const dest = NavTarget(
@@ -715,6 +716,8 @@ void main() {
           overrides: [
             trailVlogVaultProvider
                 .overrideWithValue(_InMemoryTrailVlogVault(tempDir)),
+            vlogCameraAdapterFactoryProvider.overrideWithValue(
+                () => _FakeVlogCameraAdapter(tempDir: tempDir)),
             jdqMapFactoryProvider.overrideWithValue(() => FakeJdqMap()),
             mapStyleProvider.overrideWith((_) async => '{}'),
             navigationProvider(dest).overrideWith(
@@ -734,8 +737,14 @@ void main() {
 
       expect(find.byKey(const ValueKey('nav_road_vlog_clip')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('nav_road_vlog_clip')));
-      await tester.pump();
-      expect(find.text('Park first to vlog'), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.text('Park first to vlog'), findsNothing);
+      expect(
+          find.byKey(const ValueKey('vlog_tolerance_warning')), findsOneWidget);
+      expect(find.textContaining('MOVING FAST'), findsWidgets);
+      final shutter = tester.widget<PixelButton>(
+          find.byKey(const ValueKey('vlog_shutter_button')));
+      expect(shutter.onPressed, isNotNull);
     });
   });
 

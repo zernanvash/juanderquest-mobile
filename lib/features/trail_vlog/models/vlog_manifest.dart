@@ -1,10 +1,11 @@
 import 'dart:convert';
 
-/// Whether a 3-second vlog clip was recorded at a trail stop check-in or
-/// during a parked roadside moment on a trail leg.
+/// Whether a 3-second vlog clip was recorded at a trail stop check-in, during a
+/// roadside moment on a trail leg, or in a custom video log (Plan 124d, no trail).
 enum VlogClipKind {
   stop('stop'),
-  road('road');
+  road('road'),
+  custom('custom');
 
   final String key;
   const VlogClipKind(this.key);
@@ -130,6 +131,10 @@ class TrailVlogManifest {
   final int? compiledSizeBytes;
   final String updatedAtIso;
 
+  /// Plan 124d: a custom video log recorded without a trail (clips are
+  /// [VlogClipKind.custom], numbered 1..N). Old manifests read as `false`.
+  final bool isCustom;
+
   const TrailVlogManifest({
     required this.trailId,
     required this.trailTitle,
@@ -144,6 +149,7 @@ class TrailVlogManifest {
     this.compiledAtIso,
     this.compiledSizeBytes,
     this.updatedAtIso = '',
+    this.isCustom = false,
   });
 
   int get totalClips => clips.length;
@@ -180,6 +186,7 @@ class TrailVlogManifest {
     String? updatedAtIso,
   }) {
     return TrailVlogManifest(
+      isCustom: isCustom,
       trailId: trailId,
       trailTitle: trailTitle ?? this.trailTitle,
       totalStops: totalStops ?? this.totalStops,
@@ -213,6 +220,7 @@ class TrailVlogManifest {
         if (compiledAtIso != null) 'compiled_at_iso': compiledAtIso,
         if (compiledSizeBytes != null) 'compiled_size_bytes': compiledSizeBytes,
         'updated_at_iso': updatedAtIso,
+        if (isCustom) 'is_custom': true,
       };
 
   String toEncodedJson() => jsonEncode(toJson());
@@ -236,6 +244,7 @@ class TrailVlogManifest {
       compiledAtIso: json['compiled_at_iso']?.toString(),
       compiledSizeBytes: (json['compiled_size_bytes'] as num?)?.toInt(),
       updatedAtIso: json['updated_at_iso']?.toString() ?? '',
+      isCustom: json['is_custom'] == true,
     );
   }
 }

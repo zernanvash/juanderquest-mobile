@@ -1,7 +1,33 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+
+/// Plan 124d: settings for the live adventure stream. On Android the stream
+/// runs in geolocator's foreground service (ongoing notification), so it keeps
+/// updating with the screen off or the app in the background.
+LocationSettings trailBackgroundLocationSettings({bool? isAndroid}) {
+  final android =
+      isAndroid ?? (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+  if (!android) {
+    return const LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 5,
+    );
+  }
+  return AndroidSettings(
+    accuracy: LocationAccuracy.bestForNavigation,
+    distanceFilter: 5,
+    foregroundNotificationConfig: const ForegroundNotificationConfig(
+      notificationTitle: 'JuanDerQuest trail running',
+      notificationText: 'Tracking your trail so stops can alert you.',
+      notificationChannelName: 'Trail tracking',
+      enableWakeLock: true,
+      setOngoing: true,
+    ),
+  );
+}
 
 abstract class LocationStreamService {
   Duration get gpsAcquireTimeout => const Duration(seconds: 15);
